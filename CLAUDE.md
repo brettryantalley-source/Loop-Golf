@@ -77,7 +77,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   out as newer rounds are played.
 
 ## Working across threads (added Sep 26)
-- ONE working copy: this folder (`~/…/ClaudeCode/Ghost-Match`). `~/…/Claude/Bogeyman-Matches` is a stale July clone — never build there. Open every new thread in THIS folder, not its parent.
+- ONE working copy: this folder (`~/…/ClaudeCode/Ghost-Match`). It was renamed from `Bogeyman-Matches` on Sep 26; older handoffs still say the old name. The stale July clone at `~/…/Claude/Bogeyman-Matches` was deleted Sep 26 — if you find a folder by that name anywhere, it is not this repo. Open every new thread in THIS folder, not its parent.
 - ONE code thread at a time on this working copy. Docs-only threads may overlap. Two code threads in parallel need separate git worktrees.
 - Handoffs live in `docs/`; `docs/README.md` says which is current. A thread that finishes a phase writes or updates its handoff, and the next thread starts by reading it.
 - Every thread starts with: `git status` (must be clean), `git log --oneline -3`, `npm test`. Every thread ends with its work committed and the push command handed to Brett.

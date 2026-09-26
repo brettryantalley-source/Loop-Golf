@@ -11,10 +11,12 @@ repo, and the conflicts are listed in §3. Read both before writing code.
 ---
 
 ## 1. Working-copy rule (learned the hard way)
-Two iCloud clones of the same GitHub repo exist. The single source of truth is
-`~/Library/Mobile Documents/com~apple~CloudDocs/ClaudeCode/Bogeyman-Matches`.
-Sync via GIT, not iCloud. Do NOT develop in the `Claude/Bogeyman-Matches` clone (stale).
-Read `CLAUDE.md` in the repo for standing rules — it is current as of v17.
+The single source of truth is
+`~/Library/Mobile Documents/com~apple~CloudDocs/ClaudeCode/Ghost-Match`
+(renamed from `Bogeyman-Matches` on Sep 26 to match the app). Sync via GIT, not iCloud.
+The second clone at `Claude/Bogeyman-Matches` was stale and was deleted Sep 26 — if you
+find a `Bogeyman-Matches` folder anywhere, it is not this repo.
+Read `CLAUDE.md` in the repo for standing rules — it is current.
 
 ## 2. Where the app actually is — v17, not v6
 The spec says the build log is "currently at v5/v6". It is not. Shipped since:

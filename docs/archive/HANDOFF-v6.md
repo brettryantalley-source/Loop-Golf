@@ -1,5 +1,10 @@
 # HANDOFF — Bogeyman Matches (v6 build, picking up mid-stream)
 
+> **Archived.** Paths below say `Bogeyman-Matches`; that folder was renamed to
+> `~/…/ClaudeCode/Ghost-Match` on Sep 26 2026, and the second clone at
+> `Claude/Bogeyman-Matches` was deleted the same day. Kept for the record.
+
+
 You are picking up a project mid-stream. This file is the complete context — the prior
 conversation happened on another machine and does not carry over. Read it fully, then follow
 the CONSOLIDATION steps before writing any code.

@@ -1,5 +1,10 @@
 # Build: auto-differential from in-app rounds (Ghost Match)
 
+> **Archived.** Paths below say `Bogeyman-Matches`; that folder was renamed to
+> `~/…/ClaudeCode/Ghost-Match` on Sep 26 2026, and the second clone at
+> `Claude/Bogeyman-Matches` was deleted the same day. Kept for the record.
+
+
 You're picking up the Ghost Match golf PWA. Goal for this session: **stop relying on
 Brett's manually-updated Google Sheet for the last-5 differential, and instead compute
 each round's differential automatically from the rounds recorded in the app**, averaging

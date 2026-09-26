@@ -10,7 +10,8 @@ handoff and explains the Caddie/Hole View feature; `docs/DEVLOG.md` has the vers
 ---
 
 ## 1. Working-copy rule
-Single source of truth: `~/Library/Mobile Documents/com~apple~CloudDocs/ClaudeCode/Bogeyman-Matches`
+Single source of truth: `~/Library/Mobile Documents/com~apple~CloudDocs/ClaudeCode/Ghost-Match`
+(renamed from `Bogeyman-Matches` on Sep 26)
 on the studio Mac. Sync via GIT only. Brett's laptop has no copy of the repo; pushes run from this
 Mac (Claude cannot push here — the permission classifier blocks it — so Brett runs the push command).
 
