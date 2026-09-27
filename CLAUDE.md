@@ -1,9 +1,10 @@
-# CLAUDE.md — Loop Golf
+# CLAUDE.md — Loop
 
 ## What this is
 A self-contained single-page web app (golf side game). Brett plays head-to-head against a handicap-calibrated "ghost" opponent scored from his last-5 rolling differential. Deployed as a static site on GitHub Pages, installed as a PWA on iPhone. Tone: casual, competitive.
-- The app is **Loop Golf** (Bogeyman Matches → Ghost Match → Loop Golf). At v20 the repo, the
-  folder and the Pages URL all moved to `Loop-Golf`; Brett re-added the app to his home screen once.
+- The app is **Loop** (Bogeyman Matches → Ghost Match → Loop Golf → Loop). At v20 the repo, the
+  folder and the Pages URL moved to `Loop-Golf`; at v21 the product name became plain **Loop**
+  (manifest, `<title>`, wordmark). The repo and the Pages URL keep the `Loop-Golf` spelling.
 - What did NOT move, and must not: the `bogeyman-matches:*` localStorage keys, the
   `bogeyman-tiles-v1` tile cache, and the Firebase project `ghost-match-cd04d`. The host is
   unchanged (`brettryantalley-source.github.io`), so all of that carried across the URL change —
@@ -17,10 +18,9 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 - `build.sh` — rebuild script. Run after every edit to src/app.jsx to regenerate index.html.
 - `sw.js` — service worker (network-first since v13: online you get the latest bundle, offline it falls back to cache). Has a versioned cache name.
 - `manifest.webmanifest` — PWA manifest. `icon-512.png` — app icon.
-- `src/caddie.js` — the Caddie engine (v18): pure functions, profile passed in. `src/profile.json` is Brett's game (hand-refreshed from Shot Pattern exports, see docs/HANDOFF-caddie.md). Tests: `src/caddie.test.js`.
-- `src/geometry.js` — hole geometry (v18.5/v19): haversine, point-in-polygon, front/middle/back, Overpass parser, auto phase, dispersion ellipse, tile math. Tests: `src/geometry.test.js` (uses the real Hampton OSM fixture in `src/fixtures/`).
-- `src/holeMap.jsx` — the Hole View (v19): MapLibre + MapTiler satellite + offline tile pre-fetch. The MapTiler key lives here (client-side, origin-locked).
-- `vendor/` — MapLibre GL dist files, COMMITTED (Pages serves them; the service worker caches them). `./build.sh` refreshes them from `node_modules` when present.
+- `src/theme.jsx` — the design system (v21): colour and type tokens, the pencil filters, the Loop wordmark. Every screen reads its values from here.
+- `fonts/` — bundled woff2, COMMITTED and cached by the service worker. Never fetch a font at runtime.
+- `src/caddie.js`, `src/geometry.js`, `src/holeMap.jsx`, `src/profile.json`, `src/fixtures/`, `vendor/` — PARKED at v21. Nothing imports them and they are not bundled, but their tests still run. See "Parked, not deleted".
 - `package.json` — build deps (the Firebase SDK, MapLibre for `vendor/`) and `npm test` (node's test runner over `src/*.test.js`). React still ships as an inlined UMD file. `node_modules/` is gitignored; run `npm install` in a fresh clone before `./build.sh`.
 
 ## How to ship a change (deploy loop)
@@ -46,14 +46,39 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 - Scoring per 18 (low score wins each): six 3-hole segments (1 pt, tie 0.5), Front-9 (0.5), Back-9 (0.5), Total-18 (1.0). 8 points total.
 - The differential stepper on Setup adjusts by 0.1.
 
-## Caddie + Hole View (v18–v19)
-- Two screens with a toggle: Play (ghost) and Caddie (club, aim, why + map). A round opens on the Caddie. Both read the same `hole`/`scores`.
-- The ghost is a status line on the Caddie card, never an input to the engine. Test #10 in `src/caddie.test.js` enforces it.
-- Every why-note cites a number from `src/profile.json`. Zones are half-open (`from <= d < to`).
-- GPS (`watchPosition`) + hole geometry pick the phase (spec §4.3) and fill the distance; the TEE/APPROACH/SHORT/PUTT chips are the fallback when there is no fix or no green. Putts are typed.
-- Hole geometry comes from OpenStreetMap via Overpass, GEOMETRY ONLY (par/SI stay with golfcourseapi), fetched once when a course is picked and cached in `bogeyman-matches:geo:v1:{apiId}`. The public Overpass instance 429s by IP; `lz4.overpass-api.de` is tried first. No OSM green → stand on it and tap to mark (`bogeyman-matches:greens:v1`).
-- Satellite tiles are cache-first in `sw.js` (`bogeyman-tiles-v1`, kept across version bumps). Save them on wifi from Setup before the round.
-- Run `npm test` before shipping anything in `src/`.
+## Design system (v21)
+- `src/theme.jsx` is the only place colours, type roles and rules are defined. Paper `#F4F0E4`,
+  ink `#1E6B3A`, hairline, yellow, pencil, ghost-pencil — the full table is in `loop-design/SPEC.md`.
+- Fonts are BUNDLED in `fonts/` as woff2 and listed in the `sw.js` shell. Never load a webfont at
+  runtime; the app has to render identically with no signal.
+- The Pinyon Script wordmark is outline paths inside `theme.jsx`, not a font.
+- Anything "written" carries `filter: url(#pencil)`; a chosen-but-uncommitted score carries the
+  `#soft` disc. Both filters are mounted once by `<PencilDefs />` at the app root.
+- Setup and the mid-round screen are paper. **Summary and History are not redesigned yet** — they
+  keep the dark palette and are wrapped in `<DarkShell>`. Remove the wrapper when they are redone.
+
+## Scoring the round (v21)
+- Five options per hole, computed from par: par−2, par−1, par, par+1, and a ceiling starting at
+  par+2. Nothing is pre-selected.
+- **Two taps.** First tap sets a pending score (shaded disc, mirrored into the You box and the
+  segment card). A second tap on the same number writes it and moves on. Changing hole discards
+  a pending score.
+- **Long-press the red box to go past par+2.** The USGA cap used by the differential is
+  par + 2 + strokes received, so on a stroked hole par+2 is BELOW the legal maximum. Without this
+  the recorded gross would run low and the differential would drift, making the ghost harder every
+  round. First step at 450 ms, then one every 400 ms, capped at 15.
+- Scores are stored as absolute stroke counts, so history, the differential and the cloud schema
+  are unchanged.
+- Writing hole 18 when nothing else is blank finishes the round. Otherwise the app jumps to the
+  next blank hole.
+
+## Parked, not deleted (v21)
+- The Caddie, the Hole View, GPS and the Overpass hole geometry are removed from the UI per the
+  26 Sep behaviour decisions. `src/caddie.js`, `src/geometry.js`, `src/holeMap.jsx`,
+  `src/profile.json`, `src/fixtures/` and `vendor/maplibre-gl.*` all STAY on disk, and their 43
+  tests still run under `npm test`. Nothing imports them, so esbuild leaves them out of the bundle.
+- The satellite tile cache `bogeyman-tiles-v1` is deliberately kept by `sw.js` rather than deleted,
+  so the feature can return without a ~9 MB re-download. Nothing reads it today.
 
 ## Course data format
 Entries in the COURSES array use `mk(pars, strokeIndex)`:

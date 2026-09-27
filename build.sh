@@ -55,7 +55,6 @@ html = f"""<!doctype html>
 <link rel="manifest" href="./manifest.webmanifest" />
 <link rel="apple-touch-icon" href="./icon-512.png" />
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
-<link rel="stylesheet" href="./vendor/maplibre-gl.css" />
 <title>Loop</title>
 <style>
 /* Bundled, never fetched at runtime — the app must render identically offline. */
@@ -69,10 +68,6 @@ html = f"""<!doctype html>
 html,body{{margin:0;background:#F4F0E4;color:#1E6B3A;overscroll-behavior:none;-webkit-text-size-adjust:100%}}
 body{{font-family:Bitter,Rockwell,Georgia,serif}}
 #root{{min-height:100dvh;background:#F4F0E4}}
-.maplibregl-ctrl-attrib{{font-size:9px!important;background:rgba(0,0,0,.55)!important;color:#8A8F98!important}}
-.maplibregl-ctrl-attrib a{{color:#8A8F98!important}}
-.maplibregl-ctrl-bottom-right{{right:0}}
-.maplibregl-canvas{{outline:none}}
 </style>
 </head>
 <body>
@@ -83,7 +78,6 @@ body{{font-family:Bitter,Rockwell,Georgia,serif}}
 <script>/* ReactDOM 18 UMD (production) */
 {react_dom}
 </script>
-<script defer src="./vendor/maplibre-gl.js"></script>
 <script>/* Loop app bundle */
 {app}
 </script>

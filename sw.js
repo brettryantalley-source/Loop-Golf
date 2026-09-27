@@ -1,5 +1,7 @@
-/* Loop — network-first service worker (latest when online, cached fallback offline)
-   + a cache-first satellite tile store (v19) so the Hole View works with no signal. */
+/* Loop — network-first service worker (latest when online, cached fallback offline).
+   The Hole View is parked (v21), so no new satellite tiles are cached. The existing
+   tile store is deliberately KEPT, not deleted, so the feature can come back without
+   a re-download; nothing reads it today. */
 const CACHE = 'loop-golf-v21';
 const TILES = 'bogeyman-tiles-v1';          // survives app-version bumps; only its own name is kept below
 const SHELL = [
@@ -7,8 +9,6 @@ const SHELL = [
   './index.html',
   './manifest.webmanifest',
   './icon-512.png',
-  './vendor/maplibre-gl.js',
-  './vendor/maplibre-gl.css',
   // Bundled fonts (v21) — the paper design renders wrong without them offline.
   './fonts/bitter-latin-400-normal.woff2',
   './fonts/bitter-latin-500-normal.woff2',

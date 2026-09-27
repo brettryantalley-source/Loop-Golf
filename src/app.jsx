@@ -1,10 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut as fbSignOut } from "firebase/auth";
 import { initializeFirestore, persistentLocalCache, persistentSingleTabManager, collection, doc, setDoc, getDocs } from "firebase/firestore";
-import { advise } from "./caddie.js";
-import PROFILE from "./profile.json";
-import { greenDistances, autoPhase, fetchGeometry, compactGeometry } from "./geometry.js";
-import { HoleMap, prefetchTiles, tileCacheStatus } from "./holeMap.jsx";
 import { T, F, caps, printed, written, writtenWord, rule, hairline, doubleRule, PencilDefs, Logo, teeTint } from "./theme.jsx";
 
 const React = window.React;
@@ -374,25 +370,7 @@ function MiniStat({ label, value, accent }) {
 const streakAccent = (stats) => stats.streak ? (stats.streak.type === "W" ? C.green : C.red) : C.sub;
 const marginAccent = (stats) => stats.n ? (stats.margin > 0 ? C.green : stats.margin < 0 ? C.red : C.ink) : C.sub;
 
-const stepBtn = { width: 54, height: 54, borderRadius: 15, background: C.card2, color: C.ink, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
 const lbl = { color: C.sub, fontSize: 11, fontWeight: 800, letterSpacing: 1 };
-
-/* ---------- setup (one screen: search course · pick tee · differential · start) ---------- */
-/* Satellite for offline (v19): the course's tiles at z16–19 into the tile cache, on wifi, before the round. */
-function TileCacheLine({ geo }) {
-  const [st, setSt] = useState(null);          // { have, total }
-  const [prog, setProg] = useState(null);      // { done, total, ok } while fetching
-  useEffect(() => { let live = true; tileCacheStatus(geo).then(r => { if (live) setSt(r); }); return () => { live = false; }; }, [geo]);
-  const run = () => {
-    if (prog) return;
-    setProg({ done: 0, total: 0, ok: 0 });
-    prefetchTiles(geo, setProg).then(r => { setProg(null); setSt({ have: r.ok, total: r.total }); }).catch(() => setProg(null));
-  };
-  if (!st) return null;
-  const full = st.total > 0 && st.have >= st.total;
-  const label = prog ? `Saving satellite… ${prog.done}/${prog.total}` : full ? `Satellite saved for offline · ${st.total} tiles` : `Satellite offline · ${st.have}/${st.total} tiles — tap to save on wifi`;
-  return <button onClick={full ? undefined : run} style={{ display: "block", color: full ? C.green : C.sub, fontSize: 11, marginTop: 3, textAlign: "left", ...tnum }}>{label}</button>;
-}
 
 /* Summary and History are not redesigned yet (the result screen is still to be
    drawn). They keep the old dark palette, so they need their own shell now that
@@ -571,7 +549,7 @@ function defaultTee(opts, full, history) {
   return byYards[Math.floor((byYards.length - 1) / 2)];
 }
 
-function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHistory, geometry }) {
+function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHistory }) {
   const [picking, setPicking] = useState(false);
   const [selectedFull, setSelectedFull] = useState(null);
   const [tees, setTees] = useState([]);
@@ -640,7 +618,23 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
           <span style={caps(11)}>Tee</span>
           {loadState2 === "loading" ? <span style={{ fontFamily: F.label, fontSize: 11, color: T.muted }}>Loading course…</span>
           : loadState2 === "error" ? <button onClick={() => pendingId && pickCourse(pendingId)} style={{ fontFamily: F.label, fontSize: 11, color: T.double, background: "none", border: "none", textAlign: "left", padding: 0 }}>Couldn't load — tap to retry.</button>
-          : tees.length === 0 ? <span style={{ fontFamily: F.label, fontSize: 11, color: T.muted }}>{selectedFull ? "No 18-hole tees for this course." : "Choose a course first."}</span>
+          : tees.length === 0 && selectedFull ? <span style={{ fontFamily: F.label, fontSize: 11, color: T.muted }}>No 18-hole tees for this course.</span>
+          : tees.length === 0 && course ? (
+            /* restored from a saved round: the tee list was never fetched, so show
+               the tee that round was on rather than asking for a course again */
+            <div style={{ display: "flex", alignItems: "center", gap: 3, height: 58 }}>
+              <span style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, width: 66, height: 58 }}>
+                <span style={{ width: 14, height: 14, borderRadius: 7, background: T.paper, border: `1.5px solid ${T.ink}` }} />
+                <span style={{ fontSize: 11, fontWeight: 700 }}>{course.tee}</span>
+                <span style={printed(11, 400)}>{yards ? yards.toLocaleString() : ""}</span>
+                <svg style={{ position: "absolute", left: 0, top: 0, width: "100%", height: 58, overflow: "visible" }} viewBox="0 0 66 58" preserveAspectRatio="none" fill="none" aria-hidden="true">
+                  <ellipse cx="33" cy="29" rx="29" ry="26" transform="rotate(-4 33 29)" stroke={T.pencil} strokeWidth="1.7" strokeDasharray="160 6" filter="url(#pencil)" />
+                </svg>
+              </span>
+              <button onClick={() => setPicking(true)} style={{ background: "none", border: "none", color: T.ink, padding: "0 6px", ...caps(10, 700, "0.14em") }}>Change</button>
+            </div>
+          )
+          : tees.length === 0 ? <span style={{ fontFamily: F.label, fontSize: 11, color: T.muted }}>Choose a course first.</span>
           : (
             <div style={tees.length <= 5
               ? { display: "grid", gridTemplateColumns: `repeat(${tees.length}, minmax(0, 1fr))`, gap: 2 }
@@ -738,488 +732,314 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
   );
 }
 
-/* ---------- play (fixed one screen) ---------- */
-/* running strokes-vs-ghost chart (derived from scores; no engine changes) */
-function GhostChart({ scores, ghost }) {
-  const W = 280, H = 78, top = 11, bot = 71;
-  let cum = 0; const played = [];
-  for (let i = 0; i < 18; i++) { if (scores[i] != null) { cum += scores[i] - ghost.holes[i]; played.push({ i, m: cum }); } }
-  const cur = played.length ? played[played.length - 1].m : 0;
-  const maxAbs = Math.max(3, ...played.map(p => Math.abs(p.m)));
-  const evenY = top + (bot - top) * 0.30;
-  const yOf = (m) => m >= 0 ? evenY + (m / maxAbs) * (bot - evenY) : evenY + (m / maxAbs) * (evenY - top);
-  const xOf = (i) => ((i + 1) / 18) * W;
-  const linePts = [[0, evenY]].concat(played.map(p => [xOf(p.i), yOf(p.m)]));
-  const lineStr = linePts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
-  const lastX = linePts[linePts.length - 1][0], lastY = linePts[linePts.length - 1][1];
-  const areaStr = `${lineStr} ${lastX.toFixed(1)},${H} 0,${H}`;
-  const accent = cur > 0 ? C.red : cur < 0 ? C.green : C.slate;
-  const fill = cur > 0 ? "rgba(255,91,82,0.14)" : cur < 0 ? "rgba(87,199,127,0.14)" : "rgba(154,167,180,0.12)";
-  const status = played.length === 0 ? "not started" : cur > 0 ? `+${cur} · behind` : cur < 0 ? `${cur} · ahead` : "even";
+/* ---------- mid-round (paper scorecard, v21) ---------- */
+/* Per-hole result against the ghost's fixed score. "" = not played yet. */
+const holeRes = (you, gh) => you == null ? "" : you < gh ? "W" : you > gh ? "L" : "H";
+const RES_FILL = { W: T.fillWon, L: T.fillLost, H: T.fillHalf };
+const RES_WORD = { win: "won", loss: "lost", tie: "halved" };
+/* Who a finished nine/total belongs to, in the footer's voice. */
+const sideWord = (res) => res === "win" ? "you" : res === "loss" ? "ghost" : res === "tie" ? "halved" : "open";
+
+/* The five options, relative to par. The last one is a ceiling the long-press
+   can raise: the USGA cap is par + 2 + strokes received, so on a stroked hole
+   par+2 is below your legal maximum and has to be reachable. */
+function choicesFor(par, ceiling) {
+  return [
+    { v: par - 2, kind: "eagle",  rings: 2, color: T.ink },
+    { v: par - 1, kind: "birdie", rings: 1, color: T.ink },
+    { v: par,     kind: "par",    rings: 0, color: T.black },
+    { v: par + 1, kind: "bogey",  boxes: 1, color: T.bogey },
+    { v: ceiling, kind: "double", boxes: 2, color: T.double, ceiling: true },
+  ];
+}
+
+/* A number written in pencil, with the shapes a scorecard puts round it.
+   One tap makes it pending (the soft graphite disc); a second commits. */
+function ScoreChoice({ c, par, pending, onTap, onHold }) {
+  const held = React.useRef(false);
+  const timers = React.useRef([]);
+  const stop = () => { timers.current.forEach(clearTimeout); timers.current.forEach(clearInterval); timers.current = []; };
+  useEffect(() => stop, []);
+  const start = () => {
+    if (!c.ceiling) return;
+    const t = setTimeout(() => {
+      held.current = true; onHold();
+      const iv = setInterval(onHold, 400); timers.current.push(iv);
+    }, 450);
+    timers.current.push(t);
+  };
+  const end = () => stop();
+  const click = () => { if (held.current) { held.current = false; return; } onTap(c.v); };
+  const label = c.ceiling && c.v === par + 2 ? `${c.v}+` : `${c.v}`;
+  const S = 52;
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 15, padding: "9px 12px 5px", flexShrink: 0 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-        <span style={{ ...lbl, fontSize: 9 }}>STROKES VS GHOST</span>
-        <span style={{ fontFamily: NUM, fontSize: 11, fontWeight: 800, color: accent, ...tnum }}>{status}</span>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" style={{ display: "block" }}>
-        <line x1="0" y1={evenY} x2={W} y2={evenY} stroke={C.line} strokeWidth="1" strokeDasharray="3 4" />
-        <text x="3" y={evenY - 3} fill={C.sub} fontSize="8">even</text>
-        {played.length > 0 && <polygon points={areaStr} fill={fill} />}
-        {played.length > 0 && <polyline points={lineStr} fill="none" stroke={accent} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />}
-        {played.length > 0 && <circle cx={lastX} cy={lastY} r="5" fill={accent} stroke="#000" strokeWidth="2" />}
-        <text x={W - 3} y={evenY - 3} fill={C.sub} fontSize="8" textAnchor="end">18</text>
-      </svg>
-    </div>
+    <button onClick={click} onPointerDown={start} onPointerUp={end} onPointerLeave={end} onPointerCancel={end}
+      onContextMenu={(e) => e.preventDefault()}
+      aria-label={`${c.kind}, ${label}${c.ceiling ? ", hold to go higher" : ""}${pending ? ", tap again to confirm" : ""}`}
+      style={{ position: "relative", width: S, height: S, border: "none", background: "transparent",
+        fontFamily: F.handNum, fontSize: 25, color: c.color, filter: "url(#pencil)", touchAction: "none", userSelect: "none" }}>
+      {pending && <span style={{ position: "absolute", left: 6, top: 6, width: S - 12, height: S - 12, borderRadius: (S - 12) / 2, background: T.shade, filter: "url(#soft)" }} />}
+      {c.rings > 0 && (
+        <svg style={{ position: "absolute", left: 0, top: 0, width: S, height: S }} viewBox="0 0 52 52" fill="none" stroke={c.color} strokeWidth="1.4" aria-hidden="true">
+          <ellipse cx="26" cy="26" rx="22" ry="21" transform="rotate(-8 26 26)" strokeDasharray="132 5" />
+          {c.rings > 1 && <ellipse cx="26" cy="26" rx="17" ry="16.5" transform="rotate(12 26 26)" strokeDasharray="102 4" />}
+        </svg>
+      )}
+      {c.boxes > 0 && (
+        <svg style={{ position: "absolute", left: 0, top: 0, width: S, height: S }} viewBox="0 0 52 52" fill="none" stroke={c.color} strokeWidth="1.4" aria-hidden="true">
+          {c.boxes > 1
+            ? <><rect x="4" y="4" width="44" height="44" rx="1.5" transform="rotate(-1.5 26 26)" strokeDasharray="170 5" />
+                <rect x="9.5" y="9.5" width="33" height="33" rx="1.5" transform="rotate(2 26 26)" strokeDasharray="128 4" /></>
+            : <rect x="6" y="6" width="40" height="40" rx="1.5" transform="rotate(1.5 26 26)" strokeDasharray="155 5" />}
+        </svg>
+      )}
+      <span style={{ position: "relative" }}>{label}</span>
+    </button>
   );
 }
 
-/* score picker wheel — par centered & enlarged, roll to your number, tap to log */
-function ScoreDial({ par, si, ghost, value, onPick }) {
-  const ref = React.useRef(null);
-  const raf = React.useRef(0);
-  const W = 56;
-  const min = Math.max(1, par - 4), max = par + 8;
-  const nums = []; for (let n = min; n <= max; n++) nums.push(n);
-  const [center, setCenter] = useState(value != null ? value : par);
-  React.useLayoutEffect(() => {
-    const el = ref.current; if (!el) return;
-    const sel = value != null ? value : par;
-    el.scrollLeft = (sel - min) * W;
-    setCenter(sel);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const onScroll = () => {
-    if (raf.current) return;
-    raf.current = requestAnimationFrame(() => {
-      raf.current = 0;
-      const el = ref.current; if (!el) return;
-      setCenter(Math.min(max, Math.max(min, min + Math.round(el.scrollLeft / W))));
-    });
-  };
-  const pick = (n) => { onPick(n); setCenter(n); const el = ref.current; if (el) el.scrollTo({ left: (n - min) * W, behavior: "smooth" }); };
-  const size = (d) => d === 0 ? 42 : d === 1 ? 27 : d === 2 ? 20 : 16;
-  const op = (d) => d === 0 ? 1 : d === 1 ? 0.82 : d === 2 ? 0.55 : 0.38;
-  const logged = value != null && value === center;
+/* One nine as a ruled strip: hole numbers, your line, the ghost's line.
+   Cells carry the hole's result as a fill; the hole you are on is yellow. */
+function Strip({ start, scores, ghost, hole, onJump }) {
+  const idx = [...Array(9)].map((_, k) => start + k);
+  const rows = [
+    { key: "", h: 22, get: (i) => String(i + 1), style: { ...printed(12), color: T.ink }, under: T.ink },
+    { key: "you", h: 30, get: (i) => scores[i] ?? "", style: written(17), under: T.hair },
+    { key: "gh.", h: 30, get: (i) => ghost.holes[i], style: written(17, T.ghost), under: T.ink },
+  ];
   return (
-    <div style={{ flexShrink: 0 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 6px 5px" }}>
-        <span style={{ color: C.sub, fontSize: 11, fontWeight: 700, ...tnum }}>PAR {par} · SI {si}</span>
-        <span style={{ color: logged ? C.green : C.ink, fontSize: 12, fontWeight: 800 }}>{scoreName(center, par)}{logged ? " · logged ✓" : " · tap to log"}</span>
-        <span style={{ color: C.slate, fontSize: 11, fontWeight: 700, ...tnum }}>GHOST {ghost}</span>
-      </div>
-      <div style={{ position: "relative", height: 66 }}>
-        <div style={{ position: "absolute", top: 3, left: "50%", transform: "translateX(-50%)", width: 60, height: 60, borderRadius: 15, border: `1.5px solid ${C.green}`, background: C.greenDim, pointerEvents: "none" }} />
-        <div ref={ref} onScroll={onScroll} className="dialscroll" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", overflowX: "auto", overflowY: "hidden", scrollSnapType: "x mandatory", paddingInline: "calc(50% - 28px)", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
-          {nums.map(n => {
-            const d = Math.abs(n - center);
+    <div style={{ display: "grid", gridTemplateColumns: "34px repeat(9, minmax(0, 1fr))", borderTop: rule, borderLeft: rule }}>
+      {rows.map((r) => (
+        <React.Fragment key={r.key}>
+          <div style={{ display: "flex", alignItems: "center", height: r.h, paddingLeft: 4, borderRight: rule,
+            borderBottom: `1px solid ${r.under}`, fontFamily: F.label, fontSize: 10 }}>{r.key}</div>
+          {idx.map((i, k) => {
+            const res = i === hole ? "now" : holeRes(scores[i], ghost.holes[i]);
             return (
-              <button key={n} onClick={() => pick(n)} style={{ scrollSnapAlign: "center", flex: "0 0 56px", width: 56, height: 66, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", padding: 0 }}>
-                <span style={{ fontFamily: NUM, fontWeight: d === 0 ? 800 : 700, fontSize: size(d), lineHeight: 1, color: n === value ? C.green : d === 0 ? C.ink : C.sub, opacity: op(d), ...tnum }}>{n}</span>
+              <button key={i} onClick={() => onJump(i)} aria-label={`Hole ${i + 1}`}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", height: r.h, padding: 0,
+                  border: "none", borderRight: `1px solid ${k % 3 === 2 ? T.ink : T.hair}`, borderBottom: `1px solid ${r.under}`,
+                  background: res === "now" ? T.yellow : (RES_FILL[res] || "transparent"), ...r.style }}>
+                {r.get(i)}
               </button>
             );
           })}
-        </div>
-      </div>
+        </React.Fragment>
+      ))}
     </div>
   );
 }
 
-function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExit, onCaddie }) {
+function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExit }) {
   const [confirmExit, setConfirmExit] = useState(false);
+  const [pending, setPending] = useState(null);          // { hole, v } — chosen, not written
+  const [ceiling, setCeiling] = useState(null);          // raised par+2, this hole only
   const m = useMemo(() => evalMatch(scores, ghost.holes), [scores, ghost]);
-  const h = course.holes[hole], gh = ghost.holes[hole];
-  /* Tap a score -> log it, then hand over the next hole. The short pause lets the
-     "logged ✓" confirmation register before the dial swaps to the new par; the
-     guard means a hole you picked yourself mid-pause wins over the auto-advance. */
-  const advance = React.useRef(0);
-  useEffect(() => () => clearTimeout(advance.current), []);
-  const setVal = (v) => {
-    setScores(prev => { const n = [...prev]; n[hole] = Math.max(1, v); return n; });
-    if (hole < 17) {
-      clearTimeout(advance.current);
-      advance.current = setTimeout(() => setHole(h => (h === hole ? h + 1 : h)), 350);
-    }
-  };
-  const lead = m.you - m.opp;
-  const filled = scores.filter(s => s != null).length;
-  const allIn = filled === 18;
-  // Finalize once every hole has a score (the current hole's pending value counts).
-  const onlyCurrentMissing = scores.every((s, i) => s != null || i === hole);
-  const canFinalize = allIn || onlyCurrentMissing;
-  const doFinalize = () => {
-    const committed = scores.map((s, i) => s == null ? course.holes[i].par : s);
-    setScores(committed);
-    onFinish(committed);
-  };
+  const h = course.holes[hole];
+  const par = h.par;
+  const cap = ceiling != null && ceiling > par + 2 ? ceiling : par + 2;
+  const pend = pending && pending.hole === hole ? pending.v : null;
 
-  const segSub = (s) => s.done ? `${s.yourSum}–${s.ghostSum}` : (s.holesIn === 0 ? "·" : marginText(s.liveMargin));
-  const segLab = (s) => s.done ? (s.res === "win" ? "WON" : s.res === "loss" ? "LOST" : "HALF") : `S${s.idx[0] / 3 + 1}`;
-  const nineSub = (n) => n.done ? `${n.yourSum}–${n.ghostSum}` : marginText(n.liveMargin);
-  const totSub = m.total.res !== "live" ? `${m.total.yourTot}–${m.total.ghostTot}` : marginText(m.total.liveMargin);
+  /* Changing hole drops an uncommitted choice and the raised ceiling with it. */
+  const goHole = (i) => { if (i === hole) return; setPending(null); setCeiling(null); setHole(i); };
+  useEffect(() => { setPending(null); setCeiling(null); }, [hole]);
+
+  const commit = (v) => {
+    const before = scores;
+    const after = [...before]; after[hole] = Math.max(1, v);
+    setScores(after);
+    setPending(null); setCeiling(null);
+    /* Hole 18 written and nothing left blank -> the round is over (decision 4). */
+    const blanksBefore = before.reduce((a, s, i) => a + (s == null && i !== hole ? 1 : 0), 0);
+    if (blanksBefore === 0 && before[hole] == null) { onFinish(after); return; }
+    const nextBlank = after.findIndex((s, i) => s == null && i > hole);
+    if (nextBlank !== -1) { setHole(nextBlank); return; }
+    if (hole < 17) setHole(hole + 1);
+  };
+  const tap = (v) => { if (pend === v) commit(v); else setPending({ hole, v }); };
+  const raise = () => setCeiling((c) => {
+    const next = Math.min((c != null && c > par + 2 ? c : par + 2) + 1, 15);
+    setPending({ hole, v: next });
+    return next;
+  });
+
+  const seg = Math.floor(hole / 3);
+  const segHoles = [seg * 3, seg * 3 + 1, seg * 3 + 2];
+  const lead = m.you - m.opp;
+  const relation = lead === 0 ? "all square" : lead > 0 ? "up" : "down";
+  const played = (a, b) => scores.slice(a, b).reduce((x, s) => x + (s ?? 0), 0);
+  const ghPlayed = (a, b) => scores.slice(a, b).reduce((x, s, k) => s != null ? x + ghost.holes[a + k] : x, 0);
+
+  const segLine = (from, to) => {
+    const done = [], open = [];
+    for (let s = from; s <= to; s++) (m.segs[s].done ? done : open).push(s);
+    if (done.length) return {
+      parts: done.map((s, k) => <span key={s}>{k ? " · " : ""}S{s + 1} <span style={writtenWord(16)}>{RES_WORD[m.segs[s].res]}</span></span>),
+      open: "",
+    };
+    return { parts: null, open: open.map(s => `S${s + 1}`).join(" · ") };
+  };
+  const front = segLine(0, 2), back = segLine(3, 5);
+  const frontPlayed = scores.slice(0, 9).some(s => s != null);
 
   return (
-    <div style={{ height: "100dvh", maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 8, padding: "calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 10px)", overflow: "hidden" }}>
+    <div style={{ height: "100dvh", maxWidth: 460, margin: "0 auto", boxSizing: "border-box", display: "flex", flexDirection: "column",
+      justifyContent: "space-between", padding: "max(env(safe-area-inset-top), 28px) 20px max(env(safe-area-inset-bottom), 16px)", background: T.paper }}>
+
       {/* header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0, gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-          <button onClick={() => (filled === 0 ? onExit() : setConfirmExit(true))} aria-label="Exit round" style={{ width: 34, height: 34, borderRadius: 10, background: C.card2, color: C.sub, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><X size={18} /></button>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ color: C.ink, fontWeight: 800, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{course.name}</div>
-            <div style={{ color: C.sub, fontSize: 11, ...tnum }}>{course.tee} · ghost {ghost.gross}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 8, borderBottom: rule, gap: 10 }}>
+        <button onClick={() => (scores.every(s => s == null) ? onExit() : setConfirmExit(true))}
+          aria-label="Leave round" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", background: "none", border: "none", padding: 0, minWidth: 0, textAlign: "left" }}>
+          <span style={{ fontFamily: F.label, fontSize: 15, fontWeight: 700, color: T.black, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
+            <span style={{ color: T.ink, fontWeight: 400 }}>‹ </span>{course.name} · {course.tee}
+          </span>
+          <span style={{ fontFamily: F.label, fontSize: 11, color: T.ink }}>
+            segment <span style={printed(12)}>{seg + 1}</span> of 6 · holes <span style={printed(12)}>{seg * 3 + 1}–{seg * 3 + 3}</span>
+          </span>
+        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <span style={caps(9, 400, "0.14em")}>You</span>
+            <span style={{ ...written(22), lineHeight: "22px" }}>{fmtPts(m.you)}</span>
+          </div>
+          <span style={{ ...writtenWord(relation === "all square" ? 19 : 26), lineHeight: "22px", whiteSpace: "nowrap" }}>{relation}</span>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <span style={caps(9, 400, "0.14em")}>Ghost</span>
+            <span style={{ ...written(22, T.ghost), lineHeight: "22px" }}>{fmtPts(m.opp)}</span>
           </div>
         </div>
-        {/* screen toggle — same slot on the Caddie header so it reads as one control */}
-        <button onClick={onCaddie} aria-label="Open caddie" style={togglePill}><Target size={14} /> CADDIE</button>
-        <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div style={{ ...lbl, fontSize: 10 }}>HOLE</div>
-          <div style={{ fontFamily: NUM, fontWeight: 800, fontSize: 18, color: C.ink, ...tnum }}>{hole + 1}<span style={{ color: C.sub, fontSize: 12 }}>/18</span></div>
-        </div>
       </div>
 
-      {/* exit confirmation */}
       {confirmExit && <LeaveSheet hole={hole} onStay={() => setConfirmExit(false)} onLeave={() => { setConfirmExit(false); onExit(); }} />}
 
-      {/* scoreboard */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.card, borderRadius: 16, padding: "9px 18px", flexShrink: 0 }}>
-        <div>
-          <div style={{ color: C.green, fontSize: 10, fontWeight: 800, letterSpacing: 1 }}>YOU</div>
-          <div style={{ fontFamily: NUM, fontSize: 34, fontWeight: 800, color: C.green, lineHeight: 1, ...tnum }}>{fmtPts(m.you)}</div>
-        </div>
-        <div style={{ color: lead > 0 ? C.green : lead < 0 ? C.red : C.sub, fontSize: 12, fontWeight: 800, letterSpacing: 0.5 }}>
-          {lead === 0 ? "ALL SQUARE" : lead > 0 ? `${fmtPts(lead)} UP` : `${fmtPts(-lead)} DOWN`}
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ color: C.slate, fontSize: 10, fontWeight: 800, letterSpacing: 1 }}>GHOST</div>
-          <div style={{ fontFamily: NUM, fontSize: 34, fontWeight: 800, color: C.slate, lineHeight: 1, ...tnum }}>{fmtPts(m.opp)}</div>
-        </div>
-      </div>
-
-      {/* running chart */}
-      <GhostChart scores={scores} ghost={ghost} />
-
-      {/* segment strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 5, flexShrink: 0 }}>
-        {m.segs.map((s, i) => <SegCell key={i} res={s.res} label={segLab(s)} sub={segSub(s)} margin={s.liveMargin} />)}
-      </div>
-
-      {/* front / back / total */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 5, flexShrink: 0 }}>
-        <StatPill label="FRONT 9" res={m.front.res} sub={nineSub(m.front)} />
-        <StatPill label="BACK 9" res={m.back.res} sub={nineSub(m.back)} />
-        <StatPill label="TOTAL" res={m.total.res} sub={totSub} />
-      </div>
-
-      {/* 18-hole board — result at a glance; tap any hole to jump */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(9,1fr)", gap: 5, flexShrink: 0 }}>
-        {scores.map((s, i) => {
-          let bg = C.card2, col = C.sub, border = `1px solid ${C.line}`;
-          if (s != null) { const d = s - ghost.holes[i]; if (d < 0) { bg = C.green; col = "#07140C"; border = "none"; } else if (d > 0) { bg = C.red; col = "#fff"; border = "none"; } else { bg = "#4A4E54"; col = "#fff"; border = "none"; } }
+      {/* the segment you are in */}
+      <div style={{ display: "grid", gridTemplateColumns: "56px repeat(3, minmax(0, 1fr))", borderLeft: rule }}>
+        <div style={{ display: "flex", alignItems: "center", height: 42, paddingLeft: 6, borderRight: rule, borderBottom: rule, ...caps(10, 700, "0.12em") }}>Hole</div>
+        {segHoles.map((i, k) => {
           const now = i === hole;
-          return <button key={i} onClick={() => setHole(i)} style={{ height: 30, borderRadius: 8, background: bg, color: col, border: now ? `2px solid ${C.ink}` : border, fontFamily: NUM, fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", ...tnum }}>{i + 1}</button>;
+          return (
+            <button key={i} onClick={() => goHole(i)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 42,
+              border: "none", borderRight: `1px solid ${k === 2 ? T.ink : T.hair}`, borderBottom: rule, background: now ? T.yellow : "transparent", padding: 0 }}>
+              <span style={{ ...printed(24), color: T.black }}>{i + 1}</span>
+              <span style={{ fontFamily: F.label, fontSize: 10, lineHeight: "12px", color: now ? T.black : T.ink, textAlign: "left" }}>
+                par {course.holes[i].par}<br />idx {course.holes[i].si}
+              </span>
+            </button>
+          );
+        })}
+        <div style={{ display: "flex", alignItems: "center", height: 42, paddingLeft: 6, borderRight: rule, borderBottom: hairline, ...caps(10, 700, "0.12em") }}>Ghost</div>
+        {segHoles.map((i, k) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 42,
+            borderRight: `1px solid ${k === 2 ? T.ink : T.hair}`, borderBottom: hairline, ...written(21, T.ghost) }}>{ghost.holes[i]}</div>
+        ))}
+        <div style={{ display: "flex", alignItems: "center", height: 42, paddingLeft: 6, borderRight: rule, borderBottom: rule, ...caps(10, 700, "0.12em") }}>You</div>
+        {segHoles.map((i, k) => {
+          const showPend = i === hole && pend != null && scores[i] == null;
+          const val = scores[i] != null ? scores[i] : showPend ? pend : "";
+          const col = showPend ? (pend > course.holes[i].par + 1 ? T.double : pend > course.holes[i].par ? T.bogey : T.pencil) : T.pencil;
+          return (
+            <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 42,
+              borderRight: `1px solid ${k === 2 ? T.ink : T.hair}`, borderBottom: rule }}>
+              <span style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30 }}>
+                {showPend && <span style={{ position: "absolute", left: 2, top: 2, width: 26, height: 26, borderRadius: 13, background: T.shade, filter: "url(#soft)" }} />}
+                <span style={{ position: "relative", ...written(21, col) }}>{val}</span>
+              </span>
+            </div>
+          );
         })}
       </div>
 
-      {/* score entry — roll the dial to your number, tap to log (par is centered) */}
-      <ScoreDial key={hole} par={h.par} si={h.si} ghost={gh} value={scores[hole]} onPick={setVal} />
-
-      {/* finalize — appears once the round is complete */}
-      {canFinalize && (
-        <button onClick={doFinalize} style={{ flexShrink: 0, height: 50, borderRadius: 14, background: C.green, color: "#07140C", fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Flag size={18} /> Finalize round</button>
-      )}
-    </div>
-  );
-}
-
-/* ---------- shared: header toggle pill + leave-round sheet (Play and Caddie) ---------- */
-const togglePill = { height: 34, padding: "0 12px", borderRadius: 10, background: C.card2, color: C.ink, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800, letterSpacing: 1, flexShrink: 0 };
-function LeaveSheet({ hole, onStay, onLeave }) {
-  return (
-    <div onClick={onStay} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 60 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: C.card, borderRadius: "20px 20px 0 0", border: `1px solid ${C.line}`, padding: "18px 18px calc(env(safe-area-inset-bottom) + 18px)" }}>
-        <div style={{ color: C.ink, fontWeight: 800, fontSize: 16, marginBottom: 4 }}>Leave this round?</div>
-        <div style={{ color: C.sub, fontSize: 13, marginBottom: 16 }}>You're on hole {hole + 1}. This round isn't finished, so it won't be saved to your record.</div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={onStay} style={{ flex: 1, height: 50, borderRadius: 14, background: C.card2, color: C.ink, border: `1px solid ${C.line}`, fontWeight: 800, fontSize: 15 }}>Keep playing</button>
-          <button onClick={onLeave} style={{ flex: 1, height: 50, borderRadius: 14, background: C.red, color: "#fff", fontWeight: 800, fontSize: 15 }}>Leave round</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------- hole geometry (v18.5) — OpenStreetMap via Overpass, cached per course; greens you mark by standing on them as the fallback ---------- */
-const GEO_KEY = (apiId) => `bogeyman-matches:geo:v1:${apiId}`;
-const MARK_KEY = "bogeyman-matches:greens:v1";
-const apiIdOf = (course) => course?.apiId ?? (course?.id != null ? String(course.id).split(":")[0] : null);
-/* Anchor coords: on the built course since v18.5; older in-progress rounds fall back to the cached full course. */
-function courseAnchor(course) {
-  if (!course) return null;
-  if (typeof course.lat === "number" && typeof course.lon === "number") return { lat: course.lat, lon: course.lon };
-  try {
-    const full = JSON.parse(localStorage.getItem(courseCacheKey(apiIdOf(course))) || "null");
-    const loc = full && full.location;
-    if (loc && typeof loc.latitude === "number" && typeof loc.longitude === "number") return { lat: loc.latitude, lon: loc.longitude };
-  } catch (e) { /* ignore */ }
-  return null;
-}
-function loadGeo(apiId) {
-  try { const g = JSON.parse(localStorage.getItem(GEO_KEY(apiId)) || "null"); return g && g.holes ? g : null; } catch (e) { return null; }
-}
-function saveGeo(apiId, geo) {
-  try { localStorage.setItem(GEO_KEY(apiId), JSON.stringify(geo)); } catch (e) { /* quota */ }
-}
-function loadMarks(course) {
-  try { const all = JSON.parse(localStorage.getItem(MARK_KEY) || "{}"); const c = all[courseKey(course)]; return c && typeof c === "object" ? c : {}; } catch (e) { return {}; }
-}
-function saveMarks(course, marks) {
-  try { const all = JSON.parse(localStorage.getItem(MARK_KEY) || "{}"); all[courseKey(course)] = marks; localStorage.setItem(MARK_KEY, JSON.stringify(all)); } catch (e) { /* quota */ }
-}
-/* Fetch once per course when it is selected (needs signal then, not on the course); cache-first afterwards. */
-function useGeometry(course) {
-  const apiId = apiIdOf(course);
-  const anchor = courseAnchor(course);
-  const [geo, setGeo] = useState(() => (apiId ? loadGeo(apiId) : null));
-  const [status, setStatus] = useState(geo ? "ok" : "none");   // none | nocoords | loading | ok | error
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    if (!apiId) { setGeo(null); setStatus("none"); return; }
-    const cached = loadGeo(apiId);
-    if (cached) { setGeo(cached); setStatus("ok"); return; }
-    if (!anchor) { setGeo(null); setStatus("nocoords"); return; }
-    let live = true;
-    setStatus("loading");
-    fetchGeometry(anchor.lat, anchor.lon)
-      .then(g => { if (!live) return; const c = { ...compactGeometry(g), fetchedAt: Date.now() }; saveGeo(apiId, c); setGeo(c); setStatus("ok"); })
-      .catch(() => { if (live) { setGeo(null); setStatus("error"); } });
-    return () => { live = false; };
-  }, [apiId, anchor && anchor.lat, anchor && anchor.lon, tick]);
-  return { geo, status, retry: () => setTick(t => t + 1) };
-}
-/* Live position. High accuracy, 2 s max age (spec §4.2). `retry` re-subscribes after a denial. */
-function useGeo(active) {
-  const [fix, setFix] = useState(null);      // { lat, lon, acc, ts }
-  const [err, setErr] = useState(null);      // null | no-geo | denied | unavailable
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    if (!active) return;
-    if (!navigator.geolocation) { setErr("no-geo"); return; }
-    setErr(null);
-    const id = navigator.geolocation.watchPosition(
-      p => setFix({ lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, ts: p.timestamp }),
-      e => setErr(e && e.code === 1 ? "denied" : "unavailable"),
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
-    return () => navigator.geolocation.clearWatch(id);
-  }, [active, tick]);
-  return { fix, err, retry: () => setTick(t => t + 1) };
-}
-const geoStatusText = (geo, status) => {
-  if (status === "ok" && geo) { const n = Object.values(geo.holes).filter(h => h.green).length; return `Hole map · ${n}/18 greens from OpenStreetMap`; }
-  if (status === "loading") return "Fetching hole map…";
-  if (status === "nocoords") return "No hole map — this course has no coordinates";
-  if (status === "error") return "Hole map failed — tap to retry";
-  return null;
-};
-
-/* ---------- Caddie (v18 → v18.5) — club, aim and why, every note citing a number from src/profile.json ----------
-   Its own screen, toggled from Play. The engine is src/caddie.js; nothing here touches the ghost
-   beyond passing the hole's ghost score through as a status line (the engine never reads it).
-   v18.5: GPS + hole geometry pick the phase and fill the distance; the chips are the fallback. */
-const CADDIE_FLAGS_KEY = "bogeyman-matches:caddie-flags:v1";   // per-course, per-hole tight / water flags
-const courseKey = (course) => `${course.id ?? course.name}|${course.tee ?? ""}`;
-function loadHoleFlags(course) {
-  try { const all = JSON.parse(localStorage.getItem(CADDIE_FLAGS_KEY) || "{}"); const c = all[courseKey(course)]; return c && typeof c === "object" ? c : {}; } catch (e) { return {}; }
-}
-function saveHoleFlags(course, flags) {
-  try { const all = JSON.parse(localStorage.getItem(CADDIE_FLAGS_KEY) || "{}"); all[courseKey(course)] = flags; localStorage.setItem(CADDIE_FLAGS_KEY, JSON.stringify(all)); } catch (e) { /* quota */ }
-}
-const ZONE_COLOR = { green: C.green, amber: "#D4A94A", red: "#C9645E" };
-const PHASES = [["tee", "TEE"], ["approach", "APPROACH"], ["short", "SHORT"], ["putt", "PUTT"]];
-const PHASE_ORDER = PHASES.map(p => p[0]);
-const HOLE_FLAGS = [["tight", "tight"], ["waterL", "water L"], ["waterR", "water R"]];
-const ROUND_FLAGS = [["wet", "wet"], ["wind", "wind"]];
-const clubName = (id) => (PROFILE.clubs.find(c => c.id === id) || { name: id }).name;
-const MAP_H = Math.round(Math.min(340, Math.max(220, (typeof window !== "undefined" ? window.innerHeight : 800) * 0.36)));
-
-function Chip({ on, onClick, children, tone = "ink", dim, small }) {
-  const bg = on ? (tone === "green" ? C.green : tone === "slate" ? C.slate : C.ink) : C.card2;
-  return (
-    <button onClick={onClick} style={{ height: small ? 26 : 32, padding: small ? "0 9px" : "0 12px", borderRadius: 10, background: bg, color: on ? "#07140C" : (dim ? "#55595F" : C.sub), border: `1px solid ${on ? "transparent" : C.line}`, fontSize: small ? 11 : 12, fontWeight: 800, letterSpacing: 0.5, whiteSpace: "nowrap", flexShrink: 0, textDecoration: dim ? "line-through" : "none", ...tnum }}>{children}</button>
-  );
-}
-
-function Caddie({ course, ghost, hole, setHole, scores, roundFlags, setRoundFlags, geo, geoStatus, onRetryGeo, onPlay, onExit }) {
-  const h = course.holes[hole];
-  const par = h.par, yards = typeof h.yards === "number" ? h.yards : null;
-  const [manualPhase, setManualPhase] = useState(null);    // null = follow GPS
-  const [distOverride, setDistOverride] = useState(null);  // null = follow GPS
-  const [lie, setLie] = useState("fairway");
-  const [alt, setAlt] = useState(null);                    // manually tapped alternative club
-  const [holeFlagsAll, setHoleFlagsAll] = useState(() => loadHoleFlags(course));
-  const [marks, setMarks] = useState(() => loadMarks(course));
-  const [confirmExit, setConfirmExit] = useState(false);
-  const { fix, err: gpsErr, retry: retryGps } = useGeo(true);
-
-  /* the green for this hole: a green you marked wins, else OpenStreetMap */
-  const osmHole = geo && geo.holes ? geo.holes[hole + 1] : null;
-  const mark = marks[hole];
-  const green = mark ? { center: mark, ring: null } : (osmHole && osmHole.green) || null;
-  const live = fix && green ? greenDistances(fix, green) : null;
-  const auto = live ? autoPhase(live.middle, yards, live.inside) : null;
-  const phase = manualPhase || auto || "tee";
-  // a new auto phase (you walked into the next band) drops any typed distance and alt club
-  useEffect(() => { setDistOverride(null); setAlt(null); }, [auto]);
-
-  const holeFlags = holeFlagsAll[hole] || {};
-  const toggleHoleFlag = (k) => { const next = { ...holeFlagsAll, [hole]: { ...holeFlags, [k]: !holeFlags[k] } }; setHoleFlagsAll(next); saveHoleFlags(course, next); };
-  const toggleRoundFlag = (k) => setRoundFlags(f => ({ ...f, [k]: !f[k] }));
-  const pickPhase = (p) => { setManualPhase(p === auto ? null : p); setAlt(null); setDistOverride(null); };
-  const cyclePhase = () => pickPhase(PHASE_ORDER[(PHASE_ORDER.indexOf(phase) + 1) % PHASE_ORDER.length]);
-  const markGreen = () => { if (!fix) return; const next = { ...marks, [hole]: { lat: fix.lat, lon: fix.lon } }; setMarks(next); saveMarks(course, next); };
-  const clearMark = () => { const next = { ...marks }; delete next[hole]; setMarks(next); saveMarks(course, next); };
-  const filled = scores.filter(s => s != null).length;
-
-  /* distance: typed wins, else GPS to the middle, else the scorecard yardage on the tee. Putts are typed (GPS can't read feet). */
-  const gpsDist = live && phase !== "putt" ? String(Math.round(live.middle)) : null;
-  const dist = distOverride != null ? distOverride : (gpsDist != null ? gpsDist : (phase === "tee" && yards != null ? String(yards) : ""));
-  const flags = { ...holeFlags, ...roundFlags };
-  const n = parseFloat(dist);
-  const distance = Number.isFinite(n) && n > 0 ? n : null;
-  const unit = phase === "putt" ? "ft" : "yds";
-  const ghostScore = ghost.holes[hole];
-  let advice = null;
-  try {
-    if (distance == null) advice = null;
-    else if (phase === "tee") advice = advise({ phase: "tee", par, yards: distance, flags, forceClub: alt, ghost: ghostScore }, PROFILE);
-    else if (phase === "approach") advice = advise({ phase: "approach", distance, lie, flags, forceClub: alt, ghost: ghostScore }, PROFILE);
-    else if (phase === "short") advice = advise({ phase: "short", distance, ghost: ghostScore }, PROFILE);
-    else advice = advise({ phase: "putt", distance, ghost: ghostScore }, PROFILE);
-  } catch (e) { advice = null; }
-
-  const grade = advice && advice.zoneGrade;
-  const gradeColor = grade ? ZONE_COLOR[grade] : C.sub;
-  const summary = advice && (
-    phase === "tee" && advice.leave != null
-      ? `leaves ~${advice.leave}${advice.plan === "layup" ? ` · ${advice.secondClub} to ~${advice.leave3}` : ""}${grade ? ` · ${grade.toUpperCase()} ZONE` : ""}${advice.target && advice.target !== "center" ? ` · aim ${advice.target}` : ""}`
-      : phase === "approach" || phase === "tee"
-        ? `${distance} · ${grade ? `${grade.toUpperCase()} ZONE` : "no zone"}${advice.target ? ` · ${advice.target}` : ""}`
-        : null
-  );
-  const alts = (advice && advice.alternatives) || [];
-  const selected = alt || (advice && advice.club);
-
-  const flagChip = (k, label, on, fn) => <Chip key={k} on={on} onClick={() => { fn(k); setAlt(null); }} tone="green">{label}</Chip>;
-  const holeMeta = `Par ${par}${yards != null ? ` · ${yards} yds` : ""}${h.si ? ` · SI ${h.si}` : ""}`;
-  const gpsLabel = fix ? `GPS ±${Math.round(fix.acc)} m` : gpsErr === "denied" ? "Location off — tap to allow" : gpsErr === "no-geo" ? "No GPS on this device" : gpsErr ? "GPS lost — tap to retry" : "Finding GPS…";
-  const greenSource = mark ? "green you marked" : (osmHole && osmHole.green ? (live && live.hasRing ? "OSM green" : "OSM green") : null);
-  const mapLine = geoStatusText(geo, geoStatus);
-
-  return (
-    <div style={{ minHeight: "100dvh", maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12, padding: "calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 14px)" }}>
-      {/* header — mirrors Play: exit at left, toggle in the middle, hole at right */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0, gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-          <button onClick={() => (filled === 0 ? onExit() : setConfirmExit(true))} aria-label="Exit round" style={{ width: 34, height: 34, borderRadius: 10, background: C.card2, color: C.sub, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><X size={18} /></button>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ color: C.ink, fontWeight: 800, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{course.name}</div>
-            <div style={{ color: C.sub, fontSize: 11, ...tnum }}>{holeMeta}</div>
+      {/* the hole itself, then the five numbers */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+            <span style={caps(9, 400, "0.14em")}>Ghost</span>
+            <span style={{ width: 44, height: 44, border: hairline, display: "flex", alignItems: "center", justifyContent: "center", ...written(24, T.ghost) }}>{ghost.holes[hole]}</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <span style={{ ...printed(72), lineHeight: "62px", color: T.black }}>{hole + 1}</span>
+            <span style={{ fontFamily: F.label, fontSize: 11, color: T.ink }}>par <span style={printed(12)}>{par}</span> · index <span style={printed(12)}>{h.si}</span></span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+            <span style={caps(9, 400, "0.14em")}>You</span>
+            <span style={{ width: 44, height: 44, border: rule, background: T.yellow, display: "flex", alignItems: "center", justifyContent: "center",
+              ...written(24, (scores[hole] ?? pend) > par + 1 ? T.double : (scores[hole] ?? pend) > par ? T.bogey : T.pencil) }}>
+              {scores[hole] != null ? scores[hole] : pend != null ? pend : ""}
+            </span>
           </div>
         </div>
-        <button onClick={onPlay} aria-label="Open ghost match" style={togglePill}><Ghost size={14} /> GHOST</button>
-        <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div style={{ ...lbl, fontSize: 10 }}>HOLE</div>
-          <div style={{ fontFamily: NUM, fontWeight: 800, fontSize: 18, color: C.ink, ...tnum }}>{hole + 1}<span style={{ color: C.sub, fontSize: 12 }}>/18</span></div>
-        </div>
-      </div>
-      {confirmExit && <LeaveSheet hole={hole} onStay={() => setConfirmExit(false)} onLeave={() => { setConfirmExit(false); onExit(); }} />}
 
-      {/* the hole, hole-up: satellite, trouble, green outline, your landing ellipse for the shown club */}
-      <HoleMap fix={fix} hole={osmHole} green={green} trouble={(geo && geo.trouble) || []} club={PROFILE.clubs.find(c => c.id === selected) || null} phase={phase} height={MAP_H} />
-
-      {/* where you are — GPS picks the phase; tap the line to override, AUTO to hand it back */}
-      {auto ? (
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <button onClick={cyclePhase} aria-label="Shot phase, tap to change" style={{ flex: 1, minWidth: 0, height: 44, borderRadius: 12, background: manualPhase ? C.card2 : C.ink, color: manualPhase ? C.ink : "#07140C", border: `1px solid ${manualPhase ? C.line : "transparent"}`, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px", gap: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: 1 }}>{phase.toUpperCase()}</span>
-            <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.85, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", ...tnum }}>
-              {live.inside ? "on the green" : `${Math.round(live.middle)} to middle · F ${Math.round(live.front)} · B ${Math.round(live.back)}`}
-            </span>
-          </button>
-          {manualPhase && <Chip on tone="slate" onClick={() => pickPhase(auto)}>AUTO</Chip>}
-        </div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>
-          {PHASES.map(([k, label]) => <Chip key={k} on={phase === k} onClick={() => pickPhase(k)}>{label}</Chip>)}
-        </div>
-      )}
-      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-        <Chip small on={!!fix} tone="slate" onClick={retryGps}>{gpsLabel}</Chip>
-        {green
-          ? <Chip small on={false} onClick={mark ? clearMark : undefined}>{greenSource}{mark ? " · clear" : ""}</Chip>
-          : <Chip small on={!!fix} tone="green" onClick={markGreen}>{fix ? "Stand on the green · tap to mark it" : "No green for this hole"}</Chip>}
-        {!green && mapLine && <button onClick={onRetryGeo} style={{ color: C.sub, fontSize: 11, padding: "0 4px" }}>{mapLine}</button>}
-      </div>
-
-      {/* distance — GPS fills it, typing overrides it (a laser beats GPS) */}
-      <div style={{ position: "relative" }}>
-        <input type="number" inputMode="decimal" min="1" value={dist} onChange={(e) => { setDistOverride(e.target.value); setAlt(null); }} placeholder={phase === "putt" ? "feet" : "yards"} aria-label={`Distance in ${unit}`}
-          style={{ width: "100%", background: C.card, color: distOverride != null ? C.ink : (gpsDist != null ? C.green : C.ink), border: `1px solid ${C.line}`, borderRadius: 16, fontFamily: NUM, fontSize: 46, fontWeight: 800, padding: "10px 64px 10px 18px", textAlign: "center", outline: "none", ...tnum }} />
-        <div style={{ position: "absolute", right: 18, top: "50%", transform: "translateY(-50%)", color: C.sub, fontSize: 12, fontWeight: 800, letterSpacing: 1, textAlign: "right" }}>
-          {unit.toUpperCase()}
-          {distOverride != null && gpsDist != null && <div onClick={() => setDistOverride(null)} style={{ fontSize: 9, color: C.green, marginTop: 2 }}>GPS {gpsDist}</div>}
-        </div>
-      </div>
-
-      {/* lie (approach only) */}
-      {phase === "approach" && (
-        <div style={{ display: "flex", gap: 6 }}>
-          {[["fairway", "fairway"], ["rough", "rough"]].map(([k, label]) => <Chip key={k} on={lie === k} onClick={() => { setLie(k); setAlt(null); }}>{label}</Chip>)}
-        </div>
-      )}
-
-      {/* flags — tight / water are per hole and remembered per course; wet / wind ride with the round */}
-      {(phase === "tee" || phase === "approach") && (
-        <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
-          {HOLE_FLAGS.map(([k, label]) => flagChip(k, label, !!holeFlags[k], toggleHoleFlag))}
-          <div style={{ width: 1, background: C.line, flexShrink: 0, margin: "4px 2px" }} />
-          {ROUND_FLAGS.map(([k, label]) => flagChip(k, label, !!roundFlags[k], toggleRoundFlag))}
-        </div>
-      )}
-
-      {/* the card */}
-      <div style={{ background: C.card, borderRadius: 18, padding: "16px 18px", border: `1px solid ${C.line}`, borderLeft: `4px solid ${gradeColor}` }}>
-        {!advice && <div style={{ color: C.sub, fontSize: 14, lineHeight: 1.4 }}>{phase === "putt" ? `Type the first-putt distance in feet.${live ? ` GPS puts the middle of the green at ~${Math.round(live.middle * 3)} ft, but GPS cannot read feet.` : ""}` : "Type the distance in yards."}</div>}
-        {advice && (
-          <>
-            {advice.club && (
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-                <div style={{ fontFamily: NUM, fontSize: 34, fontWeight: 800, letterSpacing: 0.5, lineHeight: 1.1 }}>{clubName(advice.club).toUpperCase()}</div>
-                {advice.swing && <div style={{ color: C.sub, fontSize: 12, fontWeight: 800, letterSpacing: 1 }}>{advice.swing}</div>}
-              </div>
-            )}
-            {summary && <div style={{ color: gradeColor, fontSize: 13, fontWeight: 800, letterSpacing: 0.3, marginTop: 6, ...tnum }}>{summary}</div>}
-            {advice.why.map((w, i) => <div key={i} style={{ color: C.ink, fontSize: 14, lineHeight: 1.45, marginTop: i === 0 ? 12 : 8 }}>{w}</div>)}
-            {advice.ghostLine && <div style={{ color: C.slate, fontSize: 12, marginTop: 14, ...tnum }}>{advice.ghostLine}</div>}
-          </>
-        )}
-      </div>
-
-      {/* alternatives — tap a club to see why it lost */}
-      {alts.length > 0 && (
-        <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
-          {alts.map(a => (
-            <Chip key={a.club} on={selected === a.club} dim={!!a.teeBanReason} onClick={() => setAlt(a.club === advice.club && !alt ? null : (a.club === alt ? null : a.club))}>
-              {a.club} {a.leave != null ? a.leave : a.median}
-            </Chip>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", paddingTop: 6 }}>
+          {choicesFor(par, cap).map((c) => (
+            <ScoreChoice key={c.kind} c={c} par={par} pending={pend === c.v} onTap={tap} onHold={raise} />
           ))}
         </div>
-      )}
 
-      {/* hole nav */}
-      <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-        <button onClick={() => setHole(x => Math.max(0, x - 1))} disabled={hole === 0} aria-label="Previous hole" style={{ width: 50, height: 50, borderRadius: 14, background: C.card2, color: hole === 0 ? C.line : C.ink, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={22} /></button>
-        <button onClick={onPlay} style={{ flex: 1, height: 50, borderRadius: 14, background: C.card, color: C.ink, border: `1px solid ${C.line}`, fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Ghost size={16} /> Score this hole</button>
-        <button onClick={() => setHole(x => Math.min(17, x + 1))} disabled={hole === 17} aria-label="Next hole" style={{ width: 50, height: 50, borderRadius: 14, background: C.card2, color: hole === 17 ? C.line : C.ink, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronRight size={22} /></button>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", paddingTop: 4 }}>
+          <button onClick={() => goHole(hole - 1)} disabled={hole === 0}
+            style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 12px", background: "none", border: "none",
+              color: hole === 0 ? T.muted : T.ink, ...caps(11, 700, "0.14em") }}>
+            <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 7 H2" /><path d="M7 2 L2 7 L7 12" /></svg>
+            Hole <span style={{ ...printed(13), letterSpacing: 0 }}>{hole}</span>
+          </button>
+          <button onClick={() => goHole(hole + 1)} disabled={hole === 17}
+            style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 12px", background: "none", border: "none",
+              color: hole === 17 ? T.muted : T.ink, ...caps(11, 700, "0.14em") }}>
+            Hole <span style={{ ...printed(13), letterSpacing: 0 }}>{hole + 2}</span>
+            <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1 7 H16" /><path d="M11 2 L16 7 L11 12" /></svg>
+          </button>
+        </div>
+      </div>
+
+      {/* the whole card */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+            <span style={caps(10)}>Out</span>
+            <span style={{ fontFamily: F.label, fontSize: 11, color: T.ink, textAlign: "right" }}>
+              {front.parts}
+              {front.open && <span style={{ color: T.muted }}>{front.open} open</span>}
+              {frontPlayed && <>{(front.parts || front.open) ? " · " : ""}you <span style={printed(12)}>{played(0, 9)}</span>, ghost <span style={printed(12)}>{ghPlayed(0, 9)}</span></>}
+            </span>
+          </div>
+          <Strip start={0} scores={scores} ghost={ghost} hole={hole} onJump={goHole} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+            <span style={caps(10)}>In</span>
+            <span style={{ fontFamily: F.label, fontSize: 11, color: T.ink, textAlign: "right" }}>
+              {back.parts}
+              {back.open && <span style={{ color: T.muted }}>{back.open} open</span>}
+            </span>
+          </div>
+          <Strip start={9} scores={scores} ghost={ghost} hole={hole} onJump={goHole} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", paddingTop: 2, ...caps(10, 400, "0.14em") }}>
+          <div>Out <span style={{ ...writtenWord(17), letterSpacing: 0, textTransform: "none" }}>{sideWord(m.front.res)}</span></div>
+          <div style={{ textAlign: "center", color: m.back.res === "live" ? T.muted : T.ink }}>In <span style={{ ...writtenWord(17), letterSpacing: 0, textTransform: "none" }}>{sideWord(m.back.res)}</span></div>
+          <div style={{ textAlign: "right" }}>Total <span style={{ ...writtenWord(17), letterSpacing: 0, textTransform: "none" }}>{sideWord(m.total.res)}</span></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- shared: leave-round sheet ---------- */
+function LeaveSheet({ hole, onStay, onLeave }) {
+  return (
+    <div onClick={onStay} style={{ position: "fixed", inset: 0, background: "rgba(31,31,31,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 60 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: T.paper, borderTop: `4px double ${T.ink}`,
+        padding: "20px 22px calc(env(safe-area-inset-bottom) + 20px)" }}>
+        <div style={{ ...caps(12), marginBottom: 6 }}>Leave this round?</div>
+        <div style={{ fontFamily: F.label, fontSize: 13, color: T.ink, marginBottom: 18 }}>
+          You're on hole <span style={printed(14)}>{hole + 1}</span>. This round isn't finished, so it won't be saved to your record.
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={onStay} style={{ flex: 1, height: 50, border: `2px solid ${T.ink}`, borderRadius: 25, background: T.ink, color: T.paper,
+            boxShadow: `inset 0 0 0 1.5px ${T.yellow}`, ...caps(12, 700, "0.18em") }}>Keep playing</button>
+          <button onClick={onLeave} style={{ flex: 1, height: 50, border: `2px solid ${T.double}`, borderRadius: 25, background: "transparent",
+            color: T.double, ...caps(12, 700, "0.18em") }}>Leave round</button>
+        </div>
       </div>
     </div>
   );
@@ -1721,8 +1541,7 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
 /* ---------- localStorage persistence ---------- */
 const LS_KEY = "bogeyman-matches:v1";
 const HIST_KEY = "bogeyman-matches:history:v1";
-const DEFAULT_CADDIE = { wet: false, wind: false };   // round-level caddie flags (v18)
-const DEFAULT_STATE = { screen: "setup", course: null, diff: 7.9, scores: Array(18).fill(null), hole: 0, roundId: null, caddie: DEFAULT_CADDIE };
+const DEFAULT_STATE = { screen: "setup", course: null, diff: 7.9, scores: Array(18).fill(null), hole: 0, roundId: null };
 function loadState() {
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -1733,17 +1552,17 @@ function loadState() {
     const scoresOk = Array.isArray(s.scores) && s.scores.length === 18;
     const scores = scoresOk ? s.scores.map(v => (typeof v === "number" && v > 0 ? v : null)) : Array(18).fill(null);
     const played = scores.filter(v => v != null).length;
-    // Resume ONLY a genuinely in-progress round: the play or caddie screen with at least
-    // one hole scored. An empty just-started round or a finished summary opens the menu.
+    // Resume ONLY a genuinely in-progress round: at least one hole scored. An empty
+    // just-started round or a finished summary opens the menu. A round left on the
+    // old caddie screen resumes on the scorecard, which is all there is now.
     const wantResume = (s.screen === "play" || s.screen === "caddie") && course && scoresOk && played >= 1;
     return {
-      screen: wantResume ? s.screen : "setup",
+      screen: wantResume ? "play" : "setup",
       course,
       diff: typeof s.diff === "number" ? s.diff : 7.9,
       scores,
       hole: Number.isInteger(s.hole) && s.hole >= 0 && s.hole < 18 ? s.hole : 0,
       roundId: typeof s.roundId === "string" ? s.roundId : null,
-      caddie: s.caddie && typeof s.caddie === "object" ? { wet: !!s.caddie.wet, wind: !!s.caddie.wind } : DEFAULT_CADDIE,
     };
   } catch (e) {
     return DEFAULT_STATE;
@@ -1784,18 +1603,15 @@ function App() {
   const [scores, setScores] = useState(initial.scores);
   const [hole, setHole] = useState(initial.hole);
   const [roundId, setRoundId] = useState(initial.roundId);
-  const [caddieFlags, setCaddieFlags] = useState(initial.caddie);
   const [history, setHistory] = useState(loadHistory());
   const [tombs, setTombs] = useState(loadTombs());
   const cloud = useCloudSync(history, setHistory, tombs, setTombs);
-  const geometry = useGeometry(course);   // v18.5: hole map, fetched when a course is picked, cached per course
-  useEffect(() => { saveState({ screen, course, diff, scores, hole, roundId, caddie: caddieFlags }); }, [screen, course, diff, scores, hole, roundId, caddieFlags]);
+  useEffect(() => { saveState({ screen, course, diff, scores, hole, roundId }); }, [screen, course, diff, scores, hole, roundId]);
   useEffect(() => { saveHistory(history); }, [history]);
   useEffect(() => { saveTombs(tombs); }, [tombs]);
   const ghost = useMemo(() => course ? computeGhost(course, diff) : null, [course, diff]);
   const stats = useMemo(() => deriveStats(history), [history]);
-  // A round opens on the Caddie: you are on the tee wanting a club before you need a scorecard (Brett, Sep 19).
-  const start = () => { if (!course) return; setScores(Array(18).fill(null)); setHole(0); setRoundId(null); setCaddieFlags(DEFAULT_CADDIE); setScreen("caddie"); };
+  const start = () => { if (!course) return; setScores(Array(18).fill(null)); setHole(0); setRoundId(null); setScreen("play"); };
   // Exit an unfinished round without saving it: clear scores and return to the menu.
   const exitRound = () => { setScores(Array(18).fill(null)); setHole(0); setRoundId(null); setScreen("setup"); };
   // Finalize: persist the finished round, then a soft (editable) transition to summary.
@@ -1830,9 +1646,8 @@ function App() {
     <div style={{ minHeight: "100dvh", background: T.paper, color: T.ink, fontFamily: F.label }}>
       <style dangerouslySetInnerHTML={{ __html: RESET }} />
       <PencilDefs />
-      {screen === "setup" && <Setup course={course} setCourse={setCourse} diff={diff} setDiff={setDiff} stats={stats} history={history} onStart={start} onHistory={() => setScreen("history")} geometry={geometry} />}
-      {screen === "play" && course && ghost && <Play course={course} ghost={ghost} scores={scores} setScores={setScores} hole={hole} setHole={setHole} onFinish={finalize} onExit={exitRound} onCaddie={() => setScreen("caddie")} />}
-      {screen === "caddie" && course && ghost && <Caddie key={hole} course={course} ghost={ghost} hole={hole} setHole={setHole} scores={scores} roundFlags={caddieFlags} setRoundFlags={setCaddieFlags} geo={geometry.geo} geoStatus={geometry.status} onRetryGeo={geometry.retry} onPlay={() => setScreen("play")} onExit={exitRound} />}
+      {screen === "setup" && <Setup course={course} setCourse={setCourse} diff={diff} setDiff={setDiff} stats={stats} history={history} onStart={start} onHistory={() => setScreen("history")} />}
+      {screen === "play" && course && ghost && <Play course={course} ghost={ghost} scores={scores} setScores={setScores} hole={hole} setHole={setHole} onFinish={finalize} onExit={exitRound} />}
       {screen === "summary" && course && ghost && <DarkShell><Summary course={course} ghost={ghost} scores={scores} history={history} onEditScore={editScore} onReset={reset} /></DarkShell>}
       {screen === "history" && <DarkShell><History history={history} stats={stats} cloud={cloud} onDelete={deleteRound} onImport={importRounds} onBack={() => setScreen("setup")} /></DarkShell>}
     </div>
