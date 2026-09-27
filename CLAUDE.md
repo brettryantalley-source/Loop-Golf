@@ -60,9 +60,12 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 ## Scoring the round (v21)
 - Five options per hole, computed from par: par−2, par−1, par, par+1, and a ceiling starting at
   par+2. Nothing is pre-selected.
-- **Two taps.** First tap sets a pending score (shaded disc, mirrored into the You box and the
-  segment card). A second tap on the same number writes it and moves on. Changing hole discards
-  a pending score.
+- **Two ways to confirm.** First tap sets a pending score (shaded disc, mirrored into the You box
+  and the segment card). Then EITHER tap the same number again, OR leave the hole — `Hole N+1`,
+  `Hole N-1`, or tapping a cell in the Out/In strips all write the pending score first. Tapping a
+  different number moves the pending score; the last one tapped is what gets written.
+- Navigation must never discard a pending score. Losing a real one is silent; a wrong one is one
+  tap to fix.
 - **Long-press the red box to go past par+2.** The USGA cap used by the differential is
   par + 2 + strokes received, so on a stroked hole par+2 is BELOW the legal maximum. Without this
   the recorded gross would run low and the differential would drift, making the ghost harder every

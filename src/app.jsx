@@ -34,7 +34,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v21 · Sep 27";
+const BUILD = "v21.1 · Sep 27";
 
 /* palette — Shot Pattern dark */
 const C = {
@@ -840,15 +840,28 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
   const cap = ceiling != null && ceiling > par + 2 ? ceiling : par + 2;
   const pend = pending && pending.hole === hole ? pending.v : null;
 
-  /* Changing hole drops an uncommitted choice and the raised ceiling with it. */
-  const goHole = (i) => { if (i === hole) return; setPending(null); setCeiling(null); setHole(i); };
   useEffect(() => { setPending(null); setCeiling(null); }, [hole]);
+
+  /* Write the number down. No navigation — the callers decide where to go. */
+  const write = (v) => {
+    const after = [...scores]; after[hole] = Math.max(1, v);
+    setScores(after);
+    setPending(null); setCeiling(null);
+    return after;
+  };
+
+  /* Leaving a hole CONFIRMS a pending score rather than throwing it away: tapping a
+     number and then Hole N+1 is the same as tapping the number twice. Discarding
+     loses a real score silently; a wrong one can be retapped. */
+  const goHole = (i) => {
+    if (i === hole) return;
+    if (pend != null) write(pend);
+    setHole(i);
+  };
 
   const commit = (v) => {
     const before = scores;
-    const after = [...before]; after[hole] = Math.max(1, v);
-    setScores(after);
-    setPending(null); setCeiling(null);
+    const after = write(v);
     /* Hole 18 written and nothing left blank -> the round is over (decision 4). */
     const blanksBefore = before.reduce((a, s, i) => a + (s == null && i !== hole ? 1 : 0), 0);
     if (blanksBefore === 0 && before[hole] == null) { onFinish(after); return; }
@@ -977,12 +990,14 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", paddingTop: 4 }}>
           <button onClick={() => goHole(hole - 1)} disabled={hole === 0}
+            aria-label={pend != null ? `Confirm ${pend} and go back to hole ${hole}` : `Go back to hole ${hole}`}
             style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 12px", background: "none", border: "none",
               color: hole === 0 ? T.muted : T.ink, ...caps(11, 700, "0.14em") }}>
             <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 7 H2" /><path d="M7 2 L2 7 L7 12" /></svg>
             Hole <span style={{ ...printed(13), letterSpacing: 0 }}>{hole}</span>
           </button>
           <button onClick={() => goHole(hole + 1)} disabled={hole === 17}
+            aria-label={pend != null ? `Confirm ${pend} and go on to hole ${hole + 2}` : `Go on to hole ${hole + 2}`}
             style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 12px", background: "none", border: "none",
               color: hole === 17 ? T.muted : T.ink, ...caps(11, 700, "0.14em") }}>
             Hole <span style={{ ...printed(13), letterSpacing: 0 }}>{hole + 2}</span>
