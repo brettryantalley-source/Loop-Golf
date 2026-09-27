@@ -34,7 +34,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v21.1 · Sep 27";
+const BUILD = "v21.2 · Sep 27";
 
 /* palette — Shot Pattern dark */
 const C = {
@@ -177,7 +177,6 @@ const scoreName = (s, par) => { const d = s - par; return d <= -3 ? "albatross" 
 // Print them faithfully: integers plain, else up to 2 decimals with trailing zeros
 // trimmed (2 -> "2", 2.5 -> "2.5", 2.25 -> "2.25", 5.75 -> "5.75"). Never round a quarter away.
 const fmtPts = (n) => Number.isInteger(n) ? `${n}` : n.toFixed(2).replace(/\.?0+$/, "");
-const marginText = (m) => m === 0 ? "AS" : m < 0 ? `${-m}↑` : `${m}↓`;
 
 /* ---------- auto last-5 differential, computed from the app's own finished rounds ----------
    Replaces the published-Sheet source (v5-v13). Every finalized round stores the parts
@@ -318,63 +317,11 @@ function deriveStats(history) {
   };
 }
 
-/* ghost dispersion ring */
-function GhostRing({ value, size = 44, label }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-      <div style={{ position: "relative", width: size, height: size, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: `1.5px solid ${C.slate}`, opacity: 0.3 }} />
-        <div style={{ position: "absolute", inset: size * 0.13, borderRadius: "50%", border: `2px solid ${C.slate}`, background: C.slateDim }} />
-        <span style={{ position: "relative", fontFamily: NUM, fontWeight: 800, color: C.slate, fontSize: size * 0.4, ...tnum }}>{value}</span>
-      </div>
-      {label && <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.6, color: C.slate }}>{label}</span>}
-    </div>
-  );
-}
-
-/* segment cell */
-function SegCell({ res, label, sub, margin }) {
-  let bg = C.card2, fg = C.sub, sc = C.sub;
-  if (res === "win") { bg = C.green; fg = "#07140C"; sc = "rgba(7,20,12,0.7)"; }
-  else if (res === "loss") { bg = C.red; fg = "#fff"; sc = "rgba(255,255,255,0.85)"; }
-  else if (res === "tie") { bg = C.tie; fg = "#fff"; sc = "rgba(255,255,255,0.6)"; }
-  else { sc = margin < 0 ? C.green : margin > 0 ? C.red : C.sub; }
-  return (
-    <div style={{ background: bg, border: res === "live" ? `1px solid ${C.line}` : "none", borderRadius: 10, padding: "5px 1px", textAlign: "center" }}>
-      <div style={{ fontSize: 11, fontWeight: 800, color: fg }}>{label}</div>
-      <div style={{ fontSize: 10, fontWeight: 600, color: sc, fontFamily: NUM, ...tnum }}>{sub}</div>
-    </div>
-  );
-}
-function StatPill({ label, res, sub }) {
-  let bg = C.card2, fg = C.sub, sc = C.sub;
-  if (res === "win") { bg = C.greenDim; fg = C.green; sc = C.green; }
-  else if (res === "loss") { bg = C.redDim; fg = C.red; sc = C.red; }
-  else if (res === "tie") { bg = C.tie; fg = "#fff"; sc = "rgba(255,255,255,0.7)"; }
-  return (
-    <div style={{ background: bg, borderRadius: 10, padding: "5px 2px", textAlign: "center" }}>
-      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, color: fg }}>{label}</div>
-      <div style={{ fontSize: 10, fontWeight: 600, color: sc, fontFamily: NUM, ...tnum }}>{sub}</div>
-    </div>
-  );
-}
-
-function MiniStat({ label, value, accent }) {
-  return (
-    <div style={{ flex: 1, background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: "9px 6px", textAlign: "center" }}>
-      <div style={{ color: C.sub, fontSize: 9, fontWeight: 800, letterSpacing: 0.6 }}>{label}</div>
-      <div style={{ color: accent || C.ink, fontFamily: NUM, fontSize: 17, fontWeight: 800, marginTop: 2, ...tnum }}>{value}</div>
-    </div>
-  );
-}
-const streakAccent = (stats) => stats.streak ? (stats.streak.type === "W" ? C.green : C.red) : C.sub;
-const marginAccent = (stats) => stats.n ? (stats.margin > 0 ? C.green : stats.margin < 0 ? C.red : C.ink) : C.sub;
 
 const lbl = { color: C.sub, fontSize: 11, fontWeight: 800, letterSpacing: 1 };
 
-/* Summary and History are not redesigned yet (the result screen is still to be
-   drawn). They keep the old dark palette, so they need their own shell now that
-   the app root is paper. */
+/* History is not redesigned yet. It keeps the old dark palette, so it needs its
+   own shell now that the app root is paper. */
 function DarkShell({ children }) {
   return <div style={{ minHeight: "100dvh", background: C.bg, color: C.ink, fontFamily: SANS }}>{children}</div>;
 }
@@ -1060,83 +1007,80 @@ function LeaveSheet({ hole, onStay, onLeave }) {
   );
 }
 
-/* ---------- scorecard (Shot-Pattern visual language) ---------- */
-const cellBase = { display: "flex", alignItems: "center", justifyContent: "center", height: 26, fontFamily: NUM, ...tnum };
-const segWash = (res) => res === "win" ? C.greenDim : res === "loss" ? C.slateDim : "transparent";
-
-// par-relative notation: circle=birdie, double circle=eagle+, square=bogey, double square=double+
-function ScoreMark({ score, par }) {
-  if (score == null) return <span style={{ color: C.sub, fontSize: 12 }}>·</span>;
+/* ---------- the finished card (paper, v21.2) ---------- */
+/* A score written on a scorecard, with the shapes the chooser uses: two rings for
+   an eagle, one for a birdie, nothing for par, one box for a bogey, two for worse. */
+function PencilMark({ score, par, size = 22 }) {
+  if (score == null) return <span style={{ ...written(14, T.muted) }}>·</span>;
   const d = score - par;
-  const shape = d <= -2 ? 2 : d === -1 ? 1 : d === 0 ? 0 : d === 1 ? -1 : -2;
-  const ring = Math.abs(shape) >= 1, dbl = Math.abs(shape) >= 2;
-  const ringCol = shape > 0 ? C.green : C.sub;
+  const rings = d <= -2 ? 2 : d === -1 ? 1 : 0;
+  const boxes = d === 1 ? 1 : d >= 2 ? 2 : 0;
+  const col = d < 0 ? T.ink : d === 0 ? T.black : d === 1 ? T.bogey : T.double;
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", justifyContent: "center",
-      minWidth: 18, height: 18, padding: "0 2px", fontFamily: NUM, fontWeight: 800, fontSize: 11, ...tnum,
-      color: shape > 0 ? C.green : C.ink,
-      borderRadius: shape > 0 ? "50%" : "3px",
-      border: ring ? `1.5px solid ${ringCol}` : "none",
-      outline: dbl ? `1.5px solid ${ringCol}` : "none",
-      outlineOffset: dbl ? "1.5px" : 0,
-    }}>{score}</span>
+    <span style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: size, height: size }}>
+      {rings > 0 && (
+        <svg style={{ position: "absolute", left: 0, top: 0, width: size, height: size }} viewBox="0 0 22 22" fill="none" stroke={col} strokeWidth="1.1" aria-hidden="true">
+          <ellipse cx="11" cy="11" rx="9.5" ry="9" transform="rotate(-8 11 11)" strokeDasharray="56 3" />
+          {rings > 1 && <ellipse cx="11" cy="11" rx="6.5" ry="6" transform="rotate(12 11 11)" strokeDasharray="38 3" />}
+        </svg>
+      )}
+      {boxes > 0 && (
+        <svg style={{ position: "absolute", left: 0, top: 0, width: size, height: size }} viewBox="0 0 22 22" fill="none" stroke={col} strokeWidth="1.1" aria-hidden="true">
+          {boxes > 1
+            ? <><rect x="1.5" y="1.5" width="19" height="19" transform="rotate(-1.5 11 11)" strokeDasharray="74 3" />
+                <rect x="4.5" y="4.5" width="13" height="13" transform="rotate(2 11 11)" strokeDasharray="50 3" /></>
+            : <rect x="2.5" y="2.5" width="17" height="17" transform="rotate(1.5 11 11)" strokeDasharray="66 3" />}
+        </svg>
+      )}
+      <span style={{ position: "relative", ...written(15, col) }}>{score}</span>
+    </span>
   );
 }
 
-function ScoreCard({ course, ghost, scores, m, onTapHole }) {
-  const hasYardage = course.holes.some(h => typeof h.yards === "number");
-  const cols = "26px repeat(9,1fr) 26px 30px";
-  const renderNine = (start) => {
+/* The whole round as one ruled card: hole, par, you, the ghost, and the totals. */
+function ScoreCard({ course, ghost, scores, onTapHole }) {
+  const cols = "26px repeat(9, minmax(0, 1fr)) 28px 30px";
+  const nine = (start) => {
     const isIn = start === 9;
     const idx = [...Array(9)].map((_, k) => start + k);
-    const parSum = idx.reduce((a, i) => a + course.holes[i].par, 0);
-    const youSum = idx.reduce((a, i) => a + (scores[i] ?? 0), 0);
-    const ghSum = idx.reduce((a, i) => a + ghost.holes[i], 0);
+    const sum = (f) => idx.reduce((a, i) => a + f(i), 0);
+    const cell = (extra) => ({ display: "flex", alignItems: "center", justifyContent: "center", ...extra });
+    const row = (label, get, tot, all, h, under, style) => (
+      <React.Fragment key={label}>
+        <div style={cell({ height: h, justifyContent: "flex-start", paddingLeft: 3, borderRight: rule, borderBottom: `1px solid ${under}`, fontFamily: F.label, fontSize: 9, fontWeight: 700 })}>{label}</div>
+        {idx.map((i, k) => {
+          const res = holeRes(scores[i], ghost.holes[i]);
+          const tap = label === "you" && onTapHole;
+          const El = tap ? "button" : "div";
+          return (
+            <El key={i} {...(tap ? { onClick: () => onTapHole(i), "aria-label": `Edit hole ${i + 1}` } : {})}
+              style={cell({ height: h, padding: 0, border: "none", borderRight: `1px solid ${k % 3 === 2 ? T.ink : T.hair}`,
+                borderBottom: `1px solid ${under}`, background: RES_FILL[res] || "transparent", ...style })}>
+              {get(i)}
+            </El>
+          );
+        })}
+        <div style={cell({ height: h, borderRight: `1px solid ${T.hair}`, borderBottom: `1px solid ${under}`, ...style })}>{tot}</div>
+        <div style={cell({ height: h, borderRight: rule, borderBottom: `1px solid ${under}`, ...style })}>{isIn ? all : ""}</div>
+      </React.Fragment>
+    );
     return (
-      <div style={{ display: "grid", gridTemplateColumns: cols, columnGap: 1, rowGap: 2, marginBottom: isIn ? 0 : 10 }}>
-        {/* hole numbers */}
-        <div style={{ ...cellBase, height: 18 }} />
-        {idx.map(i => <div key={"h" + i} style={{ ...cellBase, fontSize: 10, fontWeight: 800, color: C.sub, height: 18 }}>{i + 1}</div>)}
-        <div style={{ ...cellBase, fontSize: 9, fontWeight: 800, color: C.sub, height: 18 }}>{isIn ? "IN" : "OUT"}</div>
-        <div style={{ ...cellBase, fontSize: 9, fontWeight: 800, color: C.sub, height: 18 }}>{isIn ? "TOT" : ""}</div>
-        {/* yardage (rendered only when course data carries it) */}
-        {hasYardage && (
-          <React.Fragment>
-            <div style={{ ...cellBase, justifyContent: "flex-start", fontSize: 9, fontWeight: 800, color: C.sub, height: 16 }}>YDS</div>
-            {idx.map(i => <div key={"y" + i} style={{ ...cellBase, fontSize: 9, color: C.sub, height: 16 }}>{course.holes[i].yards ?? "·"}</div>)}
-            <div style={{ ...cellBase, fontSize: 9, color: C.sub, height: 16 }}>{idx.reduce((a, i) => a + (course.holes[i].yards ?? 0), 0) || ""}</div>
-            <div style={{ ...cellBase, fontSize: 9, color: C.sub, height: 16 }}>{isIn ? (course.holes.reduce((a, h) => a + (h.yards ?? 0), 0) || "") : ""}</div>
-          </React.Fragment>
-        )}
-        {/* par */}
-        <div style={{ ...cellBase, justifyContent: "flex-start", fontSize: 9, fontWeight: 800, letterSpacing: 0.5, color: C.sub }}>PAR</div>
-        {idx.map(i => <div key={"p" + i} style={{ ...cellBase, fontSize: 10, color: C.sub }}>{course.holes[i].par}</div>)}
-        <div style={{ ...cellBase, fontSize: 10, fontWeight: 700, color: C.sub }}>{parSum}</div>
-        <div style={{ ...cellBase, fontSize: 10, fontWeight: 700, color: C.sub }}>{isIn ? course.par : ""}</div>
-        {/* you — tappable, segment-shaded */}
-        <div style={{ ...cellBase, justifyContent: "flex-start", fontSize: 9, fontWeight: 800, letterSpacing: 0.5, color: C.green }}>YOU</div>
-        {idx.map(i => (
-          <button key={"u" + i} onClick={() => onTapHole(i)} style={{ ...cellBase, background: segWash(m.segs[Math.floor(i / 3)].res), borderRadius: 4, padding: 0 }}>
-            <ScoreMark score={scores[i]} par={course.holes[i].par} />
-          </button>
+      <div style={{ display: "grid", gridTemplateColumns: cols, borderTop: rule, borderLeft: rule, marginBottom: isIn ? 0 : 10 }}>
+        <div style={{ display: "flex", alignItems: "center", height: 20, paddingLeft: 3, borderRight: rule, borderBottom: rule, ...caps(9, 700, "0.1em") }}>{isIn ? "In" : "Out"}</div>
+        {idx.map((i, k) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 20,
+            borderRight: `1px solid ${k % 3 === 2 ? T.ink : T.hair}`, borderBottom: rule, ...printed(11) }}>{i + 1}</div>
         ))}
-        <div style={{ ...cellBase, fontSize: 12, fontWeight: 800, color: C.green }}>{youSum}</div>
-        <div style={{ ...cellBase, fontSize: 12, fontWeight: 800, color: C.green }}>{isIn ? scores.reduce((a, s) => a + (s ?? 0), 0) : ""}</div>
-        {/* ghost — projected line, plain numbers in dispersion accent */}
-        <div style={{ ...cellBase, justifyContent: "flex-start", fontSize: 9, fontWeight: 800, letterSpacing: 0.5, color: C.slate }}>GHOST</div>
-        {idx.map(i => <div key={"g" + i} style={{ ...cellBase, background: segWash(m.segs[Math.floor(i / 3)].res), borderRadius: 4, color: C.slate, fontSize: 11, fontWeight: 700 }}>{ghost.holes[i]}</div>)}
-        <div style={{ ...cellBase, fontSize: 12, fontWeight: 800, color: C.slate }}>{ghSum}</div>
-        <div style={{ ...cellBase, fontSize: 12, fontWeight: 800, color: C.slate }}>{isIn ? ghost.gross : ""}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 20, borderRight: `1px solid ${T.hair}`, borderBottom: rule, ...caps(8, 700, "0.06em") }}>{isIn ? "In" : "Out"}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 20, borderRight: rule, borderBottom: rule, ...caps(8, 700, "0.06em") }}>{isIn ? "Tot" : ""}</div>
+        {row("par", (i) => course.holes[i].par, sum(i => course.holes[i].par), course.par, 20, T.hair, { ...printed(11, 400), color: T.ink })}
+        {/* you wrote these, so the totals are in pencil too — only par is pre-printed */}
+        {row("you", (i) => <PencilMark score={scores[i]} par={course.holes[i].par} />, sum(i => scores[i] ?? 0), scores.reduce((a, s) => a + (s ?? 0), 0), 28, T.hair, written(18))}
+        {row("gh.", (i) => ghost.holes[i], sum(i => ghost.holes[i]), ghost.gross, 26, T.ink, written(15, T.ghost))}
       </div>
     );
   };
-  return (
-    <div style={{ background: C.card, borderRadius: 16, padding: "12px 10px", marginTop: 12 }}>
-      {renderNine(0)}
-      {renderNine(9)}
-    </div>
-  );
+  return <div>{nine(0)}{nine(9)}</div>;
 }
 
 /* ---------- summary ---------- */
@@ -1144,93 +1088,125 @@ function Summary({ course, ghost, scores, history, onEditScore, onReset }) {
   const m = evalMatch(scores, ghost.holes);
   const won = m.you > m.opp, tie = m.you === m.opp;
   const stats = deriveStats(history);
-  const yourTotal = m.total.yourTot;
-  const toPar = yourTotal - course.par;
-  const tp = toPar === 0 ? "E" : toPar > 0 ? `+${toPar}` : `${toPar}`;
-  const yourOut = scores.slice(0, 9).reduce((a, s) => a + (s ?? 0), 0);
-  const yourIn = scores.slice(9).reduce((a, s) => a + (s ?? 0), 0);
-  const segSub = (s) => `${s.yourSum}–${s.ghostSum}`;
-  const segLab = (s) => s.res === "win" ? "WON" : s.res === "loss" ? "LOST" : "HALF";
+  const toPar = m.total.yourTot - course.par;
+  const tp = toPar === 0 ? "even" : toPar > 0 ? `+${toPar}` : `${toPar}`;
   const [editHole, setEditHole] = useState(null);
   const [editVal, setEditVal] = useState(0);
   const openEdit = (i) => { setEditVal(scores[i] ?? course.holes[i].par); setEditHole(i); };
   const saveEdit = () => { onEditScore(editHole, editVal); setEditHole(null); };
+  const lead = m.you - m.opp;
+  const relation = lead === 0 ? "all square" : lead > 0 ? "up" : "down";
+
   return (
-    <div style={{ maxWidth: 460, margin: "0 auto", padding: "calc(env(safe-area-inset-top) + 18px) 18px 40px" }}>
-      <div style={{ color: C.sub, letterSpacing: 2.5, fontSize: 11, fontWeight: 800, textAlign: "center" }}>FINAL · {course.name}</div>
-      <h1 style={{ textAlign: "center", margin: "4px 0 18px", fontSize: 28, fontWeight: 800, letterSpacing: -0.3, color: won ? C.green : tie ? C.ink : C.red }}>
-        {won ? "You beat the ghost" : tie ? "Dead heat" : "Ghost takes it"}
-      </h1>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 24, marginBottom: 20 }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ color: C.green, fontSize: 12, fontWeight: 800 }}>YOU</div>
-          <div style={{ fontFamily: NUM, fontSize: 48, fontWeight: 800, color: C.green, lineHeight: 1, ...tnum }}>{fmtPts(m.you)}</div>
-          <div style={{ color: C.sub, fontSize: 12, ...tnum }}>gross {m.total.yourTot}</div>
-        </div>
-        <div style={{ color: C.line, fontSize: 26 }}>·</div>
-        <div style={{ textAlign: "center" }}>
-          <GhostRing value={fmtPts(m.opp)} size={56} />
-          <div style={{ color: C.sub, fontSize: 12, marginTop: 2, ...tnum }}>gross {ghost.gross}</div>
+    <div style={{ minHeight: "100dvh", maxWidth: 460, margin: "0 auto", boxSizing: "border-box", background: T.paper,
+      padding: "max(env(safe-area-inset-top), 26px) 20px max(env(safe-area-inset-bottom), 28px)" }}>
+
+      {/* who took it */}
+      <div style={{ textAlign: "center", paddingBottom: 10, borderBottom: rule }}>
+        <div style={caps(10)}>Final · {course.name} · {course.tee}</div>
+        <div style={{ ...writtenWord(38), lineHeight: "44px", marginTop: 2, color: won ? T.ink : tie ? T.pencil : T.double }}>
+          {won ? "you beat the ghost" : tie ? "dead heat" : "the ghost takes it"}
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 5, marginBottom: 5 }}>
-        {m.segs.map((s, i) => <SegCell key={i} res={s.res} label={segLab(s)} sub={segSub(s)} margin={s.liveMargin} />)}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 5 }}>
-        <StatPill label="FRONT 9" res={m.front.res} sub={`${m.front.yourSum}–${m.front.ghostSum}`} />
-        <StatPill label="BACK 9" res={m.back.res} sub={`${m.back.yourSum}–${m.back.ghostSum}`} />
-        <StatPill label="TOTAL" res={m.total.res} sub={`${m.total.yourTot}–${m.total.ghostTot}`} />
-      </div>
-
-      {/* scorecard header + grid */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 22 }}>
-        <div>
-          <div style={{ color: C.ink, fontWeight: 800, fontSize: 15 }}>{course.name}</div>
-          <div style={{ color: C.sub, fontSize: 11, ...tnum }}>{course.tee} · {course.rating}/{course.slope}</div>
+      {/* the match */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", gap: 18, padding: "14px 0", borderBottom: rule }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <span style={caps(9, 400, "0.14em")}>You</span>
+          <span style={{ ...written(34), lineHeight: "36px" }}>{fmtPts(m.you)}</span>
+          <span style={{ fontFamily: F.label, fontSize: 11 }}>gross <span style={printed(12)}>{m.total.yourTot}</span></span>
         </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ color: C.green, fontWeight: 800, fontSize: 16, ...tnum }}>{tp}</div>
-          <div style={{ color: C.sub, fontSize: 11, ...tnum }}>{yourOut} · {yourIn} | {yourTotal}</div>
-        </div>
-      </div>
-      <ScoreCard course={course} ghost={ghost} scores={scores} m={m} onTapHole={openEdit} />
-      <div style={{ textAlign: "center", color: C.sub, fontSize: 11, marginTop: 8 }}>Tap any hole in your row to edit</div>
-
-      {/* record vs the Ghost (updates live as you edit) */}
-      <div style={{ marginTop: 22 }}>
-        <div style={{ ...lbl, marginBottom: 8 }}>VS THE GHOST</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <MiniStat label="RECORD" value={stats.recordText} />
-          <MiniStat label="STREAK" value={stats.streakText} accent={streakAccent(stats)} />
-          <MiniStat label="AVG MARGIN" value={stats.marginStr} accent={marginAccent(stats)} />
+        <span style={{ ...writtenWord(relation === "all square" ? 22 : 30), lineHeight: "40px", whiteSpace: "nowrap" }}>{relation}</span>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <span style={caps(9, 400, "0.14em")}>Ghost</span>
+          <span style={{ ...written(34, T.ghost), lineHeight: "36px" }}>{fmtPts(m.opp)}</span>
+          <span style={{ fontFamily: F.label, fontSize: 11 }}>gross <span style={printed(12)}>{ghost.gross}</span></span>
         </div>
       </div>
 
-      <button onClick={onReset} style={{ width: "100%", marginTop: 22, padding: "15px 0", background: C.card, color: C.ink, borderRadius: 16, border: `1px solid ${C.line}`, fontSize: 15, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><RotateCcw size={18} /> New round</button>
-
-      {/* inline hole editor */}
-      {editHole != null && (
-        <div onClick={() => setEditHole(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: C.card, borderRadius: "20px 20px 0 0", border: `1px solid ${C.line}`, padding: "18px 18px calc(env(safe-area-inset-bottom) + 18px)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div>
-                <div style={{ color: C.ink, fontWeight: 800, fontSize: 16 }}>Hole {editHole + 1}</div>
-                <div style={{ color: C.sub, fontSize: 12, ...tnum }}>Par {course.holes[editHole].par} · stroke index {course.holes[editHole].si}</div>
-              </div>
-              <GhostRing value={ghost.holes[editHole]} size={44} label="GHOST" />
+      {/* where the eight points went */}
+      <div style={{ padding: "10px 0", borderBottom: rule }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 2 }}>
+          {m.segs.map((s, i) => (
+            <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, padding: "3px 0",
+              background: s.res === "win" ? T.fillWon : s.res === "loss" ? T.fillLost : s.res === "tie" ? T.fillHalf : "transparent" }}>
+              <span style={caps(9, 700, "0.08em")}>S{i + 1}</span>
+              <span style={{ ...writtenWord(15), lineHeight: "15px" }}>{RES_WORD[s.res] || "—"}</span>
+              <span style={{ ...printed(10, 400), color: T.ink }}>{s.yourSum}–{s.ghostSum}</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-              <button onClick={() => setEditVal(v => Math.max(1, v - 1))} style={stepBtn}><Minus size={24} /></button>
-              <div style={{ flex: 1, textAlign: "center" }}>
-                <div style={{ fontFamily: NUM, fontSize: 52, fontWeight: 800, color: C.green, lineHeight: 1, ...tnum }}>{editVal}</div>
-                <div style={{ color: editVal - course.holes[editHole].par <= 0 ? C.green : C.sub, fontSize: 12, fontWeight: 700, marginTop: 3 }}>{scoreName(editVal, course.holes[editHole].par)}</div>
+          ))}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", paddingTop: 8, ...caps(10, 400, "0.14em") }}>
+          <div>Out <span style={{ ...writtenWord(17), letterSpacing: 0, textTransform: "none" }}>{sideWord(m.front.res)}</span></div>
+          <div style={{ textAlign: "center" }}>In <span style={{ ...writtenWord(17), letterSpacing: 0, textTransform: "none" }}>{sideWord(m.back.res)}</span></div>
+          <div style={{ textAlign: "right" }}>Total <span style={{ ...writtenWord(17), letterSpacing: 0, textTransform: "none" }}>{sideWord(m.total.res)}</span></div>
+        </div>
+      </div>
+
+      {/* the card */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "12px 0 6px" }}>
+        <span style={caps(10)}>The card</span>
+        <span style={{ fontFamily: F.label, fontSize: 11 }}>
+          <span style={printed(12)}>{course.rating}</span>/<span style={printed(12)}>{course.slope}</span> · <span style={written(17)}>{tp}</span>
+        </span>
+      </div>
+      <ScoreCard course={course} ghost={ghost} scores={scores} onTapHole={openEdit} />
+      <div style={{ textAlign: "center", fontFamily: F.label, fontSize: 11, color: T.muted, padding: "8px 0 0" }}>Tap any hole in your row to change it</div>
+
+      {/* the running record, now including this round */}
+      <div style={{ padding: "14px 0 0", marginTop: 12, borderTop: rule }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+          <span style={caps(10)}>Record vs. the ghost</span>
+          <span style={{ fontFamily: F.label, fontSize: 11 }}>streak {stats.streakText} · avg {stats.marginStr}</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+          {[["Won", stats.w], ["Lost", stats.l], ["Halved", stats.t]].map(([k, v]) => (
+            <div key={k} style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, overflow: "hidden" }}>
+              <span style={{ fontFamily: F.label, fontSize: 11 }}>{k}</span>
+              <TallyMarks n={v} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "center", paddingTop: 20 }}>
+        <button onClick={onReset} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, height: 52, padding: "0 30px",
+          background: T.ink, border: `2px solid ${T.ink}`, borderRadius: 26, boxShadow: `inset 0 0 0 1.5px ${T.yellow}`, color: T.paper, ...caps(13, 700, "0.22em") }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={T.yellow} strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+            <path d="M14 8a6 6 0 1 1-1.8-4.3" /><path d="M14 2v4h-4" />
+          </svg>
+          New round
+        </button>
+      </div>
+
+      {/* change one hole */}
+      {editHole != null && (
+        <div onClick={() => setEditHole(null)} style={{ position: "fixed", inset: 0, background: "rgba(31,31,31,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: T.paper, borderTop: `4px double ${T.ink}`,
+            padding: "20px 22px calc(env(safe-area-inset-bottom) + 20px)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 12, borderBottom: rule }}>
+              <div>
+                <div style={caps(12)}>Hole <span style={{ ...printed(15), letterSpacing: 0 }}>{editHole + 1}</span></div>
+                <div style={{ fontFamily: F.label, fontSize: 11 }}>par <span style={printed(12)}>{course.holes[editHole].par}</span> · index <span style={printed(12)}>{course.holes[editHole].si}</span></div>
               </div>
-              <button onClick={() => setEditVal(v => v + 1)} style={stepBtn}><Plus size={24} /></button>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                <span style={caps(9, 400, "0.14em")}>Ghost</span>
+                <span style={{ width: 40, height: 40, border: hairline, display: "flex", alignItems: "center", justifyContent: "center", ...written(22, T.ghost) }}>{ghost.holes[editHole]}</span>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 0" }}>
+              <button onClick={() => setEditVal(v => Math.max(1, v - 1))} aria-label="One fewer"
+                style={{ width: 52, height: 52, border: rule, background: "transparent", color: T.ink, fontSize: 24, lineHeight: "24px" }}>−</button>
+              <div style={{ flex: 1, textAlign: "center" }}>
+                <div style={{ ...written(44), lineHeight: "46px" }}>{editVal}</div>
+                <div style={{ fontFamily: F.label, fontSize: 11, color: T.ink }}>{scoreName(editVal, course.holes[editHole].par)}</div>
+              </div>
+              <button onClick={() => setEditVal(v => v + 1)} aria-label="One more"
+                style={{ width: 52, height: 52, border: rule, background: "transparent", color: T.ink, fontSize: 24, lineHeight: "24px" }}>+</button>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setEditHole(null)} style={{ flex: 1, height: 50, borderRadius: 14, background: C.card2, color: C.ink, border: `1px solid ${C.line}`, fontWeight: 800, fontSize: 15 }}>Cancel</button>
-              <button onClick={saveEdit} style={{ flex: 1, height: 50, borderRadius: 14, background: C.green, color: "#07140C", fontWeight: 800, fontSize: 15 }}>Save</button>
+              <button onClick={() => setEditHole(null)} style={{ flex: 1, height: 50, border: `2px solid ${T.muted}`, borderRadius: 25, background: "transparent", color: T.muted, ...caps(12, 700, "0.18em") }}>Cancel</button>
+              <button onClick={saveEdit} style={{ flex: 1, height: 50, border: `2px solid ${T.ink}`, borderRadius: 25, background: T.ink, color: T.paper, boxShadow: `inset 0 0 0 1.5px ${T.yellow}`, ...caps(12, 700, "0.18em") }}>Save</button>
             </div>
           </div>
         </div>
@@ -1663,7 +1639,7 @@ function App() {
       <PencilDefs />
       {screen === "setup" && <Setup course={course} setCourse={setCourse} diff={diff} setDiff={setDiff} stats={stats} history={history} onStart={start} onHistory={() => setScreen("history")} />}
       {screen === "play" && course && ghost && <Play course={course} ghost={ghost} scores={scores} setScores={setScores} hole={hole} setHole={setHole} onFinish={finalize} onExit={exitRound} />}
-      {screen === "summary" && course && ghost && <DarkShell><Summary course={course} ghost={ghost} scores={scores} history={history} onEditScore={editScore} onReset={reset} /></DarkShell>}
+      {screen === "summary" && course && ghost && <Summary course={course} ghost={ghost} scores={scores} history={history} onEditScore={editScore} onReset={reset} />}
       {screen === "history" && <DarkShell><History history={history} stats={stats} cloud={cloud} onDelete={deleteRound} onImport={importRounds} onBack={() => setScreen("setup")} /></DarkShell>}
     </div>
   );

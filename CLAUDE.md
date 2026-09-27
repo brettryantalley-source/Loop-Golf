@@ -54,8 +54,12 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 - The Pinyon Script wordmark is outline paths inside `theme.jsx`, not a font.
 - Anything "written" carries `filter: url(#pencil)`; a chosen-but-uncommitted score carries the
   `#soft` disc. Both filters are mounted once by `<PencilDefs />` at the app root.
-- Setup and the mid-round screen are paper. **Summary and History are not redesigned yet** — they
-  keep the dark palette and are wrapped in `<DarkShell>`. Remove the wrapper when they are redone.
+- Setup, the mid-round screen and the result screen are paper. **History is not redesigned yet** —
+  it keeps the dark palette and is wrapped in `<DarkShell>`. Remove the wrapper when it is redone.
+- `PencilMark` puts the chooser's shapes (rings for under par, boxes for over) round a score on the
+  finished card, so the scorecard and the chooser speak the same language.
+- On the finished card only the `par` row is pre-printed type. Your own scores AND your own totals
+  are pencil, because on a real card you write both.
 
 ## Scoring the round (v21)
 - Five options per hole, computed from par: par−2, par−1, par, par+1, and a ceiling starting at
