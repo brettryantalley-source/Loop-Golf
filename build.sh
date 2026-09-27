@@ -47,20 +47,28 @@ html = f"""<!doctype html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<meta name="theme-color" content="#000000" />
+<meta name="theme-color" content="#F4F0E4" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Loop" />
 <meta name="mobile-web-app-capable" content="yes" />
 <link rel="manifest" href="./manifest.webmanifest" />
 <link rel="apple-touch-icon" href="./icon-512.png" />
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
 <link rel="stylesheet" href="./vendor/maplibre-gl.css" />
-<title>Loop Golf</title>
+<title>Loop</title>
 <style>
-html,body{{margin:0;background:#000;color:#fff;overscroll-behavior:none}}
-body{{font-family:-apple-system,ui-sans-serif,'SF Pro Text',system-ui,sans-serif}}
-#root{{min-height:100dvh;background:#000}}
+/* Bundled, never fetched at runtime — the app must render identically offline. */
+@font-face{{font-family:'Bitter';font-style:normal;font-weight:400;font-display:block;src:url(./fonts/bitter-latin-400-normal.woff2) format('woff2')}}
+@font-face{{font-family:'Bitter';font-style:normal;font-weight:500;font-display:block;src:url(./fonts/bitter-latin-500-normal.woff2) format('woff2')}}
+@font-face{{font-family:'Bitter';font-style:normal;font-weight:700;font-display:block;src:url(./fonts/bitter-latin-700-normal.woff2) format('woff2')}}
+@font-face{{font-family:'Old Standard TT';font-style:normal;font-weight:400;font-display:block;src:url(./fonts/old-standard-tt-latin-400-normal.woff2) format('woff2')}}
+@font-face{{font-family:'Old Standard TT';font-style:normal;font-weight:700;font-display:block;src:url(./fonts/old-standard-tt-latin-700-normal.woff2) format('woff2')}}
+@font-face{{font-family:'Reenie Beanie';font-style:normal;font-weight:400;font-display:block;src:url(./fonts/reenie-beanie-latin-400-normal.woff2) format('woff2')}}
+@font-face{{font-family:'Architects Daughter';font-style:normal;font-weight:400;font-display:block;src:url(./fonts/architects-daughter-latin-400-normal.woff2) format('woff2')}}
+html,body{{margin:0;background:#F4F0E4;color:#1E6B3A;overscroll-behavior:none;-webkit-text-size-adjust:100%}}
+body{{font-family:Bitter,Rockwell,Georgia,serif}}
+#root{{min-height:100dvh;background:#F4F0E4}}
 .maplibregl-ctrl-attrib{{font-size:9px!important;background:rgba(0,0,0,.55)!important;color:#8A8F98!important}}
 .maplibregl-ctrl-attrib a{{color:#8A8F98!important}}
 .maplibregl-ctrl-bottom-right{{right:0}}
@@ -76,7 +84,7 @@ body{{font-family:-apple-system,ui-sans-serif,'SF Pro Text',system-ui,sans-serif
 {react_dom}
 </script>
 <script defer src="./vendor/maplibre-gl.js"></script>
-<script>/* Loop Golf app bundle */
+<script>/* Loop app bundle */
 {app}
 </script>
 <script>

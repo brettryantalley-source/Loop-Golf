@@ -1,6 +1,6 @@
-/* Loop Golf — network-first service worker (latest when online, cached fallback offline)
+/* Loop — network-first service worker (latest when online, cached fallback offline)
    + a cache-first satellite tile store (v19) so the Hole View works with no signal. */
-const CACHE = 'loop-golf-v20';
+const CACHE = 'loop-golf-v21';
 const TILES = 'bogeyman-tiles-v1';          // survives app-version bumps; only its own name is kept below
 const SHELL = [
   './',
@@ -9,6 +9,14 @@ const SHELL = [
   './icon-512.png',
   './vendor/maplibre-gl.js',
   './vendor/maplibre-gl.css',
+  // Bundled fonts (v21) — the paper design renders wrong without them offline.
+  './fonts/bitter-latin-400-normal.woff2',
+  './fonts/bitter-latin-500-normal.woff2',
+  './fonts/bitter-latin-700-normal.woff2',
+  './fonts/old-standard-tt-latin-400-normal.woff2',
+  './fonts/old-standard-tt-latin-700-normal.woff2',
+  './fonts/reenie-beanie-latin-400-normal.woff2',
+  './fonts/architects-daughter-latin-400-normal.woff2',
 ];
 const TILE_HOST = 'api.maptiler.com';
 

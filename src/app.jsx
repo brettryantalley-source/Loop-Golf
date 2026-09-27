@@ -5,6 +5,7 @@ import { advise } from "./caddie.js";
 import PROFILE from "./profile.json";
 import { greenDistances, autoPhase, fetchGeometry, compactGeometry } from "./geometry.js";
 import { HoleMap, prefetchTiles, tileCacheStatus } from "./holeMap.jsx";
+import { T, F, caps, printed, written, writtenWord, rule, hairline, doubleRule, PencilDefs, Logo, teeTint } from "./theme.jsx";
 
 const React = window.React;
 const { useState, useMemo, useEffect } = React;
@@ -37,7 +38,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v20 · Sep 26";
+const BUILD = "v21 · Sep 27";
 
 /* palette — Shot Pattern dark */
 const C = {
@@ -51,8 +52,9 @@ const SANS = "-apple-system,ui-sans-serif,'SF Pro Text',system-ui,sans-serif";
 const tnum = { fontVariantNumeric: "tabular-nums" };
 const RESET = `*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 button{font-family:inherit;cursor:pointer;border:none;padding:0;background:none}
-html,body{margin:0;background:#000}
-.dialscroll::-webkit-scrollbar{display:none}`;
+html,body{margin:0;background:#F4F0E4}
+.dialscroll::-webkit-scrollbar{display:none}
+div::-webkit-scrollbar{display:none}`;
 
 /* ---------- live course source (golfcourseapi.com) ---------- */
 const API_BASE = "https://api.golfcourseapi.com/v1";
@@ -92,6 +94,10 @@ function teeOptions(fullCourse) {
   });
   return out;
 }
+
+/* Total yardage of a tee option — summed from its holes (the API's own total is
+   not always present). Shown under each tee marker on Setup. */
+const teeYards = (opt) => (opt.tee.holes || []).reduce((a, h) => a + (h.yardage || 0), 0);
 
 /* Build the engine course object from a full course + a chosen tee option.
    Field mapping (do NOT rename): handicap->si, yardage->yards, course_rating->rating,
@@ -259,7 +265,9 @@ function computeAutoDiff(history) {
   recs.sort((a, b) => b.d - a.d);
   const last = recs.slice(0, DIFF_WINDOW);
   const avg = Math.round((last.reduce((a, x) => a + x.v, 0) / last.length) * 10) / 10;
-  return { diff: avg, asOf: last[0].d, count: last.length, total: recs.length, seeded: last.filter(x => x.seed).length };
+  return { diff: avg, asOf: last[0].d, count: last.length, total: recs.length,
+           seeded: last.filter(x => x.seed).length,
+           series: last.slice().reverse().map(x => ({ v: x.v, d: x.d, seed: x.seed })) };
 }
 
 /* ---------- history records (reuses evalMatch; no engine changes) ---------- */
@@ -386,19 +394,78 @@ function TileCacheLine({ geo }) {
   return <button onClick={full ? undefined : run} style={{ display: "block", color: full ? C.green : C.sub, fontSize: 11, marginTop: 3, textAlign: "left", ...tnum }}>{label}</button>;
 }
 
-function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHistory, geometry }) {
-  /* --- course search (golfcourseapi, debounced) --- */
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);              // raw API results (up to 40)
-  const [searchState, setSearchState] = useState("idle"); // idle | loading | done | empty | error
-  const [open, setOpen] = useState(false);
-  const [selectedFull, setSelectedFull] = useState(null); // full course from Call 2
-  const [tees, setTees] = useState([]);                    // flattened tee options
-  const [teeKey, setTeeKey] = useState("");
-  const [loadState2, setLoadState2] = useState("idle");    // idle | loading | error
-  const [pendingId, setPendingId] = useState(null);        // id being loaded (for retry)
+/* Summary and History are not redesigned yet (the result screen is still to be
+   drawn). They keep the old dark palette, so they need their own shell now that
+   the app root is paper. */
+function DarkShell({ children }) {
+  return <div style={{ minHeight: "100dvh", background: C.bg, color: C.ink, fontFamily: SANS }}>{children}</div>;
+}
 
-  /* home state: sort in-state courses first (a true "near me" would need the course coords the API now returns; kept as a state filter for the 50/day cap) */
+/* ---------- setup (paper scorecard, v21) ---------- */
+/* Pencil polyline of the last five differentials. Most recent point is yellow —
+   it is the one a new round shifts. Dotted baseline sits at the series mean. */
+function LastFiveChart({ series }) {
+  const W = 291, H = 64, base = 44, top = 12, bot = 34;
+  const pts = series.slice(-DIFF_WINDOW);
+  if (!pts.length) return <div style={{ height: H, ...caps(11, 400, "0"), color: T.muted, display: "flex", alignItems: "center" }}>No rounds on record yet.</div>;
+  const vals = pts.map(p => p.v);
+  const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
+  /* lower differential is better, so invert: the best round sits highest */
+  const y = (v) => top + ((v - lo) / span) * (bot - top);
+  const x = (i) => pts.length === 1 ? W / 2 : 14 + (i * (W - 28)) / (pts.length - 1);
+  const d = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(p.v).toFixed(1)}`).join(" ");
+  return (
+    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} fill="none" aria-hidden="true" style={{ display: "block" }}>
+      <path d={`M0 ${base} H${W}`} stroke={T.hair} strokeWidth="1" strokeDasharray="2 3" />
+      <path d={d} stroke={T.pencil} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" filter="url(#pencil)" />
+      {pts.map((p, i) => {
+        const last = i === pts.length - 1;
+        return last
+          ? <circle key={i} cx={x(i)} cy={y(p.v)} r="4" fill={T.yellow} stroke={T.pencil} strokeWidth="1.4" />
+          : <circle key={i} cx={x(i)} cy={y(p.v)} r="2.6" fill={T.pencil} />;
+      })}
+      {pts.map((p, i) => (
+        <text key={"t" + i} x={x(i)} y="60" textAnchor="middle" fontFamily={F.handNum} fontSize="13" fill={p.seed ? T.ghost : T.pencil}>{p.v.toFixed(1)}</text>
+      ))}
+    </svg>
+  );
+}
+
+/* Five-bar gate. Four uprights then a diagonal across them, wrapping every 3 groups. */
+function TallyMarks({ n }) {
+  const groups = Math.floor(n / 5), rem = n % 5;
+  const per = 46, lead = 5, gap = 10;
+  const items = [...Array(groups)].map(() => 5).concat(rem ? [rem] : []);
+  if (!n) return <span style={{ ...caps(11, 400, "0"), fontFamily: F.label, color: T.muted }}>—</span>;
+  const W = Math.max(1, items.length) * per;
+  return (
+    <svg width={W} height="24" viewBox={`0 0 ${W} 24`} fill="none" stroke={T.pencil} strokeWidth="1.8" strokeLinecap="round" filter="url(#pencil)" aria-hidden="true">
+      {items.map((c, g) => {
+        const ox = g * per;
+        const bars = [...Array(Math.min(c, 4))].map((_, k) => `M${ox + lead + k * gap} 3 L${ox + lead + k * gap + 0.6} 21`).join(" ");
+        const slash = c === 5 ? ` M${ox + lead - 3} 20 L${ox + lead + 3 * gap + 3} 4` : "";
+        return <path key={g} d={bars + slash} />;
+      })}
+    </svg>
+  );
+}
+
+/* A section of the card: content vertically centred between two ink rules. */
+function Row({ height, pad, last, children, ...rest }) {
+  return (
+    <div {...rest} style={{ display: "flex", flexDirection: "column", justifyContent: "center",
+      height, padding: pad, borderBottom: last ? "none" : rule, boxSizing: "border-box", ...(rest.style || {}) }}>
+      {children}
+    </div>
+  );
+}
+
+/* Full-screen course search. The chevron row on Setup opens it; picking a course
+   closes it and the tee markers below take over. Same API calls as before. */
+function CoursePicker({ onPick, onClose }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [searchState, setSearchState] = useState("idle");
   const [homeState, setHomeState] = useState(() => { try { return localStorage.getItem(HOME_STATE_KEY) || ""; } catch (e) { return ""; } });
   const [locating, setLocating] = useState(false);
   const [locMsg, setLocMsg] = useState("");
@@ -426,11 +493,8 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
   const stateOf = (r) => (r.location && r.location.state) || "";
   const displayed = useMemo(() => {
     if (!homeState) return results.slice(0, CAP);
-    const inState = results.filter(r => stateOf(r) === homeState);
-    const rest = results.filter(r => stateOf(r) !== homeState);
-    return [...inState, ...rest].slice(0, CAP);
+    return [...results.filter(r => stateOf(r) === homeState), ...results.filter(r => stateOf(r) !== homeState)].slice(0, CAP);
   }, [results, homeState]);
-  const more = results.length > CAP;
 
   useEffect(() => {
     const q = query.trim();
@@ -445,184 +509,231 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [query]);
 
+  const field = { width: "100%", boxSizing: "border-box", padding: "10px 0", background: "transparent",
+    border: "none", borderBottom: rule, color: T.pencil, fontFamily: F.hand, fontSize: 26, outline: "none" };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 60, background: T.paper, display: "flex", flexDirection: "column",
+      padding: "calc(env(safe-area-inset-top) + 16px) 22px calc(env(safe-area-inset-bottom) + 16px)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 10, borderBottom: rule }}>
+        <span style={caps(11)}>Course</span>
+        <button onClick={onClose} style={{ ...caps(11), background: "none", border: "none", color: T.ink, padding: "6px 0" }}>Close</button>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 12 }}>
+        <input value={query} onChange={(e) => setQuery(e.target.value)} autoFocus
+          placeholder="Course name…" autoCapitalize="words" autoCorrect="off" spellCheck={false} style={field} />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderBottom: rule }}>
+        <button onClick={detectState} disabled={locating} style={{ ...caps(10), background: "none", border: "none", color: locating ? T.muted : T.ink, padding: 0 }}>Use my location</button>
+        <span style={{ color: T.hair }}>·</span>
+        <select value={homeState} onChange={(e) => saveHomeState(e.target.value)} aria-label="Home state"
+          style={{ appearance: "none", WebkitAppearance: "none", background: "transparent", border: "none",
+            color: homeState ? T.ink : T.muted, fontFamily: F.label, fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase" }}>
+          <option value="">All states</option>
+          {US_STATES.map(s => <option key={s.c} value={s.c}>{s.n}</option>)}
+        </select>
+      </div>
+      {locMsg && <div style={{ ...caps(10, 400, "0"), fontFamily: F.label, color: T.muted, paddingTop: 8 }}>{locMsg}</div>}
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+        {searchState === "loading" && <div style={{ ...caps(11, 400, "0"), fontFamily: F.label, color: T.muted, padding: "14px 0" }}>Searching…</div>}
+        {searchState === "empty" && <div style={{ ...caps(11, 400, "0"), fontFamily: F.label, color: T.muted, padding: "14px 0" }}>No courses found — try a different spelling.</div>}
+        {searchState === "error" && <div style={{ ...caps(11, 400, "0"), fontFamily: F.label, color: T.double, padding: "14px 0" }}>Course search unavailable — check your connection.</div>}
+        {searchState === "done" && displayed.map(r => (
+          <button key={r.id} onClick={() => onPick(r.id)} style={{ display: "block", width: "100%", textAlign: "left",
+            padding: "11px 0", background: "none", border: "none", borderBottom: hairline, color: T.ink }}>
+            <div style={{ fontFamily: F.hand, fontSize: 24, lineHeight: "24px", color: T.pencil, filter: "url(#pencil)" }}>{r.club_name || r.course_name}</div>
+            <div style={{ fontFamily: F.label, fontSize: 11, color: T.muted, marginTop: 2 }}>
+              {[r.course_name && r.course_name !== r.club_name ? r.course_name : null, r.location && [r.location.city, r.location.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* Reenie Beanie is wide; step the course name down so long club names still fit
+   the row rather than ellipsing halfway through. */
+const courseNameSize = (n) => !n ? 26 : n.length <= 16 ? 26 : n.length <= 22 ? 22 : 19;
+
+/* Which tee to pre-select: the one played here last, else the middle set by
+   yardage. The longest is the wrong guess — it is the one you play least. */
+function defaultTee(opts, full, history) {
+  const name = (full.club_name || full.course_name || "").trim();
+  for (let i = (history || []).length - 1; i >= 0; i--) {
+    const r = history[i];
+    if (r && r.course === name && r.tee) {
+      const hit = opts.find(o => (o.tee.tee_name || o.gender) === r.tee);
+      if (hit) return hit;
+    }
+  }
+  const byYards = opts.slice().sort((a, b) => teeYards(b) - teeYards(a));
+  return byYards[Math.floor((byYards.length - 1) / 2)];
+}
+
+function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHistory, geometry }) {
+  const [picking, setPicking] = useState(false);
+  const [selectedFull, setSelectedFull] = useState(null);
+  const [tees, setTees] = useState([]);
+  const [teeKey, setTeeKey] = useState("");
+  const [loadState2, setLoadState2] = useState("idle");   // idle | loading | error
+  const [pendingId, setPendingId] = useState(null);
+
   const pickCourse = (id) => {
-    setOpen(false);
+    setPicking(false);
     setCourse(null); setTees([]); setTeeKey("");
     setPendingId(id); setLoadState2("loading");
     loadFullCourse(id)
       .then(full => {
         const opts = teeOptions(full);
         setSelectedFull(full); setTees(opts); setLoadState2("idle");
+        if (opts.length) pickTee(defaultTee(opts, full, history).key, opts, full);
       })
       .catch(() => { setSelectedFull(null); setTees([]); setLoadState2("error"); });
   };
-  const pickTee = (key) => {
+  const pickTee = (key, optsArg, fullArg) => {
+    const opts = optsArg || tees, full = fullArg || selectedFull;
     setTeeKey(key);
-    const opt = tees.find(o => o.key === key);
-    setCourse(opt && selectedFull ? buildCourse(selectedFull, opt) : null);
+    const opt = opts.find(o => o.key === key);
+    setCourse(opt && full ? buildCourse(full, opt) : null);
   };
 
-  /* --- auto last-5 differential from your own finished rounds (v14) ---
-     Derived from history, so it updates the moment a round is finalized, edited or
-     deleted. Manual override is this-round-only (Setup remounts fresh each round). */
+  /* differential is read-only now (behaviour decision §5): last five rounds, no override */
   const auto = useMemo(() => computeAutoDiff(history), [history]);
-  const [manual, setManual] = useState(false);
-  useEffect(() => { if (!manual && auto) setDiff(auto.diff); }, [manual, auto, setDiff]);
-  const bumpDiff = (delta) => { setManual(true); setDiff(d => Math.max(0, Math.round((d + delta) * 10) / 10)); };
-  const useAuto = () => { setManual(false); if (auto) setDiff(auto.diff); };
-  const asOfLbl = auto && auto.asOf ? ` (${fmtShortDate(auto.asOf)})` : "";
-  const srcLine =
-    manual ? "Manual override · applies to this round only" :
-    !auto ? "No rounds yet — set your differential manually" :
-    auto.count < DIFF_WINDOW ? `Last-${auto.count}: ${diff.toFixed(1)} · from your rounds (${auto.count} of ${DIFF_WINDOW})` :
-    auto.seeded === auto.count ? `Last-${DIFF_WINDOW}: ${diff.toFixed(1)} · your official last-5${asOfLbl}` :
-    auto.seeded ? `Last-${DIFF_WINDOW}: ${diff.toFixed(1)} · ${auto.count - auto.seeded} played + ${auto.seeded} seeded` :
-    `Last-${DIFF_WINDOW}: ${diff.toFixed(1)} · from your rounds${asOfLbl}`;
-  const srcColor = manual ? C.ink : auto && auto.count >= DIFF_WINDOW ? C.green : C.sub;
-
+  useEffect(() => { if (auto) setDiff(auto.diff); }, [auto, setDiff]);
   const g = course ? computeGhost(course, diff) : null;
-  const teeLabel = (o) => `${o.tee.tee_name || o.gender} · ${o.tee.course_rating}/${o.tee.slope_rating}${o.gender === "female" ? " (F)" : ""}`;
-  const inputStyle = { width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 13, background: C.card, border: `1.5px solid ${C.line}`, color: C.ink, fontSize: 15, fontFamily: SANS, outline: "none" };
+
+  const courseName = course ? course.name : selectedFull ? (selectedFull.club_name || selectedFull.course_name) : null;
+  const parText = course ? course.par : null;
+  const yards = course ? course.holes.reduce((a, h) => a + (h.yards || 0), 0) : null;
 
   return (
-    <div style={{ height: "100dvh", maxWidth: 460, margin: "0 auto", display: "flex", flexDirection: "column", padding: "calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 14px)", overflow: "hidden" }}>
-      {/* header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12, flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Ghost size={18} color={C.green} />
-          <span style={{ color: C.sub, letterSpacing: 2.5, fontSize: 11, fontWeight: 800 }}>LOOP GOLF</span>
+    <div style={{ height: "100dvh", maxWidth: 460, margin: "0 auto", boxSizing: "border-box", display: "flex", flexDirection: "column",
+      padding: "max(env(safe-area-inset-top), 30px) 20px max(env(safe-area-inset-bottom), 18px)", background: T.paper }}>
+      {picking && <CoursePicker onPick={pickCourse} onClose={() => setPicking(false)} />}
+
+      {/* the card: double-rule frame, sections evenly spaced between ink rules */}
+      <div style={{ flexGrow: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "space-between",
+        border: rule, boxShadow: `inset 0 0 0 3px ${T.paper}, inset 0 0 0 4px ${T.ink}`, padding: "20px 22px 18px" }}>
+
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <Logo width={168} />
+          <div style={doubleRule} />
+          <span style={{ position: "absolute", left: -9999 }}>{BUILD}</span>
         </div>
-        <span style={{ color: C.sub, fontSize: 10, fontWeight: 700, ...tnum }}>{BUILD}</span>
-      </div>
 
-      {/* record row (compact) */}
-      {stats.n > 0 && (
-        <div style={{ flexShrink: 0, marginBottom: 10 }}>
-          <div style={{ ...lbl, marginBottom: 6 }}>VS THE GHOST</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <MiniStat label="RECORD" value={stats.recordText} />
-            <MiniStat label="STREAK" value={stats.streakText} accent={streakAccent(stats)} />
-            <MiniStat label="AVG MARGIN" value={stats.marginStr} accent={marginAccent(stats)} />
-          </div>
-        </div>
-      )}
+        {/* course */}
+        <button onClick={() => setPicking(true)} style={{ display: "grid", gridTemplateColumns: "58px 1fr 16px", alignItems: "center", columnGap: 6,
+          height: 48, borderBottom: rule, background: "none", border: "none", borderBottomStyle: "solid", padding: 0, textAlign: "left", color: T.ink, width: "100%" }}>
+          <span style={caps(11)}>Course</span>
+          <span style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
+            <span style={{ ...writtenWord(courseNameSize(courseName)), lineHeight: "26px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {courseName || "Tap to choose"}
+            </span>
+            {parText != null && <span style={{ fontFamily: F.label, fontSize: 11, whiteSpace: "nowrap", paddingLeft: 2 }}>par <span style={printed(13)}>{parText}</span></span>}
+          </span>
+          <span style={{ fontSize: 16, textAlign: "right" }}>›</span>
+        </button>
 
-      {/* round history — always available on the main menu; opens the delete-capable list */}
-      <button onClick={onHistory} style={{ flexShrink: 0, marginBottom: 14, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 13, background: C.card, border: `1px solid ${C.line}`, color: C.ink }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 14, fontWeight: 700 }}>
-          <Clock size={17} color={C.sub} /> Round history
-        </span>
-        <span style={{ display: "flex", alignItems: "center", gap: 4, color: C.sub, fontSize: 12, fontWeight: 700, ...tnum }}>
-          {stats.n} {stats.n === 1 ? "round" : "rounds"} <ChevronRight size={15} />
-        </span>
-      </button>
-
-      {/* middle — scrolls internally so START never hides behind content */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
-        {/* course search */}
-        <div style={{ position: "relative" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, gap: 8 }}>
-            <div style={lbl}>COURSE</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <button onClick={detectState} disabled={locating} aria-label="Use my location" style={{ width: 30, height: 30, borderRadius: 8, background: C.card2, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", opacity: locating ? 0.6 : 1 }}>
-                <MapPin size={15} color={locating ? C.green : C.sub} />
-              </button>
-              <select value={homeState} onChange={(e) => saveHomeState(e.target.value)} aria-label="Home state" style={{ appearance: "none", WebkitAppearance: "none", background: C.card2, color: homeState ? C.ink : C.sub, border: `1px solid ${homeState ? C.green : C.line}`, borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 700, fontFamily: SANS, maxWidth: 150 }}>
-                <option value="">All states</option>
-                {US_STATES.map(s => <option key={s.c} value={s.c}>{s.n}</option>)}
-              </select>
-            </div>
-          </div>
-          {locMsg && <div style={{ color: C.sub, fontSize: 11, marginBottom: 8 }}>{locMsg}</div>}
-          <input
-            value={query}
-            onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
-            onFocus={() => { if (results.length) setOpen(true); }}
-            placeholder="Search for a course…"
-            autoCapitalize="words" autoCorrect="off" spellCheck={false}
-            style={inputStyle}
-          />
-          {/* results dropdown — absolutely positioned, overlays (never pushes START) */}
-          {open && query.trim().length >= 2 && (
-            <div style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 6, background: C.card2, border: `1px solid ${C.line}`, borderRadius: 13, overflowY: "auto", maxHeight: "min(58vh, 460px)", WebkitOverflowScrolling: "touch", zIndex: 40, boxShadow: "0 12px 28px rgba(0,0,0,0.55)" }}>
-              {searchState === "loading" && <div style={{ padding: "12px 14px", color: C.sub, fontSize: 13 }}>Searching…</div>}
-              {searchState === "empty" && <div style={{ padding: "12px 14px", color: C.sub, fontSize: 13 }}>No courses found — try a different name or spelling.</div>}
-              {searchState === "error" && <div style={{ padding: "12px 14px", color: C.red, fontSize: 13 }}>Course search unavailable — check your connection.</div>}
-              {searchState === "done" && displayed.map(r => {
-                const outState = homeState && stateOf(r) !== homeState;
+        {/* tee markers — yardage under each; the selected one is circled in pencil */}
+        <div style={{ display: "grid", gridTemplateColumns: "66px 1fr", alignItems: "center", height: 74, borderBottom: rule }}>
+          <span style={caps(11)}>Tee</span>
+          {loadState2 === "loading" ? <span style={{ fontFamily: F.label, fontSize: 11, color: T.muted }}>Loading course…</span>
+          : loadState2 === "error" ? <button onClick={() => pendingId && pickCourse(pendingId)} style={{ fontFamily: F.label, fontSize: 11, color: T.double, background: "none", border: "none", textAlign: "left", padding: 0 }}>Couldn't load — tap to retry.</button>
+          : tees.length === 0 ? <span style={{ fontFamily: F.label, fontSize: 11, color: T.muted }}>{selectedFull ? "No 18-hole tees for this course." : "Choose a course first."}</span>
+          : (
+            <div style={tees.length <= 5
+              ? { display: "grid", gridTemplateColumns: `repeat(${tees.length}, minmax(0, 1fr))`, gap: 2 }
+              : { display: "flex", gap: 2, overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+              {tees.map((o, i) => {
+                const sel = o.key === teeKey, tint = teeTint(i);
                 return (
-                  <button key={r.id} onClick={() => pickCourse(r.id)} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", background: "none", color: C.ink, borderBottom: `1px solid ${C.line}`, opacity: outState ? 0.5 : 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.15 }}>{r.club_name || r.course_name}</div>
-                    <div style={{ color: C.sub, fontSize: 11, marginTop: 1 }}>
-                      {[r.course_name && r.course_name !== r.club_name ? r.course_name : null, r.location && [r.location.city, r.location.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
-                    </div>
+                  <button key={o.key} onClick={() => pickTee(o.key)} style={{ position: "relative",
+                    ...(tees.length > 5 ? { flex: "0 0 58px" } : { minWidth: 0 }),
+                    height: 58, border: "none", background: "transparent", color: T.ink, fontFamily: F.label,
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: 0 }}>
+                    <span style={{ width: 14, height: 14, borderRadius: 7, background: tint === "PAPER" ? T.paper : tint,
+                      border: tint === "PAPER" ? `1.5px solid ${T.ink}` : "none" }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.tee.tee_name || o.gender}</span>
+                    <span style={printed(11, 400)}>{teeYards(o).toLocaleString()}</span>
+                    {sel && (
+                      <svg style={{ position: "absolute", left: 0, top: 0, width: "100%", height: 58, overflow: "visible" }} viewBox="0 0 66 58" preserveAspectRatio="none" fill="none" aria-hidden="true">
+                        <ellipse cx="33" cy="29" rx="29" ry="26" transform="rotate(-4 33 29)" stroke={T.pencil} strokeWidth="1.7" strokeDasharray="160 6" filter="url(#pencil)" />
+                      </svg>
+                    )}
                   </button>
                 );
               })}
-              {searchState === "done" && more && (
-                <div style={{ padding: "9px 14px", color: C.sub, fontSize: 11, textAlign: "center", borderTop: `1px solid ${C.line}`, background: C.card }}>
-                  Showing top 12 — type more of the name to narrow.
-                </div>
-              )}
             </div>
           )}
         </div>
 
-        {/* tee picker — only after Call 2 resolves; retry on failure */}
-        {loadState2 === "loading" && <div style={{ color: C.sub, fontSize: 13 }}>Loading course data…</div>}
-        {loadState2 === "error" && (
-          <button onClick={() => pendingId && pickCourse(pendingId)} style={{ textAlign: "left", color: C.red, fontSize: 13, fontWeight: 600, background: "none" }}>Couldn't load course data — tap to retry.</button>
-        )}
-        {loadState2 === "idle" && selectedFull && (
-          <div>
-            <div style={{ ...lbl, marginBottom: 8 }}>TEE — {selectedFull.club_name || selectedFull.course_name}</div>
-            {tees.length === 0 ? (
-              <div style={{ color: C.sub, fontSize: 13 }}>No 18-hole tees available for this course.</div>
-            ) : (
-              <select value={teeKey} onChange={(e) => pickTee(e.target.value)} style={{ ...inputStyle, appearance: "none", WebkitAppearance: "none" }}>
-                <option value="">Select tee…</option>
-                {tees.map(o => <option key={o.key} value={o.key}>{teeLabel(o)}</option>)}
-              </select>
-            )}
-          </div>
-        )}
-
-        {/* differential — auto from your last-5 rounds, with a manual override */}
-        <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={lbl}>YOUR LAST-{DIFF_WINDOW} DIFFERENTIAL</div>
-            {manual && auto && (
-              <button onClick={useAuto} style={{ color: C.green, fontSize: 11, fontWeight: 800, letterSpacing: 0.5, background: "none" }}>USE AUTO</button>
-            )}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "8px 0 4px" }}>
-            <button onClick={() => bumpDiff(-0.1)} style={stepBtn}><Minus size={20} /></button>
-            <div style={{ flex: 1, textAlign: "center", fontFamily: NUM, fontSize: 34, fontWeight: 800, color: C.green, ...tnum }}>{diff.toFixed(1)}</div>
-            <button onClick={() => bumpDiff(0.1)} style={stepBtn}><Plus size={20} /></button>
-          </div>
-          <div style={{ color: srcColor, fontSize: 11, fontWeight: 600, ...tnum }}>{srcLine}</div>
+        {/* rating / slope / yards */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1px 1fr 1px 1fr", alignItems: "center", height: 56, borderBottom: rule }}>
+          {[["Rating", course ? course.rating : "—"], ["Slope", course ? course.slope : "—"], ["Yards", yards ? yards.toLocaleString() : "—"]]
+            .flatMap(([k, v], i) => [
+              <div key={k} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1 }}>
+                <span style={caps(10)}>{k}</span>
+                <span style={{ ...printed(19), color: course ? T.ink : T.muted }}>{v}</span>
+              </div>,
+              i < 2 ? <div key={k + "d"} style={{ width: 1, height: 30, background: T.hair }} /> : null,
+            ]).filter(Boolean)}
         </div>
 
-        {/* ghost preview — only when course + tee resolved */}
-        {g && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.card, borderRadius: 18, border: `1px solid ${C.line}`, padding: "14px 18px" }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ color: C.ink, fontWeight: 700, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{course.name}<span style={{ color: C.sub, fontWeight: 600 }}> · {course.tee}</span></div>
-              <div style={{ color: C.sub, fontSize: 11, marginTop: 3, ...tnum }}>Ghost plays to {g.hcp} · par {course.par} · {course.rating}/{course.slope}</div>
-              {geometry && geoStatusText(geometry.geo, geometry.status) && (
-                <button onClick={geometry.status === "error" ? geometry.retry : undefined} style={{ display: "block", color: geometry.status === "ok" ? C.green : C.sub, fontSize: 11, marginTop: 3, textAlign: "left", ...tnum }}>{geoStatusText(geometry.geo, geometry.status)}</button>
-              )}
-              {geometry && geometry.status === "ok" && geometry.geo && <TileCacheLine geo={geometry.geo} />}
-            </div>
-            <GhostRing value={g.gross} size={58} />
-          </div>
-        )}
-      </div>
+        {/* handicap differential — read-only (§5): last-5 / the ghost's projected score */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", height: 54, borderBottom: rule }}>
+          <span style={caps(11)}>HCap Diff</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, paddingRight: 6, lineHeight: 1 }}>
+            <span style={written(24)}>{auto ? diff.toFixed(1) : "—"}</span>
+            <span style={{ ...printed(18, 400), color: T.ink }}>/</span>
+            <span style={written(24)}>{g ? g.gross : "—"}</span>
+          </span>
+        </div>
 
-      {/* start — pinned */}
-      <button onClick={onStart} disabled={!course} style={{ flexShrink: 0, marginTop: 14, width: "100%", padding: "15px 0", background: course ? C.green : C.card2, color: course ? "#07140C" : C.sub, border: course ? "none" : `1px solid ${C.line}`, borderRadius: 16, fontSize: 16, fontWeight: 800, letterSpacing: 0.3 }}>
-        {course ? "Start round" : "Select a course & tee"}
-      </button>
+        {/* last five */}
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 2, borderBottom: rule, padding: "8px 0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <span style={caps(10)}>Your last five</span>
+            <span style={{ fontFamily: F.label, fontSize: 11, color: T.ink }}>the ghost is built from these</span>
+          </div>
+          <LastFiveChart series={auto ? auto.series : []} />
+        </div>
+
+        {/* record */}
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 6, borderBottom: rule, padding: "8px 0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <span style={caps(10)}>Record vs. the ghost</span>
+            <span style={{ fontFamily: F.label, fontSize: 11, color: T.ink }}>
+              {stats.n ? `streak ${stats.streakText} · avg ${stats.marginStr}` : "no rounds yet"}
+            </span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+            {[["Won", stats.w], ["Lost", stats.l], ["Halved", stats.t]].map(([k, v]) => (
+              <div key={k} style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, overflow: "hidden" }}>
+                <span style={{ fontFamily: F.label, fontSize: 11 }}>{k}</span>
+                <TallyMarks n={v} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* start */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <button onClick={onStart} disabled={!course} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+            height: 52, padding: "0 30px", background: course ? T.ink : "transparent", border: `2px solid ${course ? T.ink : T.muted}`,
+            borderRadius: 26, boxShadow: course ? `inset 0 0 0 1.5px ${T.yellow}` : "none",
+            color: course ? T.paper : T.muted, ...caps(13, 700, "0.22em") }}>
+            <svg width="14" height="18" viewBox="0 0 14 18" fill="none" stroke={course ? T.paper : T.muted} strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+              <path d="M3 17 V2" /><path d="M3 2 L13 6 L3 10 Z" fill={course ? T.yellow : "none"} stroke={course ? T.yellow : T.muted} />
+            </svg>
+            {course ? "Start round" : "Choose a course"}
+          </button>
+          <button onClick={onHistory} style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, height: 34,
+            background: "none", border: "none", color: T.ink, ...caps(11, 500, "0.14em") }}>
+            Round history <span style={{ ...printed(13), letterSpacing: 0 }}>· {stats.n}</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1716,13 +1827,14 @@ function App() {
     return { added: add.length, skipped: incoming.length - add.length };
   };
   return (
-    <div style={{ minHeight: "100dvh", background: C.bg, color: C.ink, fontFamily: SANS }}>
+    <div style={{ minHeight: "100dvh", background: T.paper, color: T.ink, fontFamily: F.label }}>
       <style dangerouslySetInnerHTML={{ __html: RESET }} />
+      <PencilDefs />
       {screen === "setup" && <Setup course={course} setCourse={setCourse} diff={diff} setDiff={setDiff} stats={stats} history={history} onStart={start} onHistory={() => setScreen("history")} geometry={geometry} />}
       {screen === "play" && course && ghost && <Play course={course} ghost={ghost} scores={scores} setScores={setScores} hole={hole} setHole={setHole} onFinish={finalize} onExit={exitRound} onCaddie={() => setScreen("caddie")} />}
       {screen === "caddie" && course && ghost && <Caddie key={hole} course={course} ghost={ghost} hole={hole} setHole={setHole} scores={scores} roundFlags={caddieFlags} setRoundFlags={setCaddieFlags} geo={geometry.geo} geoStatus={geometry.status} onRetryGeo={geometry.retry} onPlay={() => setScreen("play")} onExit={exitRound} />}
-      {screen === "summary" && course && ghost && <Summary course={course} ghost={ghost} scores={scores} history={history} onEditScore={editScore} onReset={reset} />}
-      {screen === "history" && <History history={history} stats={stats} cloud={cloud} onDelete={deleteRound} onImport={importRounds} onBack={() => setScreen("setup")} />}
+      {screen === "summary" && course && ghost && <DarkShell><Summary course={course} ghost={ghost} scores={scores} history={history} onEditScore={editScore} onReset={reset} /></DarkShell>}
+      {screen === "history" && <DarkShell><History history={history} stats={stats} cloud={cloud} onDelete={deleteRound} onImport={importRounds} onBack={() => setScreen("setup")} /></DarkShell>}
     </div>
   );
 }
