@@ -1,6 +1,6 @@
-# Handoff: Ghost Match redesign (from v19)
+# Handoff: Loop Golf redesign (from v19)
 
-You're picking up the Ghost Match golf PWA to **redesign it**. The app works and is live at v19.
+You're picking up the Loop Golf golf PWA to **redesign it**. The app works and is live at v19.
 This file is the context layer for a design-focused thread: what exists, what is load-bearing,
 what is free to change, and how to verify at a phone viewport without a phone.
 
@@ -10,9 +10,7 @@ handoff and explains the Caddie/Hole View feature; `docs/DEVLOG.md` has the vers
 ---
 
 ## 1. Working-copy rule
-Single source of truth: `~/Library/Mobile Documents/com~apple~CloudDocs/ClaudeCode/Ghost-Match`
-(renamed from `Bogeyman-Matches` on Sep 26)
-on the studio Mac. Sync via GIT only. Brett's laptop has no copy of the repo; pushes run from this
+Single source of truth: `~/Developer/Loop-Golf` on the studio Mac. Sync via GIT only. Brett's laptop has no copy of the repo; pushes run from this
 Mac (Claude cannot push here — the permission classifier blocks it — so Brett runs the push command).
 
 ## 2. Where the app is — v19, live

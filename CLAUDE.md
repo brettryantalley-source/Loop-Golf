@@ -1,13 +1,15 @@
-# CLAUDE.md — Ghost Match
+# CLAUDE.md — Loop Golf
 
 ## What this is
 A self-contained single-page web app (golf side game). Brett plays head-to-head against a handicap-calibrated "ghost" opponent scored from his last-5 rolling differential. Deployed as a static site on GitHub Pages, installed as a PWA on iPhone. Tone: casual, competitive.
-- The app is **Ghost Match** (renamed from "Bogeyman Matches" at v8). The GitHub repo, the Pages
-  URL and the localStorage keys still carry the old slug on purpose: renaming the repo changes the
-  live URL and forces a PWA reinstall, and renaming the keys is a data migration. Do neither without
-  Brett's explicit go.
-- Live URL: https://brettryantalley-source.github.io/Bogeyman-Matches/
-- Repo: brettryantalley-source/Bogeyman-Matches (this folder — locally `ClaudeCode/Ghost-Match`)
+- The app is **Loop Golf** (Bogeyman Matches → Ghost Match → Loop Golf). At v20 the repo, the
+  folder and the Pages URL all moved to `Loop-Golf`; Brett re-added the app to his home screen once.
+- What did NOT move, and must not: the `bogeyman-matches:*` localStorage keys, the
+  `bogeyman-tiles-v1` tile cache, and the Firebase project `ghost-match-cd04d`. The host is
+  unchanged (`brettryantalley-source.github.io`), so all of that carried across the URL change —
+  round history, saved satellite tiles and cloud sign-in. Renaming any of them is a data migration.
+- Live URL: https://brettryantalley-source.github.io/Loop-Golf/
+- Repo: brettryantalley-source/Loop-Golf (this folder — locally `ClaudeCode/Loop-Golf`)
 
 ## File layout
 - `src/app.jsx` — THE SOURCE OF TRUTH. All logic, courses, UI, and the scoring engine live here. Edit this.
@@ -25,7 +27,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 1. Edit `src/app.jsx`.
 2. Run `./build.sh` to regenerate `index.html`.
 3. On any deploy that ships user-facing changes, bump BOTH version markers together and keep the numbers in sync:
-   - the cache name in `sw.js` (e.g. `bogeyman-matches-v4` -> `-v5`). REQUIRED — without it, Brett's installed PWA keeps serving the old cached bundle.
+   - the cache name in `sw.js` (e.g. `loop-golf-v4` -> `-v5`). REQUIRED — without it, Brett's installed PWA keeps serving the old cached bundle.
    - the on-screen build tag: `const BUILD = "vN · <date>"` near the top of `src/app.jsx` (just after the icon definitions). Keep the existing `"vN · <date>"` format (e.g. `"v5 · Aug 2"`) and match `vN` to the new cache version.
    This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at v4. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
 4. Show Brett a diff.
@@ -77,7 +79,18 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   out as newer rounds are played.
 
 ## Working across threads (added Sep 26)
-- ONE working copy: this folder (`~/…/ClaudeCode/Ghost-Match`). It was renamed from `Bogeyman-Matches` on Sep 26; older handoffs still say the old name. The stale July clone at `~/…/Claude/Bogeyman-Matches` was deleted Sep 26 — if you find a folder by that name anywhere, it is not this repo. Open every new thread in THIS folder, not its parent.
+- ONE working copy: `~/Developer/Loop-Golf`. Open every new thread in THIS folder.
+- Naming history: Bogeyman Matches → Ghost Match → **Loop Golf** (Sep 26 2026). The repo, the
+  folder and the Pages URL all moved to `Loop-Golf` at the same time. Archived handoffs still say
+  the old names; that is deliberate. Any folder called `Bogeyman-Matches` or `Ghost-Match` is not
+  this repo — the old clones were deleted Sep 26.
+- The app no longer lives under `~/.claude` (`…/CloudDocs/ClaudeCode`), which is Claude Code's own
+  config directory and a protected location the desktop app refuses to attach. Do not move it back.
+- **`ghost` is the opponent, not the old product name.** `computeGhost`, `GhostRing`,
+  `ghostHoleScores`, "VS THE GHOST" and the `Ghost: 5` line all stay. Never bulk-rename `ghost`.
+- Never rename the `bogeyman-matches:*` localStorage keys — they hold the live round, history,
+  tombstones, caddie flags and cached geometry on Brett's phone. The Firebase project is
+  `ghost-match-cd04d` and cannot be renamed either.
 - ONE code thread at a time on this working copy. Docs-only threads may overlap. Two code threads in parallel need separate git worktrees.
 - Handoffs live in `docs/`; `docs/README.md` says which is current. A thread that finishes a phase writes or updates its handoff, and the next thread starts by reading it.
 - Every thread starts with: `git status` (must be clean), `git log --oneline -3`, `npm test`. Every thread ends with its work committed and the push command handed to Brett.

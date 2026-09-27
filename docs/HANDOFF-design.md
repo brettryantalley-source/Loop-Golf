@@ -1,11 +1,11 @@
-# Design brief — Ghost Match (ghost match only)
+# Design brief — Loop Golf (ghost match only)
 
 Paste this whole file into a Claude Design thread. Attach one screenshot each of the current
 mid-round and setup screens for content reference only. Nothing else is needed.
 
 ---
 
-Design phone screens (375×812, portrait) for **Ghost Match**, a golf side game one person plays
+Design phone screens (375×812, portrait) for **Loop Golf**, a golf side game one person plays
 against a "ghost": an opponent projected from the player's own recent form onto the course being
 played. Used outdoors in sunlight, one-handed, often with no signal. Big legible numbers,
 thumb-reachable controls, nothing that depends on network.

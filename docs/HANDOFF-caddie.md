@@ -1,6 +1,6 @@
-# Build: the Caddie (v18) + Hole View (v19) — Ghost Match
+# Build: the Caddie (v18) + Hole View (v19) — Loop Golf
 
-You're picking up the Ghost Match golf PWA to add a **caddie**: on every shot it tells Brett
+You're picking up the Loop Golf golf PWA to add a **caddie**: on every shot it tells Brett
 which club, where to aim, and why — with the "why" always citing one of his own numbers.
 
 **This file is the corrections-and-context layer. The full feature spec is a separate
@@ -11,11 +11,9 @@ repo, and the conflicts are listed in §3. Read both before writing code.
 ---
 
 ## 1. Working-copy rule (learned the hard way)
-The single source of truth is
-`~/Library/Mobile Documents/com~apple~CloudDocs/ClaudeCode/Ghost-Match`
-(renamed from `Bogeyman-Matches` on Sep 26 to match the app). Sync via GIT, not iCloud.
-The second clone at `Claude/Bogeyman-Matches` was stale and was deleted Sep 26 — if you
-find a `Bogeyman-Matches` folder anywhere, it is not this repo.
+The single source of truth is `~/Developer/Loop-Golf`. Sync via GIT, not iCloud.
+The app was renamed Bogeyman Matches → Ghost Match → Loop Golf; older folders under the
+previous names were deleted Sep 26 and are not this repo.
 Read `CLAUDE.md` in the repo for standing rules — it is current.
 
 ## 2. Where the app actually is — v17, not v6
@@ -133,7 +131,7 @@ Brett's MapTiler Cloud account (free plan) has one key, created for this app and
 
 | | |
 |---|---|
-| Key name | `Ghost Match PWA` |
+| Key name | `Loop Golf PWA` |
 | Key | `3frli95k3gG0NelkI7Kx` (client-side by design; origin-locked, see below) |
 | Allowed HTTP origins | `brettryantalley-source.github.io`, `localhost`, `127.0.0.1` |
 | Raster XYZ | `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=KEY` |
@@ -188,7 +186,7 @@ Brett-must-do signup, like Firebase was. Get the key before the session starts.
 ## 8. Deploy loop (from CLAUDE.md)
 1. Edit `src/app.jsx` (and the new `src/*` files) → 2. `npm install` if deps changed →
 3. `./build.sh` → 4. bump BOTH `const BUILD = "vN · <date>"` and `sw.js`
-`const CACHE = 'bogeyman-matches-vN'` together → 5. **show Brett a diff** → 6. **wait for his
+`const CACHE = 'loop-golf-vN'` together → 5. **show Brett a diff** → 6. **wait for his
 explicit "go"** before commit/push → 7. Pages redeploys; since v13 the new bundle loads on the
 next open.
 

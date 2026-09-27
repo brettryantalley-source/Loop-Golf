@@ -37,7 +37,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v19 · Sep 19";
+const BUILD = "v20 · Sep 26";
 
 /* palette — Shot Pattern dark */
 const C = {
@@ -490,7 +490,7 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12, flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Ghost size={18} color={C.green} />
-          <span style={{ color: C.sub, letterSpacing: 2.5, fontSize: 11, fontWeight: 800 }}>GHOST MATCH</span>
+          <span style={{ color: C.sub, letterSpacing: 2.5, fontSize: 11, fontWeight: 800 }}>LOOP GOLF</span>
         </div>
         <span style={{ color: C.sub, fontSize: 10, fontWeight: 700, ...tnum }}>{BUILD}</span>
       </div>
@@ -1442,11 +1442,11 @@ function useCloudSync(history, setHistory, tombs, setTombs) {
    so a cache wipe would reset the ghost's calibration too. Until durable cloud stats
    land, this turns total loss into "lost since my last export". Seeds aren't included —
    they ship in the bundle and survive a wipe on their own. */
-const BACKUP_TAG = "ghost-match";
+const BACKUP_TAG = "loop-golf";
 function backupPayload(history) {
   return JSON.stringify({ app: BACKUP_TAG, schema: 1, exportedAt: nowISO(), rounds: history }, null, 2);
 }
-const backupName = () => `ghost-match-rounds-${new Date().toISOString().slice(0, 10)}.json`;
+const backupName = () => `loop-golf-rounds-${new Date().toISOString().slice(0, 10)}.json`;
 /* On an installed iPhone PWA the share sheet ("Save to Files") is the reliable way out;
    <a download> is the desktop/browser fallback. */
 async function exportRounds(history) {
@@ -1454,7 +1454,7 @@ async function exportRounds(history) {
   try {
     const file = new File([text], name, { type: "application/json" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: "Ghost Match rounds" });
+      await navigator.share({ files: [file], title: "Loop Golf rounds" });
       return "Saved";
     }
   } catch (e) {
@@ -1527,7 +1527,7 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
     const fr = new FileReader();
     fr.onload = () => {
       const rounds = parseBackup(String(fr.result));
-      if (!rounds) { setMsg("That doesn't look like a Ghost Match backup."); return; }
+      if (!rounds) { setMsg("That doesn't look like a Loop Golf backup."); return; }
       if (!rounds.length) { setMsg("No usable rounds in that file."); return; }
       const { added, skipped } = onImport(rounds);
       setMsg(added ? `Added ${added} round${added === 1 ? "" : "s"}${skipped ? `, ${skipped} already here` : ""}.`

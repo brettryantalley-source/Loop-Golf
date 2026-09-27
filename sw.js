@@ -1,6 +1,6 @@
-/* Ghost Match — network-first service worker (latest when online, cached fallback offline)
+/* Loop Golf — network-first service worker (latest when online, cached fallback offline)
    + a cache-first satellite tile store (v19) so the Hole View works with no signal. */
-const CACHE = 'bogeyman-matches-v19';
+const CACHE = 'loop-golf-v20';
 const TILES = 'bogeyman-tiles-v1';          // survives app-version bumps; only its own name is kept below
 const SHELL = [
   './',

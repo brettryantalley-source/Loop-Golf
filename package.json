@@ -1,9 +1,9 @@
 {
-  "name": "ghost-match",
+  "name": "loop-golf",
   "version": "16.0.0",
   "private": true,
   "type": "module",
-  "description": "Ghost Match — build deps only. React ships as UMD; this is here for the Firebase SDK, which esbuild tree-shakes into index.html.",
+  "description": "Loop Golf — build deps only. React ships as UMD; this is here for the Firebase SDK, which esbuild tree-shakes into index.html.",
   "scripts": {
     "test": "node --test src/caddie.test.js src/geometry.test.js"
   },

@@ -1,8 +1,10 @@
 # HANDOFF — Bogeyman Matches (v6 build, picking up mid-stream)
 
-> **Archived.** Paths below say `Bogeyman-Matches`; that folder was renamed to
-> `~/…/ClaudeCode/Ghost-Match` on Sep 26 2026, and the second clone at
-> `Claude/Bogeyman-Matches` was deleted the same day. Kept for the record.
+> **Archived.** The app was called Bogeyman Matches, then Ghost Match; it is now
+> **Loop Golf**. The repo is `brettryantalley-source/Loop-Golf`, lives at
+> `~/Developer/Loop-Golf`, and is live at
+> https://brettryantalley-source.github.io/Loop-Golf/ . Names and paths in the
+> text below are the ones that were current at the time. Kept for the record.
 
 
 You are picking up a project mid-stream. This file is the complete context — the prior

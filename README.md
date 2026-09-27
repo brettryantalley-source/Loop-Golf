@@ -1,4 +1,8 @@
-# Ghost Match
+# Loop Golf
 Head-to-head golf side game against a handicap-calibrated ghost opponent, with a caddie that cites your own numbers.
 
-Repo slug `Bogeyman-Matches` is the app's original name; the live URL keeps it: https://brettryantalley-source.github.io/Bogeyman-Matches/
+Live: https://brettryantalley-source.github.io/Loop-Golf/ · Repo: `brettryantalley-source/Loop-Golf`
+
+Previously called Bogeyman Matches, then Ghost Match. Renamed to Loop Golf on Sep 26 2026,
+along with the repo and the Pages URL. The **ghost** is still the opponent you play against —
+that is the game, not the old product name.
