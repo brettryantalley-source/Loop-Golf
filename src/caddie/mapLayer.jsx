@@ -30,6 +30,7 @@ import {
 } from "./overlay.js";
 import { frameOf, pinFromTap } from "./geo.js";
 import { geometryBbox, tilesForBbox, lonLatToTile } from "../geometry.js";
+import { overlayPair } from "./caddieState.js";
 import { T, F } from "../theme.jsx";
 
 const React = window.React;
@@ -226,12 +227,18 @@ const r1 = (n) => Math.round(n * 10) / 10;
  *   onMapTap()    any other tap
  *   onSatelliteFail(reason)  MapLibre / WebGL / tiles failed — the parent should switch to fallback
  *   recomputing   keep the old overlay at 40% (§9.6)
+ *   fitBall, fitOptions  what the camera frames when it differs from what is drawn (S3b: No GPS fix,
+ *                 Locating and Yards entered keep the last camera with no ball drawn, §8). Default:
+ *                 ball / options.
  *   attributionBottom  px from the bottom of the map to the attribution (default insets.bottom − 10 = 6 above the bar)
  */
 export function MapLayer({
   hole = null, geometry = null, ball = null, accuracyM = null, pin = null, options = null, active = "safe", sameShot = false,
   previousShots = [], insets = {}, fallback = false, onPinTap, onMapTap, onSatelliteFail, recomputing = false, attributionBottom,
+  fitBall, fitOptions,
 }) {
+  const camBall = fitBall !== undefined ? fitBall : ball;
+  const camOptions = fitOptions !== undefined ? fitOptions : options;
   const boxRef = useRef(null), mapBoxRef = useRef(null), mapRef = useRef(null);
   const idPrefix = useRef(`loopovl${++idSeq}`).current;
   const [vp, setVp] = useState(() => ({ width: (typeof window !== "undefined" && window.innerWidth) || 375, height: (typeof window !== "undefined" && window.innerHeight) || 812 }));
@@ -259,10 +266,10 @@ export function MapLayer({
   const satellite = !drawn && !!lib;
 
   /* camera — refit only when the cameraKey changes (§4.1, §9.7; T36) */
-  const key = cameraKey({ hole, ball, options, viewport: vp, insets });
+  const key = cameraKey({ hole, ball: camBall, options: camOptions, viewport: vp, insets });
   const camRef = useRef({ key: null, cam: null });
   if (camRef.current.key !== key) {
-    camRef.current = { key, cam: hole ? cameraFor(fitBounds(cameraPoints({ hole, ball, pin, options })), vp, insets) : null };
+    camRef.current = { key, cam: hole ? cameraFor(fitBounds(cameraPoints({ hole, ball: camBall, pin, options: camOptions })), vp, insets) : null };
   }
   const cam = camRef.current.cam;
   const camView = useMemo(() => {
@@ -331,8 +338,7 @@ export function MapLayer({
     ? (s) => { const q = map.unproject([s.x, s.y]); return Fr.toFrame({ lat: q.lat, lon: q.lng }); }
     : lin ? lin.unproject : null;
 
-  const opt = options ? (sameShot ? options.safe || options.aggressive : options[active] || options.safe) : null;
-  const other = options && !sameShot ? options[active === "aggressive" ? "safe" : "aggressive"] : null;
+  const { active: opt, other } = overlayPair(options, active, sameShot);
   const redrawKey = [active, sameShot ? 1 : 0, opt?.club, opt?.target && `${r1(opt.target.x)},${r1(opt.target.y)}`, opt?.ell && `${r1(opt.ell.w)}x${r1(opt.ell.h)}`,
     pin && `${r1(pin.x)},${r1(pin.y)}`].join("|");
 

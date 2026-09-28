@@ -20,6 +20,9 @@ const PCT_FIELDS = new Set(["girPct", "shortPct", "leftPct", "rightPct", "penalt
 
 function fieldValue(entry, token) {
   if (token === "label") return entry.swing === "finesse" ? `${entry.label} (finesse)` : entry.label;
+  // Penalties are a tee-club story (Shot Pattern counts them off the tee); an iron's "0 penalties"
+  // says nothing, so the approach templates take over for the other families.
+  if (token === "penaltyCount" && entry.family !== "long") return null;
   if (token === "sourceLie") return entry.provenance.girPct?.lie ?? entry.sourceLie;
   if (token === "lateralSdDeg") return entry.lateralSdDeg;
   return entry.fields[token];
