@@ -11,7 +11,7 @@
  */
 
 import { DEFAULT_CONFIG, CLUB_FAMILY } from "./config.js";
-import { baselineE } from "./baseline.js";
+import { baselineE, baselinePutts } from "./baseline.js";
 
 const ENTRY_LIES = ["tee", "fairway", "rough"];
 /** Which stored lie a context lie reads first, then the adjacent lies in order. */
@@ -56,6 +56,9 @@ export function loadProfile(json, config = DEFAULT_CONFIG) {
     puttDeficitPerHole: config.PUTT_DEFICIT_IN_E && typeof json.puttingSgPer18 === "number" ? -json.puttingSgPer18 / 18 : 0,
     scratchLateralSdDeg: json.benchmarks?.scratch?.driving?.lateralSdDeg ?? null,
     _b3: new Map(),
+    _E: new Map(),
+    _Ep: new Map(),
+    _B2: new Map(),
   };
   return P;
 }
@@ -232,11 +235,31 @@ export function personalSg(P, d, lie) {
 
 /* ---------- §3.5 expected-value functions ---------- */
 
-/** E(d, lie): baseline − Brett's SG per shot for the bucket (+ his putting deficit per hole). */
+/**
+ * Brett's putting gap at the distance a shot from (d, lie) typically leaves: Eputt(prox) minus the
+ * baseline's expected putts from there. The baseline assumes a Tour putter after the shot; this
+ * swaps in Brett's, at his own median proximity for that bucket. Falls back to his flat per-hole
+ * putting deficit when the bucket has no proximity.
+ */
+export function puttingGapAt(P, d, lie) {
+  if (!P.config.PUTT_DEFICIT_IN_E) return 0;
+  const b = d < 50 ? shortBandFor(P, d, lie) : bucketFor(P, d, lie) || (lie === "sand" || lie === "recovery" || lie === "trees" ? bucketFor(P, d, "rough") : null);
+  const prox = b?.medianProximityFt;
+  if (prox == null) return P.puttDeficitPerHole;
+  return Math.max(0, Eputt(P, prox) - baselinePutts(prox));
+}
+
+/** E(d, lie): baseline − Brett's SG per shot for the bucket + his putting gap at the typical leave. */
 export function E(P, d, lie) {
   const l = lie === "trees" ? "recovery" : lie === "green" ? "fairway" : lie;
-  const base = baselineE(d, l) + (P.config.BASELINE_SCRATCH_OFFSET || 0);
-  return base - personalSg(P, d, l) + P.puttDeficitPerHole;
+  const dr = Math.round(d);                       // 1-yd resolution is finer than any input; the
+  const key = `${l}|${dr}`;                       // memo key and the value must use the same d
+  const hit = P._E.get(key);
+  if (hit !== undefined) return hit;
+  const base = baselineE(dr, l) + (P.config.BASELINE_SCRATCH_OFFSET || 0);
+  const v = base - personalSg(P, dr, l) + puttingGapAt(P, dr, l);
+  P._E.set(key, v);
+  return v;
 }
 
 export function puttBucket(P, ft) {
@@ -249,11 +272,26 @@ export function threePuttPct(P, ft) { return puttBucket(P, ft)?.threePuttPct ?? 
 
 /** Eputt(ft) = 1 + (1 − make) + threePutt, from Brett's putting table. */
 export function Eputt(P, ft) {
-  return 1 + (1 - makePct(P, ft)) + threePuttPct(P, ft);
+  const key = Math.round(ft);
+  const hit = P._Ep.get(key);
+  if (hit !== undefined) return hit;
+  const v = 1 + (1 - makePct(P, key)) + threePuttPct(P, key);
+  P._Ep.set(key, v);
+  return v;
 }
 
 /** Probability of holing the next shot + one putt from `d` on `lie`: GIR% × make(median proximity). */
 export function B2(P, d, lie) {
+  const dr = Math.round(d);
+  const key = `${lie}|${dr}`;
+  const hit = P._B2.get(key);
+  if (hit !== undefined) return hit;
+  const v = B2raw(P, dr, lie);
+  P._B2.set(key, v);
+  return v;
+}
+
+function B2raw(P, d, lie) {
   if (d < 50) {
     const band = shortBandFor(P, d, lie);
     return band?.upDownPct ?? 0;

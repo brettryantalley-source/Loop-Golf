@@ -1,50 +1,2315 @@
 {
-  "meta": { "asOf": "2026-09-19", "source": "Shot Pattern L5 ×2 + club screens; June Tangent baseline" },
-
-  "clubs": [
-    { "id": "Dr",  "name": "Driver",   "median": 288, "p25": 277, "p75": 309, "depth80": 102, "width80": 97,
-      "tee": true,  "approach": false, "penaltyPct": 0.16, "recoveryPct": 0.11, "bigMissR": 0.18, "bigMissL": 0.11, "corridor90": 108 },
-    { "id": "2i",  "name": "2-iron",   "median": 260, "p25": 249, "p75": 262, "depth80": 76,  "width80": 56,
-      "tee": true,  "approach": true,  "penaltyPct": 0.06, "recoveryPct": 0.24 },
-    { "id": "2Hy", "name": "2-hybrid", "median": 257, "p25": 236, "p75": 264, "depth80": 112, "width80": 57,
-      "tee": true,  "approach": true,  "penaltyPct": 0.00, "recoveryPct": 0.00, "lowConfidence": true },
-    { "id": "4Hy", "name": "4-hybrid", "median": 232, "p25": 223, "p75": 242, "depth80": 69,  "width80": 59,
-      "tee": false, "approach": true,  "penaltyPct": 0.06, "recoveryPct": 0.25, "teeBanReason": "36% trouble off the tee, −0.32 SG/shot" },
-    { "id": "5i",  "name": "5-iron",   "median": 200, "p25": 193, "p75": 209, "depth80": 48, "width80": 64, "approach": true, "shortPct": 0.27 },
-    { "id": "6i",  "name": "6-iron",   "median": 190, "p25": 189, "p75": 199, "depth80": 54, "width80": 26, "approach": true, "shortPct": 0.17 },
-    { "id": "7i",  "name": "7-iron",   "median": 183, "p25": 178, "p75": 187, "depth80": 40, "width80": 42, "approach": true, "shortPct": 0.10 },
-    { "id": "8i",  "name": "8-iron",   "median": 169, "p25": 161, "p75": 173, "depth80": 37, "width80": 28, "approach": true, "shortPct": 0.00 },
-    { "id": "9i",  "name": "9-iron",   "median": 152, "p25": 148, "p75": 158, "depth80": 29, "width80": 43, "approach": true, "shortPct": 0.00 },
-    { "id": "PW",  "name": "PW",       "median": 136, "p25": 126, "p75": 144, "depth80": 21, "width80": 20, "approach": true, "shortPct": 0.33 },
-    { "id": "GW",  "name": "GW",       "median": 121, "p25": 114, "p75": 131, "depth80": 32, "width80": 27, "approach": true, "shortPct": 0.24 },
-    { "id": "SW",  "name": "SW",       "median": 95,  "p25": 88,  "p75": 100, "approach": true, "shortPct": 0.29 },
-    { "id": "LW",  "name": "LW",       "median": 84,  "p25": 78,  "p75": 90,  "approach": true, "shortPct": 0.26 }
-  ],
-
-  "zones": [
-    { "from": 50,  "to": 75,  "grade": "amber", "gir": 0.56, "proxFt": 20, "n": 9,  "note": "volatile — 33% then 100% GIR" },
-    { "from": 75,  "to": 100, "grade": "amber", "gir": 0.67, "proxFt": 31, "n": 21, "note": "OK, not a weapon — plays like a 10 hcp" },
-    { "from": 100, "to": 130, "grade": "red",   "gir": 0.36, "proxFt": 45, "n": 11, "note": "your worst number — 25–36% GIR, no stock club between GW 121 and SW 95" },
-    { "from": 130, "to": 150, "grade": "green", "gir": 0.73, "proxFt": 26, "n": 11, "note": "your best number — 71–75% GIR, 23–30 ft" },
-    { "from": 150, "to": 180, "grade": "red",   "gir": 0.34, "proxFt": 55, "n": 29, "note": "25–38% GIR, 50–65 ft, half are big misses" },
-    { "from": 180, "to": 190, "grade": "green", "gir": 0.83, "proxFt": 23, "n": 6,  "note": "75–100% GIR, small sample" },
-    { "from": 190, "to": 225, "grade": "amber", "gir": 0.29, "proxFt": 62, "n": 21, "note": "normal for the distance" },
-    { "from": 225, "to": 999, "grade": "amber", "gir": 0.25, "proxFt": 70, "n": 4,  "note": "layup territory" }
-  ],
-
-  "benchGir": [[62,0.836],[87,0.786],[105,0.755],[115,0.735],[125,0.695],[135,0.66],[145,0.62],[155,0.565],[165,0.515],[175,0.465],[185,0.37],[195,0.335],[212,0.256]],
-
-  "tendencies": {
-    "approach": { "missShort": "20–30% with wedges and PW; long misses barely register", "roughIsFine": "PW 83%, 9i 75% GIR from rough" },
-    "driver":   { "corridor90": 108, "rightPct": 0.57, "penaltiesInsideCorridor": 5, "penaltiesTotal": 5, "read": "penalties were normal misses aimed where a 45-yd miss was wet" },
-    "putting":  { "missRightPct": 0.59, "missRightPct10Plus": 0.62, "runsPastFt": "1–3", "speedGoodPct": 0.80,
-                  "make": { "0-3": 0.95, "4-6": 0.42, "7-9": 0.20, "10-15": 0.09, "16-24": 0.16, "25-40": 0.06 },
-                  "threePutt": { "25-40": 0.27, "41+": 0.67 } },
-    "shortGame": { "proxRough": { "0-12": 5.5, "13-25": 7.4, "26-37": 14.4, "38-50": 20.7 }, "pitchShortPct": 0.27, "pitchLongPct": 0.11,
-                   "upAndDown": { "0-25rough": 0.45, "25-50rough": 0.08 } }
+  "version": 2,
+  "generated": "2026-09-28",
+  "sources": {
+    "shotPattern": {
+      "window": "Casual · Last 10",
+      "dateRange": [
+        "2026-06-27",
+        "2026-09-20"
+      ],
+      "rounds": 10,
+      "batch": "2026-09-27",
+      "report": "data/extracted/2026-09-27-report.txt",
+      "screens": "data/extracted/2026-09-27-screens.json",
+      "last5": {
+        "window": "Casual · Last 5",
+        "dateRange": [
+          "2026-08-15",
+          "2026-09-20"
+        ],
+        "screens": [
+          "01_191019.png",
+          "02_191311.png",
+          "03_191330.png"
+        ]
+      },
+      "ell80": {
+        "file": "data/extracted/2026-09-19-ell80.json",
+        "window": "Casual · Last 5",
+        "capturedAt": "2026-09-19"
+      }
+    },
+    "launchMonitor": {
+      "date": null,
+      "notes": "none — carries derived from totals (spec §3.3)"
+    },
+    "tangent": {
+      "role": "historical baseline only",
+      "used": false
+    }
   },
-
-  "constants": { "penaltyCost": 1.1, "recoveryCost": 0.8, "tightTax": 0.15, "waterSideTax": 0.10, "shrinkK": 10, "parBase": 0.60, "strokeToParScale": 0.5 },
-
-  "wet": { "carryOnly": true, "clubUp": 2, "avoidBunkers": true, "firmPutts": true }
+  "clubOrder": [
+    "Dr",
+    "2i",
+    "2Hy",
+    "4Hy",
+    "5i",
+    "6i",
+    "7i",
+    "8i",
+    "9i",
+    "PW",
+    "GW",
+    "SW",
+    "LW"
+  ],
+  "clubs": [
+    {
+      "id": "Dr",
+      "label": "Driver",
+      "family": "long",
+      "loftDeg": null,
+      "entries": {
+        "full": {
+          "tee": {
+            "n": 92,
+            "totalMedianYds": 289,
+            "p25Yds": 268,
+            "p75Yds": 305,
+            "carryMedianYds": 289,
+            "carrySource": "derived",
+            "distSdYds": 27.4,
+            "distSdSource": "iqr",
+            "lateralSdDeg": 6.26,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": 0.393,
+            "rightPct": 0.596,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0.12,
+              "right": 0.152,
+              "latYds": 54.5
+            },
+            "bigMissPct": null,
+            "mishitPct": 0.043,
+            "penaltyPct": 0.109,
+            "recoveryPct": 0.109,
+            "penaltyCount": 10,
+            "girPct": null,
+            "medianProximityFt": null,
+            "sgPerShot": 0,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§04 BAG MAPPING",
+                "§04 DISPERSION BIAS",
+                "§04 POOR DRIVES",
+                "§04 STROKES GAINED BY CLUB"
+              ],
+              "screens": [
+                "17_224939.png"
+              ]
+            },
+            "width95Yds": 109,
+            "width90Yds": 103,
+            "extra": {
+              "longestYds": 378,
+              "avgOfflineYds": 23,
+              "arc68Yds": 61,
+              "arc95Yds": 125
+            },
+            "ell80": null
+          },
+          "fairway": null,
+          "rough": null
+        },
+        "finesse": null
+      }
+    },
+    {
+      "id": "2i",
+      "label": "2-iron",
+      "family": "long",
+      "loftDeg": null,
+      "entries": {
+        "full": {
+          "tee": {
+            "n": 15,
+            "totalMedianYds": 261,
+            "p25Yds": 224,
+            "p75Yds": 264,
+            "carryMedianYds": 261,
+            "carrySource": "derived",
+            "distSdYds": 29.7,
+            "distSdSource": "iqr",
+            "lateralSdDeg": 5.68,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": 0.714,
+            "rightPct": 0.214,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0.133,
+              "right": 0,
+              "latYds": 40
+            },
+            "bigMissPct": null,
+            "mishitPct": 0.133,
+            "penaltyPct": 0.067,
+            "recoveryPct": 0.2,
+            "penaltyCount": 1,
+            "girPct": null,
+            "medianProximityFt": null,
+            "sgPerShot": -0.19,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§04 BAG MAPPING",
+                "§04 DISPERSION BIAS",
+                "§04 POOR DRIVES",
+                "§04 STROKES GAINED BY CLUB"
+              ],
+              "screens": [
+                "19_225024.png"
+              ]
+            },
+            "width95Yds": 75,
+            "width90Yds": 67,
+            "extra": {
+              "longestYds": 277,
+              "avgOfflineYds": 21,
+              "arc68Yds": 44,
+              "arc95Yds": 84,
+              "p25p75Sheet": [
+                216,
+                265
+              ]
+            },
+            "ell80": null
+          },
+          "fairway": null,
+          "rough": null
+        },
+        "finesse": {
+          "tee": null,
+          "fairway": null,
+          "rough": null
+        }
+      }
+    },
+    {
+      "id": "2Hy",
+      "label": "2-hybrid",
+      "family": "long",
+      "loftDeg": null,
+      "entries": {
+        "full": {
+          "tee": {
+            "n": 12,
+            "totalMedianYds": 253,
+            "p25Yds": 239,
+            "p75Yds": 264,
+            "carryMedianYds": 253,
+            "carrySource": "derived",
+            "distSdYds": 18.5,
+            "distSdSource": "iqr",
+            "lateralSdDeg": 5.52,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": 0.4,
+            "rightPct": 0.6,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0,
+              "right": 0.083,
+              "latYds": 40
+            },
+            "bigMissPct": null,
+            "mishitPct": 0.083,
+            "penaltyPct": 0,
+            "recoveryPct": 0.167,
+            "penaltyCount": 0,
+            "girPct": null,
+            "medianProximityFt": null,
+            "sgPerShot": -0.09,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§04 BAG MAPPING",
+                "§04 DISPERSION BIAS",
+                "§04 POOR DRIVES",
+                "§04 STROKES GAINED BY CLUB"
+              ],
+              "screens": [
+                "18_225009.png"
+              ]
+            },
+            "width95Yds": 67,
+            "width90Yds": 63,
+            "extra": {
+              "longestYds": 268,
+              "avgOfflineYds": 17,
+              "arc68Yds": 34,
+              "arc95Yds": 70,
+              "p25p75Sheet": [
+                236,
+                266
+              ]
+            },
+            "ell80": {
+              "wYds": 57.1,
+              "hYds": 117.9,
+              "tiltDeg": 21.1,
+              "dxYds": -1,
+              "dyYds": 0.2,
+              "bboxWYds": 68,
+              "bboxDYds": 112,
+              "source": "shotPattern",
+              "capturedAt": "2026-09-19",
+              "lies": "all",
+              "confidence": "low",
+              "note": "screen scrolled, top of ellipse estimated; mixes tee (248) and fairway (224)"
+            }
+          },
+          "fairway": {
+            "n": 5,
+            "totalMedianYds": 224,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": 214,
+            "carrySource": "derived",
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": 3.92,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": 0.4,
+            "rightPct": 0.6,
+            "shortPct": 0.6,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0,
+            "medianProximityFt": 103,
+            "sgPerShot": 0.04,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM TEE & FAIRWAY — BY CLUB",
+                "§05 DISPERSION BIAS — FROM TEE & FAIRWAY"
+              ],
+              "screens": [
+                "26_225158.png"
+              ]
+            },
+            "ell80": {
+              "wYds": 57.1,
+              "hYds": 117.9,
+              "tiltDeg": 21.1,
+              "dxYds": -1,
+              "dyYds": 0.2,
+              "bboxWYds": 68,
+              "bboxDYds": 112,
+              "source": "shotPattern",
+              "capturedAt": "2026-09-19",
+              "lies": "all",
+              "confidence": "low",
+              "note": "screen scrolled, top of ellipse estimated; mixes tee (248) and fairway (224)"
+            }
+          },
+          "rough": {
+            "n": 1,
+            "totalMedianYds": null,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": null,
+            "carrySource": null,
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": null,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": null,
+            "rightPct": null,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0,
+            "medianProximityFt": 136,
+            "sgPerShot": -0.06,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM ROUGH — BY CLUB"
+              ],
+              "screens": []
+            },
+            "ell80": {
+              "wYds": 57.1,
+              "hYds": 117.9,
+              "tiltDeg": 21.1,
+              "dxYds": -1,
+              "dyYds": 0.2,
+              "bboxWYds": 68,
+              "bboxDYds": 112,
+              "source": "shotPattern",
+              "capturedAt": "2026-09-19",
+              "lies": "all",
+              "confidence": "low",
+              "note": "screen scrolled, top of ellipse estimated; mixes tee (248) and fairway (224)"
+            }
+          }
+        },
+        "finesse": null
+      }
+    },
+    {
+      "id": "4Hy",
+      "label": "4-hybrid",
+      "family": "long",
+      "loftDeg": null,
+      "entries": {
+        "full": {
+          "tee": {
+            "n": 14,
+            "totalMedianYds": 232,
+            "p25Yds": 224,
+            "p75Yds": 245,
+            "carryMedianYds": 232,
+            "carrySource": "derived",
+            "distSdYds": 15.6,
+            "distSdSource": "iqr",
+            "lateralSdDeg": 5.8,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": 0.5,
+            "rightPct": 0.5,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0.143,
+              "right": 0,
+              "latYds": 40
+            },
+            "bigMissPct": null,
+            "mishitPct": 0,
+            "penaltyPct": 0.071,
+            "recoveryPct": 0.286,
+            "penaltyCount": 1,
+            "girPct": null,
+            "medianProximityFt": null,
+            "sgPerShot": -0.31,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§04 BAG MAPPING",
+                "§04 DISPERSION BIAS",
+                "§04 POOR DRIVES",
+                "§04 STROKES GAINED BY CLUB"
+              ],
+              "screens": [
+                "20_225034.png"
+              ]
+            },
+            "width95Yds": 71,
+            "width90Yds": 67,
+            "extra": {
+              "longestYds": 284,
+              "avgOfflineYds": 21,
+              "arc68Yds": 55,
+              "arc95Yds": 75,
+              "p25p75Sheet": [
+                223,
+                245
+              ]
+            },
+            "ell80": {
+              "wYds": 60.1,
+              "hYds": 80.6,
+              "tiltDeg": 129.1,
+              "dxYds": 2.9,
+              "dyYds": 0.1,
+              "bboxWYds": 73,
+              "bboxDYds": 69,
+              "source": "shotPattern",
+              "capturedAt": "2026-09-19",
+              "lies": "all",
+              "confidence": "low",
+              "note": "screen scrolled, top estimated"
+            }
+          },
+          "fairway": {
+            "n": 2,
+            "totalMedianYds": null,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": null,
+            "carrySource": "derived",
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": 2.35,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": 0,
+            "rightPct": 1,
+            "shortPct": 0.5,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0,
+            "medianProximityFt": 154,
+            "sgPerShot": -0.22,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM TEE & FAIRWAY — BY CLUB",
+                "§05 DISPERSION BIAS — FROM TEE & FAIRWAY"
+              ],
+              "screens": []
+            },
+            "ell80": {
+              "wYds": 60.1,
+              "hYds": 80.6,
+              "tiltDeg": 129.1,
+              "dxYds": 2.9,
+              "dyYds": 0.1,
+              "bboxWYds": 73,
+              "bboxDYds": 69,
+              "source": "shotPattern",
+              "capturedAt": "2026-09-19",
+              "lies": "all",
+              "confidence": "low",
+              "note": "screen scrolled, top estimated"
+            }
+          },
+          "rough": {
+            "n": 6,
+            "totalMedianYds": null,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": null,
+            "carrySource": null,
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": null,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": null,
+            "rightPct": null,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.167,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0,
+            "medianProximityFt": 48,
+            "sgPerShot": -0.06,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM ROUGH — BY CLUB"
+              ],
+              "screens": []
+            },
+            "ell80": {
+              "wYds": 60.1,
+              "hYds": 80.6,
+              "tiltDeg": 129.1,
+              "dxYds": 2.9,
+              "dyYds": 0.1,
+              "bboxWYds": 73,
+              "bboxDYds": 69,
+              "source": "shotPattern",
+              "capturedAt": "2026-09-19",
+              "lies": "all",
+              "confidence": "low",
+              "note": "screen scrolled, top estimated"
+            }
+          }
+        },
+        "finesse": null
+      }
+    },
+    {
+      "id": "5i",
+      "label": "5-iron",
+      "family": "mid",
+      "loftDeg": null,
+      "entries": {
+        "full": {
+          "tee": null,
+          "fairway": {
+            "n": 13,
+            "totalMedianYds": 203,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": 197,
+            "carrySource": "derived",
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": 4.76,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": 0.615,
+            "rightPct": 0.385,
+            "shortPct": 0.154,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.231,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0.231,
+            "medianProximityFt": 64,
+            "sgPerShot": -0.1,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM TEE & FAIRWAY — BY CLUB",
+                "§05 DISPERSION BIAS — FROM TEE & FAIRWAY"
+              ],
+              "screens": [
+                "26_225158.png"
+              ]
+            },
+            "ell80": null
+          },
+          "rough": {
+            "n": 7,
+            "totalMedianYds": null,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": null,
+            "carrySource": null,
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": null,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": null,
+            "rightPct": null,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.143,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0,
+            "medianProximityFt": 96,
+            "sgPerShot": -0.2,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM ROUGH — BY CLUB"
+              ],
+              "screens": []
+            },
+            "ell80": null
+          }
+        },
+        "finesse": null
+      }
+    },
+    {
+      "id": "6i",
+      "label": "6-iron",
+      "family": "mid",
+      "loftDeg": null,
+      "entries": {
+        "full": {
+          "tee": null,
+          "fairway": {
+            "n": 10,
+            "totalMedianYds": 194,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": 188,
+            "carrySource": "derived",
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": 4.19,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": 0.5,
+            "rightPct": 0.5,
+            "shortPct": 0.1,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.4,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0.4,
+            "medianProximityFt": 40,
+            "sgPerShot": -0.24,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM TEE & FAIRWAY — BY CLUB",
+                "§05 DISPERSION BIAS — FROM TEE & FAIRWAY"
+              ],
+              "screens": [
+                "26_225158.png"
+              ]
+            },
+            "ell80": null
+          },
+          "rough": null
+        },
+        "finesse": null
+      }
+    },
+    {
+      "id": "7i",
+      "label": "7-iron",
+      "family": "mid",
+      "loftDeg": null,
+      "entries": {
+        "full": {
+          "tee": null,
+          "fairway": {
+            "n": 9,
+            "totalMedianYds": 180,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": 174,
+            "carrySource": "derived",
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": 4.04,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": 0.333,
+            "rightPct": 0.667,
+            "shortPct": 0.111,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.444,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0.556,
+            "medianProximityFt": 31,
+            "sgPerShot": -0.1,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM TEE & FAIRWAY — BY CLUB",
+                "§05 DISPERSION BIAS — FROM TEE & FAIRWAY"
+              ],
+              "screens": [
+                "26_225158.png"
+              ]
+            },
+            "ell80": null
+          },
+          "rough": {
+            "n": 5,
+            "totalMedianYds": null,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": null,
+            "carrySource": null,
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": null,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": null,
+            "rightPct": null,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0,
+            "medianProximityFt": 47,
+            "sgPerShot": -0.03,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM ROUGH — BY CLUB"
+              ],
+              "screens": []
+            },
+            "ell80": null
+          }
+        },
+        "finesse": null
+      }
+    },
+    {
+      "id": "8i",
+      "label": "8-iron",
+      "family": "short",
+      "loftDeg": null,
+      "entries": {
+        "full": {
+          "tee": null,
+          "fairway": {
+            "n": 12,
+            "totalMedianYds": 168,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": 162,
+            "carrySource": "derived",
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": 3.56,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": 0.727,
+            "rightPct": 0.273,
+            "shortPct": 0,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.417,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0.417,
+            "medianProximityFt": 47,
+            "sgPerShot": -0.23,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM TEE & FAIRWAY — BY CLUB",
+                "§05 DISPERSION BIAS — FROM TEE & FAIRWAY"
+              ],
+              "screens": [
+                "26_225158.png"
+              ]
+            },
+            "ell80": null
+          },
+          "rough": {
+            "n": 5,
+            "totalMedianYds": null,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": null,
+            "carrySource": null,
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": null,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": null,
+            "rightPct": null,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.2,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0,
+            "medianProximityFt": 74,
+            "sgPerShot": -0.25,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM ROUGH — BY CLUB"
+              ],
+              "screens": []
+            },
+            "ell80": null
+          }
+        },
+        "finesse": null
+      }
+    },
+    {
+      "id": "9i",
+      "label": "9-iron",
+      "family": "short",
+      "loftDeg": null,
+      "entries": {
+        "full": {
+          "tee": null,
+          "fairway": {
+            "n": 11,
+            "totalMedianYds": 152,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": 146,
+            "carrySource": "derived",
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": 5.12,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": 0.455,
+            "rightPct": 0.545,
+            "shortPct": 0,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.364,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0.545,
+            "medianProximityFt": 40,
+            "sgPerShot": -0.14,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM TEE & FAIRWAY — BY CLUB",
+                "§05 DISPERSION BIAS — FROM TEE & FAIRWAY"
+              ],
+              "screens": [
+                "26_225158.png"
+              ]
+            },
+            "ell80": {
+              "wYds": 25.1,
+              "hYds": 45.3,
+              "tiltDeg": 113,
+              "dxYds": 4.1,
+              "dyYds": -0.1,
+              "bboxWYds": 43,
+              "bboxDYds": 29,
+              "source": "shotPattern",
+              "capturedAt": "2026-09-19",
+              "lies": "all",
+              "confidence": "high"
+            }
+          },
+          "rough": {
+            "n": 4,
+            "totalMedianYds": null,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": null,
+            "carrySource": null,
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": null,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": null,
+            "rightPct": null,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.25,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0.75,
+            "medianProximityFt": 25,
+            "sgPerShot": 0.13,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM ROUGH — BY CLUB"
+              ],
+              "screens": []
+            },
+            "ell80": {
+              "wYds": 25.1,
+              "hYds": 45.3,
+              "tiltDeg": 113,
+              "dxYds": 4.1,
+              "dyYds": -0.1,
+              "bboxWYds": 43,
+              "bboxDYds": 29,
+              "source": "shotPattern",
+              "capturedAt": "2026-09-19",
+              "lies": "all",
+              "confidence": "high"
+            }
+          }
+        },
+        "finesse": null
+      }
+    },
+    {
+      "id": "PW",
+      "label": "Pitching wedge",
+      "family": "short",
+      "loftDeg": null,
+      "entries": {
+        "full": {
+          "tee": null,
+          "fairway": {
+            "n": 5,
+            "totalMedianYds": 140,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": 134,
+            "carrySource": "derived",
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": 4.79,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": 0.25,
+            "rightPct": 0.75,
+            "shortPct": 0.2,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.2,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0.8,
+            "medianProximityFt": 23,
+            "sgPerShot": -0.16,
+            "blended": false,
+            "source": {
+              "window": "Last 5",
+              "report": [
+                "§05 FROM TEE & FAIRWAY — BY CLUB",
+                "§05 DISPERSION BIAS — FROM TEE & FAIRWAY"
+              ],
+              "screens": [
+                "02_191311.png"
+              ]
+            },
+            "ell80": {
+              "wYds": 16.7,
+              "hYds": 23.7,
+              "tiltDeg": 39.9,
+              "dxYds": -0.2,
+              "dyYds": 1.1,
+              "bboxWYds": 20,
+              "bboxDYds": 21,
+              "source": "shotPattern",
+              "capturedAt": "2026-09-19",
+              "lies": "all",
+              "confidence": "high"
+            }
+          },
+          "rough": {
+            "n": 9,
+            "totalMedianYds": null,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": null,
+            "carrySource": null,
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": null,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": null,
+            "rightPct": null,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.111,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0.889,
+            "medianProximityFt": 23,
+            "sgPerShot": 0.17,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM ROUGH — BY CLUB"
+              ],
+              "screens": []
+            },
+            "ell80": {
+              "wYds": 16.7,
+              "hYds": 23.7,
+              "tiltDeg": 39.9,
+              "dxYds": -0.2,
+              "dyYds": 1.1,
+              "bboxWYds": 20,
+              "bboxDYds": 21,
+              "source": "shotPattern",
+              "capturedAt": "2026-09-19",
+              "lies": "all",
+              "confidence": "high"
+            }
+          }
+        },
+        "finesse": null
+      }
+    },
+    {
+      "id": "GW",
+      "label": "Gap wedge",
+      "family": "wedge",
+      "loftDeg": null,
+      "entries": {
+        "full": {
+          "tee": null,
+          "fairway": {
+            "n": 16,
+            "totalMedianYds": 119,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": 113,
+            "carrySource": "derived",
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": 4.87,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": 0.733,
+            "rightPct": 0.267,
+            "shortPct": 0.188,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.438,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0.438,
+            "medianProximityFt": 33,
+            "sgPerShot": -0.18,
+            "blended": true,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM TEE & FAIRWAY — BY CLUB",
+                "§05 DISPERSION BIAS — FROM TEE & FAIRWAY"
+              ],
+              "screens": [
+                "26_225158.png"
+              ]
+            },
+            "ell80": null
+          },
+          "rough": {
+            "n": 3,
+            "totalMedianYds": null,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": null,
+            "carrySource": null,
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": null,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": null,
+            "rightPct": null,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.333,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0,
+            "medianProximityFt": 41,
+            "sgPerShot": -0.29,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM ROUGH — BY CLUB"
+              ],
+              "screens": []
+            },
+            "ell80": null
+          }
+        },
+        "finesse": {
+          "tee": null,
+          "fairway": {
+            "n": null,
+            "totalMedianYds": null,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": null,
+            "carrySource": null,
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": null,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": null,
+            "rightPct": null,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": null,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": null,
+            "medianProximityFt": null,
+            "sgPerShot": null,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [],
+              "screens": [],
+              "rule": "GW blended into full.fairway (measured, blended: true); this is a null placeholder."
+            },
+            "ell80": null
+          },
+          "rough": null
+        }
+      }
+    },
+    {
+      "id": "SW",
+      "label": "Sand wedge",
+      "family": "wedge",
+      "loftDeg": null,
+      "entries": {
+        "full": {
+          "tee": null,
+          "fairway": {
+            "n": null,
+            "totalMedianYds": null,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": null,
+            "carrySource": null,
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": null,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": null,
+            "rightPct": null,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": null,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": null,
+            "medianProximityFt": null,
+            "sgPerShot": null,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [],
+              "screens": [],
+              "rule": "SW played as a finesse club inside 120; measured median lives on finesse.fairway."
+            },
+            "ell80": null
+          },
+          "rough": null
+        },
+        "finesse": {
+          "tee": null,
+          "fairway": {
+            "n": 11,
+            "totalMedianYds": 95,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": 92,
+            "carrySource": "derived",
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": 2.42,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": 0.111,
+            "rightPct": 0.889,
+            "shortPct": 0.364,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.273,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0.545,
+            "medianProximityFt": 31,
+            "sgPerShot": -0.03,
+            "blended": true,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM TEE & FAIRWAY — BY CLUB",
+                "§05 DISPERSION BIAS — FROM TEE & FAIRWAY"
+              ],
+              "screens": [
+                "26_225158.png"
+              ]
+            },
+            "ell80": null
+          },
+          "rough": {
+            "n": 5,
+            "totalMedianYds": null,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": null,
+            "carrySource": null,
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": null,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": null,
+            "rightPct": null,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.2,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0.4,
+            "medianProximityFt": 43,
+            "sgPerShot": -0.07,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM ROUGH — BY CLUB"
+              ],
+              "screens": []
+            },
+            "ell80": null
+          }
+        }
+      }
+    },
+    {
+      "id": "LW",
+      "label": "Lob wedge",
+      "family": "wedge",
+      "loftDeg": null,
+      "entries": {
+        "full": {
+          "tee": null,
+          "fairway": {
+            "n": null,
+            "totalMedianYds": null,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": null,
+            "carrySource": null,
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": null,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": null,
+            "rightPct": null,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": null,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": null,
+            "medianProximityFt": null,
+            "sgPerShot": null,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [],
+              "screens": [],
+              "rule": "LW played as a finesse club inside 120; measured median lives on finesse.fairway."
+            },
+            "ell80": null
+          },
+          "rough": null
+        },
+        "finesse": {
+          "tee": null,
+          "fairway": {
+            "n": 16,
+            "totalMedianYds": 85,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": 82,
+            "carrySource": "derived",
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": 2.5,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": 0.533,
+            "rightPct": 0.4,
+            "shortPct": 0.25,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.375,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0.688,
+            "medianProximityFt": 30,
+            "sgPerShot": -0.11,
+            "blended": true,
+            "source": {
+              "window": "Last 5",
+              "report": [
+                "§05 FROM TEE & FAIRWAY — BY CLUB",
+                "§05 DISPERSION BIAS — FROM TEE & FAIRWAY"
+              ],
+              "screens": [
+                "02_191311.png"
+              ]
+            },
+            "ell80": null
+          },
+          "rough": {
+            "n": 7,
+            "totalMedianYds": null,
+            "p25Yds": null,
+            "p75Yds": null,
+            "carryMedianYds": null,
+            "carrySource": null,
+            "distSdYds": null,
+            "distSdSource": null,
+            "lateralSdDeg": null,
+            "biasDistYds": null,
+            "biasLatYds": null,
+            "leftPct": null,
+            "rightPct": null,
+            "shortPct": null,
+            "bigMiss": {
+              "left": 0,
+              "right": 0,
+              "latYds": null
+            },
+            "bigMissPct": 0.571,
+            "mishitPct": null,
+            "penaltyPct": 0,
+            "recoveryPct": 0,
+            "penaltyCount": 0,
+            "girPct": 0.429,
+            "medianProximityFt": 38,
+            "sgPerShot": -0.24,
+            "blended": false,
+            "source": {
+              "window": "Last 10",
+              "report": [
+                "§05 FROM ROUGH — BY CLUB"
+              ],
+              "screens": []
+            },
+            "ell80": null
+          }
+        }
+      }
+    }
+  ],
+  "approachBuckets": [
+    {
+      "fromYds": 50,
+      "toYds": 75,
+      "lie": "fairway",
+      "n": 8,
+      "girPct": 0.375,
+      "sgPerShot": -0.29,
+      "gainingPct": 0.25,
+      "bigMissPct": 0.625,
+      "medianProximityFt": 30,
+      "missPct": null
+    },
+    {
+      "fromYds": 75,
+      "toYds": 100,
+      "lie": "fairway",
+      "n": 18,
+      "girPct": 0.556,
+      "sgPerShot": -0.13,
+      "gainingPct": 0.444,
+      "bigMissPct": 0.389,
+      "medianProximityFt": 36,
+      "missPct": null
+    },
+    {
+      "fromYds": 100,
+      "toYds": 110,
+      "lie": "fairway",
+      "n": 3,
+      "girPct": 0.667,
+      "sgPerShot": -0.06,
+      "gainingPct": 0.333,
+      "bigMissPct": 0.333,
+      "medianProximityFt": 31,
+      "missPct": null
+    },
+    {
+      "fromYds": 110,
+      "toYds": 120,
+      "lie": "fairway",
+      "n": 6,
+      "girPct": 0.5,
+      "sgPerShot": -0.11,
+      "gainingPct": 0.5,
+      "bigMissPct": 0.333,
+      "medianProximityFt": 31,
+      "missPct": null
+    },
+    {
+      "fromYds": 120,
+      "toYds": 130,
+      "lie": "fairway",
+      "n": 5,
+      "girPct": 0.4,
+      "sgPerShot": -0.29,
+      "gainingPct": 0.4,
+      "bigMissPct": 0.4,
+      "medianProximityFt": 34,
+      "missPct": null
+    },
+    {
+      "fromYds": 130,
+      "toYds": 140,
+      "lie": "fairway",
+      "n": 6,
+      "girPct": 0.833,
+      "sgPerShot": 0.03,
+      "gainingPct": 0.833,
+      "bigMissPct": 0.167,
+      "medianProximityFt": 26,
+      "missPct": null
+    },
+    {
+      "fromYds": 140,
+      "toYds": 150,
+      "lie": "fairway",
+      "n": 7,
+      "girPct": 0.714,
+      "sgPerShot": -0.02,
+      "gainingPct": 0.571,
+      "bigMissPct": 0.143,
+      "medianProximityFt": 18,
+      "missPct": null
+    },
+    {
+      "fromYds": 150,
+      "toYds": 160,
+      "lie": "fairway",
+      "n": 8,
+      "girPct": 0.375,
+      "sgPerShot": -0.31,
+      "gainingPct": 0.375,
+      "bigMissPct": 0.5,
+      "medianProximityFt": 63,
+      "missPct": null
+    },
+    {
+      "fromYds": 160,
+      "toYds": 170,
+      "lie": "fairway",
+      "n": 10,
+      "girPct": 0.5,
+      "sgPerShot": -0.21,
+      "gainingPct": 0.4,
+      "bigMissPct": 0.4,
+      "medianProximityFt": 47,
+      "missPct": null
+    },
+    {
+      "fromYds": 170,
+      "toYds": 180,
+      "lie": "fairway",
+      "n": 7,
+      "girPct": 0.286,
+      "sgPerShot": -0.26,
+      "gainingPct": 0.286,
+      "bigMissPct": 0.429,
+      "medianProximityFt": 54,
+      "missPct": null
+    },
+    {
+      "fromYds": 180,
+      "toYds": 190,
+      "lie": "fairway",
+      "n": 7,
+      "girPct": 0.571,
+      "sgPerShot": 0.11,
+      "gainingPct": 0.714,
+      "bigMissPct": 0.143,
+      "medianProximityFt": 30,
+      "missPct": null
+    },
+    {
+      "fromYds": 190,
+      "toYds": 200,
+      "lie": "fairway",
+      "n": 10,
+      "girPct": 0.4,
+      "sgPerShot": -0.32,
+      "gainingPct": 0.4,
+      "bigMissPct": 0.3,
+      "medianProximityFt": 58,
+      "missPct": null
+    },
+    {
+      "fromYds": 200,
+      "toYds": 225,
+      "lie": "fairway",
+      "n": 12,
+      "girPct": 0.167,
+      "sgPerShot": -0.23,
+      "gainingPct": 0.417,
+      "bigMissPct": 0.417,
+      "medianProximityFt": 66,
+      "missPct": null
+    },
+    {
+      "fromYds": 225,
+      "toYds": 250,
+      "lie": "fairway",
+      "n": 5,
+      "girPct": 0.2,
+      "sgPerShot": 0.28,
+      "gainingPct": 0.8,
+      "bigMissPct": 0,
+      "medianProximityFt": 59,
+      "missPct": null
+    },
+    {
+      "fromYds": 50,
+      "toYds": 75,
+      "lie": "rough",
+      "n": 5,
+      "girPct": 0.4,
+      "sgPerShot": -0.23,
+      "gainingPct": 0.4,
+      "bigMissPct": 0.6,
+      "medianProximityFt": 81,
+      "missPct": null
+    },
+    {
+      "fromYds": 75,
+      "toYds": 100,
+      "lie": "rough",
+      "n": 5,
+      "girPct": 0.6,
+      "sgPerShot": -0.46,
+      "gainingPct": 0.6,
+      "bigMissPct": 0.4,
+      "medianProximityFt": 31,
+      "missPct": null
+    },
+    {
+      "fromYds": 100,
+      "toYds": 110,
+      "lie": "rough",
+      "n": 1,
+      "girPct": 0,
+      "sgPerShot": -0.46,
+      "gainingPct": 0,
+      "bigMissPct": 1,
+      "medianProximityFt": 63,
+      "missPct": null
+    },
+    {
+      "fromYds": 110,
+      "toYds": 120,
+      "lie": "rough",
+      "n": 2,
+      "girPct": 0.5,
+      "sgPerShot": 0.06,
+      "gainingPct": 0.5,
+      "bigMissPct": 0,
+      "medianProximityFt": 27,
+      "missPct": null
+    },
+    {
+      "fromYds": 120,
+      "toYds": 130,
+      "lie": "rough",
+      "n": 1,
+      "girPct": 1,
+      "sgPerShot": 0.86,
+      "gainingPct": 1,
+      "bigMissPct": 0,
+      "medianProximityFt": 15,
+      "missPct": null
+    },
+    {
+      "fromYds": 130,
+      "toYds": 140,
+      "lie": "rough",
+      "n": 7,
+      "girPct": 0.571,
+      "sgPerShot": 0.02,
+      "gainingPct": 0.429,
+      "bigMissPct": 0,
+      "medianProximityFt": 30,
+      "missPct": null
+    },
+    {
+      "fromYds": 140,
+      "toYds": 150,
+      "lie": "rough",
+      "n": 6,
+      "girPct": 0.667,
+      "sgPerShot": 0.13,
+      "gainingPct": 0.667,
+      "bigMissPct": 0,
+      "medianProximityFt": 29,
+      "missPct": null
+    },
+    {
+      "fromYds": 150,
+      "toYds": 160,
+      "lie": "rough",
+      "n": 4,
+      "girPct": 0.25,
+      "sgPerShot": -0.05,
+      "gainingPct": 0.5,
+      "bigMissPct": 0.25,
+      "medianProximityFt": 60,
+      "missPct": null
+    },
+    {
+      "fromYds": 160,
+      "toYds": 170,
+      "lie": "rough",
+      "n": 1,
+      "girPct": 0,
+      "sgPerShot": -0.07,
+      "gainingPct": 0,
+      "bigMissPct": 0,
+      "medianProximityFt": 118,
+      "missPct": null
+    },
+    {
+      "fromYds": 170,
+      "toYds": 180,
+      "lie": "rough",
+      "n": 5,
+      "girPct": 0,
+      "sgPerShot": -0.2,
+      "gainingPct": 0.2,
+      "bigMissPct": 0.2,
+      "medianProximityFt": 73,
+      "missPct": null
+    },
+    {
+      "fromYds": 180,
+      "toYds": 190,
+      "lie": "rough",
+      "n": 7,
+      "girPct": 0,
+      "sgPerShot": -0.39,
+      "gainingPct": 0.143,
+      "bigMissPct": 0.286,
+      "medianProximityFt": 84,
+      "missPct": null
+    },
+    {
+      "fromYds": 190,
+      "toYds": 200,
+      "lie": "rough",
+      "n": 4,
+      "girPct": 0,
+      "sgPerShot": 0.01,
+      "gainingPct": 0.75,
+      "bigMissPct": 0,
+      "medianProximityFt": 29,
+      "missPct": null
+    },
+    {
+      "fromYds": 200,
+      "toYds": 225,
+      "lie": "rough",
+      "n": 3,
+      "girPct": 0,
+      "sgPerShot": 0.05,
+      "gainingPct": 0.667,
+      "bigMissPct": 0,
+      "medianProximityFt": 55,
+      "missPct": null
+    }
+  ],
+  "approachAggregate": {
+    "fairway": {
+      "n": 104,
+      "wellLeft": 0.11,
+      "left": 0.39,
+      "right": 0.34,
+      "wellRight": 0.16,
+      "wellShort": 0.23,
+      "short": 0.43,
+      "long": 0.24,
+      "wellLong": 0.1,
+      "proximityZones": {
+        "pro": 0.23,
+        "scratch": 0.22,
+        "fiveIndex": 0.11,
+        "miss": 0.44
+      }
+    },
+    "rough": {
+      "n": 45,
+      "wellLeft": 0.2,
+      "left": 0.36,
+      "right": 0.4,
+      "wellRight": 0.04,
+      "wellShort": 0.27,
+      "short": 0.24,
+      "long": 0.29,
+      "wellLong": 0.2,
+      "proximityZones": {
+        "pro": 0.09,
+        "scratch": 0.29,
+        "fiveIndex": 0.09,
+        "miss": 0.53
+      }
+    }
+  },
+  "putting": [
+    {
+      "fromFt": 0,
+      "toFt": 3,
+      "n": 150,
+      "makePct": 0.973,
+      "sgPer18": -0.09,
+      "threePuttPct": 0,
+      "threePuttN": [
+        0,
+        22
+      ],
+      "missShortPct": 0.75,
+      "missLongPct": 0.25,
+      "avgLeaveFt": 8.4,
+      "within10Pct": null,
+      "missLeftPct": null,
+      "missRightPct": null
+    },
+    {
+      "fromFt": 4,
+      "toFt": 6,
+      "n": 41,
+      "makePct": 0.488,
+      "sgPer18": -0.77,
+      "threePuttPct": 0,
+      "threePuttN": [
+        0,
+        26
+      ],
+      "missShortPct": 0.048,
+      "missLongPct": 0.952,
+      "avgLeaveFt": 1.6,
+      "within10Pct": null,
+      "missLeftPct": 0.32,
+      "missRightPct": 0.2
+    },
+    {
+      "fromFt": 7,
+      "toFt": 9,
+      "n": 30,
+      "makePct": 0.233,
+      "sgPer18": -0.61,
+      "threePuttPct": 0,
+      "threePuttN": [
+        0,
+        25
+      ],
+      "missShortPct": 0.174,
+      "missLongPct": 0.826,
+      "avgLeaveFt": 1.8,
+      "within10Pct": null,
+      "missLeftPct": 0.27,
+      "missRightPct": 0.5
+    },
+    {
+      "fromFt": 10,
+      "toFt": 15,
+      "n": 34,
+      "makePct": 0.059,
+      "sgPer18": -0.71,
+      "threePuttPct": 0.063,
+      "threePuttN": [
+        2,
+        32
+      ],
+      "missShortPct": 0.219,
+      "missLongPct": 0.781,
+      "avgLeaveFt": 2.1,
+      "within10Pct": null,
+      "missLeftPct": 0.53,
+      "missRightPct": 0.41
+    },
+    {
+      "fromFt": 16,
+      "toFt": 24,
+      "n": 36,
+      "makePct": 0.111,
+      "sgPer18": -0.18,
+      "threePuttPct": 0.086,
+      "threePuttN": [
+        3,
+        35
+      ],
+      "missShortPct": 0.375,
+      "missLongPct": 0.625,
+      "avgLeaveFt": 2.5,
+      "within10Pct": 0.531,
+      "missLeftPct": 0.31,
+      "missRightPct": 0.58
+    },
+    {
+      "fromFt": 25,
+      "toFt": 40,
+      "n": 33,
+      "makePct": 0.03,
+      "sgPer18": -0.21,
+      "threePuttPct": 0.156,
+      "threePuttN": [
+        5,
+        32
+      ],
+      "missShortPct": 0.719,
+      "missLongPct": 0.281,
+      "avgLeaveFt": 3,
+      "within10Pct": 0.656,
+      "missLeftPct": 0.39,
+      "missRightPct": 0.58
+    },
+    {
+      "fromFt": 41,
+      "toFt": null,
+      "n": 8,
+      "makePct": 0,
+      "sgPer18": -0.17,
+      "threePuttPct": 0.625,
+      "threePuttN": [
+        5,
+        8
+      ],
+      "missShortPct": 0.5,
+      "missLongPct": 0.5,
+      "avgLeaveFt": 8.8,
+      "within10Pct": 0.25,
+      "missLeftPct": 0.13,
+      "missRightPct": 0.88
+    }
+  ],
+  "puttingSgPer18": -2.74,
+  "shortGame": {
+    "bands": [
+      {
+        "fromYds": 0,
+        "toYds": 25,
+        "lie": "fairway",
+        "n": 11,
+        "sgPerShot": -0.19,
+        "upDownPct": 0.273,
+        "inside3Pct": 0.182,
+        "inside6Pct": 0.182,
+        "missGreenPct": 0.091,
+        "medianProximityFt": 8,
+        "extra": {
+          "avgProximityFtIn": 7.58,
+          "sgPer18": -0.21
+        }
+      },
+      {
+        "fromYds": 0,
+        "toYds": 25,
+        "lie": "rough",
+        "n": 56,
+        "sgPerShot": -0.07,
+        "upDownPct": 0.446,
+        "inside3Pct": 0.232,
+        "inside6Pct": 0.5,
+        "missGreenPct": 0.107,
+        "medianProximityFt": 6,
+        "extra": {
+          "avgProximityFtIn": 10,
+          "sgPer18": -0.39
+        }
+      },
+      {
+        "fromYds": 0,
+        "toYds": 25,
+        "lie": "bunker",
+        "n": 7,
+        "sgPerShot": 0.08,
+        "upDownPct": 0,
+        "inside3Pct": 0,
+        "inside6Pct": 0.143,
+        "missGreenPct": 0,
+        "medianProximityFt": 11,
+        "extra": {
+          "avgProximityFtIn": 12.67,
+          "sgPer18": 0.06
+        }
+      },
+      {
+        "fromYds": 25,
+        "toYds": 50,
+        "lie": "fairway",
+        "n": 13,
+        "sgPerShot": 0.05,
+        "upDownPct": 0.308,
+        "inside3Pct": 0.077,
+        "inside6Pct": 0.231,
+        "missGreenPct": 0,
+        "medianProximityFt": 10,
+        "extra": {
+          "avgProximityFtIn": 10.67,
+          "sgPer18": 0.06
+        }
+      },
+      {
+        "fromYds": 25,
+        "toYds": 50,
+        "lie": "rough",
+        "n": 27,
+        "sgPerShot": 0.03,
+        "upDownPct": 0.148,
+        "inside3Pct": 0.111,
+        "inside6Pct": 0.222,
+        "missGreenPct": 0.148,
+        "medianProximityFt": 14,
+        "extra": {
+          "avgProximityFtIn": 17.08,
+          "sgPer18": 0.09
+        }
+      },
+      {
+        "fromYds": 25,
+        "toYds": 50,
+        "lie": "bunker",
+        "n": 1,
+        "sgPerShot": 0.35,
+        "upDownPct": 0,
+        "inside3Pct": 0,
+        "inside6Pct": 0,
+        "missGreenPct": 0,
+        "medianProximityFt": 8,
+        "extra": {
+          "avgProximityFtIn": 8.17,
+          "sgPer18": 0.04
+        }
+      }
+    ]
+  },
+  "tendencies": {
+    "driver": {
+      "teeShots": 141,
+      "goodDrivePct": 0.688,
+      "fairwaysHitPct": 0.397,
+      "intoTroublePct": 0.255,
+      "driver": {
+        "fairwaysHitPct": 0.457,
+        "goodDrivePct": 0.739,
+        "within40Pct": 0.528,
+        "within70Pct": 0.73,
+        "outside40Pct": 0.472,
+        "outside70Pct": 0.27
+      },
+      "landingZones": {
+        "alwaysSafe": 0.53,
+        "oftenPlayable": 0.2,
+        "foul": 0.27,
+        "safeHalfWidthYds": 20,
+        "playableHalfWidthYds": 35
+      },
+      "penaltyDrivesInsideCorridor": 8
+    }
+  },
+  "benchmarks": {
+    "scratch": {
+      "note": "Shot Pattern's scratch benchmark (Arccos, Broadie, Stagner, Shot Scope, Tour data). SG per shot elsewhere in this file is measured against it.",
+      "scoring": {
+        "birdiesPer18": 2.2,
+        "parsPer18": 10.5,
+        "bogeysPer18": 4.6,
+        "doublesPer18": 0.7
+      },
+      "driving": {
+        "medianYds": 259,
+        "fairwaysHitPct": 0.462,
+        "lateralSdDeg": 4.8,
+        "width90Yds": 87,
+        "penaltyPct": 0.039,
+        "recoveryPct": 0.07,
+        "waywardPct": 0.109
+      },
+      "approach": [
+        {
+          "fromYds": 50,
+          "toYds": 75,
+          "girPct": 0.836,
+          "proxPct": 0.109
+        },
+        {
+          "fromYds": 75,
+          "toYds": 100,
+          "girPct": 0.786,
+          "proxPct": 0.087
+        },
+        {
+          "fromYds": 100,
+          "toYds": 110,
+          "girPct": 0.755,
+          "proxPct": 0.081
+        },
+        {
+          "fromYds": 110,
+          "toYds": 120,
+          "girPct": 0.735,
+          "proxPct": 0.081
+        },
+        {
+          "fromYds": 120,
+          "toYds": 130,
+          "girPct": 0.695,
+          "proxPct": 0.08
+        },
+        {
+          "fromYds": 130,
+          "toYds": 140,
+          "girPct": 0.66,
+          "proxPct": 0.081
+        },
+        {
+          "fromYds": 140,
+          "toYds": 150,
+          "girPct": 0.62,
+          "proxPct": 0.081
+        },
+        {
+          "fromYds": 150,
+          "toYds": 160,
+          "girPct": 0.565,
+          "proxPct": 0.087
+        },
+        {
+          "fromYds": 160,
+          "toYds": 170,
+          "girPct": 0.515,
+          "proxPct": 0.089
+        },
+        {
+          "fromYds": 170,
+          "toYds": 180,
+          "girPct": 0.465,
+          "proxPct": 0.091
+        },
+        {
+          "fromYds": 180,
+          "toYds": 190,
+          "girPct": 0.37,
+          "proxPct": 0.097
+        },
+        {
+          "fromYds": 190,
+          "toYds": 200,
+          "girPct": 0.335,
+          "proxPct": 0.104
+        },
+        {
+          "fromYds": 200,
+          "toYds": 225,
+          "girPct": 0.256,
+          "proxPct": 0.117
+        },
+        {
+          "fromYds": 225,
+          "toYds": 250,
+          "girPct": null,
+          "proxPct": null
+        }
+      ],
+      "putting": [
+        {
+          "fromFt": 0,
+          "toFt": 3,
+          "makePct": 0.98
+        },
+        {
+          "fromFt": 4,
+          "toFt": 6,
+          "makePct": 0.68
+        },
+        {
+          "fromFt": 7,
+          "toFt": 9,
+          "makePct": 0.43
+        },
+        {
+          "fromFt": 10,
+          "toFt": 15,
+          "makePct": 0.27
+        },
+        {
+          "fromFt": 16,
+          "toFt": 24,
+          "makePct": 0.15
+        },
+        {
+          "fromFt": 25,
+          "toFt": 40,
+          "makePct": 0.06
+        },
+        {
+          "fromFt": 41,
+          "toFt": null,
+          "makePct": 0.02
+        }
+      ],
+      "threePutt": [
+        {
+          "fromFt": 10,
+          "toFt": 15,
+          "pct": 0.013
+        },
+        {
+          "fromFt": 16,
+          "toFt": 24,
+          "pct": 0.025
+        },
+        {
+          "fromFt": 25,
+          "toFt": 40,
+          "pct": 0.089
+        },
+        {
+          "fromFt": 41,
+          "toFt": null,
+          "pct": 0.261
+        }
+      ]
+    }
+  },
+  "scoring": {
+    "rounds": 10,
+    "avg": 81.7,
+    "toPar": 10.2,
+    "best": 78,
+    "worst": 85,
+    "per18": {
+      "birdies": 0.9,
+      "pars": 8.6,
+      "bogeys": 6.1,
+      "doubles": 2.4
+    },
+    "byPar": {
+      "3": 3.6,
+      "4": 4.62,
+      "5": 5.38
+    },
+    "sgPer18": {
+      "offTee": -1.27,
+      "approach": -1.79,
+      "aroundGreen": -0.1,
+      "putting": -2.74
+    }
+  }
 }

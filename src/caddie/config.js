@@ -35,7 +35,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   },
   /* Fallbacks used ONLY when the profile entry for that lie has no measured value.
      Fraction of carry lost (negative = short) and σ multiplier, by lie type. Provisional. */
-  LIE_DIST_ADJ: { tee: 0, fairway: 0, rough: -0.06, sand: -0.12, recovery: -0.30 },
+  LIE_DIST_ADJ: { tee: 0, fairway: 0, rough: -0.08, sand: -0.12, recovery: -0.30 },
   LIE_SD_MULT:  { tee: 1.0, fairway: 1.0, rough: 1.2, sand: 1.3, recovery: 1.8 },
   /* Longitudinal σ as a fraction of carry when the entry has no distSdYds (Shot Pattern gives an
      IQR for tee clubs only). By club family. Provisional. */
@@ -55,6 +55,10 @@ export const DEFAULT_CONFIG = Object.freeze({
   SAME_SHOT_BIRDIE_GAIN: 0.01,
   SAME_SHOT_TARGET_YDS: 10,
   SAME_AVG_DELTA: 0.05,         // |Δavg| under this displays as "≈ same avg."
+  /* Two candidates whose expScore differ by less than this are a tie (500 samples put the standard
+     error near 0.02, and model error is larger). Ties go to the club that plays the number: the
+     one whose mean landing is nearest its target. */
+  EXP_TIE_TOLERANCE: 0.03,
 
   /* ---- expected strokes (§3.5) ---- */
   /* E(d, lie) = baseline − Brett's approach SG for the bucket. Brett's putting deficit is a

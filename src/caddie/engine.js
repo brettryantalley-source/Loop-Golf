@@ -60,9 +60,11 @@ export function windEffect(wind, shotBearingDeg, shotYds, cfg) {
   const fromRight = wind.speedMph * Math.sin(rel);   // > 0 blowing from the right → pushes left
   const alongYds = shotYds * (head > 0 ? cfg.HEAD_PCT * head : cfg.TAIL_PCT * head);
   const crossYds = -fromRight * cfg.CROSS_YDS_PER_MPH_PER_100 * (shotYds / 100);
+  const eps = wind.speedMph * 0.05;
+  const side = fromRight > eps ? "right" : fromRight < -eps ? "left" : "";
   const relative = Math.abs(head) < wind.speedMph * 0.38
-    ? (fromRight > 0 ? "cross-from-right" : "cross-from-left")
-    : head > 0 ? (fromRight > 0 ? "into-right" : fromRight < 0 ? "into-left" : "into") : (fromRight > 0 ? "down-right" : fromRight < 0 ? "down-left" : "down");
+    ? `cross-from-${side || "right"}`
+    : head > 0 ? (side ? `into-${side}` : "into") : (side ? `down-${side}` : "down");
   return { alongYds, crossYds, relative };
 }
 
@@ -87,9 +89,11 @@ function landingModel(entry, ball, target, ctx, cfg) {
   const q = cfg.LIE_QUALITY[ctx.lieQuality] || cfg.LIE_QUALITY.standard;
   const nudgeDist = ctx.adjust?.distYds?.[entry.family] || 0;
   const mean = entry.carry + entry.biasDist + q.distYds - (pl.yds - raw) - nudgeDist;
+  const roll = ctx.conditions === "wet" ? 0 : entry.roll;
   const dir = { x: Math.sin(b * DEG), y: Math.cos(b * DEG) };
   const perp = { x: dir.y, y: -dir.x };                // +x when heading up the hole → right
-  return { mean, dir, perp, bearing: b, wind: pl.wind, sdMult: q.sdMult };
+  // mean = carry (what a green-bound shot is judged on); total = where a fairway-bound shot stops.
+  return { mean, total: mean + roll, roll, dir, perp, bearing: b, wind: pl.wind, sdMult: q.sdMult };
 }
 
 export function generateCandidates(ctx, hole, P) {
@@ -104,26 +108,58 @@ export function generateCandidates(ctx, hole, P) {
   const push = (c) => {
     const aim = ctx.adjust?.aimYds?.[c.entry.family] || 0;
     if (aim) c.target = { x: c.target.x + aim, y: c.target.y };
-    if (out.some((o) => o.club === c.club && o.swing === c.swing && sameTarget(o.target, c.target))) return;
+    if (out.some((o) => o.club === c.club && o.swing === c.swing && (sameTarget(o.target, c.target) || (o.kind === "layup" && c.kind === "layup")))) return;
     out.push(c);
   };
 
+  const reach = new Map();
   for (const e of entries) {
     const lm = landingModel(e, ctx.ball, center, ctx, cfg);
-    const reaches = lm.mean >= g.front - cfg.REACH_SHORT_TOLERANCE_YDS && lm.mean <= g.back + cfg.FLY_TOLERANCE_YDS;
-    if (reaches) {
-      const targets = [
-        { p: pin, label: `green, ${ctx.pinPos === "middle" ? "center" : ctx.pinPos + " pin"}` },
-        { p: center, label: "green, center" },
-        { p: fat, label: "green, fat side" },
-      ];
-      for (const t of targets) push({ club: e.club, swing: e.swing, entry: e, kind: "approach", target: t.p, label: t.label });
-      continue;
+    reach.set(e, lm.mean >= g.front - cfg.REACH_SHORT_TOLERANCE_YDS && lm.mean <= g.back + cfg.FLY_TOLERANCE_YDS
+      ? "reaches" : lm.mean > g.back + cfg.FLY_TOLERANCE_YDS ? "flies" : "short");
+  }
+
+  // Green-reachable approach: pin, center, fat side (§3.4).
+  for (const e of entries) {
+    if (reach.get(e) !== "reaches") continue;
+    const targets = [
+      { p: pin, label: `green, ${ctx.pinPos === "middle" ? "center" : ctx.pinPos + " pin"}` },
+      { p: center, label: "green, center" },
+      { p: fat, label: "green, fat side" },
+    ];
+    for (const t of targets) push({ club: e.club, swing: e.swing, entry: e, kind: "approach", target: t.p, label: t.label });
+  }
+
+  // §3.7 layups: leave-distance candidates on the centerline, the nearest club for each.
+  const nonReaching = entries.filter((e) => reach.get(e) === "short");
+  const dPin = dist(ctx.ball, pin);
+  const layups = new Map();                            // one layup candidate per club × swing: its best-fit leave
+  for (let L = cfg.LAYUP_MIN_YDS; L <= cfg.LAYUP_MAX_YDS; L += cfg.LAYUP_STEP_YDS) {
+    if (dPin - L < 20) break;
+    const q = pointAlong(center, ctx.ball, L);          // L short of the green center, on the line
+    const need = dist(ctx.ball, q);
+    let best = null;
+    for (const e of nonReaching) {
+      const lm = landingModel(e, ctx.ball, q, ctx, cfg);
+      const err = Math.abs(lm.total - need);
+      if (lm.total > need + cfg.LAYUP_STEP_YDS) continue;
+      if (!best || err < best.err) best = { e, err, total: lm.total };
     }
-    if (lm.mean > g.back + cfg.FLY_TOLERANCE_YDS) continue;       // flies the green (§3.4 prune)
-    // Fairway-bound: aim points across the corridor at this club's distance, plus the centerline.
-    const yLand = ctx.ball.y + lm.mean;
-    const corr = corridorAt(hole, yLand);
+    if (!best) continue;
+    const leave = Math.round(dPin - best.total);
+    const key = `${best.e.club}/${best.e.swing}`;
+    const prev = layups.get(key);
+    if (!prev || best.err < prev.err) layups.set(key, { err: best.err, cand: { club: best.e.club, swing: best.e.swing, entry: best.e, kind: "layup", target: q, label: `leave ${leave}, fairway center` } });
+  }
+  for (const { cand } of layups.values()) push(cand);
+
+  // Fairway-bound shots (§3.4): aim points across the corridor at the club's distance, plus the
+  // centerline. Spread across the corridor only for the long family — a short iron off the tee is
+  // a layup and already has its centerline candidate above.
+  for (const e of nonReaching) {
+    const lm = landingModel(e, ctx.ball, center, ctx, cfg);
+    const yLand = ctx.ball.y + lm.total;
+    const corr = e.family === "long" ? corridorAt(hole, yLand) : null;
     const xs = [0];
     if (corr) for (let x = Math.ceil(corr[0]); x <= corr[1]; x += cfg.CORRIDOR_STEP_YDS) xs.push(x);
     for (const x of xs) {
@@ -132,28 +168,6 @@ export function generateCandidates(ctx, hole, P) {
       const side = x === 0 ? "center" : x < 0 ? `${Math.abs(x)} left of center` : `${x} right of center`;
       push({ club: e.club, swing: e.swing, entry: e, kind: "corridor", target: t, label: `leave ${leave}, ${side}` });
     }
-  }
-
-  // §3.7 layups: leave-distance candidates on the centerline, the nearest club for each.
-  const nonReaching = entries.filter((e) => {
-    const lm = landingModel(e, ctx.ball, center, ctx, cfg);
-    return lm.mean < g.front - cfg.REACH_SHORT_TOLERANCE_YDS;
-  });
-  const dPin = dist(ctx.ball, pin);
-  for (let L = cfg.LAYUP_MIN_YDS; L <= cfg.LAYUP_MAX_YDS; L += cfg.LAYUP_STEP_YDS) {
-    if (dPin - L < 20) break;
-    const q = pointAlong(center, ctx.ball, L);          // L short of the green center, on the line
-    const need = dist(ctx.ball, q);
-    let best = null;
-    for (const e of nonReaching) {
-      const lm = landingModel(e, ctx.ball, q, ctx, cfg);
-      const err = Math.abs(lm.mean - need);
-      if (lm.mean > need + cfg.LAYUP_STEP_YDS) continue;
-      if (!best || err < best.err) best = { e, err, mean: lm.mean };
-    }
-    if (!best) continue;
-    const leave = Math.round(dPin - best.mean);
-    push({ club: best.e.club, swing: best.e.swing, entry: best.e, kind: "layup", target: q, label: `leave ${leave}, fairway center` });
   }
   return out;
 }
@@ -182,8 +196,7 @@ export function ellipseSampler(ell, qualityMult = 1) {
   };
 }
 
-function priceLanding(hole, P, ctx, from, landing, lie, k) {
-  const pin = pinPoint(hole, from, ctx.pinPos);
+function priceLanding(hole, P, ctx, from, landing, lie, k, pin) {
   switch (lie) {
     case "green": {
       const ft = ydsToFt(dist(landing, pin));
@@ -217,9 +230,9 @@ function priceLanding(hole, P, ctx, from, landing, lie, k) {
 export function simulateCandidate(cand, ctx, hole, P, samples) {
   const cfg = P.config;
   const e = cand.entry;
+  const pin = pinPoint(hole, ctx.ball, ctx.pinPos);
   const lm = landingModel(e, ctx.ball, cand.target, ctx, cfg);
-  const roll = e.roll;
-  const q = cfg.LIE_QUALITY[ctx.lieQuality] || cfg.LIE_QUALITY.standard;
+  const roll = lm.roll;
   // Dispersion core: the ell80 ellipse when measured (UI addendum §5.2), else σ-distance × σ-lateral.
   const ell = e.ell80 ? ellipseSampler(e.ell80, lm.sdMult) : null;
   const sigmaLat = e.carry * Math.tan(e.lateralSdDeg * DEG) * lm.sdMult;
@@ -249,7 +262,7 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
       if (ql !== "water") { p = q; lie = ql; }                     // a ball rolling into water is priced as water anyway
       else { p = q; lie = ql; }
     }
-    const r = priceLanding(hole, P, ctx, ctx.ball, p, lie, k);
+    const r = priceLanding(hole, P, ctx, ctx.ball, p, lie, k, pin);
     sumStrokes += r.strokes;
     sumBirdie += r.birdie;
     if (r.trouble) trouble++;
@@ -258,15 +271,21 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
     expScore: ctx.shotNo - 1 + sumStrokes / n,
     birdieProb: sumBirdie / n,
     troubleRate: trouble / n,
-    meanYds: lm.mean,
+    meanYds: cand.kind === "approach" ? lm.mean : lm.total,
+    distToTarget: dist(ctx.ball, cand.target),
     aimOffsetYds: -lm.wind.crossYds,
   };
 }
 
 /* ---------- selection (§3.6) ---------- */
 
+/** Distance between where the club lands on average and where it was aimed — "plays the number". */
+const fit = (c) => Math.abs(c.meanYds - c.distToTarget);
+
 function pickOptions(scored, cfg) {
-  const safe = scored.reduce((a, b) => (b.expScore < a.expScore ? b : a));
+  const tol = cfg.EXP_TIE_TOLERANCE ?? 0;
+  const minExp = Math.min(...scored.map((c) => c.expScore));
+  const safe = scored.filter((c) => c.expScore <= minExp + tol).reduce((a, b) => (fit(b) < fit(a) ? b : a));
   const aggressive = scored.reduce((a, b) =>
     b.birdieProb > a.birdieProb + 1e-12 || (Math.abs(b.birdieProb - a.birdieProb) <= 1e-12 && b.expScore < a.expScore) ? b : a);
   const sameShot =

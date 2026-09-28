@@ -21,12 +21,32 @@
 
 export const LIE_PRIORITY = Object.freeze(["green", "sand", "water", "tee", "fairway", "trees", "rough", "ob"]);
 
+/* Bounding boxes, computed once per ring. The simulation classifies ~40k points per recompute
+   and most of them miss most rings, so the box test does the bulk of the work. */
+const BBOX = new WeakMap();
+function bboxOf(ring) {
+  let b = BBOX.get(ring);
+  if (b) return b;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i < ring.length; i++) {
+    const x = ring[i][0], y = ring[i][1];
+    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  b = { x0, y0, x1, y1 };
+  BBOX.set(ring, b);
+  return b;
+}
+
 export function pointInRing(p, ring) {
   if (!ring || ring.length < 3) return false;
+  const b = bboxOf(ring);
+  if (p.x < b.x0 || p.x > b.x1 || p.y < b.y0 || p.y > b.y1) return false;
   let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [ax, ay] = ring[i], [bx, by] = ring[j];
-    if ((ay > p.y) !== (by > p.y) && p.x < ((bx - ax) * (p.y - ay)) / (by - ay) + ax) inside = !inside;
+  const n = ring.length;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const a = ring[i], c = ring[j];
+    const ay = a[1], cy = c[1];
+    if ((ay > p.y) !== (cy > p.y) && p.x < ((c[0] - a[0]) * (p.y - ay)) / (cy - ay) + a[0]) inside = !inside;
   }
   return inside;
 }
@@ -108,9 +128,7 @@ export function ringDistance(p, ring) {
 }
 
 export function ringBbox(ring) {
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const [x, y] of ring) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
-  return { x0, y0, x1, y1 };
+  return { ...bboxOf(ring) };
 }
 
 /**

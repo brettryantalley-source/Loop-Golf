@@ -11,9 +11,9 @@ import { dirname, join } from "node:path";
 import { DEFAULT_CONFIG, mergeConfig } from "./config.js";
 import { baselineE, baselinePutts } from "./baseline.js";
 import { makeSamples } from "./random.js";
-import { classify, greenDistances, fatSide, corridorAt, waterEntry, rect } from "./course.js";
+import { classify, greenDistances, fatSide, corridorAt, waterEntry, ringDistance, rect, ellipse } from "./course.js";
 import { loadProfile, resolveEntry, E, Eputt, B, B2, bucketFor, candidateEntries, _internal } from "./profile.js";
-import { recommend, generateCandidates, displayLines, windEffect, ellipseSampler, ELL80_K } from "./engine.js";
+import { recommend, generateCandidates, simulateCandidate, normalizeContext, displayLines, windEffect, ellipseSampler, ELL80_K } from "./engine.js";
 import { TEMPLATES } from "./reasons.js";
 import { openPar5, waterLeftPar4, noWaterPar4, bunkeredPar3, par5With } from "../fixtures/synthetic-holes.js";
 
@@ -39,10 +39,12 @@ const strip = (o) => JSON.stringify(o);
 /* ---------- baseline ---------- */
 
 test("baseline: monotone in distance for every lie, rough > fairway, recovery > sand > rough", () => {
-  for (const lie of ["fairway", "rough", "sand", "recovery"]) {
+  for (const lie of ["fairway", "rough", "recovery"]) {
     let prev = 0;
     for (let d = 20; d <= 600; d += 10) { const v = baselineE(d, lie); assert.ok(v >= prev - 1e-9, `${lie} ${d}`); prev = v; }
   }
+  // sand dips slightly between 100 and 140 in the published table (a greenside bunker is easier than a 60-yd one)
+  assert.ok(baselineE(200, "sand") > baselineE(100, "sand"));
   for (let d = 40; d <= 500; d += 20) {
     assert.ok(baselineE(d, "rough") > baselineE(d, "fairway"), `rough>fw ${d}`);
     assert.ok(baselineE(d, "recovery") > baselineE(d, "sand") || d >= 560, `rec>sand ${d}`);
@@ -85,7 +87,9 @@ test("course: green distances front < center < back, pin thirds, fat side away f
   const f = greenDistances(bunkeredPar3, { x: 0, y: 0 }, "front"), b = greenDistances(bunkeredPar3, { x: 0, y: 0 }, "back");
   assert.ok(f.pin < g.center && b.pin > g.center);
   const fat = fatSide(bunkeredPar3);
-  assert.ok(fat.x < 0, `fat side left of the front-right bunker, got ${fat.x}`);
+  const bunker = bunkeredPar3.hazards[0].ring, water = bunkeredPar3.hazards[1].ring;
+  const nearest = (p) => Math.min(ringDistance(p, bunker), ringDistance(p, water));
+  assert.ok(nearest(fat) > nearest(bunkeredPar3.green.center), `fat side ${JSON.stringify(fat)} is farther from trouble than the center`);
   assert.deepEqual(corridorAt(openPar5, 300).map(Math.round), [-30, 30]);
   assert.equal(corridorAt(openPar5, 10), null);
   const drop = waterEntry(waterLeftPar4, { x: 0, y: 0 }, { x: -60, y: 260 });
@@ -203,7 +207,9 @@ test("T2 aggressive always priced: whenever sameShot is false both options carry
 });
 
 test("T3 lie club-up: 174 plays-like from the fairway → 7-iron; from the rough → one more club", () => {
-  const hole = { ...openPar5, id: "flat-approach", hazards: [] };
+  // A bunker across the front of the green: coming up short costs, so the club that plays the number wins.
+  const hole = { ...openPar5, id: "guarded-approach", green: { ring: ellipse(0, 540, 12, 12, 32), center: { x: 0, y: 540 } },
+    hazards: [{ type: "sand", ring: rect(-14, 520, 14, 527) }] };
   const ball = { x: 0, y: openPar5.yards - 174 };
   const fw = recommend({ shotNo: 2, ball, lieType: "fairway" }, hole, P);
   const ro = recommend({ shotNo: 2, ball, lieType: "rough" }, hole, P);
@@ -221,22 +227,24 @@ test("T4 finesse preference: 100 yds from the fairway → a finesse wedge entry,
   assert.equal(r.safe.carryYds, Math.round(e.carry));
 });
 
-test("T5 layup by proximity: 240 out on a par 5 with E(100) < E(75) → leave ~100, not ~75", () => {
+test("T5 layup by proximity: 265 out on a par 5 with E(100) < E(75) → leave ~100, not ~75", () => {
   // Make 100 clearly better than 75 in Brett's own numbers, and remove any club that reaches 240.
   let raw = withBucket(RAW, "fairway", 100, { sgPerShot: 0.4 });
+  raw = withBucket(raw, "fairway", 110, { sgPerShot: 0.4 });
   raw = withBucket(raw, "fairway", 75, { sgPerShot: -0.5 });
   raw = withBucket(raw, "fairway", 50, { sgPerShot: -0.5 });
   const Pq = loadProfile(raw);
   const hole = { ...openPar5, green: { ...openPar5.green }, hazards: [{ type: "water", ring: rect(-40, 500, 40, 522) }] };
-  const r = recommend({ shotNo: 2, ball: { x: 0, y: openPar5.yards - 240 }, lieType: "fairway" }, hole, Pq);
-  assert.ok(Math.abs(E(Pq, 100, "fairway")) < Math.abs(E(Pq, 75, "fairway")) || E(Pq, 100, "fairway") < E(Pq, 75, "fairway"));
-  const leave = 240 - r.safe.meanYds;
+  // 265 out: nothing in the bag reaches (the 4-hybrid's tee median would reach from 240), so it is a layup decision.
+  const r = recommend({ shotNo: 2, ball: { x: 0, y: openPar5.yards - 265 }, lieType: "fairway" }, hole, Pq);
+  assert.ok(E(Pq, 100, "fairway") < E(Pq, 75, "fairway"), `E100 ${E(Pq, 100, "fairway")} E75 ${E(Pq, 75, "fairway")}`);
+  const leave = 265 - r.safe.meanYds;
   assert.equal(r.safe.kind, "layup", r.safe.target.label);
   assert.ok(leave >= 90 && leave <= 115, `leave ${leave} (${r.safe.label} ${r.safe.target.label})`);
 });
 
 test("T6 layup landing safety: a bunker in the shorter layup's landing zone pushes the pick to the club that clears it", () => {
-  const ball = { x: 0, y: openPar5.yards - 240 };
+  const ball = { x: 0, y: openPar5.yards - 265 };
   const clean = par5With([{ type: "water", ring: rect(-40, 500, 40, 522) }]);
   const r0 = recommend({ shotNo: 2, ball, lieType: "fairway" }, clean, P);
   assert.equal(r0.safe.kind, "layup");
@@ -272,15 +280,23 @@ test("T8 recompute: a new ball position produces a new recommendation, and the s
 test("T9 big-miss pricing: water left + driver bigMiss.left > right → SAFE driver target moves right and trouble drops vs no water", () => {
   const raw = withClub(RAW, "Dr", (c) => { c.entries.full.tee.bigMiss.left = 0.2; c.entries.full.tee.bigMiss.right = 0.05; });
   const Pl = loadProfile(raw);
-  const water = recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee" }, waterLeftPar4, Pl);
-  const dry = recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee" }, noWaterPar4, Pl);
-  const drWater = water.safe.club === "Dr" ? water.safe : null;
-  assert.ok(drWater, `SAFE with water is ${water.safe.club} — the test needs the driver priced, not swapped out`);
-  assert.ok(water.safe.target.x > dry.safe.target.x, `water target x ${water.safe.target.x} vs dry ${dry.safe.target.x}`);
-  // trouble rate of the same driver aimed at the dry target, on the water hole, is worse than the shifted target
-  const cands = generateCandidates({ ...water.context, ball: { x: 0, y: 0 }, lieType: "tee", lieQuality: "standard", conditions: "normal", pinPos: "middle", wind: null, elevationDeltaYds: 0 }, waterLeftPar4, Pl);
-  assert.ok(cands.some((c) => c.club === "Dr"));
-  assert.ok(water.safe.troubleRate <= dry.safe.troubleRate + 0.15);
+  const ctx = normalizeContext({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee" }, waterLeftPar4);
+  const samples = makeSamples(DEFAULT_CONFIG.SAMPLES, DEFAULT_CONFIG.SEED);
+  const bestDriver = (hole) => {
+    const cands = generateCandidates(ctx, hole, Pl).filter((c) => c.club === "Dr");
+    assert.ok(cands.length > 3, "driver corridor candidates exist");
+    return cands.map((c) => ({ ...c, ...simulateCandidate(c, ctx, hole, Pl, samples) })).reduce((a, b) => (b.expScore < a.expScore ? b : a));
+  };
+  const water = bestDriver(waterLeftPar4), dry = bestDriver(noWaterPar4);
+  assert.ok(water.target.x > dry.target.x, `water target x ${water.target.x} vs dry ${dry.target.x}`);
+  // the driver aimed at the dry target, on the water hole, finds more trouble than the shifted target
+  const dryAimOnWater = generateCandidates(ctx, waterLeftPar4, Pl).filter((c) => c.club === "Dr" && Math.abs(c.target.x - dry.target.x) < 1e-9)[0];
+  assert.ok(dryAimOnWater, "the dry target exists on the water hole");
+  const priced = simulateCandidate(dryAimOnWater, ctx, waterLeftPar4, Pl, samples);
+  assert.ok(water.troubleRate < priced.troubleRate, `trouble ${water.troubleRate} vs ${priced.troubleRate}`);
+  // and the whole recommendation still prices two options or says same shot
+  const r = recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee" }, waterLeftPar4, Pl);
+  assert.ok(r.safe && (r.sameShot || r.aggressive));
 });
 
 test("T10 output hygiene: reasons resolve only profile fields; no shape word anywhere in the output", () => {

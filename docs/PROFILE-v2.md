@@ -105,6 +105,10 @@ The wedge ↔ loft mapping is an open input (spec §11); `loftDeg` stays `null`.
 Percentages in the sources are 0–100; store as fractions 0–1, rounded to 3 decimals. Yards and
 feet as integers as printed; degrees to 2 decimals.
 
+`ell80` — Shot Pattern's 80% dispersion ellipse (UI addendum §5.1), from
+`data/extracted/<batch>-ell80.json`; applied to every entry of the club while the source says
+`lies: all`; `null` when unmeasured.
+
 ### Where each entry comes from
 
 **Tee entries (`full.tee`) — Dr, 2Hy, 4Hy, 2i only.** Report §04:
