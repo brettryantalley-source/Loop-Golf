@@ -10,7 +10,7 @@
  * Pure functions. No DOM, no storage, no network. Nothing here writes to the profile (T32).
  */
 
-import { DEFAULT_CONFIG, CLUB_FAMILY } from "./config.js";
+import { DEFAULT_CONFIG, CLUB_FAMILY, lieDistAdj } from "./config.js";
 import { baselineE, baselinePutts } from "./baseline.js";
 
 const ENTRY_LIES = ["tee", "fairway", "rough"];
@@ -75,18 +75,33 @@ export function familyOf(P, clubId) {
   return CLUB_FAMILY[clubId] || P.clubs.get(clubId)?.family || "mid";
 }
 
-/** total − roll (spec §3.3). Tee entries of tee clubs use total. */
-/** Fairway roll-out for a club: the per-club table first, then its family (spec §3.3, Brett's numbers). */
+/** Fairway roll-out for a club: the per-club table first, then its family (spec §3.3, Brett's numbers).
+ *  Tee entries of tee clubs use total (roll 0). */
 export function rollYds(clubId, swing, family, lie, config) {
   if (lie === "tee" && family === "long") return config.ROLL_YDS.tee;
   const perClub = swing === "full" ? config.ROLL_YDS.club?.[clubId] : null;
   return perClub ?? config.ROLL_YDS[swing]?.[family] ?? 0;
 }
 
-export function carryFromTotal(total, swing, family, lie, config, wet = false, clubId = null) {
+/**
+ * carry = total − roll (spec §3.3). Carry is carry: ground conditions change the roll, not the
+ * carry (integration item 6), so `_wet` is accepted for old callers and ignored.
+ */
+export function carryFromTotal(total, swing, family, lie, config, _wet = false, clubId = null) {
   if (total == null) return null;
-  if (wet) return total;                                     // no roll anywhere when wet → carry is the whole shot
   return total - rollYds(clubId, swing, family, lie, config);
+}
+
+/** Ground-conditions roll multiplier for a family (config ROLL_COND_MULT; unknown → 1). */
+export function rollCondMult(config, conditions, family) {
+  const m = config?.ROLL_COND_MULT?.[conditions]?.[family];
+  return Number.isFinite(m) ? m : 1;
+}
+
+/** opts.conditions ("wet" | "firm" | "normal"); the pre-v22.11 `{ wet: true }` still means wet. */
+function conditionsOf(opts) {
+  if (opts?.conditions) return opts.conditions;
+  return opts?.wet ? "wet" : "normal";
 }
 
 /* ---------- entry resolution (§5.4) ---------- */
@@ -168,6 +183,7 @@ function firstNonNull(chain, field) {
 /**
  * The numbers the simulation uses for `clubId` × `swing` from `lie`, with fallbacks applied.
  * Returns null when the club has no usable distance for this swing type at all (not a candidate).
+ * opts.conditions ("wet" | "firm" | "normal", default normal) scales the roll by ROLL_COND_MULT.
  */
 export function resolveEntry(P, clubId, swing, lie, opts = {}) {
   const cfg = P.config;
@@ -192,9 +208,10 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
   const measured = firstNonNull(chain, "carryMedianYds");
   let carry = measured && measured.lie === srcLie && entryAt(P, club, swing, srcLie)?.carrySource === "measured"
     ? measured.value
-    : carryFromTotal(fields.totalMedianYds, swing, family, srcLie, cfg, opts.wet, clubId);
-  // Lie adjustment when the distance came from a different lie than the one we are on.
-  const adjReq = cfg.LIE_DIST_ADJ[lie] ?? 0, adjSrc = cfg.LIE_DIST_ADJ[srcLie] ?? 0;
+    : carryFromTotal(fields.totalMedianYds, swing, family, srcLie, cfg, false, clubId);
+  // Lie adjustment when the distance came from a different lie than the one we are on
+  // (per family for rough: integration item 7).
+  const adjReq = lieDistAdj(cfg, lie, family), adjSrc = lieDistAdj(cfg, srcLie, family);
   const lieFactor = (1 + adjReq) / (1 + adjSrc);
   carry = carry * lieFactor;
   const sdReq = cfg.LIE_SD_MULT[lie] ?? 1, sdSrc = cfg.LIE_SD_MULT[srcLie] ?? 1;
@@ -226,10 +243,12 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
     latYds: bmRaw?.value?.latYds ?? cfg.BIG_MISS_LAT_YDS_DEFAULT,
   };
 
-  // Roll the ball takes after landing (total − carry before the lie adjustment). 0 wet / tee.
-  // Roll after landing: the fairway roll-out (total − carry) times the lie multiplier — out of the
-  // rough the ball comes in with less spin and runs about three times as far (Brett, Sep 29).
-  const roll = opts.wet ? 0 : Math.max(0, fields.totalMedianYds - carry / lieFactor) * (cfg.ROLL_LIE_MULT?.[lie] ?? 1);
+  // Roll after landing: the fairway roll-out (total − carry before the lie adjustment) times the
+  // lie multiplier — out of the rough the ball comes in with less spin and runs about three times
+  // as far (Brett, Sep 29; D33) — times the ground-conditions multiplier (item 6). 0 off a tee
+  // for tee clubs.
+  const conditions = conditionsOf(opts);
+  const roll = Math.max(0, fields.totalMedianYds - carry / lieFactor) * (cfg.ROLL_LIE_MULT?.[lie] ?? 1) * rollCondMult(cfg, conditions, family);
   // §5 UI addendum: Shot Pattern's 80% ellipse is the dispersion core where it exists.
   const ellHit = firstNonNull(chain, "ell80");
   const ell80 = ellHit ? { ...ellHit.value, sdMult } : null;
@@ -242,6 +261,7 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
     swing,
     lie,
     sourceLie: srcLie,
+    conditions,
     carry,
     total: fields.totalMedianYds,
     roll,
@@ -300,14 +320,25 @@ export function shortBandFor(P, d, lie) {
   return null;
 }
 
-/** Brett's strokes gained per shot from `d` on `lie` (0 where he has no data). */
+/**
+ * Brett's strokes gained per shot from `d` on `lie`, or null where he has no data (no bucket, or a
+ * bucket without a measured sgPerShot). A measured 0 stays 0. E() puts the handicap prior in
+ * where this is null.
+ */
 export function personalSg(P, d, lie) {
-  if (d < 50) {
-    const band = shortBandFor(P, d, lie);
-    return band?.sgPerShot ?? 0;
-  }
-  const b = bucketFor(P, d, lie);
-  return b?.sgPerShot ?? 0;
+  const b = d < 50 ? shortBandFor(P, d, lie) : bucketFor(P, d, lie);
+  return b && Number.isFinite(b.sgPerShot) ? b.sgPerShot : null;
+}
+
+/**
+ * The handicap prior (integration item 2): HCP_BLEND × (J_90(d) − J_tour(d)) with both tee lines
+ * J = a + b·d from config HCP_LINE (Broadie 2012 / 2008). = 0.42 × (0.41 + 0.0025·d) by default.
+ */
+export function handicapPrior(cfg, d) {
+  const blend = cfg?.HCP_BLEND ?? 0;
+  const t = cfg?.HCP_LINE?.tour, n = cfg?.HCP_LINE?.ninety;
+  if (!blend || !t || !n) return 0;
+  return blend * ((n[0] - t[0]) + (n[1] - t[1]) * d);
 }
 
 /* ---------- §3.5 expected-value functions ---------- */
@@ -326,15 +357,20 @@ export function puttingGapAt(P, d, lie) {
   return Math.max(0, Eputt(P, prox) - baselinePutts(prox));
 }
 
-/** E(d, lie): baseline − Brett's SG per shot for the bucket + his putting gap at the typical leave. */
+/**
+ * E(d, lie): baseline − Brett's SG per shot for the bucket + his putting gap at the typical leave.
+ * No bucket → baseline + the handicap prior instead of the SG term. BASELINE_SCRATCH_OFFSET after.
+ */
 export function E(P, d, lie) {
   const l = lie === "trees" ? "recovery" : lie === "green" ? "fairway" : lie;
   const dr = Math.round(d);                       // 1-yd resolution is finer than any input; the
   const key = `${l}|${dr}`;                       // memo key and the value must use the same d
   const hit = P._E.get(key);
   if (hit !== undefined) return hit;
-  const base = baselineE(dr, l) + (P.config.BASELINE_SCRATCH_OFFSET || 0);
-  const v = base - personalSg(P, dr, l) + puttingGapAt(P, dr, l);
+  const sg = personalSg(P, dr, l);
+  const personal = sg == null ? handicapPrior(P.config, dr) : -sg;
+  const base = baselineE(dr, l) + personal + (P.config.BASELINE_SCRATCH_OFFSET || 0);
+  const v = base + puttingGapAt(P, dr, l);
   P._E.set(key, v);
   return v;
 }

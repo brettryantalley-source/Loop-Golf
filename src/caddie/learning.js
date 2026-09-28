@@ -22,7 +22,7 @@
  * them Loop learns bias and spread but not an absolute distance median.
  */
 
-import { DEFAULT_CONFIG, CLUB_FAMILY } from "./config.js";
+import { DEFAULT_CONFIG, CLUB_FAMILY, lieDistAdj } from "./config.js";
 import { carryFromTotal, _internal as profileInternal } from "./profile.js";
 
 /* ---------- local constants (not yet in config.js) ---------- */
@@ -585,7 +585,7 @@ export function applyShotLog(P, allShots, { now, roundIndexById } = {}, config) 
       const p = priors[f];
       if (!p || p.rank !== "adjacentLie" || p.lie === lie) continue;
       const factor = f === "totalMedianYds"
-        ? (1 + (cfg.LIE_DIST_ADJ?.[lie] ?? 0)) / (1 + (cfg.LIE_DIST_ADJ?.[p.lie] ?? 0))
+        ? (1 + lieDistAdj(cfg, lie, fam)) / (1 + lieDistAdj(cfg, p.lie, fam))   // per-family since the caddie-brain integration (item 7)
         : (cfg.LIE_SD_MULT?.[lie] ?? 1) / (cfg.LIE_SD_MULT?.[p.lie] ?? 1);
       if (factor !== 1) priors[f] = { ...p, value: p.value * factor, lieFactor: factor };
     }

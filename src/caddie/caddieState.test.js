@@ -429,7 +429,7 @@ test("club-brain: a straight synthetic hole of the entered length, no hazards, p
   const cold = clubBrainContext({ holeNo: 5, par: 4, shotNo: 1, tempF: 50 });
   assert.equal(cold.tempF, 50);
   const coldRes = recommend(cold, syn, P);
-  assert.equal(coldRes.context.tempYds, 3.0, "150 pin yds × 1%/10°F × 20°F = +3.0");
+  assert.equal(coldRes.context.tempYds, 2.55, "150 pin yds × 0.85%/10°F × 20°F = +2.55");
 });
 
 /* ---------- 27-hole courses (engine §6.4) ---------- */

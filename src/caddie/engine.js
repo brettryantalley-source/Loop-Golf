@@ -36,6 +36,7 @@ export function normalizeContext(ctx, hole) {
     wind: ctx.wind && ctx.wind.speedMph ? { speedMph: ctx.wind.speedMph, fromDeg: ctx.wind.fromDeg ?? 0 } : null,
     elevationDeltaYds: ctx.elevationDeltaYds ?? 0,
     tempF: Number.isFinite(ctx.tempF) ? ctx.tempF : null,   // §3.3 — no adjustment when unknown
+    elevFt: Number.isFinite(ctx.elevFt) ? ctx.elevFt : null, // ball altitude (ft); null → no altitude term
     // §5.5 within-round corrections, produced by learning.js (S5) and applied here, never stored:
     //   { distYds: { [family]: +n }   → plays-like shift (positive = the shot plays longer),
     //     aimYds:  { [family]: +n } } → lateral shift of every target (positive = right)
@@ -50,17 +51,31 @@ function bearing(a, b) {
   return Math.atan2(b.x - a.x, b.y - a.y) / DEG;
 }
 
+const WIND_DEFAULT = DEFAULT_CONFIG.WIND;
+
 /**
- * §3.3 wind: along-shot yards (positive = plays longer) and crosswind aim offset (positive = the
- * ball is pushed right). `fromDeg` is where the wind blows FROM in the hole frame.
+ * §3.3 wind (integration item 3): along-shot yards (positive = plays longer) and crosswind aim
+ * offset (positive = the ball is pushed right). `fromDeg` is where the wind blows FROM in the hole
+ * frame. `family` (long / mid / short / wedge) picks the loft multiplier; unknown → 1.
+ *   head loss % = (headPctPerMph + headCurve·h)·h·loftMult, ≤ headCap   (h = head component, mph)
+ *   tail gain % = (tailPctPerMph + tailCurve·t)·t·loftMult, ≤ tailCap   (t = tail component, mph)
+ *   cross yds   = crossPctPerMph·c·shotYds (× crossLongMult for the long family)
  */
-export function windEffect(wind, shotBearingDeg, shotYds, cfg) {
+export function windEffect(wind, shotBearingDeg, shotYds, cfg, family) {
   if (!wind) return { alongYds: 0, crossYds: 0, relative: "calm" };
+  const W = cfg?.WIND || WIND_DEFAULT;
   const rel = (wind.fromDeg - shotBearingDeg) * DEG;
   const head = wind.speedMph * Math.cos(rel);        // > 0 into the face
   const fromRight = wind.speedMph * Math.sin(rel);   // > 0 blowing from the right → pushes left
-  const alongYds = shotYds * (head > 0 ? cfg.HEAD_PCT * head : cfg.TAIL_PCT * head);
-  const crossYds = -fromRight * cfg.CROSS_YDS_PER_MPH_PER_100 * (shotYds / 100);
+  const loft = Number.isFinite(W.loftMult?.[family]) ? W.loftMult[family] : 1;
+  let alongPct;
+  if (head > 0) alongPct = Math.min(W.headCap ?? 0.5, Math.max(0, (W.headPctPerMph + W.headCurve * head) * head * loft));
+  else {
+    const t = -head;
+    alongPct = -Math.min(W.tailCap ?? 0.2, Math.max(0, (W.tailPctPerMph + W.tailCurve * t) * t * loft));
+  }
+  const alongYds = shotYds * alongPct;
+  const crossYds = -fromRight * W.crossPctPerMph * shotYds * (family === "long" ? (W.crossLongMult ?? 0.8) : 1);
   const eps = wind.speedMph * 0.05;
   const side = fromRight > eps ? "right" : fromRight < -eps ? "left" : "";
   const relative = Math.abs(head) < wind.speedMph * 0.38
@@ -77,11 +92,24 @@ function tempEffect(rawYds, tempF, cfg) {
   return Number.isFinite(tempF) ? rawYds * cfg.TEMP_PCT_PER_10F * (cfg.TEMP_REF_F - tempF) / 10 : 0;
 }
 
-/** Plays-like for a shot of `rawYds` in direction `bearingDeg` (§3.3, minus lie which lives in the entry). */
-export function playsLike(rawYds, bearingDeg, ctx, cfg) {
-  const w = windEffect(ctx.wind, bearingDeg, rawYds, cfg);
+/**
+ * Altitude (integration item 5): thinner air above REF_ELEV_FT carries farther, so the shot plays
+ * SHORTER (negative); below it plays longer. 0 when the ball's elevation is unknown.
+ */
+function altEffect(rawYds, elevFt, cfg) {
+  if (!Number.isFinite(elevFt)) return 0;
+  return -rawYds * (cfg.ALT_PCT_PER_1000FT ?? 0) * (elevFt - (cfg.REF_ELEV_FT ?? 0)) / 1000 || 0;   // no −0
+}
+
+/**
+ * Plays-like for a shot of `rawYds` in direction `bearingDeg` (§3.3, minus lie which lives in the
+ * entry). `family` scales the wind by loft; omitted (the headline number) → loft multiplier 1.
+ */
+export function playsLike(rawYds, bearingDeg, ctx, cfg, family) {
+  const w = windEffect(ctx.wind, bearingDeg, rawYds, cfg, family);
   const tempYds = tempEffect(rawYds, ctx.tempF, cfg);
-  return { yds: rawYds + ctx.elevationDeltaYds * cfg.ELEV_FACTOR + w.alongYds + tempYds, wind: w, tempYds };
+  const altYds = altEffect(rawYds, ctx.elevFt, cfg);
+  return { yds: rawYds + (ctx.elevationDeltaYds || 0) * cfg.ELEV_FACTOR + w.alongYds + tempYds + altYds, wind: w, tempYds, altYds };
 }
 
 /* ---------- candidates (§3.4, §3.7) ---------- */
@@ -95,11 +123,11 @@ function sameTarget(a, b, tol = 3) { return dist(a, b) <= tol; }
 function landingModel(entry, ball, target, ctx, cfg) {
   const b = bearing(ball, target);
   const raw = dist(ball, target);
-  const pl = playsLike(raw, b, ctx, cfg);
+  const pl = playsLike(raw, b, ctx, cfg, entry.family);
   const q = cfg.LIE_QUALITY[ctx.lieQuality] || cfg.LIE_QUALITY.standard;
   const nudgeDist = ctx.adjust?.distYds?.[entry.family] || 0;
   const mean = entry.carry + entry.biasDist + q.distYds - (pl.yds - raw) - nudgeDist;
-  const roll = ctx.conditions === "wet" ? 0 : entry.roll;
+  const roll = entry.roll;                               // ground conditions already applied (ROLL_COND_MULT)
   const dir = { x: Math.sin(b * DEG), y: Math.cos(b * DEG) };
   const perp = { x: dir.y, y: -dir.x };                // +x when heading up the hole → right
   // mean = carry (what a green-bound shot is judged on); total = where a fairway-bound shot stops.
@@ -108,8 +136,7 @@ function landingModel(entry, ball, target, ctx, cfg) {
 
 export function generateCandidates(ctx, hole, P) {
   const cfg = P.config;
-  const wet = ctx.conditions === "wet";
-  const entries = candidateEntries(P, ctx.lieType, { wet });
+  const entries = candidateEntries(P, ctx.lieType, { conditions: ctx.conditions });
   const center = hole.green.center;
   const g = greenDistances(hole, ctx.ball, ctx.pinPos);
   const pin = pinPoint(hole, ctx.ball, ctx.pinPos);
@@ -339,7 +366,7 @@ function formatOption(c, P, safeExp) {
 
 /**
  * recommend(ctx, hole, P) — spec §3.9.
- * ctx: { hole?, par?, shotNo, ball:{x,y}, lieType?, lieQuality?, conditions?, pinPos?, wind?, elevationDeltaYds?, tempF? }
+ * ctx: { hole?, par?, shotNo, ball:{x,y}, lieType?, lieQuality?, conditions?, pinPos?, wind?, elevationDeltaYds?, tempF?, elevFt? }
  * hole: a course.js Hole. P: a loaded profile (profile.js). Returns null when the ball is on the green.
  */
 export function recommend(rawCtx, hole, P) {
@@ -359,6 +386,7 @@ export function recommend(rawCtx, hole, P) {
     wind: ctx.wind ? { speedMph: ctx.wind.speedMph, relative: headline.wind.relative } : null,
     elevationDeltaYds: ctx.elevationDeltaYds,
     tempF: ctx.tempF, tempYds: r2(headline.tempYds),
+    elevFt: ctx.elevFt, altYds: r2(headline.altYds),
   };
   if (!cands.length) {
     return { context, sameShot: true, safe: null, aggressive: null, message: "No club in the profile reaches a useful target from here.", nudges: [], flags: [], candidates: 0 };

@@ -20,5 +20,5 @@ Brett, Sep 29). This file is the integration decision per item. Constants land i
 | 12 | Green speed drifts slower through the day; dew burns off 3–5 h after sunrise. | **Not built**: putting is out of the engine (spec §12). Recorded for the putting spec. | — |
 | 13 | Folklore list (humidity, "always club up from wet rough", "greens speed up as dew burns off", 3-wood for accuracy). | **Nothing to remove**: none of these are in the engine. | — |
 
-Version: engine-only change (v22.11) — the caddie's numbers move, the UI does not. Tests T1–T10
+Version: engine-only change, shipped as v22.10 (bundle rebuilt, no UI change) — the caddie's numbers move, the UI does not. Tests T1–T10
 must stay green with at most fixture-level retuning; any test that flips is a decision to record.
