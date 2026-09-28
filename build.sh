@@ -55,6 +55,12 @@ html = f"""<!doctype html>
 <link rel="manifest" href="./manifest.webmanifest" />
 <link rel="apple-touch-icon" href="./icon-512.png" />
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
+<!-- Fetch the faces the first screen needs up front. crossorigin is required even
+     same-origin for fonts, or the preload is discarded and fetched again. -->
+<link rel="preload" href="./fonts/bitter-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="./fonts/old-standard-tt-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="./fonts/reenie-beanie-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="./fonts/architects-daughter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
 <title>Loop</title>
 <style>
 /* Bundled, never fetched at runtime — the app must render identically offline. */

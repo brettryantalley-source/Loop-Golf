@@ -2,7 +2,7 @@
    The Hole View is parked (v21), so no new satellite tiles are cached. The existing
    tile store is deliberately KEPT, not deleted, so the feature can come back without
    a re-download; nothing reads it today. */
-const CACHE = 'loop-golf-v21-3';
+const CACHE = 'loop-golf-v21-4';
 const TILES = 'bogeyman-tiles-v1';          // survives app-version bumps; only its own name is kept below
 const SHELL = [
   './',
@@ -21,8 +21,12 @@ const SHELL = [
 const TILE_HOST = 'api.maptiler.com';
 
 self.addEventListener('install', (event) => {
+  // Per-entry, not addAll: addAll is all-or-nothing, so one flaky fetch on cellular
+  // aborted the whole install and left the shell — fonts included — uncached.
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      .then((cache) => Promise.all(SHELL.map((u) => cache.add(u).catch(() => null))))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -67,6 +71,14 @@ self.addEventListener('fetch', (event) => {
         }
         return res;
       })
-      .catch(() => caches.match(req).then((hit) => hit || caches.match('./index.html')))
+      .catch(() => caches.match(req).then((hit) => {
+        if (hit) return hit;
+        // Only a NAVIGATION may fall back to the shell. Handing index.html to a font,
+        // script or stylesheet request answers it with HTML: the browser rejects the
+        // bytes and silently drops to a fallback family, which reads on the phone as
+        // "the fonts changed". A real failure has to fail.
+        if (req.mode === 'navigate') return caches.match('./index.html');
+        return Response.error();
+      }))
   );
 });

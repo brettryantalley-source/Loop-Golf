@@ -50,8 +50,17 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 ## Design system (v21)
 - `src/theme.jsx` is the only place colours, type roles and rules are defined. Paper `#F4F0E4`,
   ink `#1E6B3A`, hairline, yellow, pencil, ghost-pencil — the full table is in `loop-design/SPEC.md`.
-- Fonts are BUNDLED in `fonts/` as woff2 and listed in the `sw.js` shell. Never load a webfont at
-  runtime; the app has to render identically with no signal.
+- Fonts are BUNDLED in `fonts/` as woff2, listed in the `sw.js` shell, and `<link rel="preload">`ed
+  (with `crossorigin`, which fonts need even same-origin). Never load a webfont at runtime; the app
+  has to render identically with no signal.
+- **The service worker must never answer a font, script or stylesheet with `index.html`.** The
+  offline shell fallback is scoped to `req.mode === 'navigate'`; anything else gets `Response.error()`.
+  Handing HTML to a font request makes the browser drop to a fallback family with no error, which
+  on the phone looks like the fonts changing by themselves. The install caches shell entries one by
+  one rather than with `addAll`, so one flaky fetch cannot leave the whole shell uncached.
+- The five faces are Bitter, Old Standard TT, Reenie Beanie, Architects Daughter — and Pinyon
+  Script, which does NOT ship as a font: the wordmark is outline paths in `theme.jsx`. Do not go
+  looking for a Pinyon woff2; there isn't one, and the render is identical.
 - The Pinyon Script wordmark is outline paths inside `theme.jsx`, not a font.
 - Anything "written" carries `filter: url(#pencil)`; a chosen-but-uncommitted score carries the
   `#soft` disc. Both filters are mounted once by `<PencilDefs />` at the app root.
