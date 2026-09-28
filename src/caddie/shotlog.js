@@ -179,7 +179,9 @@ function rightPerp(dir) {
  * distance along that line minus the intended distance (negative = short). `lateralMissYds` is the
  * signed perpendicular offset (negative = left). `onTarget` uses `DEFAULT_CONFIG.ON_TARGET`
  * (±distPct of the intended distance, ±carry·tan(latDeg) laterally — carry approximated by the
- * intended distance itself, since that's the shot Brett aimed).
+ * intended distance itself, since that's the shot Brett aimed). `intendedYds` / `actualYds` are the
+ * two raw distances behind that miss (start→target, and the actual distance along the target
+ * line) — src/caddie/learning.js reads these to learn an absolute distance median.
  */
 export function closeOutShot(prev, { endGps, endLie, endAccuracyM, endFrame } = {}, cfg = DEFAULT_CONFIG) {
   const end = {
@@ -191,7 +193,7 @@ export function closeOutShot(prev, { endGps, endLie, endAccuracyM, endFrame } = 
 
   const startFrame = prev.start?.frame;
   const targetFrame = prev.target?.frame;
-  let derived = { distanceMissYds: null, lateralMissYds: null, onTarget: null };
+  let derived = { distanceMissYds: null, lateralMissYds: null, onTarget: null, intendedYds: null, actualYds: null };
 
   if (startFrame && targetFrame && endFrame) {
     const tv = { x: targetFrame.x - startFrame.x, y: targetFrame.y - startFrame.y };
@@ -204,10 +206,12 @@ export function closeOutShot(prev, { endGps, endLie, endAccuracyM, endFrame } = 
       const lat = v.x * perp.x + v.y * perp.y;
       const distanceMissYds = round1(along - intendedDistance);
       const lateralMissYds = round1(lat);
+      const intendedYds = round1(intendedDistance);
+      const actualYds = round1(along);
       const distTol = cfg.ON_TARGET.distPct * intendedDistance;
       const latTol = intendedDistance * Math.tan(cfg.ON_TARGET.latDeg * DEG);
       const onTarget = Math.abs(distanceMissYds) <= distTol && Math.abs(lateralMissYds) <= latTol;
-      derived = { distanceMissYds, lateralMissYds, onTarget };
+      derived = { distanceMissYds, lateralMissYds, onTarget, intendedYds, actualYds };
     }
   }
 

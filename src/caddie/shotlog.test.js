@@ -139,6 +139,8 @@ test("T18 auto-derive: closeOutShot fills end + derived (matches the §4.6 worke
   assert.equal(closed.derived.distanceMissYds, -6);
   assert.equal(closed.derived.lateralMissYds, 3);
   assert.equal(closed.derived.onTarget, true);
+  assert.equal(closed.derived.intendedYds, 238);   // start -> target
+  assert.equal(closed.derived.actualYds, 232);     // intendedYds + distanceMissYds
   // closeOutShot must not mutate its input
   assert.equal(prev.end, null);
 });

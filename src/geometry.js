@@ -4,6 +4,10 @@
  * Pure functions, no DOM. Points are { lat, lon } in degrees. Distances come
  * back in yards unless the name says metres. Overpass (OpenStreetMap) is used
  * for GEOMETRY ONLY — par and stroke index stay with golfcourseapi.
+ *
+ * S2 (Sep 28): parseOverpass also returns fairways, tees, rough, trees (natural=wood /
+ * landuse=forest) and the leisure=golf_course boundary, each tagged with the holes it belongs
+ * to. src/caddie/geo.js projects all of it into the engine's hole frame.
  */
 
 export const YARDS_PER_METER = 1.0936133;
@@ -115,44 +119,180 @@ export function greenDistances(player, green) {
 
 /* ---------- Overpass ---------- */
 
-/** Spec §4.1 query for a course anchored at lat/lon: bbox = anchor ± 0.015° lat / ± 0.02° lon. */
+/**
+ * Spec §4.1 / caddie spec §6.1 query for a course anchored at lat/lon: bbox = anchor ± 0.015° lat /
+ * ± 0.02° lon. `out geom` (no bbox argument) returns every selected way's FULL geometry, so a
+ * course boundary or a wood that only crosses the bbox still comes back whole.
+ * Tag conventions assumed from the OSM wiki (verify): golf=hole ways run tee → green; greens,
+ * bunkers, tees, fairways, rough and water hazards are closed ways or multipolygon relations.
+ */
 export function overpassQuery(lat, lon, dLat = 0.015, dLon = 0.02) {
   const bbox = `${(lat - dLat).toFixed(6)},${(lon - dLon).toFixed(6)},${(lat + dLat).toFixed(6)},${(lon + dLon).toFixed(6)}`;
   return `[out:json][timeout:25];
 (
   way["golf"~"^(hole|green|bunker|fairway|tee|water_hazard|lateral_water_hazard|out_of_bounds)$"](${bbox});
+  way["golf"="rough"](${bbox});
   way["natural"="water"](${bbox});
-  relation["golf"~"^(green|bunker|water_hazard|lateral_water_hazard)$"](${bbox});
+  way["natural"="wood"](${bbox});
+  way["landuse"="forest"](${bbox});
+  way["leisure"="golf_course"](${bbox});
+  relation["golf"~"^(green|bunker|water_hazard|lateral_water_hazard|fairway|tee|rough)$"](${bbox});
+  relation["natural"~"^(water|wood)$"](${bbox});
+  relation["landuse"="forest"](${bbox});
+  relation["leisure"="golf_course"](${bbox});
 );
 out geom;`;
 }
 
 const TROUBLE_KINDS = new Set(["bunker", "water_hazard", "lateral_water_hazard", "out_of_bounds", "water"]);
 const GREEN_MATCH_M = 40;
+/** A fairway / tee / rough / trees / hazard polygon within this of a hole's centreline (or green) belongs to it. */
+export const FEATURE_MATCH_M = 40;
+/** Bump when the parsed / cached shape changes; loaders re-fetch anything older. */
+export const GEOMETRY_SCHEMA = 2;
 
-function ringOf(el) {
-  if (el.type === "way" && Array.isArray(el.geometry)) return el.geometry.map((g) => ({ lat: g.lat, lon: g.lon }));
-  if (el.type === "relation" && Array.isArray(el.members)) {
-    const outer = el.members.find((m) => m.role === "outer" && Array.isArray(m.geometry));
-    if (outer) return outer.geometry.map((g) => ({ lat: g.lat, lon: g.lon }));
+const samePt = (a, b) => a && b && a.lat === b.lat && a.lon === b.lon;
+const ptsOf = (geom) => (Array.isArray(geom) ? geom.filter(Boolean).map((g) => ({ lat: g.lat, lon: g.lon })) : []);
+
+/** Join member ways end-to-end into rings (multipolygon outers are often split across several ways). */
+function stitch(segments) {
+  const pool = segments.filter((s) => s.length >= 2).map((s) => s.slice());
+  const rings = [];
+  while (pool.length) {
+    let cur = pool.shift();
+    for (let guard = 0; !samePt(cur[0], cur[cur.length - 1]) && guard < 10000; guard++) {
+      const end = cur[cur.length - 1];
+      const i = pool.findIndex((s) => samePt(s[0], end) || samePt(s[s.length - 1], end));
+      if (i < 0) break;
+      const seg = pool.splice(i, 1)[0];
+      cur = cur.concat((samePt(seg[0], end) ? seg : seg.slice().reverse()).slice(1));
+    }
+    rings.push(cur);
   }
-  return null;
+  return rings;
+}
+
+/** { outers, inners } for a way (one outer, no inners) or a multipolygon relation (stitched). */
+function ringsOf(el) {
+  if (el.type === "way" && Array.isArray(el.geometry)) return { outers: [ptsOf(el.geometry)], inners: [] };
+  if (el.type === "relation" && Array.isArray(el.members)) {
+    const role = (r) => el.members.filter((m) => m.type !== "node" && (m.role || "outer") === r && Array.isArray(m.geometry)).map((m) => ptsOf(m.geometry));
+    return { outers: stitch(role("outer")), inners: stitch(role("inner")) };
+  }
+  return { outers: [], inners: [] };
+}
+
+/** The element's main ring: the way itself, or a relation's largest stitched outer. */
+function ringOf(el) {
+  const { outers } = ringsOf(el);
+  if (!outers.length) return null;
+  return outers.reduce((a, b) => (b.length > a.length ? b : a));
 }
 const isClosed = (ring) => ring.length >= 4 && ring[0].lat === ring[ring.length - 1].lat && ring[0].lon === ring[ring.length - 1].lon;
 const dropClose = (ring) => (isClosed(ring) ? ring.slice(0, -1) : ring);
 
+/** fairway | tee | rough | trees | null — the S2 feature kinds (golf=* wins over natural / landuse). */
+function featureKind(tags) {
+  if (tags.golf === "fairway" || tags.golf === "tee" || tags.golf === "rough") return tags.golf;
+  if (tags.golf) return null;
+  if (tags.natural === "wood" || tags.landuse === "forest") return "trees";
+  return null;
+}
+
+/* Planar helpers in metres around a point (course scale). */
+function segDistM(p, a, b) {
+  const A = toXY(p, a), B = toXY(p, b);
+  const vx = B.x - A.x, vy = B.y - A.y, l2 = vx * vx + vy * vy;
+  const t = l2 === 0 ? 0 : Math.max(0, Math.min(1, -(A.x * vx + A.y * vy) / l2));
+  return Math.hypot(A.x + t * vx, A.y + t * vy);
+}
+/** Metres from p to the nearest point of a polyline (closed = treat as a ring's edges). */
+export function distToPolylineM(p, pts, closed = false) {
+  if (!pts || !pts.length) return Infinity;
+  if (pts.length === 1) return haversineM(p, pts[0]);
+  let best = Infinity;
+  const n = closed ? pts.length : pts.length - 1;
+  for (let i = 0; i < n; i++) best = Math.min(best, segDistM(p, pts[i], pts[(i + 1) % pts.length]));
+  return best;
+}
+/** Metres from p to a ring (0 inside). */
+export function distToRingM(p, ring) {
+  return pointInRing(p, ring) ? 0 : distToPolylineM(p, ring, true);
+}
+/** Points along a polyline every `stepM` metres (always includes every vertex). */
+export function sampleLine(line, stepM = 10) {
+  const out = [];
+  for (let i = 0; i < line.length - 1; i++) {
+    const a = line[i], b = line[i + 1];
+    const n = Math.max(1, Math.ceil(haversineM(a, b) / stepM));
+    for (let k = 0; k < n; k++) out.push({ lat: a.lat + ((b.lat - a.lat) * k) / n, lon: a.lon + ((b.lon - a.lon) * k) / n });
+  }
+  if (line.length) out.push(line[line.length - 1]);
+  return out;
+}
+/** Lat/lon bounding box of points. */
+function bboxLL(pts) {
+  let s = Infinity, n = -Infinity, w = Infinity, e = -Infinity;
+  for (const p of pts) { if (p.lat < s) s = p.lat; if (p.lat > n) n = p.lat; if (p.lon < w) w = p.lon; if (p.lon > e) e = p.lon; }
+  return { s, n, w, e };
+}
+/** True when two boxes are more than `m` metres apart (a cheap reject before the exact distance). */
+function bboxApart(a, b, m) {
+  const dLat = Math.max(0, a.s - b.n, b.s - a.n) * (Math.PI / 180) * R_EARTH;
+  const k = Math.cos(rad((a.s + a.n) / 2));
+  const dLon = Math.max(0, a.w - b.e, b.w - a.e) * (Math.PI / 180) * R_EARTH * k;
+  return Math.hypot(dLat, dLon) > m;
+}
+
+/** Metres between a ring and a set of line samples: 0 when any sample is inside the ring. */
+function ringToSamplesM(ring, samples) {
+  let best = Infinity;
+  for (const s of samples) {
+    const d = distToRingM(s, ring);
+    if (d < best) best = d;
+    if (best === 0) break;
+  }
+  return best;
+}
+
 /**
  * Parse an Overpass `out geom` payload into per-hole geometry.
- * Returns { holes: { [ref]: { ref, line, teeEnd, greenEnd, green: {center, ring} | null } },
- *           greens: [{center, ring, holeRefs}], trouble: [{kind, ring, center}], warnings: [] }.
+ * Returns { schema,
+ *           holes: { [key]: { key, ref, par, name, line, teeEnd, greenEnd, green: {center, ring} | null } },
+ *           greens: [{center, ring, holeRefs}],
+ *           trouble: [{kind, ring, center, holeRefs}],                      // bunker / water / OB
+ *           features: [{kind: fairway|tee|rough|trees, ring, inner, center, holeRefs}],
+ *           boundary: { ring, rings, name } | null,                          // leisure=golf_course
+ *           warnings: [] }.
+ * `key` is the numeric ref, except that a repeated ref (27-hole clubs numbered 1–9 per nine) keys
+ * its later ways as "ref@osmId" instead of overwriting the first.
  * A green is assigned to a hole when the centreline's last node is inside it, else the nearest
  * green centroid within 40 m. Greens matching no hole are reported in `warnings`.
+ * Other features: containment of the centreline first, then the nearest centreline within
+ * FEATURE_MATCH_M (tees: the one nearest; trees and hazards: every hole that close), else they
+ * stay course-level (holeRefs = []).
  */
 export function parseOverpass(json) {
   const els = Array.isArray(json?.elements) ? json.elements : [];
-  const holes = {}, greens = [], trouble = [], warnings = [];
+  const holes = {}, greens = [], trouble = [], features = [], courses = [], warnings = [];
   for (const el of els) {
     const tags = el.tags || {};
+    const fk = featureKind(tags);
+    if (fk) {
+      const { outers, inners } = ringsOf(el);
+      for (const o of outers) {
+        const r = dropClose(o);
+        if (r.length < 3) continue;
+        const inner = inners.map(dropClose).filter((q) => q.length >= 3 && pointInRing(q[0], r));
+        features.push({ kind: fk, ring: r, inner, center: centroid(r), holeRefs: [], osmId: el.id });
+      }
+      continue;
+    }
+    if (!tags.golf && tags.leisure === "golf_course") {
+      const rings = ringsOf(el).outers.map(dropClose).filter((q) => q.length >= 3);
+      if (rings.length) courses.push({ rings, name: tags.name || null, osmId: el.id });
+      continue;
+    }
     const kind = tags.golf || (tags.natural === "water" ? "water" : null);
     if (!kind) continue;
     const ring = ringOf(el);
@@ -161,17 +301,20 @@ export function parseOverpass(json) {
       const ref = parseInt(tags.ref, 10);
       if (!Number.isInteger(ref)) { warnings.push(`hole way ${el.id} has no numeric ref`); continue; }
       if (ring.length < 2) { warnings.push(`hole ${ref} centreline has fewer than 2 nodes`); continue; }
-      holes[ref] = { ref, line: ring, teeEnd: ring[0], greenEnd: ring[ring.length - 1], green: null, osmId: el.id };
+      let key = ref;
+      if (holes[ref]) { key = `${ref}@${el.id}`; warnings.push(`hole ref ${ref} appears more than once (way ${el.id} kept as "${key}")`); }
+      const par = parseInt(tags.par, 10);
+      holes[key] = { key, ref, par: Number.isInteger(par) ? par : null, name: tags.name || null, line: ring, teeEnd: ring[0], greenEnd: ring[ring.length - 1], green: null, osmId: el.id };
     } else if (kind === "green") {
       const r = dropClose(ring);
       if (r.length >= 3) greens.push({ ring: r, center: centroid(r), holeRefs: [], osmId: el.id });
     } else if (TROUBLE_KINDS.has(kind)) {
       const r = dropClose(ring);
-      if (r.length >= 3) trouble.push({ kind, ring: r, center: centroid(r), osmId: el.id });
+      if (r.length >= 3) trouble.push({ kind, ring: r, center: centroid(r), holeRefs: [], osmId: el.id });
     }
-    // tee / fairway are not needed yet; ignored on purpose.
   }
-  for (const h of Object.values(holes)) {
+  const holeList = Object.values(holes);
+  for (const h of holeList) {
     let best = greens.find((g) => pointInRing(h.greenEnd, g.ring)) || null;
     if (!best) {
       let bestD = Infinity;
@@ -181,10 +324,60 @@ export function parseOverpass(json) {
       }
       if (bestD > GREEN_MATCH_M) { warnings.push(`hole ${h.ref}: no green within ${GREEN_MATCH_M} m of the centreline end (nearest ${Math.round(bestD)} m)`); best = null; }
     }
-    if (best) { h.green = { center: best.center, ring: best.ring }; best.holeRefs.push(h.ref); }
+    if (best) { h.green = { center: best.center, ring: best.ring }; best.holeRefs.push(h.key); }
   }
   for (const g of greens) if (g.holeRefs.length === 0) warnings.push(`green ${g.osmId} matched no hole`);
-  return { holes, greens, trouble, warnings };
+
+  /* ---- S2: fairway / tee / rough / trees / hazards → holes ---- */
+  const samples = new Map(holeList.map((h) => [h.key, sampleLine(h.line, 10)]));
+  const hBox = new Map(holeList.map((h) => [h.key, bboxLL([...h.line, ...(h.green?.ring || [])])]));
+  const lineDist = (ring, fb = bboxLL(ring)) => holeList.map((h) => ({ h, d: bboxApart(fb, hBox.get(h.key), FEATURE_MATCH_M) ? Infinity : ringToSamplesM(ring, samples.get(h.key)) }));
+  for (const f of features) {
+    if (f.kind === "tee") {
+      const inside = holeList.filter((h) => pointInRing(h.teeEnd, f.ring));
+      if (inside.length) { f.holeRefs = inside.map((h) => h.key); continue; }
+      let best = null;
+      for (const h of holeList) { const d = distToPolylineM(f.center, h.line); if (d <= FEATURE_MATCH_M && (!best || d < best.d)) best = { h, d }; }
+      if (best) f.holeRefs = [best.h.key];
+      continue;
+    }
+    const ds = lineDist(f.ring);
+    const inside = ds.filter((x) => x.d === 0);
+    if (f.kind === "trees") { f.holeRefs = ds.filter((x) => x.d <= FEATURE_MATCH_M).map((x) => x.h.key); continue; }
+    if (inside.length) { f.holeRefs = inside.map((x) => x.h.key); continue; }
+    const near = ds.filter((x) => x.d <= FEATURE_MATCH_M).sort((a, b) => a.d - b.d);
+    if (near.length) f.holeRefs = [near[0].h.key];
+  }
+  for (const t of trouble) {
+    const tb = bboxLL(t.ring);
+    t.holeRefs = holeList.filter((h) => {
+      if (bboxApart(tb, hBox.get(h.key), FEATURE_MATCH_M)) return false;
+      if (ringToSamplesM(t.ring, samples.get(h.key)) <= FEATURE_MATCH_M) return true;
+      return h.green ? t.ring.some((p) => distToRingM(p, h.green.ring) <= FEATURE_MATCH_M) : false;
+    }).map((h) => h.key);
+  }
+
+  /* ---- the course boundary: the leisure=golf_course polygon holding the most hole ends ---- */
+  let boundary = null, bestCount = 0;
+  for (const c of courses) {
+    const count = holeList.reduce((n, h) => n + c.rings.some((r) => pointInRing(h.teeEnd, r)) + c.rings.some((r) => pointInRing(h.greenEnd, r)), 0);
+    if (count > bestCount) { bestCount = count; boundary = { ring: c.rings.reduce((a, b) => (b.length > a.length ? b : a)), rings: c.rings, name: c.name, osmId: c.osmId }; }
+  }
+  if (!boundary) warnings.push(courses.length ? "no leisure=golf_course polygon contains the holes — OB off" : "no leisure=golf_course boundary — OB off");
+  return { schema: GEOMETRY_SCHEMA, holes, greens, trouble, features, boundary, warnings };
+}
+
+/** The features assigned to one hole (by key), lat/lon rings. Works on parsed or compact geometry. */
+export function featuresForHole(geo, key) {
+  const has = (x) => (x.holeRefs || []).some((r) => String(r) === String(key));
+  const fs = (geo?.features || []).filter(has);
+  return {
+    fairways: fs.filter((f) => f.kind === "fairway"),
+    tees: fs.filter((f) => f.kind === "tee"),
+    roughs: fs.filter((f) => f.kind === "rough"),
+    trees: fs.filter((f) => f.kind === "trees"),
+    hazards: (geo?.trouble || []).filter(has),
+  };
 }
 
 /* The public instance rate-limits by IP (429 seen Sep 19 2026 after a handful of pulls). lz4 is the
@@ -297,9 +490,18 @@ export function tilesForBbox(bbox, zooms) {
   return out;
 }
 
-/** Serialise a parsed geometry for localStorage — small, no OSM ids needed. */
+/** Serialise a parsed geometry for localStorage — small, no OSM ids needed. Idempotent. */
 export function compactGeometry(geo) {
   const holes = {};
-  for (const [ref, h] of Object.entries(geo.holes)) holes[ref] = { ref: h.ref, line: h.line, green: h.green };
-  return { holes, trouble: geo.trouble.map((t) => ({ kind: t.kind, ring: t.ring })), warnings: geo.warnings };
+  for (const [key, h] of Object.entries(geo.holes)) holes[key] = { key: h.key ?? h.ref, ref: h.ref, par: h.par ?? null, name: h.name ?? null, line: h.line, green: h.green };
+  const refs = (x) => (x.holeRefs || []).slice();
+  return {
+    schema: GEOMETRY_SCHEMA,
+    holes,
+    greens: (geo.greens || []).map((g) => ({ ring: g.ring, center: g.center, holeRefs: refs(g) })),
+    trouble: geo.trouble.map((t) => ({ kind: t.kind, ring: t.ring, holeRefs: refs(t) })),
+    features: (geo.features || []).map((f) => ({ kind: f.kind, ring: f.ring, inner: f.inner || [], holeRefs: refs(f) })),
+    boundary: geo.boundary ? { ring: geo.boundary.ring, rings: geo.boundary.rings || [geo.boundary.ring], name: geo.boundary.name ?? null } : null,
+    warnings: geo.warnings,
+  };
 }
