@@ -22,10 +22,11 @@ import {
   holeFrame, frameOf, buildHole, inferLie, overrideAt, distances, clampToGreen, pinFromTap, detectHole,
   needsNineMap, saveNineMap, loadNineMap, nineMapPromptNeeded, nineMapKey, holeKeyFor, playingOrder,
   nineMapCandidates, coverageCheck, geoCacheKey, saveGeometryCache, loadGeometryCache,
+  nineMapFromRouting, playFromRouting, ninesAssociation, guessPlay,
 } from "./geo.js";
 import {
   fetchWeather, parseWeather, weatherUrl, weatherRefreshDue, conditionsFrom, fetchElevationSamples,
-  elevationUrl, interpolateElevation, elevationDeltaYds, elevationSamplePoints, WEATHER_REFRESH_MS,
+  elevationUrl, interpolateElevation, elevationDeltaYds, elevationSamplePoints, WEATHER_REFRESH_MS, weatherTempF,
 } from "./sensors.js";
 import { assembleShotContext, windToHoleFrame, chipWind, parseLieChip, frameBearing } from "./context.js";
 import { classify, pointInRing, dist } from "./course.js";
@@ -390,6 +391,83 @@ test("T15 Nine mapping: a mapping saved once is reused; no prompt on the second 
   assert.equal(loadNineMap(store, "junk"), null);
 });
 
+/* ---------- v22.7 nine map from the chosen routing ---------- */
+
+/* 27 OSM holes: refs 1–27 (numbered), or refs 1–9 per nine with names like "Ridge 4" (named). */
+function club27({ numbered = false, names = null } = {}) {
+  const els = [];
+  for (let n = 0; n < 3; n++) for (let r = 1; r <= 9; r++) {
+    const t = at(n * 1500 + r * 40, 900), e = destination(t, 0, 300);
+    const tags = { golf: "hole", ref: String(numbered ? n * 9 + r : r) };
+    if (names) tags.name = `${names[n]} ${r}`;
+    els.push({ type: "way", id: 100 * n + r, tags, geometry: g([t, e]) });
+    els.push(way({ golf: "green" }, [destination(e, 0, 12), destination(e, 90, 12), destination(e, 180, 12), destination(e, 270, 12)]));
+  }
+  return parseOverpass({ elements: els });
+}
+const keyOfOsm = (geo, osmId) => Object.values(geo.holes).find((h) => h.osmId === osmId)?.key ?? Object.keys(geo.holes).find((k) => geo.holes[k].osmId === osmId);
+
+test("nineMapFromRouting: OSM refs 1–27 → nines 1/2/3; a 27-hole-tee routing (1 / 3) plays nine 1 then nine 3", () => {
+  const geo = club27({ numbered: true });
+  assert.equal(needsNineMap(geo), true);
+  const m = nineMapFromRouting(geo, { play: ["1", "3"], club: ["1", "2", "3"], ordered: true });
+  assert.ok(m, "confident");
+  assert.deepEqual(m._play, ["1", "3"]);
+  assert.deepEqual(m["1"], { nine: "1", hole: 1 });
+  assert.deepEqual(m["14"], { nine: "2", hole: 5 });
+  assert.deepEqual(m["27"], { nine: "3", hole: 9 });
+  const order = Array.from({ length: 18 }, (_, i) => holeKeyFor(m, m._play[i < 9 ? 0 : 1], (i % 9) + 1));
+  assert.deepEqual(order, ["1", "2", "3", "4", "5", "6", "7", "8", "9", "19", "20", "21", "22", "23", "24", "25", "26", "27"]);
+  // the API named its nines and they are in OSM order → the names map to 1/2/3 by position
+  const named = nineMapFromRouting(geo, { play: ["Lakes", "Ridge"], club: ["Ridge", "Valley", "Lakes"], ordered: true });
+  assert.deepEqual(named._play, ["3", "1"]);
+  assert.deepEqual(named._nines, { Ridge: "1", Valley: "2", Lakes: "3" });
+  // word nines from course_name on a 1–27 map: which number is "Village"? Not confident.
+  assert.equal(nineMapFromRouting(geo, { play: ["Village", "School"], club: ["Village", "School", "Mill"], ordered: false }), null);
+  // a hole missing from a played nine → not confident
+  const cut = compactGeometry(geo); delete cut.holes["22"];
+  assert.equal(nineMapFromRouting(cut, { play: ["1", "3"], club: ["1", "2", "3"], ordered: true }), null);
+  assert.ok(nineMapFromRouting(cut, { play: ["1", "2"], club: ["1", "2", "3"], ordered: true }), "the unplayed nine may have gaps");
+});
+
+test("nineMapFromRouting: OSM hole names carrying the nine words → those nines, labelled 1/2/3 with _nines", () => {
+  const geo = club27({ names: ["Village", "School", "Mill"] });
+  const routing = { play: ["Mill", "School"], club: ["Village", "School", "Mill"], ordered: false };
+  const m = nineMapFromRouting(geo, routing);
+  assert.ok(m, "confident");
+  assert.deepEqual(m._nines, { Village: "1", School: "2", Mill: "3" });
+  assert.deepEqual(m._play, ["3", "2"], "Mill first, then School");
+  const mill4 = keyOfOsm(geo, 204), school9 = keyOfOsm(geo, 109);
+  assert.deepEqual(m[mill4], { nine: "3", hole: 4 });
+  assert.deepEqual(m[school9], { nine: "2", hole: 9 });
+  assert.equal(holeKeyFor(m, m._play[0], 4), mill4, "scorecard hole 4 = Mill 4");
+  assert.equal(holeKeyFor(m, m._play[1], 9), school9, "scorecard hole 18 = School 9");
+  // a later round on another routing of the same club reads its own _play off _nines
+  assert.deepEqual(playFromRouting(m, { play: ["Village", "Mill"], club: routing.club }), ["1", "3"]);
+  assert.deepEqual(playFromRouting(m, "School / Village"), ["2", "1"], "a label string works too");
+  // case-insensitive word match, not substring: "Millbrook 3" is not Mill
+  const geo2 = club27({ names: ["village", "SCHOOL", "Millbrook"] });
+  assert.equal(nineMapFromRouting(geo2, routing), null);
+});
+
+test("nineMapFromRouting: no match → null (the screen asks, pre-selected)", () => {
+  const plain = club27();                                   // refs 1–9 three times, no names
+  assert.equal(nineMapFromRouting(plain, { play: ["Village", "School"], club: ["Village", "School", "Mill"] }), null);
+  assert.equal(nineMapFromRouting(plain, { play: ["1", "2"], club: ["1", "2", "3"], ordered: true }), null, "which ref-1 is nine 1? unknown");
+  assert.equal(nineMapFromRouting(club27({ names: ["Ridge", "Valley", "Lakes"] }), { play: ["Village", "School"], club: ["Village", "School", "Mill"] }), null, "names that aren't this club's nines");
+  assert.equal(nineMapFromRouting(plain, null), null);
+  assert.equal(nineMapFromRouting(plain, { play: ["A", "A"] }), null);
+  assert.equal(nineMapFromRouting({ holes: {} }, "1 / 2"), null);
+  // what the screen is pre-set to instead
+  assert.deepEqual(guessPlay({ play: ["Mill", "School"], club: ["Village", "School", "Mill"] }), ["3", "2"]);
+  assert.deepEqual(guessPlay({ play: ["2", "3"], club: ["1", "2", "3"] }), ["2", "3"]);
+  assert.deepEqual(guessPlay(null), ["1", "2"]);
+  // …and what saving it records: the two nines chosen, the third by elimination
+  assert.deepEqual(ninesAssociation(["2", "1"], { play: ["Village", "School"], club: ["Village", "School", "Mill"] }), { Village: "2", School: "1", Mill: "3" });
+  assert.equal(ninesAssociation(["1", "2"], { play: ["1", "2"] }), null, "numbered nines need no names");
+  assert.equal(playFromRouting({ _play: ["1", "2"] }, { play: ["Village", "School"] }), null, "an old map without names can't say");
+});
+
 /* ---------- coverage ---------- */
 
 test("coverageCheck on the real Hampton fixture: complete (18/18 holes with way + green), 2 orphan practice greens", () => {
@@ -427,14 +505,14 @@ test("geometry cache: bogeyman-matches:geo:v1:{apiId}, compact + elevation; an o
 /* ---------- sensors ---------- */
 
 const NOW = Date.UTC(2026, 8, 28, 15, 0, 0);
-function forecastFixture({ rainPerHour = 0.3, speed = 11.4, dir = 250 } = {}) {
+function forecastFixture({ rainPerHour = 0.3, speed = 11.4, dir = 250, temp = 58.2 } = {}) {
   const cur = NOW / 1000;
   const time = [], precipitation = [];
   for (let t = cur - 39 * 3600; t <= cur + 8 * 3600; t += 3600) { time.push(t); precipitation.push(rainPerHour); }
   return {
     latitude: 34.3, longitude: -84.06, utc_offset_seconds: 0,
-    current_units: { time: "unixtime", interval: "seconds", wind_speed_10m: "mph", wind_direction_10m: "°", precipitation: "mm" },
-    current: { time: cur, interval: 900, wind_speed_10m: speed, wind_direction_10m: dir, precipitation: 0 },
+    current_units: { time: "unixtime", interval: "seconds", wind_speed_10m: "mph", wind_direction_10m: "°", precipitation: "mm", temperature_2m: "°F" },
+    current: { time: cur, interval: 900, wind_speed_10m: speed, wind_direction_10m: dir, precipitation: 0, temperature_2m: temp },
     hourly_units: { time: "unixtime", precipitation: "mm" },
     hourly: { time, precipitation },
   };
@@ -445,19 +523,24 @@ test("fetchWeather: documented URL, parses wind + 24 h rain; a failure hands bac
   const ok = async (url) => { seen = url; return { ok: true, json: async () => forecastFixture() }; };
   const w = await fetchWeather(34.301726, -84.060013, ok, { now: NOW });
   assert.match(seen, /^https:\/\/api\.open-meteo\.com\/v1\/forecast\?latitude=34\.30173&longitude=-84\.06001/);
-  for (const p of ["current=wind_speed_10m,wind_direction_10m,precipitation", "hourly=precipitation", "past_days=1", "wind_speed_unit=mph", "timeformat=unixtime"]) assert.ok(seen.includes(p), p);
+  // conditions v2 (item 11): one call — hourly block sized by past_hours=24, daily block by past_days=5
+  for (const p of ["current=wind_speed_10m,wind_direction_10m,precipitation", "hourly=precipitation", "past_hours=24", "wind_speed_unit=mph", "timeformat=unixtime",
+    "dew_point_2m", "cloud_cover", "daily=precipitation_sum,temperature_2m_max,sunrise", "past_days=5", "timezone=auto"]) assert.ok(seen.includes(p), p);
   assert.equal(w.speedMph, 11.4);
   assert.equal(w.dirDeg, 250);
   near(w.rainMm24h, 24 * 0.3, 1e-9, "24 hourly totals ending at the current time");
+  assert.equal(w.tempF, 58.2);
   assert.equal(w.asOf, NOW);
   assert.equal(w.stale, false);
   const down = await fetchWeather(34.3, -84.06, async () => ({ ok: false, status: 429 }), { last: w, now: NOW + 60000 });
   assert.equal(down.stale, true);
   assert.equal(down.speedMph, 11.4);
+  assert.equal(down.tempF, 58.2, "a failed refresh keeps the last known temperature, marked stale");
   assert.equal(down.asOf, NOW, "keeps the as-of time of the value it is showing");
   assert.match(down.error, /429/);
   const none = await fetchWeather(34.3, -84.06, async () => { throw new TypeError("Failed to fetch"); });
   assert.equal(none.speedMph, null);
+  assert.equal(none.tempF, null);
   assert.equal(none.stale, true);
   const junk = await fetchWeather(34.3, -84.06, async () => ({ ok: true, json: async () => ({ error: true, reason: "bad" }) }));
   assert.equal(junk.stale, true);
@@ -470,6 +553,18 @@ test("fetchWeather: documented URL, parses wind + 24 h rain; a failure hands bac
   iso.hourly.time = iso.hourly.time.map((t) => new Date(t * 1000).toISOString().slice(0, 16));
   near(parseWeather(iso, NOW).rainMm24h, 7.2, 1e-9);
   assert.equal(weatherUrl(1, 2).includes("forecast_days=1"), true);
+  assert.match(weatherUrl(1, 2), /temperature_2m/);
+  assert.match(weatherUrl(1, 2), /temperature_unit=fahrenheit/);
+  const noTemp = forecastFixture();
+  delete noTemp.current.temperature_2m;
+  assert.equal(parseWeather(noTemp, NOW).tempF, null, "absent temperature parses to null, never a default");
+});
+
+test("weatherTempF: only a fresh, finite reading prices the temperature term — never stale, never absent", () => {
+  assert.equal(weatherTempF(null), null);
+  assert.equal(weatherTempF({ tempF: 58.2, stale: false }), 58.2);
+  assert.equal(weatherTempF({ tempF: 58.2, stale: true }), null, "stale weather never contributes a temperature term");
+  assert.equal(weatherTempF({ tempF: null, stale: false }), null);
 });
 
 test("weatherRefreshDue: 15-minute rule (§6.5), on the tee tap", () => {
@@ -480,13 +575,121 @@ test("weatherRefreshDue: 15-minute rule (§6.5), on the tee tap", () => {
   assert.equal(weatherRefreshDue(new Date(NOW - 60000).toISOString(), new Date(NOW)), false);
 });
 
-test("conditionsFrom: wet when 24 h rain ≥ config.WET_RAIN_MM_24H, else normal", () => {
-  assert.equal(DEFAULT_CONFIG.WET_RAIN_MM_24H, 5);
-  assert.equal(conditionsFrom({ rainMm24h: 5 }), "wet");
-  assert.equal(conditionsFrom({ rainMm24h: 4.9 }), "normal");
+test("conditionsFrom: rain rule — wet at ≥ 10 mm / 24 h or ≥ 5 mm / 12 h (v2 thresholds, was 5 mm / 24 h), else normal", () => {
+  assert.equal(DEFAULT_CONFIG.CONDITIONS.rainMm24h, 10);
+  assert.equal(DEFAULT_CONFIG.CONDITIONS.rainMm12h, 5);
+  assert.equal(conditionsFrom({ rainMm24h: 10 }), "wet");
+  assert.equal(conditionsFrom({ rainMm24h: 9.9 }), "normal");
+  assert.equal(conditionsFrom({ rainMm24h: 6, rainMm12h: 5 }), "wet", "5 mm in the last 12 h");
+  assert.equal(conditionsFrom({ rainMm24h: 6, rainMm12h: 1 }), "normal", "6 mm spread over the day, little of it recent");
   assert.equal(conditionsFrom(null), "normal");
   assert.equal(conditionsFrom({ rainMm24h: null, stale: true }), "normal");
-  assert.equal(conditionsFrom({ rainMm24h: 3 }, mergeConfig({ WET_RAIN_MM_24H: 2 })), "wet");
+  assert.equal(conditionsFrom({ rainMm24h: 3 }, mergeConfig({ CONDITIONS: { rainMm24h: 2 } })), "wet");
+  assert.equal(conditionsFrom("junk"), "normal");
+  assert.equal(conditionsFrom({ rainMm24h: "a lot", rainDays5: "x", night: 7, sunriseIso: {} }, DEFAULT_CONFIG, { now: "not a date" }), "normal", "never throws; junk fails every rule");
+});
+
+/* Conditions v2 fixtures: a Georgia course on UTC−4 (EDT). Local 07:00 on Sep 28 = 11:00 UTC. */
+const EDT = -4 * 3600;
+const localMs = (month, day, hour, min = 0) => Date.UTC(2026, month - 1, day, hour, min) - EDT * 1000;
+const dry = (extra = {}) => ({ speedMph: 3, rainMm24h: 0, rainMm12h: 0, tempF: 70, dewPointF: 60, cloudPct: 80, rainDays5: [4, 1, 0, 0, 0], tMaxF5: [80, 82, 84, 86, 83], utcOffsetSec: EDT, ...extra });
+/* the same week but mild (no day reaches 85°F), so the firm rule stays out of the dew / irrigation tests */
+const mild = (extra = {}) => dry({ tMaxF5: [72, 74, 73, 75, 74], ...extra });
+
+test("conditionsFrom: dew rule — clear, calm, saturated night and before sunrise + 3 h → wet; any one missing → not dew", () => {
+  const sunriseIso = new Date(localMs(10, 14, 7, 40)).toISOString();    // October: outside the irrigation months
+  const dewy = mild({ sunriseIso, night: { spreadMinF: 1.5, cloudPct: 20, windMph: 2, hours: 8 } });
+  assert.equal(conditionsFrom(dewy, DEFAULT_CONFIG, { now: localMs(10, 14, 8, 30) }), "wet", "08:30, sunrise 07:40");
+  assert.equal(conditionsFrom(dewy, DEFAULT_CONFIG, { now: localMs(10, 14, 10, 39) }), "wet", "just inside sunrise + 3 h");
+  assert.equal(conditionsFrom(dewy, DEFAULT_CONFIG, { now: localMs(10, 14, 10, 41) }), "normal", "burned off after sunrise + 3 h");
+  assert.equal(conditionsFrom({ ...dewy, night: { ...dewy.night, spreadMinF: 3.5 } }, DEFAULT_CONFIG, { now: localMs(10, 14, 8) }), "normal", "spread > 3°F");
+  assert.equal(conditionsFrom({ ...dewy, night: { ...dewy.night, cloudPct: 60 } }, DEFAULT_CONFIG, { now: localMs(10, 14, 8) }), "normal", "cloudy night");
+  assert.equal(conditionsFrom({ ...dewy, night: { ...dewy.night, windMph: 8 } }, DEFAULT_CONFIG, { now: localMs(10, 14, 8) }), "normal", "breezy night");
+  // no overnight block → the current reading stands in
+  const cur = mild({ sunriseIso, night: null, tempF: 55, dewPointF: 53, cloudPct: 10, speedMph: 4 });
+  assert.equal(conditionsFrom(cur, DEFAULT_CONFIG, { now: localMs(10, 14, 8) }), "wet");
+  assert.equal(conditionsFrom({ ...cur, dewPointF: null }, DEFAULT_CONFIG, { now: localMs(10, 14, 8) }), "normal", "missing dew point → no dew call");
+  assert.equal(conditionsFrom({ ...cur, sunriseIso: null }, DEFAULT_CONFIG, { now: localMs(10, 14, 8) }), "normal", "no sunrise → no dew call");
+  // the clock defaults to weather.asOf
+  assert.equal(conditionsFrom({ ...dewy, asOf: localMs(10, 14, 8) }), "wet");
+});
+
+test("conditionsFrom: irrigation rule — June–September before 10:00 local is 'morning moist' (wet) with 0 mm of rain", () => {
+  const w = mild();
+  assert.equal(conditionsFrom(w, DEFAULT_CONFIG, { now: localMs(9, 28, 7) }), "wet", "Sep 28, 07:00 EDT");
+  assert.equal(conditionsFrom(w, DEFAULT_CONFIG, { now: localMs(9, 28, 9, 59) }), "wet");
+  assert.equal(conditionsFrom(w, DEFAULT_CONFIG, { now: localMs(9, 28, 10) }), "normal", "10:00 is past the cut-off");
+  assert.equal(conditionsFrom(w, DEFAULT_CONFIG, { now: localMs(10, 1, 7) }), "normal", "October");
+  assert.equal(conditionsFrom(w, DEFAULT_CONFIG, { now: localMs(6, 1, 6) }), "wet", "June");
+  assert.equal(conditionsFrom(w, DEFAULT_CONFIG, { now: localMs(5, 31, 6) }), "normal", "May");
+  // 07:00 EDT is 11:00 UTC: the course's offset decides, not UTC and not the machine running this
+  assert.equal(conditionsFrom({ ...w, utcOffsetSec: 0 }, DEFAULT_CONFIG, { now: localMs(9, 28, 7) }), "normal");
+  // explicit month / hour override the clock; no offset and no override → the rule is skipped
+  assert.equal(conditionsFrom({ ...w, utcOffsetSec: null }, DEFAULT_CONFIG, { month: 7, hour: 8 }), "wet");
+  assert.equal(conditionsFrom({ ...w, utcOffsetSec: null }, DEFAULT_CONFIG, { now: localMs(9, 28, 7) }), "normal");
+  assert.equal(conditionsFrom(w, mergeConfig({ CONDITIONS: { irrigationMonths: [] } }), { now: localMs(9, 28, 7) }), "normal");
+});
+
+test("conditionsFrom: firm rule — three dry days, a dry last 24 h and a max ≥ 85°F → firm; any wet day or a cool spell → normal", () => {
+  const noon = { now: localMs(9, 28, 13) };
+  assert.equal(conditionsFrom(dry(), DEFAULT_CONFIG, noon), "firm", "last three days 0 mm, hottest 86°F");
+  assert.equal(conditionsFrom(dry({ rainDays5: [4, 1, 0, 3, 0] }), DEFAULT_CONFIG, noon), "normal", "a 3 mm day inside the window");
+  assert.equal(conditionsFrom(dry({ rainDays5: [9, 9, 0, 0, 0] }), DEFAULT_CONFIG, noon), "firm", "rain four days back is outside a 3-day window");
+  assert.equal(conditionsFrom(dry({ rainDays5: [9, 9, 0, 0, 0] }), mergeConfig({ CONDITIONS: { firmDryDays: 5 } }), noon), "normal", "…but inside a 5-day one");
+  assert.equal(conditionsFrom(dry({ tMaxF5: [90, 90, 84, 80, 83] }), DEFAULT_CONFIG, noon), "normal", "hot days fell outside the window");
+  assert.equal(conditionsFrom(dry({ rainMm24h: 3 }), DEFAULT_CONFIG, noon), "normal", "rain in the last 24 h");
+  assert.equal(conditionsFrom(dry({ rainDays5: [0, 0] }), DEFAULT_CONFIG, noon), "normal", "not enough days of history");
+  assert.equal(conditionsFrom(dry({ rainDays5: [0, 0, null, 0, 0] }), DEFAULT_CONFIG, noon), "normal", "a missing day is not a dry day");
+  assert.equal(conditionsFrom(dry({ tMaxF5: [] }), DEFAULT_CONFIG, noon), "normal", "no temperatures");
+  // precedence: a summer morning is moist even after a dry hot week; rain beats everything
+  assert.equal(conditionsFrom(dry(), DEFAULT_CONFIG, { now: localMs(9, 28, 8) }), "wet");
+  assert.equal(conditionsFrom(dry({ rainMm12h: 6 }), DEFAULT_CONFIG, noon), "wet");
+});
+
+test("parseWeather v2: dew point, cloud, 12 h rain, five past days, sunrise and the overnight window", () => {
+  // NOW = 15:00 UTC = 11:00 EDT on Sep 28; daily rows are local midnights (timezone=auto)
+  const j = forecastFixture();
+  j.utc_offset_seconds = EDT;
+  j.current.dew_point_2m = 50.1; j.current.cloud_cover = 35;
+  const n = j.hourly.time.length;
+  j.hourly.temperature_2m = Array.from({ length: n }, () => 60);
+  j.hourly.dew_point_2m = Array.from({ length: n }, (_, i) => (i % 2 ? 58.5 : 57));
+  j.hourly.cloud_cover = Array.from({ length: n }, () => 10);
+  j.hourly.wind_speed_10m = Array.from({ length: n }, () => 2);
+  const mid = (d) => (Date.UTC(2026, 8, d) - EDT * 1000) / 1000;
+  j.daily = {
+    time: [23, 24, 25, 26, 27, 28].map(mid),
+    precipitation_sum: [12.34, 0, 0.4, 0, 1.2, 0],
+    temperature_2m_max: [79, 81, 84, 86.4, 87, 88],
+    sunrise: [23, 24, 25, 26, 27, 28].map((d) => mid(d) + 7 * 3600 + 36 * 60),
+  };
+  const w = parseWeather(j, NOW);
+  assert.equal(w.dewPointF, 50.1);
+  assert.equal(w.cloudPct, 35);
+  near(w.rainMm12h, 12 * 0.3, 1e-9);
+  near(w.rainMm24h, 24 * 0.3, 1e-9);
+  assert.deepEqual(w.rainDays5, [12.3, 0, 0.4, 0, 1.2], "the five completed days before today, oldest first");
+  assert.deepEqual(w.tMaxF5, [79, 81, 84, 86.4, 87]);
+  assert.equal(w.sunriseIso, new Date((mid(28) + 7 * 3600 + 36 * 60) * 1000).toISOString());
+  assert.equal(w.utcOffsetSec, EDT);
+  assert.ok(w.night && w.night.hours >= 7, `overnight hours ${w.night?.hours}`);
+  assert.equal(w.night.spreadMinF, 1.5);
+  assert.equal(w.night.cloudPct, 10);
+  assert.equal(w.night.windMph, 2);
+  // °C in the units block converts
+  const c = forecastFixture();
+  c.current_units.temperature_2m = "°C"; c.current.temperature_2m = 20; c.current.dew_point_2m = 10;
+  assert.equal(parseWeather(c, NOW).tempF, 68);
+  assert.equal(parseWeather(c, NOW).dewPointF, 50);
+  // the v1 response (no new fields) still parses, every new field empty
+  const old = parseWeather(forecastFixture(), NOW);
+  assert.equal(old.dewPointF, null); assert.equal(old.cloudPct, null); assert.equal(old.sunriseIso, null); assert.equal(old.night, null);
+  assert.deepEqual(old.rainDays5, []); assert.deepEqual(old.tMaxF5, []);
+  assert.equal(conditionsFrom(old), "normal");
+  // and a failed fetch with nothing to fall back on carries the empty v2 fields
+  return fetchWeather(1, 2, async () => { throw new Error("offline"); }).then((none) => {
+    assert.deepEqual(none.rainDays5, []); assert.equal(none.night, null); assert.equal(conditionsFrom(none), "normal");
+  });
 });
 
 test("elevation: ≤ 100 points per call, IDW interpolation, target − ball in yards; a failed batch never throws", async () => {
@@ -546,7 +749,8 @@ test("wind direction: a wind FROM the tee → green bearing is fromDeg 0 (into t
 
 test("assembleShotContext: the §3.1 ctx the engine takes, from GPS + geometry + weather + elevation + chips", () => {
   const elev = { samples: elevationSamplePoints(synth).map((p) => ({ ...p, elevM: 300 + (p.lat - 34.3) * 20000 })) };
-  const base = { round: { hole: 1, par: 4, shotNo: 2, courseId: "hampton", trigger: "ball" }, hole: H1, geometry: synth, weather: { speedMph: 9, dirDeg: (BRG + 180) % 360, rainMm24h: 6, asOf: NOW }, elevation: elev };
+  // 12 mm in 24 h is wet under conditions v2 (CONDITIONS.rainMm24h = 10; the v1 rule was 5, and this fixture said 6)
+  const base = { round: { hole: 1, par: 4, shotNo: 2, courseId: "hampton", trigger: "ball" }, hole: H1, geometry: synth, weather: { speedMph: 9, dirDeg: (BRG + 180) % 360, rainMm24h: 12, asOf: NOW }, elevation: elev };
   const ctx = assembleShotContext({ ...base, fix: { ...at(260, 0), accuracyM: 4 } });
   for (const k of ["hole", "par", "shotNo", "ball", "lieType", "lieQuality", "lieConfidence", "conditions", "pinPos", "wind", "elevationDeltaYds"]) assert.ok(k in ctx, k);
   assert.equal(ctx.hole, 1); assert.equal(ctx.par, 4); assert.equal(ctx.shotNo, 2);
@@ -554,7 +758,15 @@ test("assembleShotContext: the §3.1 ctx the engine takes, from GPS + geometry +
   assert.equal(ctx.lieType, "fairway");
   assert.equal(ctx.lieConfidence, "high");
   assert.equal(ctx.lieQuality, "standard");
-  assert.equal(ctx.conditions, "wet", "6 mm in 24 h");
+  assert.equal(ctx.conditions, "wet", "12 mm in 24 h");
+  assert.equal(assembleShotContext({ ...base, weather: { ...base.weather, rainMm24h: 6 }, fix: { ...at(260, 0), accuracyM: 4 } }).conditions, "normal", "6 mm is below the v2 threshold");
+  // the time-of-day rules read the weather's clock (asOf) or inputs.now: a Georgia September morning is moist
+  const morning = { ...base.weather, rainMm24h: 0, utcOffsetSec: -4 * 3600 };
+  assert.equal(assembleShotContext({ ...base, weather: morning, fix: { ...at(260, 0), accuracyM: 4 }, now: Date.UTC(2026, 8, 28, 11) }).conditions, "wet", "07:00 EDT");
+  assert.equal(assembleShotContext({ ...base, weather: morning, fix: { ...at(260, 0), accuracyM: 4 } }).conditions, "normal", "asOf 15:00 UTC = 11:00 EDT");
+  // altitude of the ball (item 5): the plane's elevation there, metres → feet
+  near(ctx.elevFt, (300 + (at(260, 0).lat - 34.3) * 20000) * 3.28084, 5);
+  assert.equal(ctx.meta.sources.altitude, "sampled");
   assert.equal(ctx.pinPos, "middle");
   near(ctx.wind.fromDeg, 180, 1e-9, "a tailwind up the hole");
   assert.ok(Number.isFinite(ctx.elevationDeltaYds) && ctx.elevationDeltaYds !== 0);
@@ -596,5 +808,7 @@ test("assembleShotContext: the §3.1 ctx the engine takes, from GPS + geometry +
   assert.equal(nofix.wind, null);
   assert.equal(nofix.conditions, "normal");
   assert.equal(nofix.elevationDeltaYds, 0);
+  assert.equal(nofix.elevFt, null, "no samples → no altitude term");
+  assert.equal(assembleShotContext({ ...base, elevation: null, fix: { ...at(260, 0), accuracyM: 4 } }).elevFt, null);
   assert.throws(() => assembleShotContext({}), /no hole/);
 });

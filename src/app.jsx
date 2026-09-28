@@ -1,16 +1,21 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut as fbSignOut } from "firebase/auth";
 import { initializeFirestore, persistentLocalCache, persistentSingleTabManager, collection, doc, setDoc, getDocs } from "firebase/firestore";
-import { T, F, caps, printed, written, writtenWord, rule, hairline, doubleRule, PencilDefs, Logo, teeTint } from "./theme.jsx";
+import { T, F, caps, printed, written, writtenWord, rule, hairline, doubleRule, PencilDefs, Logo, teeTintFor, PencilRing, GhostGlyph } from "./theme.jsx";
+/* v22.8: Brett's last five scorecards (differential floor + History ledger rows). */
+import { SEED_ROUNDS, historyRows } from "./seedRounds.js";
 /* Caddie (S3a, v22): the map layer. The profile is bundled, never fetched (addendum §11.1). */
 import { fetchGeometry } from "./geometry.js";
-import { buildHole, frameOf, detectHole, needsNineMap, nineMapCandidates, saveNineMap, loadNineMap, loadGeometryCache, saveGeometryCache, inferLie, ll } from "./caddie/geo.js";
+import { buildHole, frameOf, detectHole, needsNineMap, nineMapCandidates, saveNineMap, loadNineMap, loadGeometryCache, saveGeometryCache, inferLie, ll,
+  nineMapFromRouting, playFromRouting, ninesAssociation, guessPlay, coverageCheck } from "./caddie/geo.js";
+/* v22.7: clubs with more than 18 holes — one picker row per club, the nines chosen on Setup. */
+import { groupResultsByClub, clubKeyOf, routingLabel, routingNines, splitTee27, nineCombos, teeForCombo, loadLastRouting, saveLastRouting, defaultRoutingIndex } from "./routing.js";
 import { loadProfile, resolveEntry } from "./caddie/profile.js";
 import { MapLayer, useSatellite, prefetchTiles, TILE_PREFETCH_ENABLED } from "./caddie/mapLayer.jsx";
 /* Caddie (S3b, v22): the engine, its inputs and the screen's state + render model. */
 import { assembleShotContext, frameBearing } from "./caddie/context.js";
 import { recommend, windEffect } from "./caddie/engine.js";
-import { fetchWeather, weatherRefreshDue } from "./caddie/sensors.js";
+import { fetchWeather, weatherRefreshDue, weatherTempF } from "./caddie/sensors.js";
 import {
   loadLieOverrides, recordLieOverride, routeShot, newShotRecord, quickLog, detailLog, skipShot, closeOutShot,
   saveShot, loadShots, allShots, exportShots, importShots, newPuttRecord, quickMade, PUTT_AXES,
@@ -55,7 +60,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.5 · Sep 29";
+const BUILD = "v22.10 · Sep 29";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -90,17 +95,40 @@ async function loadFullCourse(id) {
   return course;
 }
 
-/* Flatten tees.male + tees.female into one picker list; skip any non-18-hole tee. */
+/* Flatten tees.male + tees.female into one picker list. 18-hole tees as before; a 27-hole tee
+   (v22.7) is kept with its three nines split out (`nines`) — Setup turns it into one tee per
+   two-nine combination. Anything else is skipped. */
 function teeOptions(fullCourse) {
   const tees = fullCourse.tees || {};
   const out = [];
   ["male", "female"].forEach(gender => {
     const arr = Array.isArray(tees[gender]) ? tees[gender] : [];
     arr.forEach((tee, i) => {
-      if (Array.isArray(tee.holes) && tee.holes.length === 18) out.push({ key: `${gender}:${i}`, gender, tee });
+      if (!Array.isArray(tee.holes)) return;
+      if (tee.holes.length === 18) out.push({ key: `${gender}:${i}`, gender, tee });
+      else if (tee.holes.length === 27) out.push({ key: `${gender}:${i}`, gender, tee, nines: splitTee27(tee) });
     });
   });
   return out;
+}
+const teeNameOf = (o) => o.tee.tee_name || o.gender;
+/* The tees Setup lists for one routing: a 27-hole combination composes each 27-hole tee into
+   that 18; an ordinary routing lists its 18-hole tees. */
+function teesForRouting(opts, route) {
+  if (route && route.combo) {
+    return opts.filter(o => o.nines).map(o => {
+      const tee = teeForCombo(o.tee, o.nines, route.combo);
+      return tee ? { ...o, key: `${o.key}~${route.combo.join("")}`, tee, ratingSource: "27-hole tee" } : null;
+    }).filter(Boolean);
+  }
+  return opts.filter(o => !o.nines);
+}
+/* A single entry with a 27-hole tee: its three combinations are the routings. */
+function combosFor(full, opts) {
+  const t27 = opts.find(o => o.nines);
+  if (!t27) return [];
+  const club = t27.nines.map(n => n.label);
+  return nineCombos(t27.nines).map(k => ({ key: `c:${k.combo.join("")}`, id: full.id, combo: k.combo, label: k.label, nines: k.nines, club }));
 }
 
 /* Total yardage of a tee option — summed from its holes (the API's own total is
@@ -110,11 +138,11 @@ const teeYards = (opt) => (opt.tee.holes || []).reduce((a, h) => a + (h.yardage 
 /* Build the engine course object from a full course + a chosen tee option.
    Field mapping (do NOT rename): handicap->si, yardage->yards, course_rating->rating,
    slope_rating->slope, par_total->par. */
-function buildCourse(fullCourse, teeOpt) {
+function buildCourse(fullCourse, teeOpt, club) {
   const t = teeOpt.tee;
   const name = fullCourse.club_name || fullCourse.course_name || "Course";
   const loc = fullCourse.location || {};
-  return {
+  const c = {
     id: `${fullCourse.id}:${teeOpt.key}`,
     apiId: fullCourse.id,
     lat: typeof loc.latitude === "number" ? loc.latitude : undefined,
@@ -126,6 +154,16 @@ function buildCourse(fullCourse, teeOpt) {
     par: t.par_total,
     holes: t.holes.map(h => ({ par: h.par, si: h.handicap, yards: h.yardage })),
   };
+  /* v22.7 — clubs with more than 18 holes. clubApiId keys the club-level map (geometry cache,
+     tile prefetch, nine map); routing is the pill's label ("Village / School"); nines is what the
+     caddie's nine map reads: { play: [first, second], club: [all nines], ordered }. */
+  if (club && club.clubApiId != null && (club.route || String(club.clubApiId) !== String(fullCourse.id))) c.clubApiId = club.clubApiId;
+  if (club && club.route) {
+    c.routing = club.route.label;
+    if (Array.isArray(club.route.nines)) c.nines = { play: club.route.nines, club: club.route.club || club.route.nines, ordered: !!club.route.combo };
+  }
+  if (teeOpt.ratingSource) c.ratingSource = teeOpt.ratingSource;
+  return c;
 }
 
 /* Validate a persisted course object before restoring an in-progress round. */
@@ -140,6 +178,9 @@ function validCourse(c) {
    cache per course under bogeyman-matches:geo:v1:{apiId}), then the satellite tiles for every
    hole (addendum §11.2). Setup shows one status line; the caddie reads the cached geometry. */
 const apiIdOf = (course) => course?.apiId ?? (course?.id != null ? String(course.id).split(":")[0] : null);
+/* The club's key for everything that is one per club, not one per routing: the OSM geometry, the
+   tile prefetch and the nine map. An 18-hole course has no clubApiId, so this is its apiId. */
+const clubIdOf = (course) => course?.clubApiId ?? apiIdOf(course);
 function courseAnchor(course) {
   if (!course) return null;
   if (typeof course.lat === "number" && typeof course.lon === "number") return { lat: course.lat, lon: course.lon };
@@ -151,15 +192,26 @@ function courseAnchor(course) {
   return null;
 }
 const safeStorage = () => { try { return window.localStorage; } catch (e) { return null; } };
-/* { geometry, phase: none | loading | ready | unavailable, done, total } */
+/* { geometry, phase: none | loading | ready | network-error | no-holes | partial | unavailable, done, total, retry }
+   v22.8: "unavailable" used to cover three different failures with one copy line. Split:
+   - the Overpass fetch itself threw or timed out             -> network-error (retryable)
+   - it answered but coverageCheck found NO holes at all      -> no-holes (not retryable — OSM just
+     doesn't have this course; retrying the same query won't change that)
+   - it answered with SOME but not all 18 holes               -> partial (retryable — a wider/second
+     Overpass mirror can fill in what the first one missed)
+   - no anchor (lat/lon) to even query from                   -> unavailable, unchanged (nothing to retry) */
 function useCourseMap(course) {
-  const apiId = apiIdOf(course);
+  const apiId = clubIdOf(course);                     // per club: switching routings never refetches
   const [geometry, setGeometry] = useState(() => (apiId != null ? loadGeometryCache(safeStorage(), apiId) : null));
   const [st, setSt] = useState({ phase: "none", done: 0, total: 0 });
+  const [retryTick, setRetryTick] = useState(0);
+  const forceRefetch = React.useRef(false);
+  const retry = () => { forceRefetch.current = true; setRetryTick((t) => t + 1); };
   useEffect(() => {
     if (apiId == null) { setGeometry(null); setSt({ phase: "none", done: 0, total: 0 }); return undefined; }
     let live = true;
-    let g = loadGeometryCache(safeStorage(), apiId);
+    const force = forceRefetch.current; forceRefetch.current = false;
+    let g = force ? null : loadGeometryCache(safeStorage(), apiId);
     setGeometry(g);                                   // never show the previous course's holes
     (async () => {
       if (!g) {
@@ -184,29 +236,35 @@ function useCourseMap(course) {
           saveGeometryCache(safeStorage(), apiId, parsed, elevation);
           g = loadGeometryCache(safeStorage(), apiId) || parsed;
         } catch (e) {
-          if (live) { setGeometry(null); setSt({ phase: "unavailable", done: 0, total: 0 }); }
+          if (live) { setGeometry(null); setSt({ phase: "network-error", done: 0, total: 0 }); }
           return;
         }
       }
       if (!live) return;
       setGeometry(g);
-      const holes = Object.keys(g.holes || {}).length;
-      if (!holes) { setSt({ phase: "unavailable", done: 0, total: 0 }); return; }
-      if (!TILE_PREFETCH_ENABLED || typeof caches === "undefined") { setSt({ phase: "ready", done: holes, total: holes }); return; }
-      setSt({ phase: "loading", done: 0, total: holes });
+      const cov = coverageCheck(g, { expected: [...Array(18)].map((_, i) => i + 1) });
+      const mapped = 18 - cov.missing.filter((k) => Number.isInteger(k) || /^\d+$/.test(String(k))).length;
+      if (mapped <= 0) { setSt({ phase: "no-holes", done: 0, total: 18 }); return; }
+      if (mapped < 18) { setSt({ phase: "partial", done: mapped, total: 18 }); return; }
+      if (!TILE_PREFETCH_ENABLED || typeof caches === "undefined") { setSt({ phase: "ready", done: mapped, total: mapped }); return; }
+      setSt({ phase: "loading", done: 0, total: mapped });
       await prefetchTiles(g, { isLive: () => live, onProgress: (p) => setSt({ phase: "loading", done: p.holesDone, total: p.holes }) }).catch(() => null);
       // Tiles that did not come down are not an error: the caddie draws the map from the geometry (§4.3).
-      if (live) setSt({ phase: "ready", done: holes, total: holes });
+      if (live) setSt({ phase: "ready", done: mapped, total: mapped });
     })();
     return () => { live = false; };
-  }, [apiId]);
-  return { geometry: apiId != null ? geometry : null, ...st };
+  }, [apiId, retryTick]);
+  return { geometry: apiId != null ? geometry : null, ...st, retry };
 }
-/* Addendum §10.1 copy. */
+/* Addendum §10.1 copy, split per failure (v22.8) so Brett knows whether tapping can help. */
 const courseMapLine = (m) => !m || m.phase === "none" ? null
   : m.phase === "ready" ? "Course map ready"
   : m.phase === "loading" ? `Course map · loading ${m.done} of ${m.total || 18}`
+  : m.phase === "network-error" ? "Course map · could not reach the map server · tap to retry"
+  : m.phase === "no-holes" ? "Course map · OpenStreetMap has no holes for this course · caddie will use yards"
+  : m.phase === "partial" ? `Course map · ${m.done} of ${m.total || 18} holes mapped · tap to retry`
   : "Course map unavailable · caddie will use yards";
+const courseMapRetryable = (m) => !!m && (m.phase === "network-error" || m.phase === "partial");
 
 
 /* ---------- home-state filter (results have state; the API also returns location.latitude/longitude since v1.1 — used by the Hole View, not here) ---------- */
@@ -318,20 +376,10 @@ function recordDifferential(r) {
   if (gross == null || !isFinite(gross) || gross <= 0) return null;
   return scoreDifferential(gross, rating, slope);
 }
-/* Brett's official last-5 (GHIN) as of Sep 19 2026, so the app starts calibrated instead
-   of cold. These seed the differential ONLY — they are not match records, so they never
-   touch the W-L-T. Each in-app round played after Sep 5 2026 pushes one further out of
-   the window; once five newer rounds exist these stop counting on their own. Gross only
-   (no hole detail came across), so no net-double cap is applied to them. */
-const SEED_ROUNDS = [
-  // Brett's official last five (GHIN, Sep 29). Gross is the ADJUSTED gross the differential was
-  // computed from — Hampton's card was 82, capped to 81 by net double bogey (official diff 6.8).
-  { date: "2026-09-20", course: "Hampton Golf Village",             tee: "Championship", rating: 72.7, slope: 137, gross: 81 },
-  { date: "2026-09-12", course: "Lake Arrowhead Yacht & CC",        tee: "Blue Fox",     rating: 73.3, slope: 133, gross: 79 },
-  { date: "2026-09-05", course: "Beachwood Golf Club",              tee: "Blue",         rating: 71.6, slope: 127, gross: 86 },
-  { date: "2026-08-15", course: "Chicopee Woods · School/Village",  tee: "Gold",         rating: 73.6, slope: 137, gross: 81 },
-  { date: "2026-08-09", course: "RiverPines Golf Course",           tee: "Black",        rating: 71.1, slope: 132, gross: 80 },
-];
+/* Brett's official last-5 (GHIN), so the app starts calibrated instead of cold. These seed the
+   differential ONLY — they are not match records, so they never touch the W-L-T. Each in-app
+   round played pushes one further out of the window; once five newer rounds exist these stop
+   counting on their own. v22.8: full scorecards, not just gross — see src/seedRounds.js. */
 
 /* {diff, asOf, count, total, seeded} over the DIFF_WINDOW most recent rounds — played
    rounds and seeds pooled together and taken by date — or null when there's nothing
@@ -384,6 +432,9 @@ function buildRecord(base, course, diff, scores, ghost) {
     yourPoints, ghostPoints,
     result,
   };
+  // v22.7: the nines played at a club with more than 18 holes. Only when there is one — Firestore
+  // rejects an undefined field, and old records simply don't have it.
+  if (typeof course.routing === "string" && course.routing) rec.routing = course.routing;
   // This round's own Score Differential — the thing the last-5 averages.
   rec.differential = recordDifferential(rec);
   return rec;
@@ -501,9 +552,12 @@ function CoursePicker({ onPick, onClose }) {
   };
   const CAP = 12;
   const stateOf = (r) => (r.location && r.location.state) || "";
+  /* v22.7: one row per club. A 27-hole club comes back as one result per routing sharing a
+     club_name; they fold into one row and the nines are chosen on Setup. */
   const displayed = useMemo(() => {
-    if (!homeState) return results.slice(0, CAP);
-    return [...results.filter(r => stateOf(r) === homeState), ...results.filter(r => stateOf(r) !== homeState)].slice(0, CAP);
+    const clubs = groupResultsByClub(results);
+    if (!homeState) return clubs.slice(0, CAP);
+    return [...clubs.filter(r => stateOf(r) === homeState), ...clubs.filter(r => stateOf(r) !== homeState)].slice(0, CAP);
   }, [results, homeState]);
 
   useEffect(() => {
@@ -548,15 +602,20 @@ function CoursePicker({ onPick, onClose }) {
         {searchState === "loading" && <div style={{ ...caps(11, 400, "0"), fontFamily: F.label, color: T.muted, padding: "14px 0" }}>Searching…</div>}
         {searchState === "empty" && <div style={{ ...caps(11, 400, "0"), fontFamily: F.label, color: T.muted, padding: "14px 0" }}>No courses found — try a different spelling.</div>}
         {searchState === "error" && <div style={{ ...caps(11, 400, "0"), fontFamily: F.label, color: T.double, padding: "14px 0" }}>Course search unavailable — check your connection.</div>}
-        {searchState === "done" && displayed.map(r => (
-          <button key={r.id} onClick={() => onPick(r.id)} style={{ display: "block", width: "100%", textAlign: "left",
-            padding: "11px 0", background: "none", border: "none", borderBottom: hairline, color: T.ink }}>
-            <div style={{ fontFamily: F.hand, fontSize: 24, lineHeight: "24px", color: T.pencil, filter: "url(#pencil)" }}>{r.club_name || r.course_name}</div>
-            <div style={{ fontFamily: F.label, fontSize: 11, color: T.muted, marginTop: 2 }}>
-              {[r.course_name && r.course_name !== r.club_name ? r.course_name : null, r.location && [r.location.city, r.location.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
-            </div>
-          </button>
-        ))}
+        {searchState === "done" && displayed.map(g => {
+          const r = g.entries[0], many = g.entries.length > 1;
+          return (
+            <button key={g.key} data-club={g.key} onClick={() => onPick(g)} style={{ display: "block", width: "100%", textAlign: "left",
+              padding: "11px 0", background: "none", border: "none", borderBottom: hairline, color: T.ink }}>
+              <div style={{ fontFamily: F.hand, fontSize: 24, lineHeight: "24px", color: T.pencil, filter: "url(#pencil)" }}>{g.club_name || r.course_name}</div>
+              <div style={{ fontFamily: F.label, fontSize: 11, color: T.muted, marginTop: 2 }}>
+                {[!many && r.course_name && r.course_name !== r.club_name ? r.course_name : null,
+                  g.location && [g.location.city, g.location.state].filter(Boolean).join(", "),
+                  many ? `${g.entries.length} routings` : null].filter(Boolean).join(" · ")}
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -581,31 +640,91 @@ function defaultTee(opts, full, history) {
   return byYards[Math.floor((byYards.length - 1) / 2)];
 }
 
+/* The nines of every routing of a club, in first-seen order ("Village/School", "Mill/School" → Village, School, Mill). */
+function clubNinesOf(routes) {
+  const out = [];
+  routes.forEach(r => (r.nines || []).forEach(n => { if (!out.some(x => x.toLowerCase() === n.toLowerCase())) out.push(n); }));
+  return out;
+}
+
 function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHistory, courseMap }) {
   const [picking, setPicking] = useState(false);
+  const [club, setClub] = useState(null);                 // v22.7: the picked club { key, club_name, clubApiId, entries }
+  const [routings, setRoutings] = useState([]);           // its routings (entries or 27-hole combinations)
+  const [routingKey, setRoutingKey] = useState("");
   const [selectedFull, setSelectedFull] = useState(null);
   const [tees, setTees] = useState([]);
   const [teeKey, setTeeKey] = useState("");
   const [loadState2, setLoadState2] = useState("idle");   // idle | loading | error
-  const [pendingId, setPendingId] = useState(null);
+  const retry = React.useRef(null);
+  const seq = React.useRef(0);                            // a late load for an earlier tap never wins
 
-  const pickCourse = (id) => {
-    setPicking(false);
-    setCourse(null); setTees([]); setTeeKey("");
-    setPendingId(id); setLoadState2("loading");
-    loadFullCourse(id)
+  /* One routing: fetch its full course (cached after the first time), list its tees, keep the
+     tee name already chosen when this routing has it. No route = a single-entry club, which may
+     turn out to carry a 27-hole tee — then its three combinations become the routings. */
+  const showRouting = (c, routes, route, keepName) => {
+    const my = ++seq.current;
+    retry.current = () => showRouting(c, routes, route, keepName);
+    setRoutingKey(route ? route.key : ""); setCourse(null); setTeeKey(""); setLoadState2("loading");
+    loadFullCourse(route ? route.id : c.entries[0].id)
       .then(full => {
+        if (my !== seq.current) return;
         const opts = teeOptions(full);
-        setSelectedFull(full); setTees(opts); setLoadState2("idle");
-        if (opts.length) pickTee(defaultTee(opts, full, history).key, opts, full);
+        let rs = routes, r = route;
+        if (!rs.length || (r && r.combo)) {
+          const combos = combosFor(full, opts);
+          if (combos.length) {
+            rs = combos;
+            if (!r) r = combos[defaultRoutingIndex(combos, loadLastRouting(safeStorage(), c.key))];
+            setRoutings(combos); setRoutingKey(r.key);
+          }
+        }
+        const list = teesForRouting(opts, r);
+        setSelectedFull(full); setTees(list); setLoadState2("idle");
+        if (list.length) {
+          const keep = keepName ? list.find(o => teeNameOf(o) === keepName) : null;
+          pickTee((keep || defaultTee(list, full, history)).key, list, full, c, r);
+        }
       })
-      .catch(() => { setSelectedFull(null); setTees([]); setLoadState2("error"); });
+      .catch(() => { if (my === seq.current) { setSelectedFull(null); setTees([]); setLoadState2("error"); } });
   };
-  const pickTee = (key, optsArg, fullArg) => {
-    const opts = optsArg || tees, full = fullArg || selectedFull;
+  const pickClub = (group) => {
+    setPicking(false);
+    setCourse(null); setTees([]); setTeeKey(""); setSelectedFull(null); setRoutings([]); setRoutingKey("");
+    const last = loadLastRouting(safeStorage(), group.key);
+    // sticky: the id this club's map was first cached under, even if a later search misses that routing
+    const c = { ...group, clubApiId: last && last.clubApiId != null ? last.clubApiId : group.clubApiId };
+    setClub(c);
+    if (group.entries.length > 1) {
+      const base = group.entries.map(e => ({ key: `e:${e.id}`, id: e.id, label: routingLabel(e), nines: routingNines(e) }));
+      const allNines = clubNinesOf(base);
+      const routes = base.map(r => ({ ...r, club: allNines }));
+      setRoutings(routes);
+      showRouting(c, routes, routes[defaultRoutingIndex(routes, last)], null);
+    } else {
+      showRouting(c, [], null, null);
+    }
+  };
+  const pickRouting = (key) => {
+    const r = routings.find(x => x.key === key);
+    if (!r || !club || key === routingKey) return;
+    const cur = tees.find(o => o.key === teeKey);
+    showRouting(club, routings, r, cur ? teeNameOf(cur) : (course && course.tee));
+  };
+  const pickTee = (key, optsArg, fullArg, clubArg, routeArg) => {
+    const opts = optsArg || tees, full = fullArg || selectedFull, c = clubArg || club;
+    const route = routeArg !== undefined ? routeArg : routings.find(x => x.key === routingKey) || null;
     setTeeKey(key);
     const opt = opts.find(o => o.key === key);
-    setCourse(opt && full ? buildCourse(full, opt) : null);
+    setCourse(opt && full ? buildCourse(full, opt, c ? { clubApiId: c.clubApiId, route } : null) : null);
+  };
+  /* Start: remember this club's routing (and the key its map is cached under) for next time. */
+  const start = () => {
+    const route = routings.find(x => x.key === routingKey);
+    if (course && club && route && course.routing) {
+      saveLastRouting(safeStorage(), club.key, { id: route.combo ? null : route.id, label: route.label, clubApiId: club.clubApiId });
+    }
+    onStart();
   };
 
   /* differential is read-only now (behaviour decision §5): last five rounds, no override */
@@ -613,23 +732,27 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
   useEffect(() => { if (auto) setDiff(auto.diff); }, [auto, setDiff]);
   const g = course ? computeGhost(course, diff) : null;
 
-  const courseName = course ? course.name : selectedFull ? (selectedFull.club_name || selectedFull.course_name) : null;
+  const courseName = course ? course.name : selectedFull ? (selectedFull.club_name || selectedFull.course_name) : club ? club.club_name : null;
+  /* the NINES row: the club's routings, or — restored from a saved round — the one it was on */
+  const nineRow = routings.length > 1 ? routings
+    : !club && course && course.routing ? [{ key: "saved", label: course.routing }] : null;
+  const shownRoutingKey = routings.length > 1 ? routingKey : "saved";
   const parText = course ? course.par : null;
   const yards = course ? course.holes.reduce((a, h) => a + (h.yards || 0), 0) : null;
 
   return (
     <div style={{ height: "100dvh", maxWidth: 460, margin: "0 auto", boxSizing: "border-box", display: "flex", flexDirection: "column",
       padding: "max(env(safe-area-inset-top), 30px) 20px max(env(safe-area-inset-bottom), 18px)", background: T.paper }}>
-      {picking && <CoursePicker onPick={pickCourse} onClose={() => setPicking(false)} />}
+      {picking && <CoursePicker onPick={pickClub} onClose={() => setPicking(false)} />}
 
       {/* the card: double-rule frame, sections evenly spaced between ink rules */}
       <div style={{ flexGrow: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "space-between",
         border: rule, boxShadow: `inset 0 0 0 3px ${T.paper}, inset 0 0 0 4px ${T.ink}`, padding: "20px 22px 18px" }}>
 
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <span style={{ position: "absolute", top: 0, right: 0, ...caps(9, 700, "0.04em"), color: T.muted, whiteSpace: "nowrap" }}>{BUILD}</span>
           <Logo width={168} />
           <div style={doubleRule} />
-          <span style={{ position: "absolute", left: -9999 }}>{BUILD}</span>
         </div>
 
         {/* course */}
@@ -645,22 +768,52 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
           <span style={{ fontSize: 16, textAlign: "right" }}>›</span>
         </button>
 
+        {/* v22.7 nines — a club with more than 18 holes: one outlined pill per routing, the chosen
+            one primary. Two nines stack on two lines so three routings fit at 375 wide. */}
+        {nineRow && (
+          <div data-row="nines" style={{ display: "grid", gridTemplateColumns: "66px 1fr", alignItems: "center", height: 54, borderBottom: rule }}>
+            <span style={caps(11)}>Nines</span>
+            <div style={nineRow.length <= 3
+              ? { display: "grid", gridTemplateColumns: `repeat(${nineRow.length}, minmax(0, 1fr))`, gap: 5 }
+              : { display: "flex", gap: 5, overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+              {nineRow.map(r => {
+                const sel = r.key === shownRoutingKey;
+                const parts = String(r.label).length > 9 ? String(r.label).split(" / ") : [r.label];   // "1 / 2" stays on one line
+                return (
+                  <button key={r.key} onClick={() => pickRouting(r.key)} aria-pressed={sel ? "true" : "false"} aria-label={`Nines ${r.label}`}
+                    className={sel ? "lc-primary" : undefined}
+                    style={{ ...(sel ? primaryPill : outlinedPill), ...(nineRow.length > 3 ? { flex: "0 0 74px" } : { minWidth: 0 }),
+                      height: 40, borderRadius: 20, padding: "0 4px", flexDirection: "column", gap: 0, ...caps(9, 700, "0.06em"), lineHeight: "12px" }}>
+                    {parts.length === 2
+                      ? <><span style={{ maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{parts[0]} /</span>
+                          <span style={{ maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{parts[1]}</span></>
+                      : <span style={{ maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.label}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* tee markers — yardage under each; the selected one is circled in pencil */}
         <div style={{ display: "grid", gridTemplateColumns: "66px 1fr", alignItems: "center", height: 74, borderBottom: rule }}>
           <span style={caps(11)}>Tee</span>
           {loadState2 === "loading" ? <span style={{ fontFamily: F.label, fontSize: 11, color: T.muted }}>Loading course…</span>
-          : loadState2 === "error" ? <button onClick={() => pendingId && pickCourse(pendingId)} style={{ fontFamily: F.label, fontSize: 11, color: T.double, background: "none", border: "none", textAlign: "left", padding: 0 }}>Couldn't load — tap to retry.</button>
+          : loadState2 === "error" ? <button onClick={() => retry.current && retry.current()} style={{ fontFamily: F.label, fontSize: 11, color: T.double, background: "none", border: "none", textAlign: "left", padding: 0 }}>Couldn't load — tap to retry.</button>
           : tees.length === 0 && selectedFull ? <span style={{ fontFamily: F.label, fontSize: 11, color: T.muted }}>No 18-hole tees for this course.</span>
           : tees.length === 0 && course ? (
             /* restored from a saved round: the tee list was never fetched, so show
                the tee that round was on rather than asking for a course again */
             <div style={{ display: "flex", alignItems: "center", gap: 3, height: 58 }}>
               <span style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, width: 66, height: 58 }}>
-                <span style={{ width: 14, height: 14, borderRadius: 7, background: T.paper, border: `1.5px solid ${T.ink}` }} />
+                {(() => { const t = teeTintFor(course.tee, 0); return (
+                  <span style={{ width: 14, height: 14, borderRadius: 7, background: t === "PAPER" ? T.paper : t,
+                    border: t === "PAPER" ? `1.5px solid ${T.ink}` : "none" }} />
+                ); })()}
                 <span style={{ fontSize: 11, fontWeight: 700 }}>{course.tee}</span>
                 <span style={printed(11, 400)}>{yards ? yards.toLocaleString() : ""}</span>
                 <svg style={{ position: "absolute", left: 0, top: 0, width: "100%", height: 58, overflow: "visible" }} viewBox="0 0 66 58" preserveAspectRatio="none" fill="none" aria-hidden="true">
-                  <ellipse cx="33" cy="29" rx="29" ry="26" transform="rotate(-4 33 29)" stroke={T.pencil} strokeWidth="1.7" strokeDasharray="160 6" filter="url(#pencil)" />
+                  <PencilRing cx={33} cy={29} rx={29} ry={26} seedKey={course.tee || "restored"} />
                 </svg>
               </span>
               <button onClick={() => setPicking(true)} style={{ background: "none", border: "none", color: T.ink, padding: "0 6px", ...caps(10, 700, "0.14em") }}>Change</button>
@@ -672,7 +825,7 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
               ? { display: "grid", gridTemplateColumns: `repeat(${tees.length}, minmax(0, 1fr))`, gap: 2 }
               : { display: "flex", gap: 2, overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
               {tees.map((o, i) => {
-                const sel = o.key === teeKey, tint = teeTint(i);
+                const sel = o.key === teeKey, name = o.tee.tee_name || o.gender, tint = teeTintFor(name, i);
                 return (
                   <button key={o.key} onClick={() => pickTee(o.key)} style={{ position: "relative",
                     ...(tees.length > 5 ? { flex: "0 0 58px" } : { minWidth: 0 }),
@@ -680,11 +833,11 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
                     display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: 0 }}>
                     <span style={{ width: 14, height: 14, borderRadius: 7, background: tint === "PAPER" ? T.paper : tint,
                       border: tint === "PAPER" ? `1.5px solid ${T.ink}` : "none" }} />
-                    <span style={{ fontSize: 11, fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.tee.tee_name || o.gender}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
                     <span style={printed(11, 400)}>{teeYards(o).toLocaleString()}</span>
                     {sel && (
                       <svg style={{ position: "absolute", left: 0, top: 0, width: "100%", height: 58, overflow: "visible" }} viewBox="0 0 66 58" preserveAspectRatio="none" fill="none" aria-hidden="true">
-                        <ellipse cx="33" cy="29" rx="29" ry="26" transform="rotate(-4 33 29)" stroke={T.pencil} strokeWidth="1.7" strokeDasharray="160 6" filter="url(#pencil)" />
+                        <PencilRing cx={33} cy={29} rx={29} ry={26} seedKey={o.key} />
                       </svg>
                     )}
                   </button>
@@ -745,7 +898,7 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
 
         {/* start */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <button onClick={onStart} disabled={!course} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+          <button onClick={start} disabled={!course} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
             height: 52, padding: "0 30px", background: course ? T.ink : "transparent", border: `2px solid ${course ? T.ink : T.muted}`,
             borderRadius: 26, boxShadow: course ? `inset 0 0 0 1.5px ${T.yellow}` : "none",
             color: course ? T.paper : T.muted, ...caps(13, 700, "0.22em") }}>
@@ -758,9 +911,15 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
             background: "none", border: "none", color: T.ink, ...caps(11, 500, "0.14em") }}>
             Round history <span style={{ ...printed(13), letterSpacing: 0 }}>· {stats.n}</span>
           </button>
-          {/* course-map prefetch (addendum §11.2) — one line, Bitter 11 ink */}
+          {/* course-map prefetch (addendum §11.2) — one line, Bitter 11 ink. A network-error or
+              partial-coverage line is tap-to-retry (v22.8); the others are plain status. */}
           {course && courseMapLine(courseMap) && (
-            <span data-testid="course-map-status" style={{ fontFamily: F.label, fontSize: 11, color: T.ink, lineHeight: "14px", marginTop: -4 }}>{courseMapLine(courseMap)}</span>
+            courseMapRetryable(courseMap) ? (
+              <button onClick={courseMap.retry} data-testid="course-map-status" style={{ fontFamily: F.label, fontSize: 11, color: T.ink,
+                lineHeight: "14px", marginTop: -4, background: "none", border: "none", padding: 0, textAlign: "center" }}>{courseMapLine(courseMap)}</button>
+            ) : (
+              <span data-testid="course-map-status" style={{ fontFamily: F.label, fontSize: 11, color: T.ink, lineHeight: "14px", marginTop: -4 }}>{courseMapLine(courseMap)}</span>
+            )
           )}
         </div>
       </div>
@@ -776,79 +935,79 @@ const RES_WORD = { win: "won", loss: "lost", tie: "halved" };
 /* Who a finished nine/total belongs to, in the footer's voice. */
 const sideWord = (res) => res === "win" ? "you" : res === "loss" ? "ghost" : res === "tie" ? "halved" : "open";
 
-/* The five options, relative to par. The last one is a ceiling the long-press
-   can raise: the USGA cap is par + 2 + strokes received, so on a stroked hole
-   par+2 is below your legal maximum and has to be reachable. */
-function choicesFor(par, ceiling) {
-  return [
-    { v: par - 2, kind: "eagle",  rings: 2, color: T.ink },
-    { v: par - 1, kind: "birdie", rings: 1, color: T.ink },
-    { v: par,     kind: "par",    rings: 0, color: T.black },
-    { v: par + 1, kind: "bogey",  boxes: 1, color: T.bogey },
-    { v: ceiling, kind: "double", boxes: 2, color: T.double, ceiling: true },
-  ];
+/* v22.9 — the chooser is a strip of every score from 1 to min(15, par + 10), five in view,
+   snapping to a centred cell. It replaces the five fixed options and the long-press past
+   par+2: the USGA cap is par + 2 + strokes received, so on a stroked hole par+2 is below
+   your legal maximum, and the strip simply runs past it. A score already on the card that
+   lies above the range (an old long-press 15 on a par 3) stretches the strip to reach it. */
+const SCORE_MAX = 15;
+function scoreOptions(par, keep) {
+  const top = Math.max(Math.min(SCORE_MAX, par + 10), Number.isFinite(keep) ? keep : 0);
+  return Array.from({ length: top }, (_, k) => k + 1);
 }
 
-/* A number written in pencil, with the shapes a scorecard puts round it.
-   One tap makes it pending (the soft graphite disc); a second commits. */
-function ScoreChoice({ c, par, pending, onTap, onHold }) {
-  const held = React.useRef(false);
-  const timers = React.useRef([]);
-  const stop = () => { timers.current.forEach(clearTimeout); timers.current.forEach(clearInterval); timers.current = []; };
-  useEffect(() => stop, []);
-  const start = () => {
-    if (!c.ceiling) return;
-    const t = setTimeout(() => {
-      held.current = true; onHold();
-      const iv = setInterval(onHold, 400); timers.current.push(iv);
-    }, 450);
-    timers.current.push(t);
-  };
-  const end = () => stop();
-  const click = () => { if (held.current) { held.current = false; return; } onTap(c.v); };
-  const label = c.ceiling && c.v === par + 2 ? `${c.v}+` : `${c.v}`;
+/* A number written in pencil, with the shapes a scorecard puts round it (PencilMark's
+   shapes, at chooser size). One tap makes it pending (the soft graphite disc); a second
+   commits. No pointer handlers: the strip scrolls natively, so a swipe never taps. */
+function ScoreChoice({ v, par, pending, onTap }) {
+  const d = v - par;
+  const col = markColor(d);
   const S = 52;
   return (
-    <button onClick={click} onPointerDown={start} onPointerUp={end} onPointerLeave={end} onPointerCancel={end}
-      onContextMenu={(e) => e.preventDefault()}
-      aria-label={`${c.kind}, ${label}${c.ceiling ? ", hold to go higher" : ""}${pending ? ", tap again to confirm" : ""}`}
-      style={{ position: "relative", width: S, height: S, border: "none", background: "transparent",
-        fontFamily: F.handNum, fontSize: 25, color: c.color, filter: "url(#pencil)", touchAction: "none", userSelect: "none" }}>
+    <button onClick={() => onTap(v)} data-score={v}
+      aria-label={`${scoreName(v, par)}, ${v}${pending ? ", tap again to confirm" : ""}`}
+      style={{ position: "relative", flexShrink: 0, width: S, height: S, padding: 0, border: "none", background: "transparent",
+        fontFamily: F.handNum, fontSize: 25, color: col, filter: "url(#pencil)", userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent" }}>
       {pending && <span style={{ position: "absolute", left: 6, top: 6, width: S - 12, height: S - 12, borderRadius: (S - 12) / 2, background: T.shade, filter: "url(#soft)" }} />}
-      {c.rings > 0 && (
-        <svg style={{ position: "absolute", left: 0, top: 0, width: S, height: S }} viewBox="0 0 52 52" fill="none" stroke={c.color} strokeWidth="1.4" aria-hidden="true">
-          <ellipse cx="26" cy="26" rx="22" ry="21" transform="rotate(-8 26 26)" strokeDasharray="132 5" />
-          {c.rings > 1 && <ellipse cx="26" cy="26" rx="17" ry="16.5" transform="rotate(12 26 26)" strokeDasharray="102 4" />}
-        </svg>
-      )}
-      {c.boxes > 0 && (
-        <svg style={{ position: "absolute", left: 0, top: 0, width: S, height: S }} viewBox="0 0 52 52" fill="none" stroke={c.color} strokeWidth="1.4" aria-hidden="true">
-          {c.boxes > 1
-            ? <><rect x="4" y="4" width="44" height="44" rx="1.5" transform="rotate(-1.5 26 26)" strokeDasharray="170 5" />
-                <rect x="9.5" y="9.5" width="33" height="33" rx="1.5" transform="rotate(2 26 26)" strokeDasharray="128 4" /></>
-            : <rect x="6" y="6" width="40" height="40" rx="1.5" transform="rotate(1.5 26 26)" strokeDasharray="155 5" />}
-        </svg>
-      )}
-      <span style={{ position: "relative" }}>{label}</span>
+      <MarkShapes d={d} size={S} color={col} sw={1.4} font={25} digits={String(v).length} />
+      <span style={{ position: "relative" }}>{v}</span>
     </button>
   );
 }
 
+/* The strip itself. Five cells of 20% each, with two cells' worth of blank at either end so
+   1 and the top score can both reach the centre; the scroll offset of a centred score is
+   therefore (score - 1) cells. Positioned on entering a hole — on the written score, else
+   the pending one, else par — and left alone after that; nothing about it is persisted. */
+function ScoreStrip({ hole, par, focus, pend, onTap }) {
+  const ref = React.useRef(null);
+  const opts = scoreOptions(par, focus);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (el) el.scrollLeft = (focus - 1) * (el.clientWidth / 5);
+  }, [hole, par]);   // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div ref={ref} className="lc-strip" data-part="chooser" role="group" aria-label={`Score for hole ${hole + 1}`}
+      style={{ display: "flex", width: "100%", overflowX: "auto", overflowY: "hidden", scrollSnapType: "x mandatory",
+        WebkitOverflowScrolling: "touch", overscrollBehaviorX: "contain", touchAction: "pan-x", scrollbarWidth: "none" }}>
+      <div aria-hidden="true" style={{ flex: "0 0 40%" }} />
+      {opts.map((v) => (
+        <div key={v} style={{ flex: "0 0 20%", display: "flex", justifyContent: "center", scrollSnapAlign: "center" }}>
+          <ScoreChoice v={v} par={par} pending={pend === v} onTap={onTap} />
+        </div>
+      ))}
+      <div aria-hidden="true" style={{ flex: "0 0 40%" }} />
+    </div>
+  );
+}
+const STRIP_CSS = `.lc-strip::-webkit-scrollbar{display:none}`;
+
 /* One nine as a ruled strip: hole numbers, your line, the ghost's line.
-   Cells carry the hole's result as a fill; the hole you are on is yellow. */
-function Strip({ start, scores, ghost, hole, onJump }) {
+   Cells carry the hole's result as a fill; the hole you are on is yellow. Your scores carry
+   the finished card's rings and boxes (v22.9), so the two cards speak the same language. */
+function Strip({ start, scores, ghost, pars, hole, onJump }) {
   const idx = [...Array(9)].map((_, k) => start + k);
   const rows = [
     { key: "", h: 22, get: (i) => String(i + 1), style: { ...printed(12), color: T.ink }, under: T.ink },
-    { key: "you", h: 30, get: (i) => scores[i] ?? "", style: written(17), under: T.hair },
-    { key: "gh.", h: 30, get: (i) => ghost.holes[i], style: written(17, T.ghost), under: T.ink },
+    { key: "you", h: 30, get: (i) => scores[i] != null ? <PencilMark score={scores[i]} par={pars[i]} size={27} font={16} /> : "", style: written(17), under: T.hair },
+    { key: "gh.", label: <GhostGlyph size={12} />, h: 30, get: (i) => ghost.holes[i], style: written(17, T.ghost), under: T.ink },
   ];
   return (
     <div style={{ display: "grid", gridTemplateColumns: "34px repeat(9, minmax(0, 1fr))", borderTop: rule, borderLeft: rule }}>
       {rows.map((r) => (
         <React.Fragment key={r.key}>
           <div style={{ display: "flex", alignItems: "center", height: r.h, paddingLeft: 4, borderRight: rule,
-            borderBottom: `1px solid ${r.under}`, fontFamily: F.label, fontSize: 10 }}>{r.key}</div>
+            borderBottom: `1px solid ${r.under}`, fontFamily: F.label, fontSize: 10 }}>{r.label || r.key}</div>
           {idx.map((i, k) => {
             const res = i === hole ? "now" : holeRes(scores[i], ghost.holes[i]);
             return (
@@ -866,23 +1025,36 @@ function Strip({ start, scores, ghost, hole, onJump }) {
   );
 }
 
+/* One side of the Out / In / Total line (v22.9): the label, your strokes in pencil, the ghost
+   glyph and its strokes in print. Blank until a hole on that side is written. */
+function SideTotal({ label, t }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", color: t ? T.ink : T.muted }}>
+      <span style={caps(10, 400, "0.14em")}>{label}</span>
+      {t ? <>
+        <span style={{ ...written(23), lineHeight: "22px" }}>{t.you}</span>
+        <GhostGlyph size={12} style={{ marginLeft: 3 }} />
+        <span style={{ ...printed(20), color: T.ink, lineHeight: "22px" }}>{t.gh}</span>
+      </> : <span style={{ ...writtenWord(17, T.muted), lineHeight: "22px" }}>open</span>}
+    </div>
+  );
+}
+
 function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExit, onCaddie }) {
   const [confirmExit, setConfirmExit] = useState(false);
   const [pending, setPending] = useState(null);          // { hole, v } — chosen, not written
-  const [ceiling, setCeiling] = useState(null);          // raised par+2, this hole only
   const m = useMemo(() => evalMatch(scores, ghost.holes), [scores, ghost]);
   const h = course.holes[hole];
   const par = h.par;
-  const cap = ceiling != null && ceiling > par + 2 ? ceiling : par + 2;
   const pend = pending && pending.hole === hole ? pending.v : null;
 
-  useEffect(() => { setPending(null); setCeiling(null); }, [hole]);
+  useEffect(() => { setPending(null); }, [hole]);
 
   /* Write the number down. No navigation — the callers decide where to go. */
   const write = (v) => {
     const after = [...scores]; after[hole] = Math.max(1, v);
     setScores(after);
-    setPending(null); setCeiling(null);
+    setPending(null);
     return after;
   };
 
@@ -908,11 +1080,6 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
   const tap = (v) => { if (pend === v) commit(v); else setPending({ hole, v }); };
   /* Leaving for the caddie is navigation too: a pending score is written, never dropped. */
   const goCaddie = () => { if (pend != null) write(pend); if (onCaddie) onCaddie(); };
-  const raise = () => setCeiling((c) => {
-    const next = Math.min((c != null && c > par + 2 ? c : par + 2) + 1, 15);
-    setPending({ hole, v: next });
-    return next;
-  });
 
   const seg = Math.floor(hole / 3);
   const segHoles = [seg * 3, seg * 3 + 1, seg * 3 + 2];
@@ -932,6 +1099,10 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
   };
   const front = segLine(0, 2), back = segLine(3, 5);
   const frontPlayed = scores.slice(0, 9).some(s => s != null);
+  const pars = course.holes.map((x) => x.par);
+  /* Out / In / Total: your strokes in pencil, the ghost's in print, like for like — the
+     ghost's figure counts only the holes you have written, so the two can be compared. */
+  const sideTotals = (a, b) => scores.slice(a, b).some((s) => s != null) ? { you: played(a, b), gh: ghPlayed(a, b) } : null;
 
   return (
     <div style={{ height: "100dvh", maxWidth: 460, margin: "0 auto", boxSizing: "border-box", display: "flex", flexDirection: "column",
@@ -978,7 +1149,7 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
             </button>
           );
         })}
-        <div style={{ display: "flex", alignItems: "center", height: 42, paddingLeft: 6, borderRight: rule, borderBottom: hairline, ...caps(10, 700, "0.12em") }}>Ghost</div>
+        <div style={{ display: "flex", alignItems: "center", height: 42, paddingLeft: 6, borderRight: rule, borderBottom: hairline, ...caps(10, 700, "0.12em") }}><GhostGlyph size={14} /></div>
         {segHoles.map((i, k) => (
           <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 42,
             borderRight: `1px solid ${k === 2 ? T.ink : T.hair}`, borderBottom: hairline, ...written(21, T.ghost) }}>{ghost.holes[i]}</div>
@@ -986,14 +1157,13 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
         <div style={{ display: "flex", alignItems: "center", height: 42, paddingLeft: 6, borderRight: rule, borderBottom: rule, ...caps(10, 700, "0.12em") }}>You</div>
         {segHoles.map((i, k) => {
           const showPend = i === hole && pend != null && scores[i] == null;
-          const val = scores[i] != null ? scores[i] : showPend ? pend : "";
-          const col = showPend ? (pend > course.holes[i].par + 1 ? T.double : pend > course.holes[i].par ? T.bogey : T.pencil) : T.pencil;
+          const val = scores[i] != null ? scores[i] : showPend ? pend : null;
           return (
             <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 42,
               borderRight: `1px solid ${k === 2 ? T.ink : T.hair}`, borderBottom: rule }}>
-              <span style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30 }}>
-                {showPend && <span style={{ position: "absolute", left: 2, top: 2, width: 26, height: 26, borderRadius: 13, background: T.shade, filter: "url(#soft)" }} />}
-                <span style={{ position: "relative", ...written(21, col) }}>{val}</span>
+              <span style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36 }}>
+                {showPend && <span style={{ position: "absolute", left: 5, top: 5, width: 26, height: 26, borderRadius: 13, background: T.shade, filter: "url(#soft)" }} />}
+                {val != null && <PencilMark score={val} par={course.holes[i].par} size={36} font={21} />}
               </span>
             </div>
           );
@@ -1020,10 +1190,9 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
           </div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", paddingTop: 6 }}>
-          {choicesFor(par, cap).map((c) => (
-            <ScoreChoice key={c.kind} c={c} par={par} pending={pend === c.v} onTap={tap} onHold={raise} />
-          ))}
+        <div style={{ width: "100%", paddingTop: 6 }}>
+          <style dangerouslySetInnerHTML={{ __html: STRIP_CSS }} />
+          <ScoreStrip hole={hole} par={par} focus={scores[hole] ?? pend ?? par} pend={pend} onTap={tap} />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", width: "100%", paddingTop: 4 }}>
@@ -1063,7 +1232,7 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
               {frontPlayed && <>{(front.parts || front.open) ? " · " : ""}you <span style={printed(12)}>{played(0, 9)}</span>, ghost <span style={printed(12)}>{ghPlayed(0, 9)}</span></>}
             </span>
           </div>
-          <Strip start={0} scores={scores} ghost={ghost} hole={hole} onJump={goHole} />
+          <Strip start={0} scores={scores} ghost={ghost} pars={pars} hole={hole} onJump={goHole} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
@@ -1073,12 +1242,12 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
               {back.open && <span style={{ color: T.muted }}>{back.open} open</span>}
             </span>
           </div>
-          <Strip start={9} scores={scores} ghost={ghost} hole={hole} onJump={goHole} />
+          <Strip start={9} scores={scores} ghost={ghost} pars={pars} hole={hole} onJump={goHole} />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", paddingTop: 2, ...caps(10, 400, "0.14em") }}>
-          <div>Out <span style={{ ...writtenWord(17), letterSpacing: 0, textTransform: "none" }}>{sideWord(m.front.res)}</span></div>
-          <div style={{ textAlign: "center", color: m.back.res === "live" ? T.muted : T.ink }}>In <span style={{ ...writtenWord(17), letterSpacing: 0, textTransform: "none" }}>{sideWord(m.back.res)}</span></div>
-          <div style={{ textAlign: "right" }}>Total <span style={{ ...writtenWord(17), letterSpacing: 0, textTransform: "none" }}>{sideWord(m.total.res)}</span></div>
+        <div data-part="totals" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 2 }}>
+          <SideTotal label="Out" t={sideTotals(0, 9)} />
+          <SideTotal label="In" t={sideTotals(9, 18)} />
+          <SideTotal label="Total" t={sideTotals(0, 18)} />
         </div>
       </div>
     </div>
@@ -1317,14 +1486,27 @@ function PuttSheet({ initialFt, onMade, onSave, onSkip }) {
 }
 
 /* 27-hole clubs (engine §6.4): a one-time paper list pairing each OSM hole with {nine, hole}. */
-function NineMapScreen({ geometry, courseId, onSaved, onCard }) {
+/* v22.7: `routing` (course.nines) pre-selects the nines being played and names them on the
+   front/back rows; `initialMap` is a map already saved for this club on another routing. */
+function NineMapScreen({ geometry, courseId, routing, initialMap, initialPlay, onSaved, onCard }) {
   const cands = useMemo(() => [...nineMapCandidates(geometry)].sort((a, b) => (Number(a.ref) || 99) - (Number(b.ref) || 99) || String(a.key).localeCompare(String(b.key))), [geometry]);
-  const [map, setMap] = useState(() => defaultNineMap(cands));
-  const [play, setPlay] = useState(["1", "2"]);
+  const [map, setMap] = useState(() => {
+    const d = defaultNineMap(cands);
+    if (!initialMap) return d;
+    cands.forEach((c) => { const v = initialMap[c.key]; if (v && v.nine && v.hole) d[c.key] = { nine: String(v.nine), hole: Number(v.hole) }; });
+    return d;
+  });
+  const [play, setPlay] = useState(() => initialPlay || ["1", "2"]);
   const set = (k, patch) => setMap((m) => ({ ...m, [k]: { ...m[k], ...patch } }));
   const small = (on) => ({ width: 30, height: 30, borderRadius: 15, border: `1.5px solid ${T.ink}`, background: on ? T.ink : "transparent", color: on ? T.paper : T.ink,
     fontFamily: F.num, fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" });
-  const save = () => { saveNineMap(safeStorage(), courseId, { ...map, _play: play }); onSaved(loadNineMap(safeStorage(), courseId)); };
+  const named = routing && Array.isArray(routing.play) && !routing.play.every((x) => ["1", "2", "3"].includes(String(x))) ? routing.play : null;
+  const save = () => {
+    const assoc = routing ? ninesAssociation(play, routing) : null;
+    const prev = initialMap && initialMap._nines;
+    saveNineMap(safeStorage(), courseId, { ...map, _play: play, ...(assoc ? { _nines: assoc } : prev ? { _nines: prev } : {}) });
+    onSaved(loadNineMap(safeStorage(), courseId) || { ...map, _play: play });
+  };
   return (
     <div data-screen="nine-map" style={{ position: "fixed", inset: 0, overflowY: "auto", background: T.paper, color: T.ink, fontFamily: F.label,
       padding: "max(env(safe-area-inset-top), 20px) 20px max(env(safe-area-inset-bottom), 16px)" }}>
@@ -1333,7 +1515,7 @@ function NineMapScreen({ geometry, courseId, onSaved, onCard }) {
       <div style={{ fontSize: 13, lineHeight: 1.45, margin: "6px 0 12px" }}>This course maps more than 18 holes. Pair each with its nine and hole once; Loop keeps it.</div>
       {[["Front nine", 0], ["Back nine", 1]].map(([label, i]) => (
         <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: hairline }}>
-          <span style={caps(10)}>{label}</span>
+          <span style={caps(10)}>{label}{named ? <span style={{ ...writtenWord(17), textTransform: "none", letterSpacing: 0, marginLeft: 8 }}>{named[i]}</span> : null}</span>
           <span style={{ display: "flex", gap: 6 }}>{["1", "2", "3"].map((nine) => (
             <button key={nine} onClick={() => setPlay((p) => { const q = [...p]; q[i] = nine; return q; })} style={small(play[i] === nine)} aria-label={`${label}: nine ${nine}`}>{nine}</button>
           ))}</span>
@@ -1359,15 +1541,40 @@ function NineMapScreen({ geometry, courseId, onSaved, onCard }) {
   );
 }
 
+/* The nine map for this round. Saved per CLUB (v22.7; before that per routing apiId, still read).
+   With a routing chosen on Setup: a saved map takes this routing's `_play` from its `_nines`; with
+   nothing saved, a confident map read off the routing (nineMapFromRouting) is saved and the screen
+   skipped. Otherwise { ask } — the screen, pre-filled. */
+function resolveNineMap(storage, geometry, course) {
+  const clubId = clubIdOf(course), apiId = apiIdOf(course);
+  const nines = course && course.nines;
+  let saved = loadNineMap(storage, clubId) || (String(apiId) !== String(clubId) ? loadNineMap(storage, apiId) : null);
+  if (!saved && nines) {
+    const derived = nineMapFromRouting(geometry, nines);
+    if (derived) saved = saveNineMap(storage, clubId, derived) ? (loadNineMap(storage, clubId) || derived) : derived;
+  }
+  if (!saved) return { map: null, ask: { initialMap: null, initialPlay: nines ? guessPlay(nines) : null } };
+  if (!nines) return { map: saved, ask: null };
+  const play = playFromRouting(saved, nines);
+  if (play) return { map: { ...saved, _play: play }, ask: null };
+  // a map saved without names for this routing's nines: ask which nines these are, holes pre-filled
+  return { map: null, ask: { initialMap: saved, initialPlay: guessPlay(nines) } };
+}
+
 /* Wrapper: the 27-hole mapping screen first when the course needs it (never again once saved). */
 function Caddie(props) {
   const { geometry, course, onCard } = props;
-  const courseId = apiIdOf(course);
+  const clubId = clubIdOf(course);
   const needs = !!geometry && needsNineMap(geometry);
-  const [nineMap, setNineMap] = useState(() => (needs ? loadNineMap(safeStorage(), courseId) : null));
-  useEffect(() => { setNineMap(needs ? loadNineMap(safeStorage(), courseId) : null); }, [geometry, courseId]);
-  if (needs && !nineMap) return <NineMapScreen geometry={geometry} courseId={courseId} onSaved={setNineMap} onCard={onCard} />;
-  return <CaddieScreen {...props} nineMap={needs ? nineMap : null} />;
+  const resolve = () => (needs ? resolveNineMap(safeStorage(), geometry, course) : { map: null, ask: null });
+  const [nm, setNm] = useState(resolve);
+  useEffect(() => { setNm(resolve()); }, [geometry, clubId, course && course.routing]);
+  if (needs && !nm.map) {
+    return <NineMapScreen key={`${clubId}:${course && course.routing}`} geometry={geometry} courseId={clubId} routing={course.nines || null}
+      initialMap={nm.ask && nm.ask.initialMap} initialPlay={nm.ask && nm.ask.initialPlay}
+      onSaved={(m) => setNm({ map: course.nines ? { ...m, _play: playFromRouting(m, course.nines) || m._play } : m, ask: null })} onCard={onCard} />;
+  }
+  return <CaddieScreen {...props} nineMap={needs ? nm.map : null} />;
 }
 
 function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWeather, onCard, onScore, onRetryProfile, contextRef, nineMap, roundId }) {
@@ -1404,17 +1611,18 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     const today = roundId ? loadShots(safeStorage(), roundId) : [];
     const nudged = (ctx) => withinRoundCtx(ctx, today, profile, config);
     try {
+      const tempF = weatherTempF(weather);
       if (cs.phase === "yards" && cs.yards) {
         const syn = syntheticHole(cs.yards, h.par);
-        const ctx = nudged(clubBrainContext({ holeNo: n, par: h.par, shotNo: cs.shotNo, chips: cs.chips, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride }));
+        const ctx = nudged(clubBrainContext({ holeNo: n, par: h.par, shotNo: cs.shotNo, chips: cs.chips, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride, tempF }));
         const res = recommend(ctx, syn, profile);
         const options = res ? ellipsesFor(res, lieOf(ctx), { lieQuality: ctx.lieQuality, config }) : null;
-        const inferred = { lieType: cs.shotNo <= 1 ? "tee" : "fairway", lieConfidence: "low", wind: undefined, elevation: 0, conditions: "normal", distances: res?.context?.distances };
+        const inferred = { lieType: cs.shotNo <= 1 ? "tee" : "fairway", lieConfidence: "low", wind: undefined, elevation: 0, conditions: "normal", tempF, distances: res?.context?.distances };
         return { ctx, res, options, inferred, onGreen: false, green: syn.green };
       }
       if (cs.phase !== "ready" || !built || !cs.ball) return null;
       const round = { hole: n, par: h.par, shotNo: cs.shotNo, courseId, trigger: cs.trigger || "tee", pins: { [n]: pinSet }, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride };
-      const wx = weather && Number.isFinite(weather.speedMph) ? weather : null;
+      const wx = weather && (Number.isFinite(weather.speedMph) || Number.isFinite(weather.tempF)) ? weather : null;
       const common = { hole: built, geometry, fix: { lat: cs.ball.lat, lng: cs.ball.lng, accuracyM: cs.ball.accuracyM }, weather: wx, elevation: geometry?.elevation || null, overrides, config };
       const ctx = nudged(assembleShotContext({ ...common, round, chips: cs.chips }));
       const base = assembleShotContext({ ...common, round: { ...round, windOverride: null, conditionsOverride: null }, chips: {} });
@@ -1423,7 +1631,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
       const pinPt = base.meta.distances?.pinPoint || built.green.center;
       const wind = base.wind ? { speedMph: base.wind.speedMph, relative: windEffect(base.wind, frameBearing(base.ball, pinPt), 100, config).relative }
         : base.meta.sources.wind === "weather" ? null : undefined;
-      const inferred = { lieType: base.lieType, lieConfidence: base.lieConfidence, wind, elevation: base.elevationDeltaYds, conditions: base.conditions, distances: ctx.meta.distances };
+      const inferred = { lieType: base.lieType, lieConfidence: base.lieConfidence, wind, elevation: base.elevationDeltaYds, conditions: base.conditions, tempF: base.tempF, distances: ctx.meta.distances };
       return { ctx, res, options, inferred, onGreen: res === null, green: built.green };
     } catch (e) {
       console.warn("caddie compute failed", e);
@@ -1688,7 +1896,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
               <button key={c.key} className="lc-chip" data-chip={c.key} onClick={() => { setWindDir(null); setPicker(c.key); }} aria-label={`${c.label}: ${c.value}`}
                 style={{ position: "relative", background: T.paper, height: 50, padding: "7px 9px 6px", display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "flex-start", textAlign: "left", minWidth: 0 }}>
                 <span style={k9}>{c.label}</span>
-                <span style={{ ...(c.edited ? { ...writtenWord(c.value.length > 8 ? 24 : 29), lineHeight: 0.62 } : { fontSize: c.value.length > 11 ? 12.5 : 14, color: T.ink, lineHeight: 1 }),
+                <span style={{ ...(c.edited ? { ...writtenWord(c.value.length > 8 ? 24 : 29), lineHeight: 0.62 } : { fontSize: c.value.length > 11 ? 12.5 : 14, color: T.black, lineHeight: 1 }),
                   whiteSpace: "nowrap", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {c.value}{c.unsure && <span style={{ ...printed(14), color: T.bogey }}> ?</span>}
                 </span>
@@ -1814,31 +2022,55 @@ function LeaveSheet({ hole, onStay, onLeave }) {
 }
 
 /* ---------- the finished card (paper, v21.2) ---------- */
-/* A score written on a scorecard, with the shapes the chooser uses: two rings for
-   an eagle, one for a birdie, nothing for par, one box for a bogey, two for worse. */
-function PencilMark({ score, par, size = 22 }) {
+/* The scorecard's shape language, one shape per stroke off par (v22.9): a ring for each
+   stroke under, a box for each stroke over, nothing for par — so a 1 on a par 4 has three
+   rings and a 7 has three boxes. Near-clean ellipses and squares, alternating slight tilts, a
+   small pen-lift gap in each. The outer shape is the same size whatever the count; extra ones
+   nest inside it, closing up (and thinning) as they go so the numeral in the middle stays
+   clear — at size 22 and 52 the first two land where the v21 ring/box pair did. */
+const markColor = (d) => d < 0 ? T.ink : d === 0 ? T.black : d === 1 ? T.bogey : T.double;
+const RING_TILT = [-8, 12, -4, 9, -11, 5, -6, 10, -3, 7];
+const BOX_TILT = [-1.5, 2, -1, 1.5, -2, 1, -0.8, 1.8, -1.2, 0.6];
+function MarkShapes({ d, size: S, color, sw = 1.1, font = 15, digits = 1 }) {
+  const n = Math.abs(d);
+  if (!n) return null;
+  const ring = d < 0, c = S / 2;
+  const outer = !ring && n === 1 ? S * 0.386 : S * 0.43;                 // half-size of the outer shape
+  const inner = Math.max(S * 0.2, font * (digits > 1 ? 0.55 : 0.36));   // keep clear of the numeral
+  const base = 3 + (S - 22) * 0.07;
+  const step = n > 1 ? Math.min(base, (outer - inner) / (n - 1)) : 0;
+  const w = n > 1 ? Math.min(sw, Math.max(0.45, step * 0.5)) : sw;
+  const gap = 3 + (S - 22) * 0.05;
+  const shapes = [];
+  for (let k = 0; k < n; k++) {
+    const r = outer - k * step;
+    if (ring) {
+      const rx = r, ry = r - S * 0.02;
+      const per = 2 * Math.PI * Math.sqrt((rx * rx + ry * ry) / 2);
+      shapes.push(<ellipse key={k} cx={c} cy={c} rx={rx.toFixed(2)} ry={ry.toFixed(2)} transform={`rotate(${RING_TILT[k % 10]} ${c} ${c})`} strokeDasharray={`${(per - gap).toFixed(1)} ${gap.toFixed(1)}`} />);
+    } else {
+      const tilt = n === 1 ? 1.5 : BOX_TILT[k % 10];
+      shapes.push(<rect key={k} x={(c - r).toFixed(2)} y={(c - r).toFixed(2)} width={(2 * r).toFixed(2)} height={(2 * r).toFixed(2)} rx={S > 40 ? 1.5 : 0}
+        transform={`rotate(${tilt} ${c} ${c})`} strokeDasharray={`${(8 * r - gap).toFixed(1)} ${gap.toFixed(1)}`} />);
+    }
+  }
+  return (
+    <svg style={{ position: "absolute", left: 0, top: 0, width: S, height: S }} viewBox={`0 0 ${S} ${S}`} fill="none" stroke={color} strokeWidth={w.toFixed(2)}
+      aria-hidden="true" data-mark={ring ? "rings" : "boxes"} data-count={n}>
+      {shapes}
+    </svg>
+  );
+}
+
+/* A score written on a scorecard, with the shapes the chooser uses. */
+function PencilMark({ score, par, size = 22, font = 15 }) {
   if (score == null) return <span style={{ ...written(14, T.muted) }}>·</span>;
   const d = score - par;
-  const rings = d <= -2 ? 2 : d === -1 ? 1 : 0;
-  const boxes = d === 1 ? 1 : d >= 2 ? 2 : 0;
-  const col = d < 0 ? T.ink : d === 0 ? T.black : d === 1 ? T.bogey : T.double;
+  const col = markColor(d);
   return (
     <span style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: size, height: size }}>
-      {rings > 0 && (
-        <svg style={{ position: "absolute", left: 0, top: 0, width: size, height: size }} viewBox="0 0 22 22" fill="none" stroke={col} strokeWidth="1.1" aria-hidden="true">
-          <ellipse cx="11" cy="11" rx="9.5" ry="9" transform="rotate(-8 11 11)" strokeDasharray="56 3" />
-          {rings > 1 && <ellipse cx="11" cy="11" rx="6.5" ry="6" transform="rotate(12 11 11)" strokeDasharray="38 3" />}
-        </svg>
-      )}
-      {boxes > 0 && (
-        <svg style={{ position: "absolute", left: 0, top: 0, width: size, height: size }} viewBox="0 0 22 22" fill="none" stroke={col} strokeWidth="1.1" aria-hidden="true">
-          {boxes > 1
-            ? <><rect x="1.5" y="1.5" width="19" height="19" transform="rotate(-1.5 11 11)" strokeDasharray="74 3" />
-                <rect x="4.5" y="4.5" width="13" height="13" transform="rotate(2 11 11)" strokeDasharray="50 3" /></>
-            : <rect x="2.5" y="2.5" width="17" height="17" transform="rotate(1.5 11 11)" strokeDasharray="66 3" />}
-        </svg>
-      )}
-      <span style={{ position: "relative", ...written(15, col) }}>{score}</span>
+      <MarkShapes d={d} size={size} color={col} font={font} digits={String(score).length} />
+      <span style={{ position: "relative", ...written(font, col) }}>{score}</span>
     </span>
   );
 }
@@ -2257,8 +2489,79 @@ const RES_FILL_LETTER = { W: T.fillWon, L: T.fillLost, T: T.fillHalf };
 const RES_EDGE = { W: T.ink, L: T.double, T: T.muted };
 const RES_LONG = { W: "won", L: "lost", T: "halved" };
 
+/* Read-only finished-card view for one of Brett's imported scorecards (v22.8). No ghost, no
+   points — these predate Loop, so there's nothing to score them against. Deliberately its own
+   small component rather than a read-only mode bolted onto Summary: Summary's whole shape (the
+   match line, the segments, the record) assumes a ghost and evalMatch, neither of which a seed
+   round has. */
+function SeedCardView({ seed, onBack }) {
+  const cols = "26px repeat(9, minmax(0, 1fr)) 28px 30px";
+  const nine = (start) => {
+    const isIn = start === 9;
+    const idx = [...Array(9)].map((_, k) => start + k);
+    const sum = (f) => idx.reduce((a, i) => a + f(i), 0);
+    const cell = (extra) => ({ display: "flex", alignItems: "center", justifyContent: "center", ...extra });
+    const row = (label, get, tot, all, h, under, style) => (
+      <React.Fragment key={label}>
+        <div style={cell({ height: h, justifyContent: "flex-start", paddingLeft: 3, borderRight: rule, borderBottom: `1px solid ${under}`, fontFamily: F.label, fontSize: 9, fontWeight: 700 })}>{label}</div>
+        {idx.map((i, k) => (
+          <div key={i} style={cell({ height: h, padding: 0, border: "none", borderRight: `1px solid ${k % 3 === 2 ? T.ink : T.hair}`, borderBottom: `1px solid ${under}`, ...style })}>
+            {get(i)}
+          </div>
+        ))}
+        <div style={cell({ height: h, borderRight: `1px solid ${T.hair}`, borderBottom: `1px solid ${under}`, ...style })}>{tot}</div>
+        <div style={cell({ height: h, borderRight: rule, borderBottom: `1px solid ${under}`, ...style })}>{isIn ? all : ""}</div>
+      </React.Fragment>
+    );
+    return (
+      <div style={{ display: "grid", gridTemplateColumns: cols, borderTop: rule, borderLeft: rule, marginBottom: isIn ? 0 : 10 }}>
+        <div style={{ display: "flex", alignItems: "center", height: 20, paddingLeft: 3, borderRight: rule, borderBottom: rule, ...caps(9, 700, "0.1em") }}>{isIn ? "In" : "Out"}</div>
+        {idx.map((i, k) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 20,
+            borderRight: `1px solid ${k % 3 === 2 ? T.ink : T.hair}`, borderBottom: rule, ...printed(11) }}>{i + 1}</div>
+        ))}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 20, borderRight: `1px solid ${T.hair}`, borderBottom: rule, ...caps(8, 700, "0.06em") }}>{isIn ? "In" : "Out"}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 20, borderRight: rule, borderBottom: rule, ...caps(8, 700, "0.06em") }}>{isIn ? "Tot" : ""}</div>
+        {row("par", (i) => seed.pars[i], sum((i) => seed.pars[i]), seed.pars.reduce((a, b) => a + b, 0), 20, T.hair, { ...printed(11, 400), color: T.ink })}
+        {/* imported cards are pencil too — Brett wrote these on paper before Loop existed */}
+        {row("you", (i) => <PencilMark score={seed.scores[i]} par={seed.pars[i]} />, sum((i) => seed.scores[i] ?? 0), seed.scores.reduce((a, b) => a + (b ?? 0), 0), 28, T.hair, written(18))}
+        {row("yds", (i) => seed.yards[i] ?? "—", sum((i) => seed.yards[i] || 0), seed.yards.reduce((a, b) => a + (b || 0), 0), 18, T.ink, { ...printed(10, 400), color: T.muted })}
+      </div>
+    );
+  };
+  const par = seed.pars.reduce((a, b) => a + b, 0);
+  const toPar = seed.cardTotal - par;
+  const tp = toPar === 0 ? "even" : toPar > 0 ? `+${toPar}` : `${toPar}`;
+  return (
+    <div style={{ minHeight: "100dvh", maxWidth: 460, margin: "0 auto", boxSizing: "border-box", background: T.paper,
+      padding: "max(env(safe-area-inset-top), 26px) 20px max(env(safe-area-inset-bottom), 28px)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 10, borderBottom: rule }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", padding: "6px 0", color: T.ink, ...caps(11) }}>‹ Back</button>
+        <span style={caps(11)}>Imported card</span>
+      </div>
+      <div style={{ textAlign: "center", padding: "14px 0", borderBottom: rule }}>
+        <div style={caps(10)}>card · {seed.course} · {fmtDate(seed.date)}</div>
+        <div style={{ ...writtenWord(30), lineHeight: "34px", marginTop: 4 }}>{seed.tee}</div>
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "12px 0 6px" }}>
+        <span style={caps(10)}>The card</span>
+        <span style={{ fontFamily: F.label, fontSize: 11 }}>
+          <span style={printed(12)}>{seed.rating}</span>/<span style={printed(12)}>{seed.slope}</span> · <span style={written(17)}>{tp}</span>
+        </span>
+      </div>
+      {nine(0)}
+      {nine(9)}
+      <div style={{ display: "flex", justifyContent: "space-between", padding: "14px 4px 0", fontFamily: F.label, fontSize: 11, color: T.muted }}>
+        <span>Card total <span style={printed(12)}>{seed.cardTotal}</span></span>
+        {seed.cardTotal !== seed.gross && <span>Differential adj. <span style={printed(12)}>{seed.gross}</span></span>}
+      </div>
+    </div>
+  );
+}
+
 function History({ history, stats, cloud, onDelete, onImport, onBack }) {
   const [confirmId, setConfirmId] = useState(null);
+  const [viewSeed, setViewSeed] = useState(null);
   const [msg, setMsg] = useState("");
   // §5.7 — per round and season, from the saved shot records and each round's hole scores.
   const [shotsRev, setShotsRev] = useState(0);
@@ -2266,7 +2569,8 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
   const [busy, setBusy] = useState(false);
   const fileRef = React.useRef(null);
   const shotFileRef = React.useRef(null);
-  const rounds = [...history].reverse();                  // most recent first
+  // v22.8: the ledger merges played rounds with Brett's imported seed scorecards, newest first.
+  const rows = useMemo(() => historyRows(history, SEED_ROUNDS), [history]);
 
   const doExport = async () => {
     if (!history.length) { setMsg("Nothing to export yet."); return; }
@@ -2330,6 +2634,8 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
 
   const outlinePill = { height: 44, border: rule, borderRadius: 22, background: "transparent", color: T.ink, ...caps(11, 700, "0.16em") };
 
+  if (viewSeed) return <SeedCardView seed={viewSeed} onBack={() => setViewSeed(null)} />;
+
   return (
     <div style={{ minHeight: "100dvh", maxWidth: 460, margin: "0 auto", boxSizing: "border-box", background: T.paper,
       padding: "max(env(safe-area-inset-top), 26px) 20px max(env(safe-area-inset-bottom), 28px)" }}>
@@ -2364,13 +2670,39 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
         <span style={{ fontFamily: F.label, fontSize: 11, color: T.muted }}>newest first</span>
       </div>
 
-      {rounds.length === 0 ? (
+      {rows.length === 0 ? (
         <div style={{ fontFamily: F.label, fontSize: 12, color: T.muted, padding: "26px 0", textAlign: "center", borderTop: rule, borderBottom: rule }}>
           No rounds logged yet.
         </div>
       ) : (
         <div style={{ borderTop: rule }}>
-          {rounds.map(r => {
+          {rows.map(row => {
+            if (row.kind === "card") {
+              const s = row.seed;
+              return (
+                /* imported scorecard — no ghost, no points, no delete. A neutral hairline edge
+                   (not a W/L/T colour) so it never reads as part of the record tally. */
+                <button key={`card:${s.date}:${s.course}`} onClick={() => setViewSeed(s)}
+                  style={{ display: "block", width: "100%", textAlign: "left", background: "none",
+                    border: "none", borderBottom: rule, borderLeft: `4px solid ${T.hair}`, padding: "8px 8px 7px" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ ...writtenWord(21), lineHeight: "21px", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {s.course}
+                    </span>
+                    <span style={{ ...written(18), whiteSpace: "nowrap" }}>
+                      {s.cardTotal}
+                      {s.cardTotal !== s.gross && <span style={{ fontFamily: F.label, fontSize: 10, fontWeight: 700, color: T.muted, marginLeft: 5 }}>adj {s.gross}</span>}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 1, fontFamily: F.label, fontSize: 11, color: T.ink }}>
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.tee} · {fmtDate(s.date)}</span>
+                    <span style={{ color: T.muted }}>·</span>
+                    <span style={{ ...caps(9, 700, "0.12em"), color: T.muted }}>card</span>
+                  </div>
+                </button>
+              );
+            }
+            const r = row.round;
             const confirming = confirmId === r.id;
             const margin = r.yourPoints - r.ghostPoints;
             const rd = recordDifferential(r);              // this round's differential — feeds the last-5
@@ -2394,7 +2726,7 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
                   <span style={{ color: T.muted }}>·</span>
                   <span>{fmtDate(r.date)}</span>
                   <span style={{ color: T.muted }}>·</span>
-                  <span>{r.tee}</span>
+                  <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.tee}{r.routing ? ` · ${r.routing}` : ""}</span>
                   <span style={{ flex: 1 }} />
                   <span style={{ color: T.muted }}>
                     {margin >= 0 ? "+" : ""}{margin.toFixed(1)}{rd != null ? ` · diff ${rd.toFixed(1)}` : ""}

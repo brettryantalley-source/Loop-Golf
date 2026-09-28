@@ -11,7 +11,9 @@
 
 import { DEFAULT_CONFIG } from "./config.js";
 import { frameOf, inferLie, distances, clampToGreen, ll } from "./geo.js";
-import { conditionsFrom, elevationDeltaYds as elevDelta } from "./sensors.js";
+import { conditionsFrom, elevationDeltaYds as elevDelta, interpolateElevation, weatherTempF } from "./sensors.js";
+
+const FEET_PER_METER = 3.28084;
 
 const norm360 = (d) => ((d % 360) + 360) % 360;
 const DEG = Math.PI / 180;
@@ -68,13 +70,17 @@ export function chipWind(chip, shotBearingDeg) {
  *   weather:   sensors.fetchWeather result,  elevation: samples (array or { samples }),
  *   overrides: shotlog.js lie-override entries,
  *   chips:     Brett's corrections { lie, quality, conditions, pin, wind, elevation },
- *   config }
+ *   config,
+ *   now }      optional clock (ms / Date / ISO) for the time-of-day conditions rules; defaults to
+ *              the weather's as-of time, so this module still never reads a clock itself
  * → { hole, par, shotNo, ball, lieType, lieQuality, lieConfidence, conditions, pinPos, wind,
- *     elevationDeltaYds, meta }. `meta` is for the UI (distances, sources, as-of times); the engine ignores it.
+ *     elevationDeltaYds, tempF, elevFt, meta }. `meta` is for the UI (distances, sources, as-of
+ *     times); the engine ignores it. elevFt = the ball's altitude in feet from the elevation
+ *     samples (integration item 5), null without samples.
  * ball is null when there is no fix and it is not the first shot — the caller shows the no-GPS state.
  */
 export function assembleShotContext(inputs = {}) {
-  const { round = {}, hole, geometry = null, fix = null, weather = null, elevation = null, overrides = [], chips = {}, config = DEFAULT_CONFIG } = inputs;
+  const { round = {}, hole, geometry = null, fix = null, weather = null, elevation = null, overrides = [], chips = {}, config = DEFAULT_CONFIG, now = null } = inputs;
   if (!hole) throw new Error("assembleShotContext: no hole (club-brain mode has no geometry)");
   const F = frameOf(hole);
   const shotNo = round.shotNo ?? 1;
@@ -114,7 +120,7 @@ export function assembleShotContext(inputs = {}) {
   const lieQuality = QUALITY[String(chips.quality ?? "standard").toLowerCase()] || "standard";
   sources.quality = chips.quality != null ? "chip" : "default";
   const condChip = CONDITIONS[String(chips.conditions ?? round.conditionsOverride ?? "").toLowerCase()];
-  const conditions = condChip || conditionsFrom(weather, config);
+  const conditions = condChip || conditionsFrom(weather, config, { now: now ?? weather?.asOf ?? null });
   sources.conditions = condChip ? "chip" : weather?.rainMm24h != null ? "weather" : "default";
 
   /* wind: Brett's chip wins for the round; else weather, turned into the hole frame */
@@ -135,9 +141,21 @@ export function assembleShotContext(inputs = {}) {
     sources.elevation = d == null ? "none" : "sampled";
   } else sources.elevation = "none";
 
+  /* altitude of the ball (item 5): interpolated from the samples, metres → feet; null without them */
+  let elevFt = null;
+  if (elevation && ball && F) {
+    const m = interpolateElevation(elevation, F.toLatLng(ball));
+    elevFt = Number.isFinite(m) ? Math.round(m * FEET_PER_METER * 10) / 10 : null;
+  }
+  sources.altitude = elevFt != null ? "sampled" : "none";
+
+  /* temperature: a fresh weather reading only (§3.3) — stale or absent never fakes 70° */
+  const tempF = weatherTempF(weather);
+  sources.temp = tempF != null ? "weather" : "none";
+
   return {
     hole: holeKey, par: round.par ?? hole.par, shotNo,
-    ball, lieType, lieQuality, lieConfidence, conditions, pinPos, wind, elevationDeltaYds,
+    ball, lieType, lieQuality, lieConfidence, conditions, pinPos, wind, elevationDeltaYds, tempF, elevFt,
     meta: {
       nine: round.nine ?? null, trigger, lie, penalty, sources, distances: dists,
       ballGps: fixLL ? { lat: fixLL.lat, lng: fixLL.lon, accuracyM: fix.accuracyM ?? null } : null,

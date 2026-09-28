@@ -485,17 +485,24 @@ export function windChipText(w) {
 }
 /** engine.js windEffect's `relative` → chip words: `into-left`, `help-right`, `from right`. */
 const REL = { down: "helping", "down-left": "help-left", "down-right": "help-right", "cross-from-left": "from left", "cross-from-right": "from right" };
-/** Inferred wind (engine context.wind): `8 into-left`; null → Calm; undefined (no weather) → —. */
-export function windText(w) {
-  if (w === undefined) return DASH;
-  if (!w || !(w.speedMph > 0)) return "Calm";
-  return `${Math.round(w.speedMph)} ${REL[w.relative] || w.relative || ""}`.trim();
+/**
+ * Inferred wind (engine context.wind): `8 into-left`; null → Calm; undefined (no weather) → —.
+ * A fresh temperature reading is appended to whatever the wind reads (§3.3): `8 into-left · 58°`,
+ * `Calm · 58°`, or `— · 58°` when there is no wind data at all; nothing appended when there is no
+ * temperature reading either.
+ */
+export function windText(w, tempF) {
+  const suffix = Number.isFinite(tempF) ? ` · ${Math.round(tempF)}°` : "";
+  if (w === undefined) return DASH + suffix;
+  if (!w || !(w.speedMph > 0)) return "Calm" + suffix;
+  return `${Math.round(w.speedMph)} ${REL[w.relative] || w.relative || ""}`.trim() + suffix;
 }
 export const elevText = (n) => (Number.isFinite(n) ? `${signed(Math.round(n))} yds` : DASH);
 
 /**
- * The six chips. inferred = { lieType, lieConfidence, quality, wind, elevation, conditions } as Loop
- * worked them out (no Brett input); a key missing from `inferred` shows —.
+ * The six chips. inferred = { lieType, lieConfidence, quality, wind, elevation, conditions, tempF }
+ * as Loop worked them out (no Brett input); a key missing from `inferred` shows —. `tempF` has no
+ * chip of its own (§3.3) — it rides along on the Wind chip's text.
  */
 export function chipList({ chips = {}, pin = "middle", windOverride = null, conditionsOverride = null, inferred = null } = {}) {
   const inf = inferred || {};
@@ -506,8 +513,8 @@ export function chipList({ chips = {}, pin = "middle", windOverride = null, cond
     { key: "lie", label: "Lie", edited: lieEdited, value: lieEdited ? cap(chips.lie) : has && inf.lieType ? cap(inf.lieType) : DASH,
       unsure: !lieEdited && has && inf.lieConfidence === "low", inferredValue: has && inf.lieType ? cap(inf.lieType) : null },
     { key: "quality", label: "Quality", edited: chips.quality != null, value: cap(chips.quality ?? "standard"), inferredValue: "Standard" },
-    { key: "wind", label: "Wind", edited: windOverride != null, value: windOverride != null ? windChipText(windOverride) : has ? windText(inf.wind) : DASH,
-      inferredValue: has ? windText(inf.wind) : null },
+    { key: "wind", label: "Wind", edited: windOverride != null, value: windOverride != null ? windChipText(windOverride) : has ? windText(inf.wind, inf.tempF) : DASH,
+      inferredValue: has ? windText(inf.wind, inf.tempF) : null },
     { key: "elevation", label: "Elevation", edited: Number.isFinite(chips.elevation), value: Number.isFinite(chips.elevation) ? elevText(chips.elevation) : has ? elevText(inf.elevation ?? 0) : DASH,
       inferredValue: has ? elevText(inf.elevation ?? 0) : null },
     { key: "pin", label: "Pin", edited: pinEdited, value: typeof pin === "string" ? cap(pin) : "Custom", inferredValue: "Middle" },
@@ -576,8 +583,12 @@ export function syntheticHole(yds, par = 4) {
   };
 }
 
-/** The engine ctx for club-brain mode (the ball at the synthetic tee; chips still apply). */
-export function clubBrainContext({ holeNo, par, shotNo, chips = {}, windOverride = null, conditionsOverride = null }) {
+/**
+ * The engine ctx for club-brain mode (the ball at the synthetic tee; chips still apply). `tempF`
+ * is club-brain's only weather input — it needs no GPS or geometry, only a fresh reading (the
+ * caller derives it with sensors.js `weatherTempF`; §3.3 applies to this path too).
+ */
+export function clubBrainContext({ holeNo, par, shotNo, chips = {}, windOverride = null, conditionsOverride = null, tempF = null }) {
   const lc = parseLieChip(chips.lie);
   const lieType = lc ? lc.lieType : shotNo <= 1 ? "tee" : "fairway";
   return {
@@ -586,6 +597,7 @@ export function clubBrainContext({ holeNo, par, shotNo, chips = {}, windOverride
     conditions: conditionsOverride || "normal", pinPos: "middle",
     wind: windOverride ? windFromChip(windOverride) : null,
     elevationDeltaYds: Number.isFinite(chips.elevation) ? chips.elevation : 0,
+    tempF: Number.isFinite(tempF) ? tempF : null,
     meta: { trigger: shotNo <= 1 ? "tee" : "ball", sources: { lie: lc ? "chip" : "default", ball: "yards" } },
   };
 }

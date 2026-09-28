@@ -4,6 +4,7 @@
  *
  *   openPar5      — 540 yds, 60-yd-wide fairway, deep green, no hazards, no OB.
  *   waterLeftPar4 — 410 yds, water down the entire left side from 200 to 340 yds off the tee.
+ *   waterRightPar4 — the same hole mirrored: water down the right, Brett's big-miss side (T43).
  *   bunkeredPar3  — 175 yds, bunker guarding the front-right of the green, water long-left.
  */
 
@@ -37,6 +38,9 @@ export const waterLeftPar4 = {
   boundary: null,
 };
 
+/** waterLeftPar4 mirrored left↔right: the water sits on Brett's big-miss (right) side. */
+export const waterRightPar4 = { ...waterLeftPar4, id: "water-right-par-4", hazards: [{ type: "water", ring: rect(28, 200, 90, 340) }] };
+
 /** Same hole with the water removed — the T9 control. */
 export const noWaterPar4 = { ...waterLeftPar4, id: "no-water-par-4", hazards: [] };
 
@@ -60,4 +64,4 @@ export function par5With(hazards, extra = {}) {
   return { ...openPar5, id: "par-5-variant", hazards, ...extra };
 }
 
-export const ALL = [openPar5, waterLeftPar4, noWaterPar4, bunkeredPar3];
+export const ALL = [openPar5, waterLeftPar4, waterRightPar4, noWaterPar4, bunkeredPar3];

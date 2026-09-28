@@ -8,7 +8,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { DEFAULT_CONFIG, mergeConfig } from "./config.js";
+import { DEFAULT_CONFIG, mergeConfig, lieDistAdj } from "./config.js";
 import { loadProfile } from "./profile.js";
 import { ellipseSampler } from "./engine.js";
 import { makeSamples } from "./random.js";
@@ -447,7 +447,7 @@ test("T32 source separation: no code path writes Loop shot-log data into the loa
 test("applyShotLog: a prior borrowed from an adjacent lie is put on the entry's own lie first (LIE_DIST_ADJ / LIE_SD_MULT)", () => {
   // 7i rough has no Shot Pattern total or σ here: the prior comes from 7i fairway (176, 4.04°).
   const ov = applyShotLog(P, [shot({ hole: 2, lie: "rough", dist: 0, lat: 0, intended: 160 })], {})[entryKey("7i", "full", "rough")];
-  const f = 1 + DEFAULT_CONFIG.LIE_DIST_ADJ.rough, sd = DEFAULT_CONFIG.LIE_SD_MULT.rough / DEFAULT_CONFIG.LIE_SD_MULT.fairway;
+  const f = 1 + lieDistAdj(DEFAULT_CONFIG, "rough", "mid"), sd = DEFAULT_CONFIG.LIE_SD_MULT.rough / DEFAULT_CONFIG.LIE_SD_MULT.fairway;
   assert.equal(ov.prior.totalMedianYds.rank, "adjacentLie");
   assert.ok(Math.abs(ov.prior.totalMedianYds.value - 176 * f) < 1e-9);
   assert.ok(Math.abs(ov.prior.lateralSdDeg.value - 4.04 * sd) < 1e-9);
