@@ -423,6 +423,9 @@ function buildRecord(base, course, diff, scores, ghost) {
     yourPoints, ghostPoints,
     result,
   };
+  // v22.7: the nines played at a club with more than 18 holes. Only when there is one — Firestore
+  // rejects an undefined field, and old records simply don't have it.
+  if (typeof course.routing === "string" && course.routing) rec.routing = course.routing;
   // This round's own Score Differential — the thing the last-5 averages.
   rec.differential = recordDifferential(rec);
   return rec;
@@ -755,6 +758,33 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
           </span>
           <span style={{ fontSize: 16, textAlign: "right" }}>›</span>
         </button>
+
+        {/* v22.7 nines — a club with more than 18 holes: one outlined pill per routing, the chosen
+            one primary. Two nines stack on two lines so three routings fit at 375 wide. */}
+        {nineRow && (
+          <div data-row="nines" style={{ display: "grid", gridTemplateColumns: "66px 1fr", alignItems: "center", height: 54, borderBottom: rule }}>
+            <span style={caps(11)}>Nines</span>
+            <div style={nineRow.length <= 3
+              ? { display: "grid", gridTemplateColumns: `repeat(${nineRow.length}, minmax(0, 1fr))`, gap: 5 }
+              : { display: "flex", gap: 5, overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+              {nineRow.map(r => {
+                const sel = r.key === shownRoutingKey;
+                const parts = String(r.label).length > 9 ? String(r.label).split(" / ") : [r.label];   // "1 / 2" stays on one line
+                return (
+                  <button key={r.key} onClick={() => pickRouting(r.key)} aria-pressed={sel ? "true" : "false"} aria-label={`Nines ${r.label}`}
+                    className={sel ? "lc-primary" : undefined}
+                    style={{ ...(sel ? primaryPill : outlinedPill), ...(nineRow.length > 3 ? { flex: "0 0 74px" } : { minWidth: 0 }),
+                      height: 40, borderRadius: 20, padding: "0 4px", flexDirection: "column", gap: 0, ...caps(9, 700, "0.06em"), lineHeight: "12px" }}>
+                    {parts.length === 2
+                      ? <><span style={{ maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{parts[0]} /</span>
+                          <span style={{ maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{parts[1]}</span></>
+                      : <span style={{ maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.label}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* tee markers — yardage under each; the selected one is circled in pencil */}
         <div style={{ display: "grid", gridTemplateColumns: "66px 1fr", alignItems: "center", height: 74, borderBottom: rule }}>
@@ -1428,14 +1458,27 @@ function PuttSheet({ initialFt, onMade, onSave, onSkip }) {
 }
 
 /* 27-hole clubs (engine §6.4): a one-time paper list pairing each OSM hole with {nine, hole}. */
-function NineMapScreen({ geometry, courseId, onSaved, onCard }) {
+/* v22.7: `routing` (course.nines) pre-selects the nines being played and names them on the
+   front/back rows; `initialMap` is a map already saved for this club on another routing. */
+function NineMapScreen({ geometry, courseId, routing, initialMap, initialPlay, onSaved, onCard }) {
   const cands = useMemo(() => [...nineMapCandidates(geometry)].sort((a, b) => (Number(a.ref) || 99) - (Number(b.ref) || 99) || String(a.key).localeCompare(String(b.key))), [geometry]);
-  const [map, setMap] = useState(() => defaultNineMap(cands));
-  const [play, setPlay] = useState(["1", "2"]);
+  const [map, setMap] = useState(() => {
+    const d = defaultNineMap(cands);
+    if (!initialMap) return d;
+    cands.forEach((c) => { const v = initialMap[c.key]; if (v && v.nine && v.hole) d[c.key] = { nine: String(v.nine), hole: Number(v.hole) }; });
+    return d;
+  });
+  const [play, setPlay] = useState(() => initialPlay || ["1", "2"]);
   const set = (k, patch) => setMap((m) => ({ ...m, [k]: { ...m[k], ...patch } }));
   const small = (on) => ({ width: 30, height: 30, borderRadius: 15, border: `1.5px solid ${T.ink}`, background: on ? T.ink : "transparent", color: on ? T.paper : T.ink,
     fontFamily: F.num, fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" });
-  const save = () => { saveNineMap(safeStorage(), courseId, { ...map, _play: play }); onSaved(loadNineMap(safeStorage(), courseId)); };
+  const named = routing && Array.isArray(routing.play) && !routing.play.every((x) => ["1", "2", "3"].includes(String(x))) ? routing.play : null;
+  const save = () => {
+    const assoc = routing ? ninesAssociation(play, routing) : null;
+    const prev = initialMap && initialMap._nines;
+    saveNineMap(safeStorage(), courseId, { ...map, _play: play, ...(assoc ? { _nines: assoc } : prev ? { _nines: prev } : {}) });
+    onSaved(loadNineMap(safeStorage(), courseId) || { ...map, _play: play });
+  };
   return (
     <div data-screen="nine-map" style={{ position: "fixed", inset: 0, overflowY: "auto", background: T.paper, color: T.ink, fontFamily: F.label,
       padding: "max(env(safe-area-inset-top), 20px) 20px max(env(safe-area-inset-bottom), 16px)" }}>
@@ -1444,7 +1487,7 @@ function NineMapScreen({ geometry, courseId, onSaved, onCard }) {
       <div style={{ fontSize: 13, lineHeight: 1.45, margin: "6px 0 12px" }}>This course maps more than 18 holes. Pair each with its nine and hole once; Loop keeps it.</div>
       {[["Front nine", 0], ["Back nine", 1]].map(([label, i]) => (
         <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: hairline }}>
-          <span style={caps(10)}>{label}</span>
+          <span style={caps(10)}>{label}{named ? <span style={{ ...writtenWord(17), textTransform: "none", letterSpacing: 0, marginLeft: 8 }}>{named[i]}</span> : null}</span>
           <span style={{ display: "flex", gap: 6 }}>{["1", "2", "3"].map((nine) => (
             <button key={nine} onClick={() => setPlay((p) => { const q = [...p]; q[i] = nine; return q; })} style={small(play[i] === nine)} aria-label={`${label}: nine ${nine}`}>{nine}</button>
           ))}</span>
@@ -1470,15 +1513,40 @@ function NineMapScreen({ geometry, courseId, onSaved, onCard }) {
   );
 }
 
+/* The nine map for this round. Saved per CLUB (v22.7; before that per routing apiId, still read).
+   With a routing chosen on Setup: a saved map takes this routing's `_play` from its `_nines`; with
+   nothing saved, a confident map read off the routing (nineMapFromRouting) is saved and the screen
+   skipped. Otherwise { ask } — the screen, pre-filled. */
+function resolveNineMap(storage, geometry, course) {
+  const clubId = clubIdOf(course), apiId = apiIdOf(course);
+  const nines = course && course.nines;
+  let saved = loadNineMap(storage, clubId) || (String(apiId) !== String(clubId) ? loadNineMap(storage, apiId) : null);
+  if (!saved && nines) {
+    const derived = nineMapFromRouting(geometry, nines);
+    if (derived) saved = saveNineMap(storage, clubId, derived) ? (loadNineMap(storage, clubId) || derived) : derived;
+  }
+  if (!saved) return { map: null, ask: { initialMap: null, initialPlay: nines ? guessPlay(nines) : null } };
+  if (!nines) return { map: saved, ask: null };
+  const play = playFromRouting(saved, nines);
+  if (play) return { map: { ...saved, _play: play }, ask: null };
+  // a map saved without names for this routing's nines: ask which nines these are, holes pre-filled
+  return { map: null, ask: { initialMap: saved, initialPlay: guessPlay(nines) } };
+}
+
 /* Wrapper: the 27-hole mapping screen first when the course needs it (never again once saved). */
 function Caddie(props) {
   const { geometry, course, onCard } = props;
-  const courseId = apiIdOf(course);
+  const clubId = clubIdOf(course);
   const needs = !!geometry && needsNineMap(geometry);
-  const [nineMap, setNineMap] = useState(() => (needs ? loadNineMap(safeStorage(), courseId) : null));
-  useEffect(() => { setNineMap(needs ? loadNineMap(safeStorage(), courseId) : null); }, [geometry, courseId]);
-  if (needs && !nineMap) return <NineMapScreen geometry={geometry} courseId={courseId} onSaved={setNineMap} onCard={onCard} />;
-  return <CaddieScreen {...props} nineMap={needs ? nineMap : null} />;
+  const resolve = () => (needs ? resolveNineMap(safeStorage(), geometry, course) : { map: null, ask: null });
+  const [nm, setNm] = useState(resolve);
+  useEffect(() => { setNm(resolve()); }, [geometry, clubId, course && course.routing]);
+  if (needs && !nm.map) {
+    return <NineMapScreen key={`${clubId}:${course && course.routing}`} geometry={geometry} courseId={clubId} routing={course.nines || null}
+      initialMap={nm.ask && nm.ask.initialMap} initialPlay={nm.ask && nm.ask.initialPlay}
+      onSaved={(m) => setNm({ map: course.nines ? { ...m, _play: playFromRouting(m, course.nines) || m._play } : m, ask: null })} onCard={onCard} />;
+  }
+  return <CaddieScreen {...props} nineMap={needs ? nm.map : null} />;
 }
 
 function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWeather, onCard, onScore, onRetryProfile, contextRef, nineMap, roundId }) {
@@ -2506,7 +2574,7 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
                   <span style={{ color: T.muted }}>·</span>
                   <span>{fmtDate(r.date)}</span>
                   <span style={{ color: T.muted }}>·</span>
-                  <span>{r.tee}</span>
+                  <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.tee}{r.routing ? ` · ${r.routing}` : ""}</span>
                   <span style={{ flex: 1 }} />
                   <span style={{ color: T.muted }}>
                     {margin >= 0 ? "+" : ""}{margin.toFixed(1)}{rd != null ? ` · diff ${rd.toFixed(1)}` : ""}

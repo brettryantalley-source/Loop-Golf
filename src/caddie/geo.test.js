@@ -22,6 +22,7 @@ import {
   holeFrame, frameOf, buildHole, inferLie, overrideAt, distances, clampToGreen, pinFromTap, detectHole,
   needsNineMap, saveNineMap, loadNineMap, nineMapPromptNeeded, nineMapKey, holeKeyFor, playingOrder,
   nineMapCandidates, coverageCheck, geoCacheKey, saveGeometryCache, loadGeometryCache,
+  nineMapFromRouting, playFromRouting, ninesAssociation, guessPlay,
 } from "./geo.js";
 import {
   fetchWeather, parseWeather, weatherUrl, weatherRefreshDue, conditionsFrom, fetchElevationSamples,
@@ -388,6 +389,83 @@ test("T15 Nine mapping: a mapping saved once is reused; no prompt on the second 
   assert.equal(loadNineMap(broken, "x"), null);
   store.setItem(nineMapKey("junk"), "{not json");
   assert.equal(loadNineMap(store, "junk"), null);
+});
+
+/* ---------- v22.7 nine map from the chosen routing ---------- */
+
+/* 27 OSM holes: refs 1–27 (numbered), or refs 1–9 per nine with names like "Ridge 4" (named). */
+function club27({ numbered = false, names = null } = {}) {
+  const els = [];
+  for (let n = 0; n < 3; n++) for (let r = 1; r <= 9; r++) {
+    const t = at(n * 1500 + r * 40, 900), e = destination(t, 0, 300);
+    const tags = { golf: "hole", ref: String(numbered ? n * 9 + r : r) };
+    if (names) tags.name = `${names[n]} ${r}`;
+    els.push({ type: "way", id: 100 * n + r, tags, geometry: g([t, e]) });
+    els.push(way({ golf: "green" }, [destination(e, 0, 12), destination(e, 90, 12), destination(e, 180, 12), destination(e, 270, 12)]));
+  }
+  return parseOverpass({ elements: els });
+}
+const keyOfOsm = (geo, osmId) => Object.values(geo.holes).find((h) => h.osmId === osmId)?.key ?? Object.keys(geo.holes).find((k) => geo.holes[k].osmId === osmId);
+
+test("nineMapFromRouting: OSM refs 1–27 → nines 1/2/3; a 27-hole-tee routing (1 / 3) plays nine 1 then nine 3", () => {
+  const geo = club27({ numbered: true });
+  assert.equal(needsNineMap(geo), true);
+  const m = nineMapFromRouting(geo, { play: ["1", "3"], club: ["1", "2", "3"], ordered: true });
+  assert.ok(m, "confident");
+  assert.deepEqual(m._play, ["1", "3"]);
+  assert.deepEqual(m["1"], { nine: "1", hole: 1 });
+  assert.deepEqual(m["14"], { nine: "2", hole: 5 });
+  assert.deepEqual(m["27"], { nine: "3", hole: 9 });
+  const order = Array.from({ length: 18 }, (_, i) => holeKeyFor(m, m._play[i < 9 ? 0 : 1], (i % 9) + 1));
+  assert.deepEqual(order, ["1", "2", "3", "4", "5", "6", "7", "8", "9", "19", "20", "21", "22", "23", "24", "25", "26", "27"]);
+  // the API named its nines and they are in OSM order → the names map to 1/2/3 by position
+  const named = nineMapFromRouting(geo, { play: ["Lakes", "Ridge"], club: ["Ridge", "Valley", "Lakes"], ordered: true });
+  assert.deepEqual(named._play, ["3", "1"]);
+  assert.deepEqual(named._nines, { Ridge: "1", Valley: "2", Lakes: "3" });
+  // word nines from course_name on a 1–27 map: which number is "Village"? Not confident.
+  assert.equal(nineMapFromRouting(geo, { play: ["Village", "School"], club: ["Village", "School", "Mill"], ordered: false }), null);
+  // a hole missing from a played nine → not confident
+  const cut = compactGeometry(geo); delete cut.holes["22"];
+  assert.equal(nineMapFromRouting(cut, { play: ["1", "3"], club: ["1", "2", "3"], ordered: true }), null);
+  assert.ok(nineMapFromRouting(cut, { play: ["1", "2"], club: ["1", "2", "3"], ordered: true }), "the unplayed nine may have gaps");
+});
+
+test("nineMapFromRouting: OSM hole names carrying the nine words → those nines, labelled 1/2/3 with _nines", () => {
+  const geo = club27({ names: ["Village", "School", "Mill"] });
+  const routing = { play: ["Mill", "School"], club: ["Village", "School", "Mill"], ordered: false };
+  const m = nineMapFromRouting(geo, routing);
+  assert.ok(m, "confident");
+  assert.deepEqual(m._nines, { Village: "1", School: "2", Mill: "3" });
+  assert.deepEqual(m._play, ["3", "2"], "Mill first, then School");
+  const mill4 = keyOfOsm(geo, 204), school9 = keyOfOsm(geo, 109);
+  assert.deepEqual(m[mill4], { nine: "3", hole: 4 });
+  assert.deepEqual(m[school9], { nine: "2", hole: 9 });
+  assert.equal(holeKeyFor(m, m._play[0], 4), mill4, "scorecard hole 4 = Mill 4");
+  assert.equal(holeKeyFor(m, m._play[1], 9), school9, "scorecard hole 18 = School 9");
+  // a later round on another routing of the same club reads its own _play off _nines
+  assert.deepEqual(playFromRouting(m, { play: ["Village", "Mill"], club: routing.club }), ["1", "3"]);
+  assert.deepEqual(playFromRouting(m, "School / Village"), ["2", "1"], "a label string works too");
+  // case-insensitive word match, not substring: "Millbrook 3" is not Mill
+  const geo2 = club27({ names: ["village", "SCHOOL", "Millbrook"] });
+  assert.equal(nineMapFromRouting(geo2, routing), null);
+});
+
+test("nineMapFromRouting: no match → null (the screen asks, pre-selected)", () => {
+  const plain = club27();                                   // refs 1–9 three times, no names
+  assert.equal(nineMapFromRouting(plain, { play: ["Village", "School"], club: ["Village", "School", "Mill"] }), null);
+  assert.equal(nineMapFromRouting(plain, { play: ["1", "2"], club: ["1", "2", "3"], ordered: true }), null, "which ref-1 is nine 1? unknown");
+  assert.equal(nineMapFromRouting(club27({ names: ["Ridge", "Valley", "Lakes"] }), { play: ["Village", "School"], club: ["Village", "School", "Mill"] }), null, "names that aren't this club's nines");
+  assert.equal(nineMapFromRouting(plain, null), null);
+  assert.equal(nineMapFromRouting(plain, { play: ["A", "A"] }), null);
+  assert.equal(nineMapFromRouting({ holes: {} }, "1 / 2"), null);
+  // what the screen is pre-set to instead
+  assert.deepEqual(guessPlay({ play: ["Mill", "School"], club: ["Village", "School", "Mill"] }), ["3", "2"]);
+  assert.deepEqual(guessPlay({ play: ["2", "3"], club: ["1", "2", "3"] }), ["2", "3"]);
+  assert.deepEqual(guessPlay(null), ["1", "2"]);
+  // …and what saving it records: the two nines chosen, the third by elimination
+  assert.deepEqual(ninesAssociation(["2", "1"], { play: ["Village", "School"], club: ["Village", "School", "Mill"] }), { Village: "2", School: "1", Mill: "3" });
+  assert.equal(ninesAssociation(["1", "2"], { play: ["1", "2"] }), null, "numbered nines need no names");
+  assert.equal(playFromRouting({ _play: ["1", "2"] }, { play: ["Village", "School"] }), null, "an old map without names can't say");
 });
 
 /* ---------- coverage ---------- */
