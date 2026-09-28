@@ -31,7 +31,12 @@ const ENTRY_FIELDS = [
 
 /* ---------- loading ---------- */
 
-export function loadProfile(json, config = DEFAULT_CONFIG) {
+/**
+ * `opts.overlays` (optional, S5): learning.js `applyShotLog` output, { [club|swing|lie]: overlay }.
+ * Stored on `P.overlays` and merged over the matching Shot Pattern entry inside `resolveEntry`
+ * (see `entryAt`). `P.raw` stays Shot Pattern only and is never written (§5.2, T32).
+ */
+export function loadProfile(json, config = DEFAULT_CONFIG, opts = {}) {
   if (!json || json.version !== 2) throw new Error("profile: expected version 2");
   const clubs = new Map();
   for (const c of json.clubs) {
@@ -55,6 +60,8 @@ export function loadProfile(json, config = DEFAULT_CONFIG) {
     shortGame,
     puttDeficitPerHole: config.PUTT_DEFICIT_IN_E && typeof json.puttingSgPer18 === "number" ? -json.puttingSgPer18 / 18 : 0,
     scratchLateralSdDeg: json.benchmarks?.scratch?.driving?.lateralSdDeg ?? null,
+    overlays: opts?.overlays && Object.keys(opts.overlays).length ? opts.overlays : null,
+    _ov: new Map(),
     _b3: new Map(),
     _E: new Map(),
     _Ep: new Map(),
@@ -85,6 +92,67 @@ function rawEntry(club, swing, lie) {
   return s[lie] || null;
 }
 
+/* ---------- S5 learning overlays (§5.2–§5.4) ---------- */
+
+/** Overlay numbers merged over the Shot Pattern entry (same list as learning.js OVERLAY_FIELDS). */
+const OVERLAY_FIELDS = ["totalMedianYds", "carryMedianYds", "distSdYds", "lateralSdDeg", "biasDistYds", "biasLatYds"];
+/** Display-safe rounding: distances to the yard (Shot Pattern's own resolution), σ / bias to 0.01. */
+const OVERLAY_ROUND = { totalMedianYds: 1, carryMedianYds: 1, distSdYds: 100, lateralSdDeg: 100, biasDistYds: 100, biasLatYds: 100 };
+const roundTo = (v, k) => Math.round(v * k) / k;
+
+/**
+ * One entry with its learning overlay merged in — the same rules as learning.js
+ * `entryWithOverlay`: below takeover the shrunk numbers replace Shot Pattern's (a measured carry
+ * is kept) and Shot Pattern's ell80 stays; at takeover Loop's numbers and ell80 (source "loop",
+ * carrying Loop's shot count as ell80.n) replace them for THIS entry only. One deliberate
+ * difference from entryWithOverlay: `n` is not replaced (see below). A NEW object; `base` is not touched. `learning` says
+ * which fields came from Loop, for provenance.
+ */
+export function mergeOverlay(base, ov) {
+  if (!ov) return base;
+  const out = base ? { ...base } : {};
+  const keepMeasuredCarry = !ov.takeover && out.carrySource === "measured";
+  const fromLoop = [];
+  for (const f of OVERLAY_FIELDS) {
+    if (f === "carryMedianYds" && keepMeasuredCarry) continue;
+    if (ov[f] != null && Number.isFinite(ov[f])) { out[f] = roundTo(ov[f], OVERLAY_ROUND[f]); fromLoop.push(f); }
+  }
+  if (ov.carryMedianYds != null && !keepMeasuredCarry) out.carrySource = "derived";
+  if (ov.takeover) {
+    // `n` stays Shot Pattern's: the reason templates pair it with Shot Pattern-only stats (GIR,
+    // proximity, penalties), so Loop's count lives on `learning.n` and the ellipse (ell80.n).
+    out.ell80 = ov.ell80 ? { ...ov.ell80 } : null;
+    if (out.ell80) fromLoop.push("ell80");
+  }
+  out.learning = { n: ov.n, nEff: ov.nEff, takeover: !!ov.takeover, source: ov.takeover ? "loop" : "blend", fields: fromLoop };
+  return out;
+}
+
+/** The entry resolveEntry reads for club × swing × lie: Shot Pattern's, with P.overlays merged (memoised per P). */
+function entryAt(P, club, swing, lie) {
+  const base = rawEntry(club, swing, lie);
+  const ov = P.overlays ? P.overlays[`${club.id}|${swing}|${lie}`] : null;
+  if (!ov) return base;
+  const k = `${club.id}|${swing}|${lie}`;
+  if (!P._ov) P._ov = new Map();
+  if (!P._ov.has(k)) P._ov.set(k, mergeOverlay(base, ov));
+  return P._ov.get(k);
+}
+
+function hasOverlayFor(P, clubId, swing) {
+  if (!P.overlays) return false;
+  const pre = `${clubId}|${swing}|`;
+  return Object.keys(P.overlays).some((k) => k.startsWith(pre));
+}
+
+/** Provenance for a field read from `entry` on `lie`: marks Loop's numbers with source "loop" and n. */
+function provFor(entry, f, clubId, swing, lie) {
+  const p = { club: clubId, swing, lie };
+  const L = entry?.learning;
+  if (L && L.fields.includes(f)) { p.source = "loop"; p.n = L.n; p.takeover = L.takeover; }
+  return p;
+}
+
 function firstNonNull(chain, field) {
   for (const { entry, lie } of chain) {
     if (entry && entry[field] != null) return { value: entry[field], lie };
@@ -99,9 +167,9 @@ function firstNonNull(chain, field) {
 export function resolveEntry(P, clubId, swing, lie, opts = {}) {
   const cfg = P.config;
   const club = P.clubs.get(clubId);
-  if (!club || !club.entries?.[swing]) return null;
+  if (!club || !(club.entries?.[swing] || hasOverlayFor(P, clubId, swing))) return null;
   const chainLies = LIE_CHAIN[lie] || LIE_CHAIN.fairway;
-  const chain = chainLies.map((l) => ({ entry: rawEntry(club, swing, l), lie: l }));
+  const chain = chainLies.map((l) => ({ entry: entryAt(P, club, swing, l), lie: l }));
   if (!chain.some((c) => c.entry)) return null;
 
   const fields = {};
@@ -109,7 +177,7 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
   for (const f of ENTRY_FIELDS) {
     const hit = firstNonNull(chain, f);
     fields[f] = hit ? hit.value : null;
-    if (hit) provenance[f] = { club: clubId, swing, lie: hit.lie };
+    if (hit) provenance[f] = provFor(chain.find((c) => c.lie === hit.lie).entry, f, clubId, swing, hit.lie);
   }
   if (fields.totalMedianYds == null) return null;
 
@@ -117,7 +185,7 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
   const srcLie = provenance.totalMedianYds.lie;
   // Carry: derive from total unless a measured carry exists on the same lie the total came from.
   const measured = firstNonNull(chain, "carryMedianYds");
-  let carry = measured && measured.lie === srcLie && rawEntry(club, swing, srcLie)?.carrySource === "measured"
+  let carry = measured && measured.lie === srcLie && entryAt(P, club, swing, srcLie)?.carrySource === "measured"
     ? measured.value
     : carryFromTotal(fields.totalMedianYds, swing, family, srcLie, cfg, opts.wet);
   // Lie adjustment when the distance came from a different lie than the one we are on.
@@ -133,7 +201,7 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
     const nb = neighbours(P, clubId);
     for (const id of nb) {
       const e = P.clubs.get(id);
-      const hit = firstNonNull(chainLies.map((l) => ({ entry: rawEntry(e, swing, l) || rawEntry(e, "full", l), lie: l })), "lateralSdDeg");
+      const hit = firstNonNull(chainLies.map((l) => ({ entry: entryAt(P, e, swing, l) || entryAt(P, e, "full", l), lie: l })), "lateralSdDeg");
       if (hit) { lateralSdDeg = hit.value; provenance.lateralSdDeg = { club: id, swing, lie: hit.lie }; break; }
     }
     if (lateralSdDeg == null && P.scratchLateralSdDeg != null) {
@@ -158,7 +226,7 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
   // §5 UI addendum: Shot Pattern's 80% ellipse is the dispersion core where it exists.
   const ellHit = firstNonNull(chain, "ell80");
   const ell80 = ellHit ? { ...ellHit.value, sdMult } : null;
-  if (ell80) provenance.ell80 = { club: clubId, swing, lie: ellHit.lie };
+  if (ell80) provenance.ell80 = provFor(chain.find((c) => c.lie === ellHit.lie).entry, "ell80", clubId, swing, ellHit.lie);
 
   return {
     club: clubId,

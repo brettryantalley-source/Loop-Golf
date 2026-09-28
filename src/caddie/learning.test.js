@@ -443,3 +443,17 @@ test("T32 source separation: no code path writes Loop shot-log data into the loa
   for (const c of Pf.raw.clubs) assert.equal(Pf.clubs.get(c.id), c, "P.clubs still holds the raw club objects");
   assert.ok(!Object.values(ovs).some((o) => Object.values(Pf.raw.clubs).some((c) => Object.values(c.entries.full || {}).includes(o))));
 });
+
+test("applyShotLog: a prior borrowed from an adjacent lie is put on the entry's own lie first (LIE_DIST_ADJ / LIE_SD_MULT)", () => {
+  // 7i rough has no Shot Pattern total or σ here: the prior comes from 7i fairway (176, 4.04°).
+  const ov = applyShotLog(P, [shot({ hole: 2, lie: "rough", dist: 0, lat: 0, intended: 160 })], {})[entryKey("7i", "full", "rough")];
+  const f = 1 + DEFAULT_CONFIG.LIE_DIST_ADJ.rough, sd = DEFAULT_CONFIG.LIE_SD_MULT.rough / DEFAULT_CONFIG.LIE_SD_MULT.fairway;
+  assert.equal(ov.prior.totalMedianYds.rank, "adjacentLie");
+  assert.ok(Math.abs(ov.prior.totalMedianYds.value - 176 * f) < 1e-9);
+  assert.ok(Math.abs(ov.prior.lateralSdDeg.value - 4.04 * sd) < 1e-9);
+  assert.ok(Math.abs(ov.totalMedianYds - (160 + K * 176 * f) / (1 + K)) < 1e-9);
+  // a same-lie prior is untouched
+  const fw = applyShotLog(P, [shot({ hole: 2, dist: 0, intended: 176 })], {})[entryKey("7i", "full", "fairway")];
+  assert.equal(fw.prior.totalMedianYds.value, 176);
+  assert.equal(fw.prior.totalMedianYds.lieFactor, undefined);
+});

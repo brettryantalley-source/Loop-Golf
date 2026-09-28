@@ -577,6 +577,18 @@ export function applyShotLog(P, allShots, { now, roundIndexById } = {}, config) 
     for (const f of ["totalMedianYds", "distSdYds", "lateralSdDeg", "biasDistYds", "biasLatYds"]) priors[f] = priorFor(P, club, swing, lie, f);
     // Biases have a natural baseline of 0 when Shot Pattern has none.
     for (const f of ["biasDistYds", "biasLatYds"]) if (!priors[f]) priors[f] = { value: 0, rank: "zero" };
+    // A prior borrowed from an adjacent lie is put on THIS lie first, the same way profile.js
+    // resolveEntry adjusts a borrowed number (LIE_DIST_ADJ on distance, LIE_SD_MULT on σ).
+    // Without it one rough shot would replace the fairway total × 0.92 by roughly the raw fairway
+    // total, and drop the rough σ widening, because the overlay now sits on the rough entry.
+    for (const f of ["totalMedianYds", "distSdYds", "lateralSdDeg"]) {
+      const p = priors[f];
+      if (!p || p.rank !== "adjacentLie" || p.lie === lie) continue;
+      const factor = f === "totalMedianYds"
+        ? (1 + (cfg.LIE_DIST_ADJ?.[lie] ?? 0)) / (1 + (cfg.LIE_DIST_ADJ?.[p.lie] ?? 0))
+        : (cfg.LIE_SD_MULT?.[lie] ?? 1) / (cfg.LIE_SD_MULT?.[p.lie] ?? 1);
+      if (factor !== 1) priors[f] = { ...p, value: p.value * factor, lieFactor: factor };
+    }
 
     // Lateral angle per shot needs a distance: actual → intended → the prior total.
     const ang = [], angW = [];

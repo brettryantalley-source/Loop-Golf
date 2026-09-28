@@ -14,13 +14,16 @@ import {
   COPY, NOTICES, initialCaddie, caddieReducer, caddieHoleFor, serializeCaddie, restoreCaddie, pinSetting, pinPointFor, pinFromMapTap,
   greenPosition, aimShort, clubShort, chipList, pickerModel, windText, windChipText, elevText, dispersionLine, syntheticHole, clubBrainContext,
   overlayPair, mapInput, caddieView, defaultNineMap, geometryKeyFor, scorecardOrder, detectedHoleNo, hasUnloggedShot,
+  withinRoundCtx, todayLines, ellipsesFor, roundIndexFromHistory, learningOverlays, aggressionView, aggressionModel,
 } from "./caddieState.js";
 import { greenDistances, pointInRing, ringDistance } from "./course.js";
 import { recommend } from "./engine.js";
 import { loadProfile, resolveEntry } from "./profile.js";
 import { withEllipses, overlayModel, linearProjector } from "./overlay.js";
 import { bunkeredPar3, openPar5, waterLeftPar4 } from "../fixtures/synthetic-holes.js";
-import { routeShot, quickLog, detailLog, skipShot, closeOutShot, missCauseSample } from "./shotlog.js";
+import { routeShot, quickLog, detailLog, skipShot, closeOutShot, missCauseSample, newShotRecord } from "./shotlog.js";
+import { applyShotLog } from "./learning.js";
+import { DEFAULT_CONFIG } from "./config.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const P = loadProfile(JSON.parse(readFileSync(join(here, "../profile.json"), "utf8")));
@@ -546,4 +549,125 @@ test("persist / restore round-trips the pending Log-shot sheet and the openShot 
   // garbage in storage never crashes the restore
   const junk = restoreCaddie({ v: 1, hole: 1, shotNo: 1, phase: "pretee", logCard: "nonsense", openShot: { no: "id" } });
   assert.equal(junk.logCard, null); assert.equal(junk.openShot, null);
+});
+
+/* ---------- S5: the learning loop on the caddie screen (spec §5.2–§5.7, addendum §3.3 item 6, §5.6) ---------- */
+
+/** A closed-out long shot, the record shape shotlog.js saves (newShotRecord → closeOutShot). */
+let s5seq = 0;
+function closedShot({ round = "today", club = "7i", hole, intended = 170, dist = 0, lat = 0, lie = "fairway", contact = 0, line = "safe", rec = null, shotNo = 2, logged = "quick" }) {
+  s5seq++;
+  const r = newShotRecord({
+    id: `s5-${s5seq}`, roundId: round, courseId: "c1", hole, shotNo, ts: new Date(Date.UTC(2026, 8, 29, 14, 0, s5seq)).toISOString(),
+    start: { lat: null, lng: null, accuracyM: 4, distanceToPinYds: intended, playsLikeYds: intended, frame: { x: 0, y: 0 } },
+    target: { frame: { x: 0, y: intended }, label: "green, center" },
+    lie: { inferred: lie, confidence: "high", confirmed: lie, quality: "standard" },
+    club, linePlayed: line, contact, logged, recommendation: rec,
+  });
+  return closeOutShot(r, { endFrame: { x: lat, y: intended + dist }, endLie: "fairway" });
+}
+
+function readyAt(ball) {
+  return run(initialCaddie(7), { type: "tee" }, { type: "fix", fix: fix(), point: ball }, { type: "exp", exp: true });
+}
+
+test("S5 nudge line: two short mid-iron misses this round → one `Today` line, on the engine ctx and in the rail", () => {
+  const shots = [closedShot({ club: "7i", hole: 3, dist: -12 }), closedShot({ club: "6i", hole: 6, intended: 180, dist: -10 })];
+  const base = { hole: 7, par: 4, shotNo: 2, ball: { x: 0, y: 230 }, lieType: "fairway" };
+  const ctx = withinRoundCtx(base, shots, P);
+  assert.ok(ctx.adjust.distYds.mid > 0, "short misses → the mid family plays longer");
+  assert.equal(ctx.nudges.length, 1);
+  assert.equal(base.adjust, undefined, "the caller's ctx is not mutated");
+  const res = recommend(ctx, waterLeftPar4, P);
+  assert.deepEqual(res.nudges, ctx.nudges, "the engine echoes the nudge");
+  const v = caddieView({ state: readyAt({ x: 0, y: 230 }), par: 4, res, ballXY: { x: 0, y: 230 }, green: waterLeftPar4.green });
+  assert.equal(v.details.today.length, 1);
+  assert.match(v.details.today[0], /^Short twice with mid irons \(H3, H6\) → \+(½|1) club/);
+});
+
+test("S5 nudge line: nothing without evidence; one miss, skipped shots and other families do not fire; flags get their own line", () => {
+  const base = { hole: 7, par: 4, shotNo: 2, ball: { x: 0, y: 230 }, lieType: "fairway" };
+  const view = (shots) => {
+    const res = recommend(withinRoundCtx(base, shots, P), waterLeftPar4, P);
+    return caddieView({ state: readyAt({ x: 0, y: 230 }), par: 4, res, ballXY: { x: 0, y: 230 }, green: waterLeftPar4.green }).details.today;
+  };
+  assert.deepEqual(view([]), []);
+  assert.deepEqual(view([closedShot({ hole: 3, dist: -12 })]), [], "one miss is not evidence");
+  assert.deepEqual(view([closedShot({ hole: 3, dist: -12 }), closedShot({ hole: 4, dist: -11, logged: "skipped" })]), [], "a skipped shot is not evidence (D18)");
+  // two families, one lie → the lie group (§5.5 "OR from the same lie type") fires instead
+  assert.deepEqual(view([closedShot({ hole: 3, dist: -12 }), closedShot({ club: "PW", hole: 4, intended: 135, dist: -11 })]), ["Short twice from the fairway (H3, H4) → +½ club"]);
+  assert.deepEqual(view([closedShot({ hole: 3, dist: -12 }), closedShot({ club: "PW", hole: 4, intended: 135, dist: -11, lie: "rough" })]), [], "different family and different lie → no evidence");
+  const fat = view([closedShot({ club: "GW", hole: 3, intended: 110, contact: -1 }), closedShot({ club: "SW", hole: 6, intended: 90, contact: -1 })]);
+  assert.deepEqual(fat, ["2 fat wedges today (H3, H6)"]);
+  assert.deepEqual(todayLines({ nudges: [{ text: "a" }], flags: [{ text: "b" }] }), ["a", "b"], "nudges first, then flags");
+  assert.deepEqual(todayLines(null), []);
+  // no recommendation on screen → no Today line even with a nudge in hand
+  const pre = caddieView({ state: initialCaddie(7), par: 4, res: { ...fakeRes(), nudges: [{ text: "x" }] } });
+  assert.deepEqual(pre.details.today, []);
+});
+
+test("S5 dispersion line: Shot Pattern's source before takeover, `Loop · 80% · {n} shots` after", () => {
+  const N = DEFAULT_CONFIG.TAKEOVER_N;
+  const pwShots = (n) => Array.from({ length: n }, (_, i) => closedShot({ round: `r${1 + (i % 3)}`, club: "PW", hole: 1 + (i % 18), intended: 140, dist: ((i * 7) % 11) - 6, lat: ((i * 5) % 9) - 3 }));
+  const history = [{ id: "r1", date: "2026-09-20T12:00:00Z" }, { id: "r2", date: "2026-09-22T12:00:00Z" }, { id: "r3", date: "2026-09-25T12:00:00Z" }];
+  const line = (shots) => {
+    const Pl = loadProfile(JSON.parse(readFileSync(join(here, "../profile.json"), "utf8")), P.config, { overlays: learningOverlays(P, shots, history, Date.parse("2026-09-29T00:00:00Z")) });
+    const resolve = (c, sw) => resolveEntry(Pl, c, sw, "fairway");
+    const opts = ellipsesFor({ safe: { club: "PW", swingType: "full", label: "Pitching wedge" }, sameShot: true }, resolve);
+    return dispersionLine(opts.safe);
+  };
+  assert.equal(line(pwShots(N - 1)).source, "Shot Pattern · 80% · Sep 19", "below takeover Shot Pattern's ellipse and date stay");
+  const after = line(pwShots(N + 2));
+  assert.equal(after.source, `Loop · 80% · ${N + 2} shots`);
+  assert.ok(after.w > 0 && after.d > 0);
+  // the plain σ ellipse keeps its wording
+  assert.equal(dispersionLine({ club: "7i", label: "7-iron", ell: { w: 20, h: 10, tiltDeg: 90, dx: 0, dy: 0, source: "profile" } }).source, "Profile spread · 80%");
+  assert.equal(dispersionLine({ club: "7i", ell: { w: 20, h: 10, tiltDeg: 0, dx: 0, dy: 0, source: "loop", n: 31, scaled: true } }).source, "Loop · 80% · 31 shots · +15% bad lie");
+});
+
+test("S5 overlays: finished rounds only, newest = 1; the round in progress and deleted rounds weigh 0", () => {
+  const history = [{ id: "a", date: "2026-09-01T12:00:00Z" }, { id: "c", date: "2026-09-20T12:00:00Z" }, { id: "b", date: "2026-09-10T12:00:00Z" }];
+  assert.deepEqual(roundIndexFromHistory(history), { c: 1, b: 2, a: 3 });
+  assert.deepEqual(roundIndexFromHistory([]), {});
+  const shots = [closedShot({ round: "c", hole: 1, dist: 20, intended: 180 }), closedShot({ round: "today", hole: 2, dist: 40, intended: 180 }), closedShot({ round: "gone", hole: 3, dist: 30, intended: 180 })];
+  const ovs = learningOverlays(P, shots, history, Date.parse("2026-09-29T00:00:00Z"));
+  const ov = ovs["7i|full|fairway"];
+  assert.equal(ov.n, 1, "only round c's shot counts");
+  assert.deepEqual(ov.shotIds, [shots[0].id]);
+  assert.equal(learningOverlays(P, [], history, 0), null, "nothing logged → no overlays");
+});
+
+test("S5 aggression scorecard model: per round and season counts, paid / cost text, nothing without shots", () => {
+  const rec = (safe, aggr) => ({ safe: { club: "7i", expScore: safe }, aggressive: aggr != null ? { club: "5i", expScore: aggr } : null });
+  // Round A: hole 1 aggressive from shot 2 priced 3.0 to hole out; scored 4 → 3 strokes from shot 2 → 2 to hole out... (4 − 1) − 3.0 = 0 → paid +0.0
+  const shots = [
+    closedShot({ round: "A", hole: 1, shotNo: 2, club: "5i", line: "aggressive", rec: rec(3.2, 3.0) }),
+    closedShot({ round: "A", hole: 2, shotNo: 2, club: "7i", line: "safe", rec: rec(2.9, 3.1) }),
+    closedShot({ round: "A", hole: 3, shotNo: 2, club: "8i", line: "own", rec: rec(3.0, null) }),
+    closedShot({ round: "B", hole: 1, shotNo: 1, club: "5i", line: "aggressive", rec: rec(4.1, 4.2) }),
+    closedShot({ round: "B", hole: 2, shotNo: 1, club: "5i", line: "aggressive", rec: rec(4.1, 4.2), logged: "skipped" }),
+    closedShot({ round: "gone", hole: 1, shotNo: 1, club: "5i", line: "aggressive", rec: rec(4.1, 4.2) }),
+  ];
+  const history = [
+    { id: "A", date: "2026-09-20T12:00:00Z", holeScores: [3, 4, 4, ...Array(15).fill(4)] },
+    { id: "B", date: "2026-09-22T12:00:00Z", holeScores: [6, 5, ...Array(16).fill(4)] },
+    { id: "N", date: "2026-09-23T12:00:00Z", holeScores: Array(18).fill(4) },
+  ];
+  const m = aggressionModel(shots, history);
+  // A hole 1: (3 − 1) − 3.0 = −1.0 → aggression paid +1.0; B hole 1: 6 − 0 − 4.2 = +1.8 → cost −1.8
+  assert.equal(m.rounds.A.text, "Aggression paid +1.0");
+  assert.deepEqual([m.rounds.A.word, m.rounds.A.amount], ["Aggression paid", "+1.0"]);
+  assert.deepEqual(m.rounds.A.counts.map((c) => [c.label, c.n]), [["Safe", 1], ["Aggressive", 1], ["Own call", 1]]);
+  assert.equal(m.rounds.B.text, "Aggression cost −1.8");
+  assert.deepEqual(m.rounds.B.counts.map((c) => c.n), [0, 1, 0], "the skipped shot's line was never confirmed");
+  assert.equal(m.rounds.N, undefined, "a round with no logged shots shows nothing");
+  assert.equal(m.rounds.gone, undefined, "a deleted round's shots are not counted");
+  assert.equal(m.season.text, "Aggression cost −0.8");
+  assert.deepEqual(m.season.counts.map((c) => c.n), [1, 2, 1]);
+  // Summary: live scores for a round not yet in history
+  const live = aggressionModel(shots.filter((s) => s.roundId === "A"), [], { A: [2, 4, 4] });
+  assert.equal(live.rounds.A.text, "Aggression paid +2.0", "an edited hole re-prices the round");
+  assert.equal(aggressionModel([], history).season, null);
+  assert.equal(aggressionView({ safe: { n: 2 }, aggressive: { n: 0 }, own: { n: 0 }, text: null }).text, null, "counts without a priced aggressive shot → counts only");
+  assert.equal(aggressionView({ safe: { n: 0 }, aggressive: { n: 0 }, own: { n: 0 }, text: null }), null);
 });

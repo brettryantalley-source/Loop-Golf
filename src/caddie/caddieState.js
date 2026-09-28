@@ -17,8 +17,9 @@
 import { dist, rect, ellipse } from "./course.js";
 import { distances, pinFromTap, frameOf, holeKeyFor } from "./geo.js";
 import { parseLieChip } from "./context.js";
-import { bboxYds } from "./overlay.js";
+import { bboxYds, withEllipses } from "./overlay.js";
 import { DEFAULT_CONFIG } from "./config.js";
+import { withinRound, applyShotLog, aggressionScorecard } from "./learning.js";
 
 export const CADDIE_SCHEMA = 1;
 export const PHASES = Object.freeze(["pretee", "locating", "ready", "nofix", "locationoff", "yards"]);
@@ -347,14 +348,102 @@ const shortDate = (iso) => { const m = /^\d{4}-(\d{2})-(\d{2})/.exec(iso || "");
 const pct = (x) => `${Math.round((x || 0) * 100)}%`;
 const signed = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "0");
 
-/** §5.6 — the dispersion line for the drawn ellipse of an option. */
+/**
+ * §5.6 — the dispersion line for the drawn ellipse of an option. Before takeover it reads Shot
+ * Pattern's source (`Shot Pattern · 80% · Sep 19`, or `Profile spread · 80%` with no ellipse);
+ * after the §5.2 takeover the ellipse is Loop's own: `Loop · 80% · {n} shots`.
+ */
 export function dispersionLine(o) {
   if (!o?.ell) return null;
   const b = bboxYds(o.ell);
+  const n = o.ell.n ?? o.learningN ?? null;
   const src = o.ell.source === "shotPattern"
     ? ["Shot Pattern", "80%", shortDate(o.ell.capturedAt)].filter(Boolean).join(" · ")
-    : o.ell.source === "loop" ? `Loop · 80% · ${o.ell.n ?? "?"} shots` : "Profile spread · 80%";
+    : o.ell.source === "loop" ? (n != null ? `Loop · 80% · ${n} shots` : "Loop · 80%") : "Profile spread · 80%";
   return { club: clubShort(o.club, o.label), w: Math.round(b.w), d: Math.round(b.d), source: src + (o.ell.scaled ? " · +15% bad lie" : "") };
+}
+
+/**
+ * overlay.js `withEllipses`, plus the shot count a Loop ellipse was fitted from (ellipseFromEntry
+ * does not carry it): `ell.n` from the resolved entry's ell80 when that ellipse is Loop's (§5.6).
+ */
+export function ellipsesFor(res, resolve, opts = {}) {
+  const out = withEllipses(res, resolve, opts);
+  const addN = (o) => {
+    if (!o?.ell || o.ell.source !== "loop") return o;
+    const e = resolve(o.club, o.swingType);
+    const n = e?.ell80?.n ?? null;
+    return n != null ? { ...o, ell: { ...o.ell, n } } : o;
+  };
+  return { safe: addN(out.safe), aggressive: addN(out.aggressive) };
+}
+
+/* ---------- 3c'. the learning loop (spec §5.2–§5.7, S5) ---------- */
+
+/**
+ * §5.5 — this round's closed-out shots → the engine ctx with `adjust`, `nudges` and `flags`.
+ * Recomputed from the shot log before every recommend(); nothing is stored and nothing reaches
+ * the profile (§5.5: the round's shots enter the profile through §5.3 after the round).
+ */
+export function withinRoundCtx(ctx, shotsThisRound, P, config) {
+  if (!ctx || !P) return ctx;
+  const w = withinRound(shotsThisRound || [], config || P.config, { P, lie: ctx.lieType });
+  return { ...ctx, adjust: w.adjust, nudges: w.nudges, flags: w.flags };
+}
+
+/** §5.3 rounds-ago for each finished round: newest = 1, by date (ties: later in the list is newer). */
+export function roundIndexFromHistory(history) {
+  const list = (history || []).map((r, i) => ({ id: r?.id, t: Date.parse(r?.date) || 0, i })).filter((r) => r.id != null);
+  list.sort((a, b) => b.t - a.t || b.i - a.i);
+  const out = {};
+  list.forEach((r, k) => { if (out[r.id] == null) out[r.id] = k + 1; });
+  return out;
+}
+
+/**
+ * §5.2–§5.4 — the per-entry overlays for profile.js `loadProfile(json, config, { overlays })`.
+ * Only FINISHED rounds count: the round in progress is not in `history`, so applyShotLog weighs
+ * its shots 0 (it is the within-round layer's, §5.5), and so do shots of deleted rounds.
+ */
+export function learningOverlays(P, shots, history, now) {
+  if (!P) return null;
+  const ovs = applyShotLog(P, shots || [], { now, roundIndexById: roundIndexFromHistory(history) }, P.config);
+  return Object.keys(ovs).length ? ovs : null;
+}
+
+/** The rail's `Today` lines (addendum §3.3 item 6): one per nudge, then one per flag. */
+export function todayLines(res) {
+  if (!res) return [];
+  return [...(res.nudges || []), ...(res.flags || [])].map((x) => String(x?.text || "")).filter(Boolean);
+}
+
+const LINE_LABELS = [["safe", "Safe"], ["aggressive", "Aggressive"], ["own", "Own call"]];
+
+/** One tally (learning.js aggressionScorecard, season or a round) → what Summary / History print. null when no shots. */
+export function aggressionView(t) {
+  if (!t) return null;
+  const counts = LINE_LABELS.map(([k, label]) => ({ key: k, label, n: t[k]?.n || 0 }));
+  if (!counts.some((c) => c.n > 0)) return null;
+  const m = t.text ? /^(.*) ([+−-]\d+(?:\.\d+)?)$/.exec(t.text) : null;
+  return { text: t.text || null, word: m ? m[1] : null, amount: m ? m[2] : null, counts };
+}
+
+/**
+ * §5.7 — the aggression scorecard for display. `shots` = saved shot records, `history` = finished
+ * rounds (hole scores from `holeScores`), `extra` = { [roundId]: holeScores } for a round whose
+ * scores are live (the Summary screen). Skipped shots are left out: their line was never
+ * confirmed. Only rounds that exist (history or extra) count toward the season.
+ * → { season: view | null, rounds: { [roundId]: view | null } }. Display only.
+ */
+export function aggressionModel(shots, history, extra = {}) {
+  const holeScores = {};
+  for (const r of history || []) if (r?.id) holeScores[r.id] = r.holeScores || [];
+  for (const [id, sc] of Object.entries(extra || {})) holeScores[id] = sc;
+  const list = (shots || []).filter((s) => s && s.logged !== "skipped" && holeScores[s.roundId] != null);
+  const sc = aggressionScorecard(list, holeScores);
+  const rounds = {};
+  for (const [id, t] of Object.entries(sc.rounds)) rounds[id] = aggressionView(t);
+  return { season: aggressionView(sc), rounds };
 }
 
 /* ---------- 3d. chips (§7.1, §7.2) ---------- */
@@ -592,7 +681,7 @@ export function caddieView({
     }
   }
   const reasons = hasRec ? (sameShot ? [opts.safe] : [opts.safe, opts.aggressive]).filter(Boolean).map((o) => o.reason).filter(Boolean) : [];
-  const nudge = hasRec && res.nudges?.length ? String(res.nudges[0].text || "") || null : null;
+  const today = hasRec ? todayLines(res) : [];
 
   const details = {
     distances: distancesStrip,
@@ -600,7 +689,7 @@ export function caddieView({
     rows,
     dispersion: active ? dispersionLine(active) : null,
     reasons,
-    nudge,
+    today,
   };
 
   /* bar (§3.4, §8). Log shot stays hidden until S4. */

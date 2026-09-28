@@ -6,7 +6,6 @@ import { T, F, caps, printed, written, writtenWord, rule, hairline, doubleRule, 
 import { fetchGeometry } from "./geometry.js";
 import { buildHole, frameOf, detectHole, needsNineMap, nineMapCandidates, saveNineMap, loadNineMap, loadGeometryCache, saveGeometryCache, inferLie, ll } from "./caddie/geo.js";
 import { loadProfile, resolveEntry } from "./caddie/profile.js";
-import { withEllipses } from "./caddie/overlay.js";
 import { MapLayer, useSatellite, prefetchTiles, TILE_PREFETCH_ENABLED } from "./caddie/mapLayer.jsx";
 /* Caddie (S3b, v22): the engine, its inputs and the screen's state + render model. */
 import { assembleShotContext, frameBearing } from "./caddie/context.js";
@@ -21,7 +20,7 @@ import { DEFAULT_CONFIG, mergeConfig } from "./caddie/config.js";
 import {
   COPY, GPS_TIMEOUT_MS, initialCaddie, caddieReducer, caddieHoleFor, serializeCaddie, restoreCaddie, pinSetting, pinPointFor,
   pinFromMapTap, pickerModel, syntheticHole, clubBrainContext, mapInput, caddieView, defaultNineMap, geometryKeyFor, scorecardOrder, detectedHoleNo,
-  hasUnloggedShot, clubShort,
+  hasUnloggedShot, clubShort, ellipsesFor, withinRoundCtx, learningOverlays, aggressionModel,
 } from "./caddie/caddieState.js";
 import PROFILE_JSON from "./profile.json";
 
@@ -56,7 +55,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.1 · Sep 29";
+const BUILD = "v22.2 · Sep 29";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -1115,6 +1114,16 @@ function loadCaddieConfig() {
 }
 /* Profile v2 — bundled with the app. null only if the file is malformed (§8 No profile). */
 function loadCaddieProfile() { try { return loadProfile(PROFILE_JSON, loadCaddieConfig()); } catch (e) { return null; } }
+/* S5 (§5.2–§5.4): Shot Pattern's profile with Loop's between-round overlays merged in by
+   resolveEntry. Built from the finished rounds' shots only; P.raw stays Shot Pattern (T32).
+   Any failure falls back to the plain profile — learning can never cost Brett his caddie. */
+function withLearning(base, history) {
+  if (!base) return base;
+  try {
+    const overlays = learningOverlays(base, allShots(safeStorage()), history, Date.now());
+    return overlays ? loadProfile(PROFILE_JSON, base.config, { overlays }) : base;
+  } catch (e) { console.warn("learning overlays failed", e); return base; }
+}
 
 const CADDIE_RAIL_W = 106, CADDIE_RAIL_EXP = 356;
 const CADDIE_CSS = `.lc-rail{transition:width .28s cubic-bezier(.2,.8,.2,1)}
@@ -1343,16 +1352,22 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   const ballXY = cs.ballXY || (cs.ball && Fr ? Fr.toFrame({ lat: cs.ball.lat, lon: cs.ball.lng }) : null);
   const pinSet = pinSetting(cs);
 
-  /* the engine: assembleShotContext → recommend → withEllipses (≈ 20–45 ms, inside the 500 ms budget) */
+  /* the engine: assembleShotContext → §5.5 within-round nudges → recommend → ellipses (≈ 20–45 ms, inside the 500 ms budget) */
+  // shotsRev: bumped on every saveShot here, so a logged / closed-out shot re-runs the nudges.
+  const [shotsRev, setShotsRev] = useState(0);
+  const saveShotHere = (record) => { const r = saveShot(safeStorage(), record); setShotsRev((x) => x + 1); return r; };
   const engine = useMemo(() => {
     if (!profile) return null;
     const lieOf = (ctx) => (c, sw) => resolveEntry(profile, c, sw, ctx.lieType, { wet: ctx.conditions === "wet" });
+    // §5.5: recomputed from this round's shot log on every recommend(); never persisted.
+    const today = roundId ? loadShots(safeStorage(), roundId) : [];
+    const nudged = (ctx) => withinRoundCtx(ctx, today, profile, config);
     try {
       if (cs.phase === "yards" && cs.yards) {
         const syn = syntheticHole(cs.yards, h.par);
-        const ctx = clubBrainContext({ holeNo: n, par: h.par, shotNo: cs.shotNo, chips: cs.chips, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride });
+        const ctx = nudged(clubBrainContext({ holeNo: n, par: h.par, shotNo: cs.shotNo, chips: cs.chips, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride }));
         const res = recommend(ctx, syn, profile);
-        const options = res ? withEllipses(res, lieOf(ctx), { lieQuality: ctx.lieQuality, config }) : null;
+        const options = res ? ellipsesFor(res, lieOf(ctx), { lieQuality: ctx.lieQuality, config }) : null;
         const inferred = { lieType: cs.shotNo <= 1 ? "tee" : "fairway", lieConfidence: "low", wind: undefined, elevation: 0, conditions: "normal", distances: res?.context?.distances };
         return { ctx, res, options, inferred, onGreen: false, green: syn.green };
       }
@@ -1360,10 +1375,10 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
       const round = { hole: n, par: h.par, shotNo: cs.shotNo, courseId, trigger: cs.trigger || "tee", pins: { [n]: pinSet }, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride };
       const wx = weather && Number.isFinite(weather.speedMph) ? weather : null;
       const common = { hole: built, geometry, fix: { lat: cs.ball.lat, lng: cs.ball.lng, accuracyM: cs.ball.accuracyM }, weather: wx, elevation: geometry?.elevation || null, overrides, config };
-      const ctx = assembleShotContext({ ...common, round, chips: cs.chips });
+      const ctx = nudged(assembleShotContext({ ...common, round, chips: cs.chips }));
       const base = assembleShotContext({ ...common, round: { ...round, windOverride: null, conditionsOverride: null }, chips: {} });
       const res = recommend(ctx, built, profile);
-      const options = res && res.safe ? withEllipses(res, lieOf(ctx), { lieQuality: ctx.lieQuality, config }) : null;
+      const options = res && res.safe ? ellipsesFor(res, lieOf(ctx), { lieQuality: ctx.lieQuality, config }) : null;
       const pinPt = base.meta.distances?.pinPoint || built.green.center;
       const wind = base.wind ? { speedMph: base.wind.speedMph, relative: windEffect(base.wind, frameBearing(base.ball, pinPt), 100, config).relative }
         : base.meta.sources.wind === "weather" ? null : undefined;
@@ -1373,8 +1388,9 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
       console.warn("caddie compute failed", e);
       return null;
     }
-  }, [profile, cs.phase, cs.yards, cs.ball, cs.chips, cs.shotNo, cs.trigger, cs.windOverride, cs.conditionsOverride, pinSet, built, geometry, weather, overrides, n, h.par]);
-  if (contextRef) contextRef.current = engine?.ctx || null;
+  }, [profile, cs.phase, cs.yards, cs.ball, cs.chips, cs.shotNo, cs.trigger, cs.windOverride, cs.conditionsOverride, pinSet, built, geometry, weather, overrides, n, h.par, roundId, shotsRev]);
+  // The saved snapshot (§9.8) is the ShotContext only: §5.5 nudges are recomputed, never stored.
+  if (contextRef) contextRef.current = engine?.ctx ? (({ adjust, nudges, flags, ...rest }) => rest)(engine.ctx) : null;
 
   const v = caddieView({ state: cs, par: h.par, profileOk: !!profile, mapOk: !!built, res: engine?.res || null, options: engine?.options || null,
     inferred: engine?.inferred || null, onGreen: !!engine?.onGreen, ballXY: cs.phase === "yards" ? null : ballXY, green: engine?.green || null, config });
@@ -1428,7 +1444,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   const commitLog = (build) => {
     if (!logSheet) return;
     const record = build(logSheet.record);
-    saveShot(safeStorage(), record);
+    saveShotHere(record);
     dispatch({ type: record.logged === "skipped" ? "logSkip" : "logSave", record });
     const wasBlocking = logSheet.blocking;
     setLogSheet(null);
@@ -1453,7 +1469,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     const closed = prevHole && endLL
       ? closeOutShot(cs.openShot, { endGps: { lat: endLL.lat, lng: endLL.lon }, endLie: "green", endAccuracyM: null, endFrame: prevHole.green.center }, config)
       : cs.openShot;
-    saveShot(safeStorage(), closed);
+    saveShotHere(closed);
     dispatch({ type: "logClosed" });
   }, [cs.openShot, n]);
 
@@ -1507,7 +1523,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
       if (cs.openShot && point) {
         const endLie = inferLie(hole, geometry, ll(fix) || point, { accuracyM: fix.accuracyM, overrides, courseId }).lieType;
         const closed = closeOutShot(cs.openShot, { endGps: fix, endLie, endAccuracyM: fix.accuracyM, endFrame: point }, config);
-        saveShot(safeStorage(), closed);
+        saveShotHere(closed);
         dispatch({ type: "logClosed" });
       }
       dispatch({ type: "fix", fix, point, hole: holeNo });
@@ -1676,10 +1692,14 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
               {d.reasons.map((t, i) => <div key={i} className={compact ? "lc-clamp1" : undefined} style={{ fontSize: 11, lineHeight: 1.45, color: T.ink }}>{t}</div>)}
             </div>
           )}
-          {/* 6. nudge */}
-          {d.nudge && (
-            <div style={{ marginTop: 8, paddingTop: 7, borderTop: hairline, display: "flex", gap: 8, alignItems: "baseline" }}>
-              <span style={{ ...k9, flex: "none" }}>Today</span><span style={{ fontSize: 12, lineHeight: 1.35, color: T.black }}>{d.nudge}</span>
+          {/* 6. nudge (§3.3 item 6, spec §5.5): one line per nudge, then per contact flag; nothing when none */}
+          {d.today.length > 0 && (
+            <div data-part="today" style={{ marginTop: 8, paddingTop: 7, borderTop: hairline, display: "flex", gap: 8, alignItems: "baseline" }}>
+              <span style={{ ...k9, flex: "none" }}>Today</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+                {/* never clamped, even at 667: the correction after the → is the point of the line */}
+                {d.today.map((t, i) => <span key={i} style={{ fontFamily: F.label, fontSize: 12, lineHeight: 1.35, color: T.black }}>{t}</span>)}
+              </div>
             </div>
           )}
         </div>
@@ -1812,8 +1832,35 @@ function ScoreCard({ course, ghost, scores, onTapHole }) {
 }
 
 /* ---------- summary ---------- */
-function Summary({ course, ghost, scores, history, onEditScore, onReset }) {
+/* §5.7 aggression scorecard — the Safe / Aggressive / Own-call counts and what aggression paid or
+   cost against the engine's price. Printed numbers on paper; renders nothing without logged shots.
+   Display only: nothing here reaches a recommendation. */
+function AggressionLines({ view, label = "Lines played", size = 11 }) {
+  if (!view) return null;
+  return (
+    <div data-part="aggression" style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+        <span style={caps(10)}>{label}</span>
+        <span style={{ fontFamily: F.label, fontSize: size, color: T.ink }}>
+          {view.counts.map((c, i) => <React.Fragment key={c.key}>{i ? " · " : ""}{c.label} <span style={printed(size + 1)}>{c.n}</span></React.Fragment>)}
+        </span>
+      </div>
+      {view.text && (
+        <div style={{ fontFamily: F.label, fontSize: size + 1, color: T.black, textAlign: "right" }}>
+          {view.word ? <>{view.word} <span style={printed(size + 3)}>{view.amount}</span></> : view.text}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Summary({ course, ghost, scores, history, roundId, onEditScore, onReset }) {
   const m = evalMatch(scores, ghost.holes);
+  // §5.7 — this round's saved shots against its live hole scores (an edit re-prices it).
+  const aggView = useMemo(() => {
+    if (!roundId) return null;
+    try { return aggressionModel(loadShots(safeStorage(), roundId), [], { [roundId]: scores }).rounds[roundId] || null; } catch (e) { return null; }
+  }, [roundId, scores]);
   const won = m.you > m.opp, tie = m.you === m.opp;
   const stats = deriveStats(history);
   const toPar = m.total.yourTot - course.par;
@@ -1880,6 +1927,13 @@ function Summary({ course, ghost, scores, history, onEditScore, onReset }) {
       </div>
       <ScoreCard course={course} ghost={ghost} scores={scores} onTapHole={openEdit} />
       <div style={{ textAlign: "center", fontFamily: F.label, fontSize: 11, color: T.muted, padding: "8px 0 0" }}>Tap any hole in your row to change it</div>
+
+      {/* the lines played (§5.7) — only when the caddie logged shots this round */}
+      {aggView && (
+        <div style={{ padding: "12px 0 0", marginTop: 12, borderTop: rule }}>
+          <AggressionLines view={aggView} />
+        </div>
+      )}
 
       {/* the running record, now including this round */}
       <div style={{ padding: "14px 0 0", marginTop: 12, borderTop: rule }}>
@@ -2148,6 +2202,9 @@ const RES_LONG = { W: "won", L: "lost", T: "halved" };
 function History({ history, stats, cloud, onDelete, onImport, onBack }) {
   const [confirmId, setConfirmId] = useState(null);
   const [msg, setMsg] = useState("");
+  // §5.7 — per round and season, from the saved shot records and each round's hole scores.
+  const [shotsRev, setShotsRev] = useState(0);
+  const agg = useMemo(() => { try { return aggressionModel(allShots(safeStorage()), history); } catch (e) { return { season: null, rounds: {} }; } }, [history, shotsRev]);
   const [busy, setBusy] = useState(false);
   const fileRef = React.useRef(null);
   const shotFileRef = React.useRef(null);
@@ -2190,6 +2247,7 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
       let result;
       try { result = importShots(safeStorage(), String(fr.result)); }
       catch (e2) { setMsg("That doesn't look like a Loop shot log."); return; }
+      setShotsRev((x) => x + 1);
       setMsg(`Imported ${result.added} shot${result.added === 1 ? "" : "s"}${result.updated ? ` · ${result.updated} updated` : ""}.`);
     };
     fr.onerror = () => setMsg("Couldn't read that file.");
@@ -2239,6 +2297,7 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
             </div>
           ))}
         </div>
+        {agg.season && <div style={{ paddingTop: 4, borderTop: hairline, marginTop: 2 }}><AggressionLines view={agg.season} label="Season lines" /></div>}
       </div>
 
       {/* the ledger */}
@@ -2283,6 +2342,16 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
                     {margin >= 0 ? "+" : ""}{margin.toFixed(1)}{rd != null ? ` · diff ${rd.toFixed(1)}` : ""}
                   </span>
                 </div>
+                {agg.rounds[r.id] && (() => {
+                  const a = agg.rounds[r.id];
+                  return (
+                    <div data-part="aggression-row" style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", columnGap: 6, marginTop: 2, fontFamily: F.label, fontSize: 11, color: T.ink }}>
+                      {a.text && <span style={{ color: T.black }}>{a.word} <span style={printed(12)}>{a.amount}</span></span>}
+                      {a.text && <span style={{ color: T.muted }}>·</span>}
+                      <span>{a.counts.map((c, i) => <React.Fragment key={c.key}>{i ? " · " : ""}{c.label} <span style={printed(12)}>{c.n}</span></React.Fragment>)}</span>
+                    </div>
+                  );
+                })()}
                 {confirming && (
                   <div style={{ display: "flex", gap: 8, paddingTop: 8 }}>
                     <button onClick={() => setConfirmId(null)} style={{ flex: 1, height: 36, border: `1px solid ${T.muted}`, borderRadius: 18, background: "transparent", color: T.muted, ...caps(10, 700, "0.16em") }}>Keep</button>
@@ -2410,8 +2479,12 @@ function App() {
   const [caddie, dispatchCaddie] = React.useReducer((st, a) => (a.type === "reset" ? a.state : st ? caddieReducer(st, a) : st), initial.caddie);
   const caddieCtx = React.useRef(null);
   const [weather, setWeather] = useState(null);
-  const [profile, setProfile] = useState(loadCaddieProfile);
+  const [profileBase, setProfile] = useState(loadCaddieProfile);
   const [history, setHistory] = useState(loadHistory());
+  // §5.2–§5.4: Loop's between-round overlays, rebuilt when history changes and each time the
+  // caddie opens (a shot-log import lands in storage, not in React state).
+  const caddieOpen = screen === "caddie";
+  const profile = useMemo(() => withLearning(profileBase, history), [profileBase, history, caddieOpen]);
   const [tombs, setTombs] = useState(loadTombs());
   const cloud = useCloudSync(history, setHistory, tombs, setTombs);
   const courseMap = useCourseMap(course);
@@ -2469,7 +2542,7 @@ function App() {
       {screen === "play" && course && ghost && <Play course={course} ghost={ghost} scores={scores} setScores={setScores} hole={hole} setHole={setHole} onFinish={finalize} onExit={exitRound} onCaddie={openCaddie} />}
       {screen === "caddie" && course && caddie && <Caddie course={course} geometry={courseMap.geometry} profile={profile} cs={caddie} dispatch={dispatchCaddie}
         weather={weather} setWeather={setWeather} contextRef={caddieCtx} roundId={roundId} onCard={() => openCard()} onScore={(n) => openCard(n)} onRetryProfile={() => setProfile(loadCaddieProfile())} />}
-      {screen === "summary" && course && ghost && <Summary course={course} ghost={ghost} scores={scores} history={history} onEditScore={editScore} onReset={reset} />}
+      {screen === "summary" && course && ghost && <Summary course={course} ghost={ghost} scores={scores} history={history} roundId={roundId} onEditScore={editScore} onReset={reset} />}
       {screen === "history" && <History history={history} stats={stats} cloud={cloud} onDelete={deleteRound} onImport={importRounds} onBack={() => setScreen("setup")} />}
     </div>
   );
