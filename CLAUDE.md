@@ -19,6 +19,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 - `sw.js` — service worker (network-first since v13: online you get the latest bundle, offline it falls back to cache). Has a versioned cache name.
 - `manifest.webmanifest` — PWA manifest. `icon-512.png` — app icon.
 - `src/theme.jsx` — the design system (v21): colour and type tokens, the pencil filters, the Loop wordmark. Every screen reads its values from here.
+- `loop-design/` — the design SOURCE: `SPEC.md`, the two approved reference screens (standalone HTML + 2x PNGs), the pencil filter and the logo. `theme.jsx` implements it; this is what it implements.
 - `fonts/` — bundled woff2, COMMITTED and cached by the service worker. Never fetch a font at runtime.
 - `src/caddie.js`, `src/geometry.js`, `src/holeMap.jsx`, `src/profile.json`, `src/fixtures/`, `vendor/` — PARKED at v21. Nothing imports them and they are not bundled, but their tests still run. See "Parked, not deleted".
 - `package.json` — build deps (the Firebase SDK, MapLibre for `vendor/`) and `npm test` (node's test runner over `src/*.test.js`). React still ships as an inlined UMD file. `node_modules/` is gitignored; run `npm install` in a fresh clone before `./build.sh`.
