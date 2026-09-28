@@ -9,7 +9,9 @@ import assert from "node:assert/strict";
 import {
   groupResultsByClub, clubKeyOf, routingLabel, routingNines, splitTee27, composeRouting, nineCombos, teeForCombo,
   loadLastRouting, saveLastRouting, defaultRoutingIndex, LAST_ROUTING_KEY,
+  composeStrokeIndex, normalizeStrokeIndex, localNineCombos, localCombo, localCardHoles, localRoutingFor, apiTeeNamed,
 } from "./routing.js";
+import { LOCAL_CLUBS } from "./localCards.js";
 
 const GA = { city: "Gainesville", state: "GA" };
 const results = [
@@ -134,4 +136,105 @@ test("last routing: saved per club in bogeyman-matches:lastRouting:v1, read back
   assert.equal(loadLastRouting(st, key), null);
   assert.equal(saveLastRouting(st, key, { id: 2 }), true, "a corrupt store is replaced, not fatal");
   assert.equal(loadLastRouting(null, key), null);
+});
+
+/* ---------- v22.12: stroke index of a composed 18, local cards ---------- */
+
+const holesOf = (si) => si.map((handicap, i) => ({ par: 4, handicap, yardage: 300 + i }));
+const isOneTo18 = (xs) => [...xs].sort((a, b) => a - b).join() === Array.from({ length: 18 }, (_, i) => i + 1).join();
+
+test("composeStrokeIndex: USGA odd/even — first nine 2·si−1, second nine 2·si", () => {
+  const front = [8, 9, 6, 3, 7, 4, 1, 5, 2], back = [4, 7, 3, 2, 9, 6, 5, 8, 1];
+  const si = composeStrokeIndex(front, back);
+  assert.deepEqual(si, [15, 17, 11, 5, 13, 7, 1, 9, 3, 8, 14, 6, 4, 18, 12, 10, 16, 2]);
+  assert.ok(isOneTo18(si), "every index once");
+  assert.ok(si.slice(0, 9).every((x) => x % 2 === 1) && si.slice(9).every((x) => x % 2 === 0));
+  assert.deepEqual(composeStrokeIndex([], []), []);
+});
+
+test("normalizeStrokeIndex: 1–18 untouched; two 1–9 nines → odd/even; 1–27 ranked per nine; anything else as given", () => {
+  const good = holesOf([7, 11, 15, 1, 3, 13, 5, 17, 9, 8, 16, 2, 12, 18, 6, 10, 14, 4]);
+  assert.equal(normalizeStrokeIndex(good), good, "already 1–18: the very same array");
+  const dup = holesOf([3, 2, 9, 4, 8, 1, 6, 7, 5, 4, 7, 3, 2, 9, 6, 5, 8, 1]);
+  const n = normalizeStrokeIndex(dup);
+  assert.deepEqual(n.map((h) => h.handicap), composeStrokeIndex([3, 2, 9, 4, 8, 1, 6, 7, 5], [4, 7, 3, 2, 9, 6, 5, 8, 1]));
+  assert.ok(isOneTo18(n.map((h) => h.handicap)));
+  assert.equal(dup[0].handicap, 3, "input not mutated");
+  assert.deepEqual(n.map((h) => [h.par, h.yardage]), dup.map((h) => [h.par, h.yardage]), "par and yards kept");
+  const t27 = holesOf([19, 20, 21, 22, 23, 24, 25, 26, 27, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+  assert.deepEqual(normalizeStrokeIndex(t27).map((h) => h.handicap), [1, 3, 5, 7, 9, 11, 13, 15, 17, 18, 16, 14, 12, 10, 8, 6, 4, 2]);
+  const broken = holesOf([1, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.equal(normalizeStrokeIndex(broken), broken, "a nine with a repeated number is left alone");
+  const missing = holesOf([1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9]); missing[4] = { par: 4 };
+  assert.equal(normalizeStrokeIndex(missing), missing);
+  assert.equal(normalizeStrokeIndex(null), null);
+  const nine = holesOf([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.equal(normalizeStrokeIndex(nine), nine, "not 18 holes: as given");
+});
+
+test("teeForCombo applies the odd/even rule to a 27-hole tee's two nines", () => {
+  const holes = [0, 1, 2].flatMap(() => Array.from({ length: 9 }, (_, i) => ({ par: 4, handicap: 9 - i, yardage: 350 })));
+  const t = { tee_name: "Blue", course_rating: 71, slope_rating: 128, holes };
+  const nines = splitTee27(t);
+  const ct = teeForCombo(t, nines, [2, 0]);
+  assert.ok(isOneTo18(ct.holes.map((h) => h.handicap)));
+  assert.deepEqual(ct.holes.slice(0, 3).map((h) => h.handicap), [17, 15, 13]);
+  assert.deepEqual(ct.holes.slice(9, 12).map((h) => h.handicap), [18, 16, 14]);
+  assert.equal(composeRouting(nines, [2, 0])[0].handicap, 9, "composeRouting itself stays raw");
+});
+
+test("local card: six ordered combos, labels, parsing a saved label", () => {
+  const card = LOCAL_CLUBS[0];
+  const combos = localNineCombos(card);
+  assert.equal(combos.length, 6);
+  assert.deepEqual(combos.map((c) => c.label), ["Valley / Lakes", "Valley / Ridge", "Lakes / Valley", "Lakes / Ridge", "Ridge / Valley", "Ridge / Lakes"]);
+  assert.deepEqual(combos[3], { key: "l:12", combo: [1, 2], nines: ["Lakes", "Ridge"], label: "Lakes / Ridge" });
+  assert.deepEqual(localCombo(card, "Lakes / Ridge"), [1, 2]);
+  assert.deepEqual(localCombo(card, "ridge/valley"), [2, 0]);
+  assert.equal(localCombo(card, "Lakes / Lakes"), null);
+  assert.equal(localCombo(card, "Village / School"), null);
+  assert.equal(localCombo(card, "Lakes"), null);
+  assert.equal(localCombo(null, "Lakes / Ridge"), null);
+});
+
+test("localCardHoles: pars and yards from the card for the tee, 1–18 stroke index", () => {
+  const card = LOCAL_CLUBS[0];
+  const h = localCardHoles(card, [1, 2], "Blue");
+  assert.equal(h.length, 18);
+  assert.deepEqual(h.map((x) => x.par), [4, 4, 4, 4, 5, 4, 3, 5, 3, 4, 4, 4, 4, 3, 5, 3, 5, 4]);
+  assert.equal(h.reduce((a, x) => a + x.par, 0), 72);
+  assert.equal(h.reduce((a, x) => a + x.yardage, 0), 3337 + 3160, "Lakes + Ridge OUT totals off the card");
+  assert.deepEqual(h.map((x) => x.handicap), composeStrokeIndex(card.nines[1].si, card.nines[2].si));
+  assert.ok(isOneTo18(h.map((x) => x.handicap)));
+  assert.equal(h[5].handicap, 1, "Lakes 6 (card 1) is the first nine's hardest → 1");
+  assert.equal(h[17].handicap, 2, "Ridge 9 (card 1) on the second nine → 2");
+  assert.deepEqual(localCardHoles(card, [2, 1], "ironwood").slice(0, 2).map((x) => x.yardage), [365, 333], "tee name is case-insensitive; order swaps the nines");
+  assert.equal(localCardHoles(card, [1, 2], "Gold"), null);
+  assert.equal(localCardHoles(card, [1, 1], "Blue"), null);
+  assert.equal(localCardHoles(card, [1, 5], "Blue"), null);
+});
+
+test("localRoutingFor / apiTeeNamed: the API routing with both nines (either order) and its tee by name", () => {
+  const entries = [
+    { id: 11, club_name: "Ironwood Golf Club", course_name: "Valley/Lakes" },
+    { id: 12, club_name: "Ironwood Golf Club", course_name: "Ironwood Golf Club - Ridge / Lakes" },
+    { id: 13, club_name: "Ironwood Golf Club", course_name: "Lake Side / Valley" },
+  ];
+  assert.equal(localRoutingFor(entries, ["Lakes", "Ridge"]).id, 12, "either order, club name stripped");
+  assert.equal(localRoutingFor(entries, ["Valley", "Lakes"]).id, 11);
+  assert.equal(localRoutingFor(entries, ["Valley", "Ridge"]), null, "no routing has both");
+  assert.equal(localRoutingFor([{ course_name: "Lake/Valley" }], ["Lakes", "Valley"]), null, "whole words only");
+  assert.equal(localRoutingFor(null, ["Lakes", "Ridge"]), null);
+  const h18 = Array.from({ length: 18 }, () => ({ par: 4 }));
+  const full = { tees: {
+    male: [{ tee_name: "Blue", course_rating: 72.1, slope_rating: 131, holes: h18 }, { tee_name: "White ", course_rating: 70.2, slope_rating: 126, holes: h18 }],
+    female: [{ tee_name: "Red", course_rating: 71.5, slope_rating: 122, holes: h18 }, { tee_name: "Blue", course_rating: 77, slope_rating: 140, holes: h18 }],
+  } };
+  assert.equal(apiTeeNamed(full, "blue").tee.course_rating, 72.1, "men's first");
+  assert.equal(apiTeeNamed(full, "blue").gender, "male");
+  assert.equal(apiTeeNamed(full, "White").tee.slope_rating, 126, "trimmed, case-insensitive");
+  assert.equal(apiTeeNamed(full, "Red").gender, "female");
+  assert.equal(apiTeeNamed(full, "Ironwood"), null);
+  assert.equal(apiTeeNamed({}, "Blue"), null);
+  assert.equal(apiTeeNamed(full, ""), null);
 });

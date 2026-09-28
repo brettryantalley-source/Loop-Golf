@@ -323,6 +323,43 @@ export function mapModeFor({ hasHole, holeNo = null, libFailed = false, tilesCac
   return { mode: "checking", notice: null };
 }
 
+/* ---------- v22.12: why the satellite is out, in words ---------- */
+
+/* one tile fetch's result { ok, status, error } → "tiles blocked (HTTP 403)" / "tiles unreachable (timeout)" */
+function tileFailure(t) {
+  if (Number.isFinite(t.status) && t.status > 0) return t.status >= 500 ? `tiles unreachable (HTTP ${t.status})` : `tiles blocked (HTTP ${t.status})`;
+  return `tiles unreachable (${t.error || "no response"})`;
+}
+
+/**
+ * The caddie's reason, from useSatellite's state: `probe` = the tile fetch at the ball / hole
+ * ({ ok, status, error } | null), `failReason` = what MapLayer reported ("maplibre" | "webgl" |
+ * "tiles" | null), `online` = navigator.onLine. The library failing wins (without it nothing draws);
+ * a failed probe says exactly how; then offline; then the map's own tile errors. null = nothing failed.
+ */
+export function satelliteFailure({ probe = null, failReason = null, online = true } = {}) {
+  if (failReason === "maplibre") return "map library failed to load";
+  if (failReason === "webgl") return "WebGL unavailable";
+  if (probe && probe.ok === false) return tileFailure(probe);
+  if (!online) return "offline";
+  if (failReason === "tiles") return "tiles failed to load";
+  return null;
+}
+
+/**
+ * Setup's `Satellite check` line from satelliteCheck's result { lib, tile, noLocation } (null while
+ * nothing has run; { running: true } while it runs). Every part that failed is named, joined by ·.
+ */
+export function satelliteCheckLine(r) {
+  if (!r) return null;
+  if (r.running) return "Satellite check · running";
+  const parts = [];
+  if (r.lib === false) parts.push("map library failed to load");
+  if (r.noLocation) parts.push("no course location to test");
+  else if (r.tile && r.tile.ok === false) parts.push(tileFailure(r.tile));
+  return parts.length ? `Satellite: ${parts.join(" · ")}` : "Satellite ready";
+}
+
 /* ---------- v22.11 cameras: the mark view and the pin view ---------- */
 
 /** The visible map region (§3.1) of a viewport: { L, R, T, B, cx, cy, width, height } in screen px. */

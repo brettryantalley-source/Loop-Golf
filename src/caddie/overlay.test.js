@@ -13,8 +13,7 @@ import {
   K80, thetaDeg, ellipseScreen, supportPoints, pointInEllipse, ellipsePolygon, ellipseBbox, bboxYds,
   ellipseFromEntry, withEllipses, ellipseInFrame, fitBounds, cameraPoints, cameraFor, linearProjector,
   zoomForPxPerYd, cameraKey, mapModeFor, NOTICE_NO_SATELLITE, overlayModel, fallbackMapModel, tagsOf, pxPerYdAt,
-  NOTICE_NO_SATELLITE_MARKED, NOTICE_MARK_GREEN, markCamera, pinViewCamera, pinViewKey, pinMarkerHit, visibleRegion,
-} from "./overlay.js";
+  NOTICE_NO_SATELLITE_MARKED, NOTICE_MARK_GREEN, markCamera, pinViewCamera, pinViewKey, pinMarkerHit, visibleRegion, satelliteFailure, satelliteCheckLine } from "./overlay.js";
 import { ellipseSampler, ELL80_K, recommend } from "./engine.js";
 import { loadProfile, resolveEntry } from "./profile.js";
 import { makeSamples } from "./random.js";
@@ -421,4 +420,32 @@ test("fallback drawn map of a marked green: the green only, never the engine's c
   const lin = linearProjector(cameraFor(fitBounds(cameraPoints({ hole: mh, ball: { x: 0, y: 0 } })), { width: 375, height: 812 }), { width: 375, height: 812 });
   const drawn = fallbackMapModel({ hole: mh, project: lin.project });
   assert.equal(drawn.length, 1, "one polygon: the green");
+});
+
+/* ---------- v22.12: the satellite's failure in words ---------- */
+
+test("satelliteFailure: the part that failed, library first, then the probe, offline, the map's tile errors", () => {
+  assert.equal(satelliteFailure({ probe: { ok: false, status: 403, error: null } }), "tiles blocked (HTTP 403)");
+  assert.equal(satelliteFailure({ probe: { ok: false, status: 503, error: null } }), "tiles unreachable (HTTP 503)");
+  assert.equal(satelliteFailure({ probe: { ok: false, status: null, error: "timeout" } }), "tiles unreachable (timeout)");
+  assert.equal(satelliteFailure({ probe: { ok: false, status: null, error: "TypeError" } }), "tiles unreachable (TypeError)");
+  assert.equal(satelliteFailure({ probe: { ok: false, status: 403 }, failReason: "maplibre" }), "map library failed to load");
+  assert.equal(satelliteFailure({ failReason: "webgl" }), "WebGL unavailable");
+  assert.equal(satelliteFailure({ online: false }), "offline");
+  assert.equal(satelliteFailure({ failReason: "tiles" }), "tiles failed to load");
+  assert.equal(satelliteFailure({ probe: { ok: true, status: 200 } }), null);
+  assert.equal(satelliteFailure(), null);
+});
+
+test("satelliteCheckLine: Setup's line — ready, or exactly what failed", () => {
+  assert.equal(satelliteCheckLine(null), null);
+  assert.equal(satelliteCheckLine({ running: true }), "Satellite check · running");
+  assert.equal(satelliteCheckLine({ lib: true, tile: { ok: true, status: 200 } }), "Satellite ready");
+  assert.equal(satelliteCheckLine({ lib: true, tile: { ok: false, status: 403 } }), "Satellite: tiles blocked (HTTP 403)");
+  assert.equal(satelliteCheckLine({ lib: true, tile: { ok: false, status: null, error: "timeout" } }), "Satellite: tiles unreachable (timeout)");
+  assert.equal(satelliteCheckLine({ lib: true, tile: { ok: false, status: null, error: "TypeError" } }), "Satellite: tiles unreachable (TypeError)");
+  assert.equal(satelliteCheckLine({ lib: false, tile: { ok: true, status: 200 } }), "Satellite: map library failed to load");
+  assert.equal(satelliteCheckLine({ lib: false, tile: { ok: false, status: 401 } }), "Satellite: map library failed to load · tiles blocked (HTTP 401)");
+  assert.equal(satelliteCheckLine({ lib: true, tile: null, noLocation: true }), "Satellite: no course location to test");
+  for (const r of [{ lib: false, tile: { ok: false, status: 403 } }, { lib: true, tile: { ok: true } }]) assert.ok(!satelliteCheckLine(r).includes("!"));
 });
