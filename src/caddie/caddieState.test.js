@@ -305,6 +305,21 @@ test("chips: printed when inferred, pencil when Brett changed it, ? on a low-con
   assert.equal(windChipText({ direction: "from left", speed: 15 }), "15 from L");
   assert.equal(windText({ speedMph: 12, relative: "cross-from-right" }), "12 from right"); assert.equal(windText({ speedMph: 6, relative: "down-left" }), "6 help-left");
   assert.equal(windText(undefined), "—"); assert.equal(windText(null), "Calm"); assert.equal(windChipText({ direction: "calm", speed: 0 }), "Calm"); assert.equal(elevText(0), "0 yds");
+  // temperature rides along on the Wind chip's inferred text (§3.3) — no chip of its own
+  assert.equal(windText({ speedMph: 8.2, relative: "into-left" }, 58.2), "8 into-left · 58°");
+  assert.equal(windText(undefined, 58), "— · 58°", "no wind data but a temperature exists");
+  assert.equal(windText(null, 58), "Calm · 58°");
+  assert.equal(windText(undefined), "—", "neither wind nor temperature: nothing appended");
+  assert.equal(windText(undefined, null), "—");
+  for (const t of [windText({ speedMph: 8.2, relative: "into-left" }, 58.2), windText(undefined, 58)]) {
+    assert.ok(!t.includes("!") && !/ghost/i.test(t), `no exclamation points or ghost words: ${t}`);
+  }
+  const infWithTemp = { lieType: "fairway", lieConfidence: "low", wind: { speedMph: 8.2, relative: "into-left" }, elevation: 4.4, conditions: "normal", tempF: 58.2 };
+  const cTemp = Object.fromEntries(chipList({ inferred: infWithTemp }).map((x) => [x.key, x]));
+  assert.equal(cTemp.wind.value, "8 into-left · 58°");
+  assert.equal(cTemp.wind.inferredValue, "8 into-left · 58°");
+  const infNoWindWithTemp = { lieType: "fairway", lieConfidence: "low", wind: undefined, elevation: 4.4, conditions: "normal", tempF: 58 };
+  assert.equal(Object.fromEntries(chipList({ inferred: infNoWindWithTemp }).map((x) => [x.key, x])).wind.value, "— · 58°");
   // pickers
   const lie = pickerModel("lie", { chip: e.lie, current: "rough" });
   assert.deepEqual(lie.options.map((o) => o.label), ["Tee", "Fairway", "Rough", "Sand", "Recovery"]);
@@ -404,11 +419,17 @@ test("club-brain: a straight synthetic hole of the entered length, no hazards, p
   const ctx = clubBrainContext({ holeNo: 5, par: 4, shotNo: 2, chips: { elevation: 5 }, windOverride: { direction: "into", speed: 10 } });
   assert.equal(ctx.lieType, "fairway"); assert.equal(ctx.lieConfidence, "low"); assert.equal(ctx.elevationDeltaYds, 5);
   assert.deepEqual(ctx.wind, { speedMph: 10, fromDeg: 0 });
+  assert.equal(ctx.tempF, null, "club-brain has no temperature reading unless the caller passes one");
   const res = recommend(ctx, syn, P);
   assert.ok(res.safe, "a club comes back");
   assert.equal(res.context.distances.pin, 150);
   assert.equal(clubBrainContext({ holeNo: 1, par: 4, shotNo: 1 }).lieType, "tee");
   assert.equal(clubBrainContext({ holeNo: 1, par: 4, shotNo: 3, chips: { lie: "sand" } }).lieType, "sand");
+  // temperature applies to club-brain plays-like too (§3.3), the same as GPS mode
+  const cold = clubBrainContext({ holeNo: 5, par: 4, shotNo: 1, tempF: 50 });
+  assert.equal(cold.tempF, 50);
+  const coldRes = recommend(cold, syn, P);
+  assert.equal(coldRes.context.tempYds, 3.0, "150 pin yds × 1%/10°F × 20°F = +3.0");
 });
 
 /* ---------- 27-hole courses (engine §6.4) ---------- */

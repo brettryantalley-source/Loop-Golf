@@ -10,11 +10,14 @@
  * elevation coverage/resolution at Ironwood and Hampton.
  *
  *   forecast  GET https://api.open-meteo.com/v1/forecast?latitude=&longitude=
- *               &current=wind_speed_10m,wind_direction_10m,precipitation
+ *               &current=wind_speed_10m,wind_direction_10m,precipitation,temperature_2m
  *               &hourly=precipitation&past_days=1&forecast_days=1
- *               &wind_speed_unit=mph&precipitation_unit=mm&timeformat=unixtime
- *             → { current: { time, wind_speed_10m, wind_direction_10m, precipitation },
+ *               &wind_speed_unit=mph&precipitation_unit=mm&temperature_unit=fahrenheit&timeformat=unixtime
+ *             → { current: { time, wind_speed_10m, wind_direction_10m, precipitation, temperature_2m },
  *                 current_units: {…}, hourly: { time: [], precipitation: [] } }
+ *             temperature_2m / temperature_unit=fahrenheit is the documented Open-Meteo field name for
+ *             2 m air temperature; NOT verified live from this container (egress blocked) — check on
+ *             device same as the rest of this file.
  *   elevation GET https://api.open-meteo.com/v1/elevation?latitude=a,b&longitude=c,d  (≤ 100 points)
  *             → { elevation: [metres, …] }
  */
@@ -51,9 +54,9 @@ async function getJson(fetchImpl, url, timeoutMs = FETCH_TIMEOUT_MS) {
 
 export function weatherUrl(lat, lon) {
   return `${OPEN_METEO_FORECAST}?latitude=${fx(lat)}&longitude=${fx(lon)}`
-    + "&current=wind_speed_10m,wind_direction_10m,precipitation"
+    + "&current=wind_speed_10m,wind_direction_10m,precipitation,temperature_2m"
     + "&hourly=precipitation&past_days=1&forecast_days=1"
-    + "&wind_speed_unit=mph&precipitation_unit=mm&timeformat=unixtime";
+    + "&wind_speed_unit=mph&precipitation_unit=mm&temperature_unit=fahrenheit&timeformat=unixtime";
 }
 
 const TO_MPH = { mph: 1, "km/h": 0.621371, "m/s": 2.236936, kn: 1.150779 };
@@ -79,6 +82,7 @@ export function parseWeather(json, now = Date.now()) {
     speedMph: Math.round(speedMph * 10) / 10,
     dirDeg: ((cur.wind_direction_10m % 360) + 360) % 360,   // meteorological: where the wind blows FROM
     rainMm24h: Math.round(rain * 10) / 10,
+    tempF: Number.isFinite(cur.temperature_2m) ? Math.round(cur.temperature_2m * 10) / 10 : null,
     asOf,
     fetchedAt: now,
     stale: false,
@@ -97,7 +101,7 @@ export async function fetchWeather(lat, lon, fetchImpl = globalThis.fetch, { las
     const error = String(e?.message || e);
     return last
       ? { ...last, stale: true, error, lastAttempt: now }
-      : { speedMph: null, dirDeg: null, rainMm24h: null, asOf: null, fetchedAt: null, stale: true, error, lastAttempt: now };
+      : { speedMph: null, dirDeg: null, rainMm24h: null, tempF: null, asOf: null, fetchedAt: null, stale: true, error, lastAttempt: now };
   }
 }
 
@@ -110,6 +114,12 @@ export function weatherRefreshDue(lastFetch, now = Date.now(), intervalMs = WEAT
   const t = lastFetch && typeof lastFetch === "object" && !(lastFetch instanceof Date) ? msOf(lastFetch.fetchedAt) : msOf(lastFetch);
   if (t == null || !Number.isFinite(t)) return true;
   return msOf(now) - t >= intervalMs;
+}
+
+/** The temperature reading to price plays-like against: a fresh, finite tempF only. Stale or
+ *  absent weather never contributes a temperature term — no default pretending to be a reading. */
+export function weatherTempF(weather) {
+  return weather && !weather.stale && Number.isFinite(weather.tempF) ? weather.tempF : null;
 }
 
 /** "wet" when the last 24 h of rain reaches config.WET_RAIN_MM_24H, else "normal". */

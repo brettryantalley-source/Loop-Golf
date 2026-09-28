@@ -25,7 +25,7 @@ import {
 } from "./geo.js";
 import {
   fetchWeather, parseWeather, weatherUrl, weatherRefreshDue, conditionsFrom, fetchElevationSamples,
-  elevationUrl, interpolateElevation, elevationDeltaYds, elevationSamplePoints, WEATHER_REFRESH_MS,
+  elevationUrl, interpolateElevation, elevationDeltaYds, elevationSamplePoints, WEATHER_REFRESH_MS, weatherTempF,
 } from "./sensors.js";
 import { assembleShotContext, windToHoleFrame, chipWind, parseLieChip, frameBearing } from "./context.js";
 import { classify, pointInRing, dist } from "./course.js";
@@ -427,14 +427,14 @@ test("geometry cache: bogeyman-matches:geo:v1:{apiId}, compact + elevation; an o
 /* ---------- sensors ---------- */
 
 const NOW = Date.UTC(2026, 8, 28, 15, 0, 0);
-function forecastFixture({ rainPerHour = 0.3, speed = 11.4, dir = 250 } = {}) {
+function forecastFixture({ rainPerHour = 0.3, speed = 11.4, dir = 250, temp = 58.2 } = {}) {
   const cur = NOW / 1000;
   const time = [], precipitation = [];
   for (let t = cur - 39 * 3600; t <= cur + 8 * 3600; t += 3600) { time.push(t); precipitation.push(rainPerHour); }
   return {
     latitude: 34.3, longitude: -84.06, utc_offset_seconds: 0,
-    current_units: { time: "unixtime", interval: "seconds", wind_speed_10m: "mph", wind_direction_10m: "°", precipitation: "mm" },
-    current: { time: cur, interval: 900, wind_speed_10m: speed, wind_direction_10m: dir, precipitation: 0 },
+    current_units: { time: "unixtime", interval: "seconds", wind_speed_10m: "mph", wind_direction_10m: "°", precipitation: "mm", temperature_2m: "°F" },
+    current: { time: cur, interval: 900, wind_speed_10m: speed, wind_direction_10m: dir, precipitation: 0, temperature_2m: temp },
     hourly_units: { time: "unixtime", precipitation: "mm" },
     hourly: { time, precipitation },
   };
@@ -449,15 +449,18 @@ test("fetchWeather: documented URL, parses wind + 24 h rain; a failure hands bac
   assert.equal(w.speedMph, 11.4);
   assert.equal(w.dirDeg, 250);
   near(w.rainMm24h, 24 * 0.3, 1e-9, "24 hourly totals ending at the current time");
+  assert.equal(w.tempF, 58.2);
   assert.equal(w.asOf, NOW);
   assert.equal(w.stale, false);
   const down = await fetchWeather(34.3, -84.06, async () => ({ ok: false, status: 429 }), { last: w, now: NOW + 60000 });
   assert.equal(down.stale, true);
   assert.equal(down.speedMph, 11.4);
+  assert.equal(down.tempF, 58.2, "a failed refresh keeps the last known temperature, marked stale");
   assert.equal(down.asOf, NOW, "keeps the as-of time of the value it is showing");
   assert.match(down.error, /429/);
   const none = await fetchWeather(34.3, -84.06, async () => { throw new TypeError("Failed to fetch"); });
   assert.equal(none.speedMph, null);
+  assert.equal(none.tempF, null);
   assert.equal(none.stale, true);
   const junk = await fetchWeather(34.3, -84.06, async () => ({ ok: true, json: async () => ({ error: true, reason: "bad" }) }));
   assert.equal(junk.stale, true);
@@ -470,6 +473,18 @@ test("fetchWeather: documented URL, parses wind + 24 h rain; a failure hands bac
   iso.hourly.time = iso.hourly.time.map((t) => new Date(t * 1000).toISOString().slice(0, 16));
   near(parseWeather(iso, NOW).rainMm24h, 7.2, 1e-9);
   assert.equal(weatherUrl(1, 2).includes("forecast_days=1"), true);
+  assert.match(weatherUrl(1, 2), /temperature_2m/);
+  assert.match(weatherUrl(1, 2), /temperature_unit=fahrenheit/);
+  const noTemp = forecastFixture();
+  delete noTemp.current.temperature_2m;
+  assert.equal(parseWeather(noTemp, NOW).tempF, null, "absent temperature parses to null, never a default");
+});
+
+test("weatherTempF: only a fresh, finite reading prices the temperature term — never stale, never absent", () => {
+  assert.equal(weatherTempF(null), null);
+  assert.equal(weatherTempF({ tempF: 58.2, stale: false }), 58.2);
+  assert.equal(weatherTempF({ tempF: 58.2, stale: true }), null, "stale weather never contributes a temperature term");
+  assert.equal(weatherTempF({ tempF: null, stale: false }), null);
 });
 
 test("weatherRefreshDue: 15-minute rule (§6.5), on the tee tap", () => {

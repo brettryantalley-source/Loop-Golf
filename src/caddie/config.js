@@ -14,6 +14,10 @@ export const DEFAULT_CONFIG = Object.freeze({
   HEAD_PCT: 0.01,              // +1% of distance per mph of headwind
   TAIL_PCT: 0.005,             // −0.5% per mph of tailwind
   CROSS_YDS_PER_MPH_PER_100: 1.0, // crosswind aim offset: 1 yd per mph per 100 yds of shot
+  /* Temperature (Brett's rule of thumb, Sep 29): rawYds × TEMP_PCT_PER_10F × (TEMP_REF_F − tempF) / 10.
+     Cold plays longer (positive), hot plays shorter (negative); 0 at the reference temperature. */
+  TEMP_REF_F: 70,
+  TEMP_PCT_PER_10F: 0.01,
 
   /* Roll model: carry = total − roll (§3.3). Shot Pattern medians are TOTALS.
      Per-club yards of roll-out from the tee & fairway, in Brett's words (Sep 29): "my pitching

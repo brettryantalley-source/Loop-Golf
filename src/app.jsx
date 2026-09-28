@@ -10,7 +10,7 @@ import { MapLayer, useSatellite, prefetchTiles, TILE_PREFETCH_ENABLED } from "./
 /* Caddie (S3b, v22): the engine, its inputs and the screen's state + render model. */
 import { assembleShotContext, frameBearing } from "./caddie/context.js";
 import { recommend, windEffect } from "./caddie/engine.js";
-import { fetchWeather, weatherRefreshDue } from "./caddie/sensors.js";
+import { fetchWeather, weatherRefreshDue, weatherTempF } from "./caddie/sensors.js";
 import {
   loadLieOverrides, recordLieOverride, routeShot, newShotRecord, quickLog, detailLog, skipShot, closeOutShot,
   saveShot, loadShots, allShots, exportShots, importShots, newPuttRecord, quickMade, PUTT_AXES,
@@ -55,7 +55,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.5 · Sep 29";
+const BUILD = "v22.6 · Sep 29";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -1404,17 +1404,18 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     const today = roundId ? loadShots(safeStorage(), roundId) : [];
     const nudged = (ctx) => withinRoundCtx(ctx, today, profile, config);
     try {
+      const tempF = weatherTempF(weather);
       if (cs.phase === "yards" && cs.yards) {
         const syn = syntheticHole(cs.yards, h.par);
-        const ctx = nudged(clubBrainContext({ holeNo: n, par: h.par, shotNo: cs.shotNo, chips: cs.chips, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride }));
+        const ctx = nudged(clubBrainContext({ holeNo: n, par: h.par, shotNo: cs.shotNo, chips: cs.chips, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride, tempF }));
         const res = recommend(ctx, syn, profile);
         const options = res ? ellipsesFor(res, lieOf(ctx), { lieQuality: ctx.lieQuality, config }) : null;
-        const inferred = { lieType: cs.shotNo <= 1 ? "tee" : "fairway", lieConfidence: "low", wind: undefined, elevation: 0, conditions: "normal", distances: res?.context?.distances };
+        const inferred = { lieType: cs.shotNo <= 1 ? "tee" : "fairway", lieConfidence: "low", wind: undefined, elevation: 0, conditions: "normal", tempF, distances: res?.context?.distances };
         return { ctx, res, options, inferred, onGreen: false, green: syn.green };
       }
       if (cs.phase !== "ready" || !built || !cs.ball) return null;
       const round = { hole: n, par: h.par, shotNo: cs.shotNo, courseId, trigger: cs.trigger || "tee", pins: { [n]: pinSet }, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride };
-      const wx = weather && Number.isFinite(weather.speedMph) ? weather : null;
+      const wx = weather && (Number.isFinite(weather.speedMph) || Number.isFinite(weather.tempF)) ? weather : null;
       const common = { hole: built, geometry, fix: { lat: cs.ball.lat, lng: cs.ball.lng, accuracyM: cs.ball.accuracyM }, weather: wx, elevation: geometry?.elevation || null, overrides, config };
       const ctx = nudged(assembleShotContext({ ...common, round, chips: cs.chips }));
       const base = assembleShotContext({ ...common, round: { ...round, windOverride: null, conditionsOverride: null }, chips: {} });
@@ -1423,7 +1424,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
       const pinPt = base.meta.distances?.pinPoint || built.green.center;
       const wind = base.wind ? { speedMph: base.wind.speedMph, relative: windEffect(base.wind, frameBearing(base.ball, pinPt), 100, config).relative }
         : base.meta.sources.wind === "weather" ? null : undefined;
-      const inferred = { lieType: base.lieType, lieConfidence: base.lieConfidence, wind, elevation: base.elevationDeltaYds, conditions: base.conditions, distances: ctx.meta.distances };
+      const inferred = { lieType: base.lieType, lieConfidence: base.lieConfidence, wind, elevation: base.elevationDeltaYds, conditions: base.conditions, tempF: base.tempF, distances: ctx.meta.distances };
       return { ctx, res, options, inferred, onGreen: res === null, green: built.green };
     } catch (e) {
       console.warn("caddie compute failed", e);

@@ -13,7 +13,7 @@ import { baselineE, baselinePutts } from "./baseline.js";
 import { makeSamples } from "./random.js";
 import { classify, greenDistances, pinPoint, fatSide, corridorAt, waterEntry, ringDistance, rect, ellipse } from "./course.js";
 import { loadProfile, resolveEntry, E, Eputt, B, B2, bucketFor, candidateEntries, _internal } from "./profile.js";
-import { recommend, generateCandidates, simulateCandidate, normalizeContext, displayLines, windEffect, ellipseSampler, ELL80_K } from "./engine.js";
+import { recommend, generateCandidates, simulateCandidate, normalizeContext, displayLines, windEffect, playsLike, ellipseSampler, ELL80_K } from "./engine.js";
 import { TEMPLATES } from "./reasons.js";
 import { openPar5, waterLeftPar4, noWaterPar4, bunkeredPar3, par5With } from "../fixtures/synthetic-holes.js";
 
@@ -184,6 +184,28 @@ test("wind: head adds, tail subtracts less, crosswind from the right pushes left
   assert.ok(Math.abs(head.alongYds - 15) < 1e-9 && head.relative === "into");
   assert.ok(Math.abs(tail.alongYds + 7.5) < 1e-9 && tail.relative === "down");
   assert.ok(cross.crossYds < 0 && Math.abs(cross.alongYds) < 1e-9 && cross.relative === "cross-from-right");
+});
+
+test("temperature plays-like: cold plays longer, hot plays shorter, 70°F or unknown is neutral", () => {
+  const cfg = DEFAULT_CONFIG;
+  const noWind = { wind: null, elevationDeltaYds: 0 };
+  const cold = playsLike(150, 0, { ...noWind, tempF: 50 }, cfg);
+  const hot = playsLike(150, 0, { ...noWind, tempF: 90 }, cfg);
+  const ref = playsLike(150, 0, { ...noWind, tempF: 70 }, cfg);
+  const unknown = playsLike(150, 0, { ...noWind, tempF: null }, cfg);
+  assert.ok(Math.abs(cold.tempYds - 3.0) < 1e-9, `cold tempYds ${cold.tempYds}`);
+  assert.ok(Math.abs(cold.yds - 153) < 1e-9);
+  assert.ok(Math.abs(hot.tempYds + 3.0) < 1e-9, `hot tempYds ${hot.tempYds}`);
+  assert.ok(Math.abs(hot.yds - 147) < 1e-9);
+  assert.equal(ref.tempYds, 0);
+  assert.equal(ref.yds, 150);
+  assert.equal(unknown.tempYds, 0);
+  assert.equal(unknown.yds, 150);
+});
+
+test("normalizeContext: tempF defaults to null (no reading → no adjustment) and passes a finite value through", () => {
+  assert.equal(normalizeContext({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee" }, waterLeftPar4).tempF, null);
+  assert.equal(normalizeContext({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee", tempF: 58 }, waterLeftPar4).tempF, 58);
 });
 
 /* ---------- §10 acceptance ---------- */

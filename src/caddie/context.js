@@ -11,7 +11,7 @@
 
 import { DEFAULT_CONFIG } from "./config.js";
 import { frameOf, inferLie, distances, clampToGreen, ll } from "./geo.js";
-import { conditionsFrom, elevationDeltaYds as elevDelta } from "./sensors.js";
+import { conditionsFrom, elevationDeltaYds as elevDelta, weatherTempF } from "./sensors.js";
 
 const norm360 = (d) => ((d % 360) + 360) % 360;
 const DEG = Math.PI / 180;
@@ -70,7 +70,8 @@ export function chipWind(chip, shotBearingDeg) {
  *   chips:     Brett's corrections { lie, quality, conditions, pin, wind, elevation },
  *   config }
  * → { hole, par, shotNo, ball, lieType, lieQuality, lieConfidence, conditions, pinPos, wind,
- *     elevationDeltaYds, meta }. `meta` is for the UI (distances, sources, as-of times); the engine ignores it.
+ *     elevationDeltaYds, tempF, meta }. `meta` is for the UI (distances, sources, as-of times); the
+ *     engine ignores it.
  * ball is null when there is no fix and it is not the first shot — the caller shows the no-GPS state.
  */
 export function assembleShotContext(inputs = {}) {
@@ -135,9 +136,13 @@ export function assembleShotContext(inputs = {}) {
     sources.elevation = d == null ? "none" : "sampled";
   } else sources.elevation = "none";
 
+  /* temperature: a fresh weather reading only (§3.3) — stale or absent never fakes 70° */
+  const tempF = weatherTempF(weather);
+  sources.temp = tempF != null ? "weather" : "none";
+
   return {
     hole: holeKey, par: round.par ?? hole.par, shotNo,
-    ball, lieType, lieQuality, lieConfidence, conditions, pinPos, wind, elevationDeltaYds,
+    ball, lieType, lieQuality, lieConfidence, conditions, pinPos, wind, elevationDeltaYds, tempF,
     meta: {
       nine: round.nine ?? null, trigger, lie, penalty, sources, distances: dists,
       ballGps: fixLL ? { lat: fixLL.lat, lng: fixLL.lon, accuracyM: fix.accuracyM ?? null } : null,

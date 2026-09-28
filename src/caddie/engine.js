@@ -35,6 +35,7 @@ export function normalizeContext(ctx, hole) {
     pinPos: ctx.pinPos || "middle",
     wind: ctx.wind && ctx.wind.speedMph ? { speedMph: ctx.wind.speedMph, fromDeg: ctx.wind.fromDeg ?? 0 } : null,
     elevationDeltaYds: ctx.elevationDeltaYds ?? 0,
+    tempF: Number.isFinite(ctx.tempF) ? ctx.tempF : null,   // §3.3 — no adjustment when unknown
     // §5.5 within-round corrections, produced by learning.js (S5) and applied here, never stored:
     //   { distYds: { [family]: +n }   → plays-like shift (positive = the shot plays longer),
     //     aimYds:  { [family]: +n } } → lateral shift of every target (positive = right)
@@ -68,10 +69,19 @@ export function windEffect(wind, shotBearingDeg, shotYds, cfg) {
   return { alongYds, crossYds, relative };
 }
 
+/**
+ * §3.3 temperature: cold plays longer (positive), hot plays shorter (negative), 0 at TEMP_REF_F
+ * and whenever tempF is unknown (never a default 70 pretending to be a reading).
+ */
+function tempEffect(rawYds, tempF, cfg) {
+  return Number.isFinite(tempF) ? rawYds * cfg.TEMP_PCT_PER_10F * (cfg.TEMP_REF_F - tempF) / 10 : 0;
+}
+
 /** Plays-like for a shot of `rawYds` in direction `bearingDeg` (§3.3, minus lie which lives in the entry). */
 export function playsLike(rawYds, bearingDeg, ctx, cfg) {
   const w = windEffect(ctx.wind, bearingDeg, rawYds, cfg);
-  return { yds: rawYds + ctx.elevationDeltaYds * cfg.ELEV_FACTOR + w.alongYds, wind: w };
+  const tempYds = tempEffect(rawYds, ctx.tempF, cfg);
+  return { yds: rawYds + ctx.elevationDeltaYds * cfg.ELEV_FACTOR + w.alongYds + tempYds, wind: w, tempYds };
 }
 
 /* ---------- candidates (§3.4, §3.7) ---------- */
@@ -329,7 +339,7 @@ function formatOption(c, P, safeExp) {
 
 /**
  * recommend(ctx, hole, P) — spec §3.9.
- * ctx: { hole?, par?, shotNo, ball:{x,y}, lieType?, lieQuality?, conditions?, pinPos?, wind?, elevationDeltaYds? }
+ * ctx: { hole?, par?, shotNo, ball:{x,y}, lieType?, lieQuality?, conditions?, pinPos?, wind?, elevationDeltaYds?, tempF? }
  * hole: a course.js Hole. P: a loaded profile (profile.js). Returns null when the ball is on the green.
  */
 export function recommend(rawCtx, hole, P) {
@@ -348,6 +358,7 @@ export function recommend(rawCtx, hole, P) {
     conditions: ctx.conditions, pinPos: typeof ctx.pinPos === "string" ? ctx.pinPos : "custom",
     wind: ctx.wind ? { speedMph: ctx.wind.speedMph, relative: headline.wind.relative } : null,
     elevationDeltaYds: ctx.elevationDeltaYds,
+    tempF: ctx.tempF, tempYds: r2(headline.tempYds),
   };
   if (!cands.length) {
     return { context, sameShot: true, safe: null, aggressive: null, message: "No club in the profile reaches a useful target from here.", nudges: [], flags: [], candidates: 0 };
