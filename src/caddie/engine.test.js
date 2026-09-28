@@ -221,8 +221,10 @@ test("T2 aggressive always priced: whenever sameShot is false both options carry
   assert.ok(seen >= 1, "at least one fixture produced two options");
 });
 
-test("T3 lie club-up: 174 plays-like from the fairway → 7-iron; from the rough → one more club", () => {
-  // A bunker across the front of the green: coming up short costs, so the club that plays the number wins.
+test("T3 lie changes the club: 174 from the fairway → 7-iron; from the rough the pick changes and never runs through the front bunker", () => {
+  // A bunker across the front of the green. From the fairway the club that plays the number wins.
+  // From the rough Brett's roll-out triples (D33), so the same club is no longer the answer: the
+  // engine must pick a different club, and no roll path may end in the bunker on the mean line.
   const hole = { ...openPar5, id: "guarded-approach", green: { ring: ellipse(0, 540, 12, 12, 32), center: { x: 0, y: 540 } },
     hazards: [{ type: "sand", ring: rect(-14, 520, 14, 527) }] };
   const ball = { x: 0, y: openPar5.yards - 174 };
@@ -230,7 +232,13 @@ test("T3 lie club-up: 174 plays-like from the fairway → 7-iron; from the rough
   const ro = recommend({ shotNo: 2, ball, lieType: "rough" }, hole, P);
   assert.equal(fw.context.distances.pin, 174);
   assert.equal(fw.safe.club, "7i", `fairway → ${fw.safe.club}`);
-  assert.equal(ro.safe.club, "6i", `rough → ${ro.safe.club}`);
+  assert.notEqual(ro.safe.club, fw.safe.club, `rough → ${ro.safe.club} should differ from the fairway club`);
+  const e = resolveEntry(P, ro.safe.club, ro.safe.swingType, "rough");
+  assert.ok(e.roll > resolveEntry(P, ro.safe.club, ro.safe.swingType, "fairway").roll, "rough roll-out is larger");
+  // the rough pick's mean carry does not land in the bunker
+  const yCarry = ball.y + e.carry;
+  assert.ok(yCarry < 520 || yCarry > 527, `mean carry ${yCarry.toFixed(0)} lands in the bunker`);
+  assert.ok(ro.safe.troubleRate < 0.5, `trouble ${ro.safe.troubleRate}`);
 });
 
 test("T4 finesse preference: 100 yds from the fairway → a finesse wedge entry, never a full-swing wedge carry", () => {

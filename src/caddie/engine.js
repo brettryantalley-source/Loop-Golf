@@ -257,10 +257,17 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
     let p = { x: ctx.ball.x + lm.dir.x * along + lm.perp.x * lat, y: ctx.ball.y + lm.dir.y * along + lm.perp.y * lat };
     let lie = classify(hole, p);
     if (lie !== "green" && roll > 0) {
-      const q = { x: p.x + lm.dir.x * roll, y: p.y + lm.dir.y * roll };
-      const ql = classify(hole, q);
-      if (ql !== "water") { p = q; lie = ql; }                     // a ball rolling into water is priced as water anyway
-      else { p = q; lie = ql; }
+      // Roll along the line of flight in short steps; the ball stops in the first bunker, water
+      // or trees it runs into (it never rolls through a hazard onto the green).
+      const step = 2;
+      let rolled = 0;
+      while (rolled < roll) {
+        const d = Math.min(step, roll - rolled);
+        const q = { x: p.x + lm.dir.x * d, y: p.y + lm.dir.y * d };
+        const ql = classify(hole, q);
+        p = q; lie = ql; rolled += d;
+        if (ql === "sand" || ql === "water" || ql === "trees") break;
+      }
     }
     const r = priceLanding(hole, P, ctx, ctx.ball, p, lie, k, pin);
     sumStrokes += r.strokes;
