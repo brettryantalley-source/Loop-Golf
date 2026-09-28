@@ -843,7 +843,7 @@ function buildFairwayEntry(id, { swingType, family, forceNullMedian = false } = 
   e.sgPerShot = byClub.sgPerShot;
   e.blended = false;
 
-  const roll = ROLL_YDS[swingType][family];
+  const roll = (swingType === "full" ? ROLL_YDS.club?.[id] : null) ?? ROLL_YDS[swingType][family];
   e.carryMedianYds = e.totalMedianYds == null ? null : e.totalMedianYds - roll;
   e.carrySource = "derived";
 

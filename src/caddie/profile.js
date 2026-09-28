@@ -76,12 +76,17 @@ export function familyOf(P, clubId) {
 }
 
 /** total − roll (spec §3.3). Tee entries of tee clubs use total. */
-export function carryFromTotal(total, swing, family, lie, config, wet = false) {
+/** Fairway roll-out for a club: the per-club table first, then its family (spec §3.3, Brett's numbers). */
+export function rollYds(clubId, swing, family, lie, config) {
+  if (lie === "tee" && family === "long") return config.ROLL_YDS.tee;
+  const perClub = swing === "full" ? config.ROLL_YDS.club?.[clubId] : null;
+  return perClub ?? config.ROLL_YDS[swing]?.[family] ?? 0;
+}
+
+export function carryFromTotal(total, swing, family, lie, config, wet = false, clubId = null) {
   if (total == null) return null;
   if (wet) return total;                                     // no roll anywhere when wet → carry is the whole shot
-  if (lie === "tee" && family === "long") return total - config.ROLL_YDS.tee;
-  const roll = config.ROLL_YDS[swing]?.[family] ?? 0;
-  return total - roll;
+  return total - rollYds(clubId, swing, family, lie, config);
 }
 
 /* ---------- entry resolution (§5.4) ---------- */
@@ -187,7 +192,7 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
   const measured = firstNonNull(chain, "carryMedianYds");
   let carry = measured && measured.lie === srcLie && entryAt(P, club, swing, srcLie)?.carrySource === "measured"
     ? measured.value
-    : carryFromTotal(fields.totalMedianYds, swing, family, srcLie, cfg, opts.wet);
+    : carryFromTotal(fields.totalMedianYds, swing, family, srcLie, cfg, opts.wet, clubId);
   // Lie adjustment when the distance came from a different lie than the one we are on.
   const adjReq = cfg.LIE_DIST_ADJ[lie] ?? 0, adjSrc = cfg.LIE_DIST_ADJ[srcLie] ?? 0;
   const lieFactor = (1 + adjReq) / (1 + adjSrc);
@@ -222,7 +227,9 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
   };
 
   // Roll the ball takes after landing (total − carry before the lie adjustment). 0 wet / tee.
-  const roll = opts.wet ? 0 : Math.max(0, fields.totalMedianYds - carry / lieFactor);
+  // Roll after landing: the fairway roll-out (total − carry) times the lie multiplier — out of the
+  // rough the ball comes in with less spin and runs about three times as far (Brett, Sep 29).
+  const roll = opts.wet ? 0 : Math.max(0, fields.totalMedianYds - carry / lieFactor) * (cfg.ROLL_LIE_MULT?.[lie] ?? 1);
   // §5 UI addendum: Shot Pattern's 80% ellipse is the dispersion core where it exists.
   const ellHit = firstNonNull(chain, "ell80");
   const ell80 = ellHit ? { ...ellHit.value, sdMult } : null;

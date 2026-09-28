@@ -15,13 +15,19 @@ export const DEFAULT_CONFIG = Object.freeze({
   TAIL_PCT: 0.005,             // −0.5% per mph of tailwind
   CROSS_YDS_PER_MPH_PER_100: 1.0, // crosswind aim offset: 1 yd per mph per 100 yds of shot
 
-  /* Roll model: carry = total − roll (§3.3). Shot Pattern medians are TOTALS. */
+  /* Roll model: carry = total − roll (§3.3). Shot Pattern medians are TOTALS.
+     Per-club yards of roll-out from the tee & fairway, in Brett's words (Sep 29): "my pitching
+     wedge often has negligible roll-out, my 8 might roll out 6 yards, 5-iron 10 yards". Clubs not
+     listed fall back to their family. Out of the rough those roughly triple (less spin):
+     ROLL_LIE_MULT. Wet → 0 everywhere. */
   ROLL_YDS: {
-    full:    { long: 10, mid: 6, short: 6, wedge: 6 },   // by club family; hybrids/2-iron = long
-    finesse: { long: 3,  mid: 3, short: 3, wedge: 3 },
+    club: { "2Hy": 12, "4Hy": 12, "5i": 10, "6i": 9, "7i": 8, "8i": 6, "9i": 4, PW: 1, GW: 1, SW: 0, LW: 0 },
+    full:    { long: 12, mid: 9, short: 4, wedge: 1 },   // family fallback
+    finesse: { long: 3,  mid: 3, short: 1, wedge: 0 },
     tee: 0,                                            // driver / tee shots use total directly
     wet: 0,                                            // wet → no roll, every club
   },
+  ROLL_LIE_MULT: { tee: 1, fairway: 1, rough: 3, sand: 1, recovery: 3 },
 
   /* ---- dispersion (§3.5) ---- */
   SAMPLES: 500,
