@@ -60,4 +60,4 @@ The Caddie, Hole View, GPS, Overpass geometry: `src/caddie.js`, `src/geometry.js
 
 ## The feature
 
-_Describe it here._
+Caddie engine, shot log and learning profile: **`docs/SPEC-caddie.md`** (locked Sep 27). The decisions above override it where they disagree. Build order is its §9; this thread is **S1**.
