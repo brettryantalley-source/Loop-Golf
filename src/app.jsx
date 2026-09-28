@@ -1,11 +1,13 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut as fbSignOut } from "firebase/auth";
 import { initializeFirestore, persistentLocalCache, persistentSingleTabManager, collection, doc, setDoc, getDocs } from "firebase/firestore";
-import { T, F, caps, printed, written, writtenWord, rule, hairline, doubleRule, PencilDefs, Logo, teeTint } from "./theme.jsx";
+import { T, F, caps, printed, written, writtenWord, rule, hairline, doubleRule, PencilDefs, Logo, teeTintFor, PencilRing } from "./theme.jsx";
+/* v22.8: Brett's last five scorecards (differential floor + History ledger rows). */
+import { SEED_ROUNDS, historyRows } from "./seedRounds.js";
 /* Caddie (S3a, v22): the map layer. The profile is bundled, never fetched (addendum §11.1). */
 import { fetchGeometry } from "./geometry.js";
 import { buildHole, frameOf, detectHole, needsNineMap, nineMapCandidates, saveNineMap, loadNineMap, loadGeometryCache, saveGeometryCache, inferLie, ll,
-  nineMapFromRouting, playFromRouting, ninesAssociation, guessPlay } from "./caddie/geo.js";
+  nineMapFromRouting, playFromRouting, ninesAssociation, guessPlay, coverageCheck } from "./caddie/geo.js";
 /* v22.7: clubs with more than 18 holes — one picker row per club, the nines chosen on Setup. */
 import { groupResultsByClub, clubKeyOf, routingLabel, routingNines, splitTee27, nineCombos, teeForCombo, loadLastRouting, saveLastRouting, defaultRoutingIndex } from "./routing.js";
 import { loadProfile, resolveEntry } from "./caddie/profile.js";
@@ -58,7 +60,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.7 · Sep 29";
+const BUILD = "v22.8 · Sep 29";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -190,15 +192,26 @@ function courseAnchor(course) {
   return null;
 }
 const safeStorage = () => { try { return window.localStorage; } catch (e) { return null; } };
-/* { geometry, phase: none | loading | ready | unavailable, done, total } */
+/* { geometry, phase: none | loading | ready | network-error | no-holes | partial | unavailable, done, total, retry }
+   v22.8: "unavailable" used to cover three different failures with one copy line. Split:
+   - the Overpass fetch itself threw or timed out             -> network-error (retryable)
+   - it answered but coverageCheck found NO holes at all      -> no-holes (not retryable — OSM just
+     doesn't have this course; retrying the same query won't change that)
+   - it answered with SOME but not all 18 holes               -> partial (retryable — a wider/second
+     Overpass mirror can fill in what the first one missed)
+   - no anchor (lat/lon) to even query from                   -> unavailable, unchanged (nothing to retry) */
 function useCourseMap(course) {
   const apiId = clubIdOf(course);                     // per club: switching routings never refetches
   const [geometry, setGeometry] = useState(() => (apiId != null ? loadGeometryCache(safeStorage(), apiId) : null));
   const [st, setSt] = useState({ phase: "none", done: 0, total: 0 });
+  const [retryTick, setRetryTick] = useState(0);
+  const forceRefetch = React.useRef(false);
+  const retry = () => { forceRefetch.current = true; setRetryTick((t) => t + 1); };
   useEffect(() => {
     if (apiId == null) { setGeometry(null); setSt({ phase: "none", done: 0, total: 0 }); return undefined; }
     let live = true;
-    let g = loadGeometryCache(safeStorage(), apiId);
+    const force = forceRefetch.current; forceRefetch.current = false;
+    let g = force ? null : loadGeometryCache(safeStorage(), apiId);
     setGeometry(g);                                   // never show the previous course's holes
     (async () => {
       if (!g) {
@@ -223,29 +236,35 @@ function useCourseMap(course) {
           saveGeometryCache(safeStorage(), apiId, parsed, elevation);
           g = loadGeometryCache(safeStorage(), apiId) || parsed;
         } catch (e) {
-          if (live) { setGeometry(null); setSt({ phase: "unavailable", done: 0, total: 0 }); }
+          if (live) { setGeometry(null); setSt({ phase: "network-error", done: 0, total: 0 }); }
           return;
         }
       }
       if (!live) return;
       setGeometry(g);
-      const holes = Object.keys(g.holes || {}).length;
-      if (!holes) { setSt({ phase: "unavailable", done: 0, total: 0 }); return; }
-      if (!TILE_PREFETCH_ENABLED || typeof caches === "undefined") { setSt({ phase: "ready", done: holes, total: holes }); return; }
-      setSt({ phase: "loading", done: 0, total: holes });
+      const cov = coverageCheck(g, { expected: [...Array(18)].map((_, i) => i + 1) });
+      const mapped = 18 - cov.missing.filter((k) => Number.isInteger(k) || /^\d+$/.test(String(k))).length;
+      if (mapped <= 0) { setSt({ phase: "no-holes", done: 0, total: 18 }); return; }
+      if (mapped < 18) { setSt({ phase: "partial", done: mapped, total: 18 }); return; }
+      if (!TILE_PREFETCH_ENABLED || typeof caches === "undefined") { setSt({ phase: "ready", done: mapped, total: mapped }); return; }
+      setSt({ phase: "loading", done: 0, total: mapped });
       await prefetchTiles(g, { isLive: () => live, onProgress: (p) => setSt({ phase: "loading", done: p.holesDone, total: p.holes }) }).catch(() => null);
       // Tiles that did not come down are not an error: the caddie draws the map from the geometry (§4.3).
-      if (live) setSt({ phase: "ready", done: holes, total: holes });
+      if (live) setSt({ phase: "ready", done: mapped, total: mapped });
     })();
     return () => { live = false; };
-  }, [apiId]);
-  return { geometry: apiId != null ? geometry : null, ...st };
+  }, [apiId, retryTick]);
+  return { geometry: apiId != null ? geometry : null, ...st, retry };
 }
-/* Addendum §10.1 copy. */
+/* Addendum §10.1 copy, split per failure (v22.8) so Brett knows whether tapping can help. */
 const courseMapLine = (m) => !m || m.phase === "none" ? null
   : m.phase === "ready" ? "Course map ready"
   : m.phase === "loading" ? `Course map · loading ${m.done} of ${m.total || 18}`
+  : m.phase === "network-error" ? "Course map · could not reach the map server · tap to retry"
+  : m.phase === "no-holes" ? "Course map · OpenStreetMap has no holes for this course · caddie will use yards"
+  : m.phase === "partial" ? `Course map · ${m.done} of ${m.total || 18} holes mapped · tap to retry`
   : "Course map unavailable · caddie will use yards";
+const courseMapRetryable = (m) => !!m && (m.phase === "network-error" || m.phase === "partial");
 
 
 /* ---------- home-state filter (results have state; the API also returns location.latitude/longitude since v1.1 — used by the Hole View, not here) ---------- */
@@ -357,20 +376,10 @@ function recordDifferential(r) {
   if (gross == null || !isFinite(gross) || gross <= 0) return null;
   return scoreDifferential(gross, rating, slope);
 }
-/* Brett's official last-5 (GHIN) as of Sep 19 2026, so the app starts calibrated instead
-   of cold. These seed the differential ONLY — they are not match records, so they never
-   touch the W-L-T. Each in-app round played after Sep 5 2026 pushes one further out of
-   the window; once five newer rounds exist these stop counting on their own. Gross only
-   (no hole detail came across), so no net-double cap is applied to them. */
-const SEED_ROUNDS = [
-  // Brett's official last five (GHIN, Sep 29). Gross is the ADJUSTED gross the differential was
-  // computed from — Hampton's card was 82, capped to 81 by net double bogey (official diff 6.8).
-  { date: "2026-09-20", course: "Hampton Golf Village",             tee: "Championship", rating: 72.7, slope: 137, gross: 81 },
-  { date: "2026-09-12", course: "Lake Arrowhead Yacht & CC",        tee: "Blue Fox",     rating: 73.3, slope: 133, gross: 79 },
-  { date: "2026-09-05", course: "Beachwood Golf Club",              tee: "Blue",         rating: 71.6, slope: 127, gross: 86 },
-  { date: "2026-08-15", course: "Chicopee Woods · School/Village",  tee: "Gold",         rating: 73.6, slope: 137, gross: 81 },
-  { date: "2026-08-09", course: "RiverPines Golf Course",           tee: "Black",        rating: 71.1, slope: 132, gross: 80 },
-];
+/* Brett's official last-5 (GHIN), so the app starts calibrated instead of cold. These seed the
+   differential ONLY — they are not match records, so they never touch the W-L-T. Each in-app
+   round played pushes one further out of the window; once five newer rounds exist these stop
+   counting on their own. v22.8: full scorecards, not just gross — see src/seedRounds.js. */
 
 /* {diff, asOf, count, total, seeded} over the DIFF_WINDOW most recent rounds — played
    rounds and seeds pooled together and taken by date — or null when there's nothing
@@ -740,10 +749,10 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
       <div style={{ flexGrow: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "space-between",
         border: rule, boxShadow: `inset 0 0 0 3px ${T.paper}, inset 0 0 0 4px ${T.ink}`, padding: "20px 22px 18px" }}>
 
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <span style={{ position: "absolute", top: 0, right: 0, ...caps(9, 700, "0.04em"), color: T.muted, whiteSpace: "nowrap" }}>{BUILD}</span>
           <Logo width={168} />
           <div style={doubleRule} />
-          <span style={{ position: "absolute", left: -9999 }}>{BUILD}</span>
         </div>
 
         {/* course */}
@@ -797,11 +806,14 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
                the tee that round was on rather than asking for a course again */
             <div style={{ display: "flex", alignItems: "center", gap: 3, height: 58 }}>
               <span style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, width: 66, height: 58 }}>
-                <span style={{ width: 14, height: 14, borderRadius: 7, background: T.paper, border: `1.5px solid ${T.ink}` }} />
+                {(() => { const t = teeTintFor(course.tee, 0); return (
+                  <span style={{ width: 14, height: 14, borderRadius: 7, background: t === "PAPER" ? T.paper : t,
+                    border: t === "PAPER" ? `1.5px solid ${T.ink}` : "none" }} />
+                ); })()}
                 <span style={{ fontSize: 11, fontWeight: 700 }}>{course.tee}</span>
                 <span style={printed(11, 400)}>{yards ? yards.toLocaleString() : ""}</span>
                 <svg style={{ position: "absolute", left: 0, top: 0, width: "100%", height: 58, overflow: "visible" }} viewBox="0 0 66 58" preserveAspectRatio="none" fill="none" aria-hidden="true">
-                  <ellipse cx="33" cy="29" rx="29" ry="26" transform="rotate(-4 33 29)" stroke={T.pencil} strokeWidth="1.7" strokeDasharray="160 6" filter="url(#pencil)" />
+                  <PencilRing cx={33} cy={29} rx={29} ry={26} seedKey={course.tee || "restored"} />
                 </svg>
               </span>
               <button onClick={() => setPicking(true)} style={{ background: "none", border: "none", color: T.ink, padding: "0 6px", ...caps(10, 700, "0.14em") }}>Change</button>
@@ -813,7 +825,7 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
               ? { display: "grid", gridTemplateColumns: `repeat(${tees.length}, minmax(0, 1fr))`, gap: 2 }
               : { display: "flex", gap: 2, overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
               {tees.map((o, i) => {
-                const sel = o.key === teeKey, tint = teeTint(i);
+                const sel = o.key === teeKey, name = o.tee.tee_name || o.gender, tint = teeTintFor(name, i);
                 return (
                   <button key={o.key} onClick={() => pickTee(o.key)} style={{ position: "relative",
                     ...(tees.length > 5 ? { flex: "0 0 58px" } : { minWidth: 0 }),
@@ -821,11 +833,11 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
                     display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: 0 }}>
                     <span style={{ width: 14, height: 14, borderRadius: 7, background: tint === "PAPER" ? T.paper : tint,
                       border: tint === "PAPER" ? `1.5px solid ${T.ink}` : "none" }} />
-                    <span style={{ fontSize: 11, fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.tee.tee_name || o.gender}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
                     <span style={printed(11, 400)}>{teeYards(o).toLocaleString()}</span>
                     {sel && (
                       <svg style={{ position: "absolute", left: 0, top: 0, width: "100%", height: 58, overflow: "visible" }} viewBox="0 0 66 58" preserveAspectRatio="none" fill="none" aria-hidden="true">
-                        <ellipse cx="33" cy="29" rx="29" ry="26" transform="rotate(-4 33 29)" stroke={T.pencil} strokeWidth="1.7" strokeDasharray="160 6" filter="url(#pencil)" />
+                        <PencilRing cx={33} cy={29} rx={29} ry={26} seedKey={o.key} />
                       </svg>
                     )}
                   </button>
@@ -899,9 +911,15 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
             background: "none", border: "none", color: T.ink, ...caps(11, 500, "0.14em") }}>
             Round history <span style={{ ...printed(13), letterSpacing: 0 }}>· {stats.n}</span>
           </button>
-          {/* course-map prefetch (addendum §11.2) — one line, Bitter 11 ink */}
+          {/* course-map prefetch (addendum §11.2) — one line, Bitter 11 ink. A network-error or
+              partial-coverage line is tap-to-retry (v22.8); the others are plain status. */}
           {course && courseMapLine(courseMap) && (
-            <span data-testid="course-map-status" style={{ fontFamily: F.label, fontSize: 11, color: T.ink, lineHeight: "14px", marginTop: -4 }}>{courseMapLine(courseMap)}</span>
+            courseMapRetryable(courseMap) ? (
+              <button onClick={courseMap.retry} data-testid="course-map-status" style={{ fontFamily: F.label, fontSize: 11, color: T.ink,
+                lineHeight: "14px", marginTop: -4, background: "none", border: "none", padding: 0, textAlign: "center" }}>{courseMapLine(courseMap)}</button>
+            ) : (
+              <span data-testid="course-map-status" style={{ fontFamily: F.label, fontSize: 11, color: T.ink, lineHeight: "14px", marginTop: -4 }}>{courseMapLine(courseMap)}</span>
+            )
           )}
         </div>
       </div>
@@ -2437,8 +2455,79 @@ const RES_FILL_LETTER = { W: T.fillWon, L: T.fillLost, T: T.fillHalf };
 const RES_EDGE = { W: T.ink, L: T.double, T: T.muted };
 const RES_LONG = { W: "won", L: "lost", T: "halved" };
 
+/* Read-only finished-card view for one of Brett's imported scorecards (v22.8). No ghost, no
+   points — these predate Loop, so there's nothing to score them against. Deliberately its own
+   small component rather than a read-only mode bolted onto Summary: Summary's whole shape (the
+   match line, the segments, the record) assumes a ghost and evalMatch, neither of which a seed
+   round has. */
+function SeedCardView({ seed, onBack }) {
+  const cols = "26px repeat(9, minmax(0, 1fr)) 28px 30px";
+  const nine = (start) => {
+    const isIn = start === 9;
+    const idx = [...Array(9)].map((_, k) => start + k);
+    const sum = (f) => idx.reduce((a, i) => a + f(i), 0);
+    const cell = (extra) => ({ display: "flex", alignItems: "center", justifyContent: "center", ...extra });
+    const row = (label, get, tot, all, h, under, style) => (
+      <React.Fragment key={label}>
+        <div style={cell({ height: h, justifyContent: "flex-start", paddingLeft: 3, borderRight: rule, borderBottom: `1px solid ${under}`, fontFamily: F.label, fontSize: 9, fontWeight: 700 })}>{label}</div>
+        {idx.map((i, k) => (
+          <div key={i} style={cell({ height: h, padding: 0, border: "none", borderRight: `1px solid ${k % 3 === 2 ? T.ink : T.hair}`, borderBottom: `1px solid ${under}`, ...style })}>
+            {get(i)}
+          </div>
+        ))}
+        <div style={cell({ height: h, borderRight: `1px solid ${T.hair}`, borderBottom: `1px solid ${under}`, ...style })}>{tot}</div>
+        <div style={cell({ height: h, borderRight: rule, borderBottom: `1px solid ${under}`, ...style })}>{isIn ? all : ""}</div>
+      </React.Fragment>
+    );
+    return (
+      <div style={{ display: "grid", gridTemplateColumns: cols, borderTop: rule, borderLeft: rule, marginBottom: isIn ? 0 : 10 }}>
+        <div style={{ display: "flex", alignItems: "center", height: 20, paddingLeft: 3, borderRight: rule, borderBottom: rule, ...caps(9, 700, "0.1em") }}>{isIn ? "In" : "Out"}</div>
+        {idx.map((i, k) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 20,
+            borderRight: `1px solid ${k % 3 === 2 ? T.ink : T.hair}`, borderBottom: rule, ...printed(11) }}>{i + 1}</div>
+        ))}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 20, borderRight: `1px solid ${T.hair}`, borderBottom: rule, ...caps(8, 700, "0.06em") }}>{isIn ? "In" : "Out"}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 20, borderRight: rule, borderBottom: rule, ...caps(8, 700, "0.06em") }}>{isIn ? "Tot" : ""}</div>
+        {row("par", (i) => seed.pars[i], sum((i) => seed.pars[i]), seed.pars.reduce((a, b) => a + b, 0), 20, T.hair, { ...printed(11, 400), color: T.ink })}
+        {/* imported cards are pencil too — Brett wrote these on paper before Loop existed */}
+        {row("you", (i) => <PencilMark score={seed.scores[i]} par={seed.pars[i]} />, sum((i) => seed.scores[i] ?? 0), seed.scores.reduce((a, b) => a + (b ?? 0), 0), 28, T.hair, written(18))}
+        {row("yds", (i) => seed.yards[i] ?? "—", sum((i) => seed.yards[i] || 0), seed.yards.reduce((a, b) => a + (b || 0), 0), 18, T.ink, { ...printed(10, 400), color: T.muted })}
+      </div>
+    );
+  };
+  const par = seed.pars.reduce((a, b) => a + b, 0);
+  const toPar = seed.cardTotal - par;
+  const tp = toPar === 0 ? "even" : toPar > 0 ? `+${toPar}` : `${toPar}`;
+  return (
+    <div style={{ minHeight: "100dvh", maxWidth: 460, margin: "0 auto", boxSizing: "border-box", background: T.paper,
+      padding: "max(env(safe-area-inset-top), 26px) 20px max(env(safe-area-inset-bottom), 28px)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 10, borderBottom: rule }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", padding: "6px 0", color: T.ink, ...caps(11) }}>‹ Back</button>
+        <span style={caps(11)}>Imported card</span>
+      </div>
+      <div style={{ textAlign: "center", padding: "14px 0", borderBottom: rule }}>
+        <div style={caps(10)}>card · {seed.course} · {fmtDate(seed.date)}</div>
+        <div style={{ ...writtenWord(30), lineHeight: "34px", marginTop: 4 }}>{seed.tee}</div>
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "12px 0 6px" }}>
+        <span style={caps(10)}>The card</span>
+        <span style={{ fontFamily: F.label, fontSize: 11 }}>
+          <span style={printed(12)}>{seed.rating}</span>/<span style={printed(12)}>{seed.slope}</span> · <span style={written(17)}>{tp}</span>
+        </span>
+      </div>
+      {nine(0)}
+      {nine(9)}
+      <div style={{ display: "flex", justifyContent: "space-between", padding: "14px 4px 0", fontFamily: F.label, fontSize: 11, color: T.muted }}>
+        <span>Card total <span style={printed(12)}>{seed.cardTotal}</span></span>
+        {seed.cardTotal !== seed.gross && <span>Differential adj. <span style={printed(12)}>{seed.gross}</span></span>}
+      </div>
+    </div>
+  );
+}
+
 function History({ history, stats, cloud, onDelete, onImport, onBack }) {
   const [confirmId, setConfirmId] = useState(null);
+  const [viewSeed, setViewSeed] = useState(null);
   const [msg, setMsg] = useState("");
   // §5.7 — per round and season, from the saved shot records and each round's hole scores.
   const [shotsRev, setShotsRev] = useState(0);
@@ -2446,7 +2535,8 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
   const [busy, setBusy] = useState(false);
   const fileRef = React.useRef(null);
   const shotFileRef = React.useRef(null);
-  const rounds = [...history].reverse();                  // most recent first
+  // v22.8: the ledger merges played rounds with Brett's imported seed scorecards, newest first.
+  const rows = useMemo(() => historyRows(history, SEED_ROUNDS), [history]);
 
   const doExport = async () => {
     if (!history.length) { setMsg("Nothing to export yet."); return; }
@@ -2510,6 +2600,8 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
 
   const outlinePill = { height: 44, border: rule, borderRadius: 22, background: "transparent", color: T.ink, ...caps(11, 700, "0.16em") };
 
+  if (viewSeed) return <SeedCardView seed={viewSeed} onBack={() => setViewSeed(null)} />;
+
   return (
     <div style={{ minHeight: "100dvh", maxWidth: 460, margin: "0 auto", boxSizing: "border-box", background: T.paper,
       padding: "max(env(safe-area-inset-top), 26px) 20px max(env(safe-area-inset-bottom), 28px)" }}>
@@ -2544,13 +2636,39 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
         <span style={{ fontFamily: F.label, fontSize: 11, color: T.muted }}>newest first</span>
       </div>
 
-      {rounds.length === 0 ? (
+      {rows.length === 0 ? (
         <div style={{ fontFamily: F.label, fontSize: 12, color: T.muted, padding: "26px 0", textAlign: "center", borderTop: rule, borderBottom: rule }}>
           No rounds logged yet.
         </div>
       ) : (
         <div style={{ borderTop: rule }}>
-          {rounds.map(r => {
+          {rows.map(row => {
+            if (row.kind === "card") {
+              const s = row.seed;
+              return (
+                /* imported scorecard — no ghost, no points, no delete. A neutral hairline edge
+                   (not a W/L/T colour) so it never reads as part of the record tally. */
+                <button key={`card:${s.date}:${s.course}`} onClick={() => setViewSeed(s)}
+                  style={{ display: "block", width: "100%", textAlign: "left", background: "none",
+                    border: "none", borderBottom: rule, borderLeft: `4px solid ${T.hair}`, padding: "8px 8px 7px" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ ...writtenWord(21), lineHeight: "21px", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {s.course}
+                    </span>
+                    <span style={{ ...written(18), whiteSpace: "nowrap" }}>
+                      {s.cardTotal}
+                      {s.cardTotal !== s.gross && <span style={{ fontFamily: F.label, fontSize: 10, fontWeight: 700, color: T.muted, marginLeft: 5 }}>adj {s.gross}</span>}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 1, fontFamily: F.label, fontSize: 11, color: T.ink }}>
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.tee} · {fmtDate(s.date)}</span>
+                    <span style={{ color: T.muted }}>·</span>
+                    <span style={{ ...caps(9, 700, "0.12em"), color: T.muted }}>card</span>
+                  </div>
+                </button>
+              );
+            }
+            const r = row.round;
             const confirming = confirmId === r.id;
             const margin = r.yourPoints - r.ghostPoints;
             const rd = recordDifferential(r);              // this round's differential — feeds the last-5

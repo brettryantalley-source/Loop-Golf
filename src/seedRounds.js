@@ -57,6 +57,21 @@ export const SEED_ROUNDS = [
   },
 ];
 
+/* Pure merge for History (v22.8): played rounds + seed scorecards, newest first, each row
+ * tagged with what it is. Seeds never carry points — a "card" row is display-only, so History
+ * can show it without pretending it's part of the W-L-T record. No DOM, no storage; app.jsx's
+ * History component reads this and renders each row. */
+export function historyRows(history, seeds) {
+  const rows = [];
+  (history || []).forEach((r) => { if (r && typeof r === "object") rows.push({ kind: "round", date: r.date, round: r }); });
+  (seeds || []).forEach((s) => { if (s && typeof s === "object") rows.push({ kind: "card", date: s.date, seed: s }); });
+  rows.sort((a, b) => {
+    const da = new Date(a.date).getTime(), db = new Date(b.date).getTime();
+    return (isNaN(db) ? 0 : db) - (isNaN(da) ? 0 : da);   // newest first
+  });
+  return rows;
+}
+
 /* Sanity: every card adds to its cardTotal, every array is 18 long. Throws at import if not. */
 for (const r of SEED_ROUNDS) {
   for (const k of ["pars", "yards", "scores"]) if (r[k].length !== 18) throw new Error(`seedRounds: ${r.course} ${k} has ${r[k].length} holes`);
