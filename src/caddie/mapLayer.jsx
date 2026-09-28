@@ -26,9 +26,10 @@
  */
 import {
   cameraKey, cameraFor, cameraPoints, fitBounds, linearProjector, zoomForPxPerYd,
-  overlayModel, fallbackMapModel, mapModeFor,
+  overlayModel, fallbackMapModel, mapModeFor, markCamera, pinViewCamera, pinViewKey, pinMarkerHit,
 } from "./overlay.js";
-import { frameOf, pinFromTap } from "./geo.js";
+import { frameOf, pinFromTap, holeFrame, clampToGreen } from "./geo.js";
+import { nearMarkedGreen } from "./greens.js";
 import { geometryBbox, tilesForBbox, lonLatToTile } from "../geometry.js";
 import { overlayPair } from "./caddieState.js";
 import { T, F } from "../theme.jsx";
@@ -162,6 +163,18 @@ export async function holeTilesCached(geo, key, zoom = 17) {
   } catch (e) { return false; }
 }
 
+/** v22.11: is the z17 tile under a point cached? (marked-green mode has no hole to cover) */
+export async function pointTileCached(at, zoom = 17) {
+  if (typeof caches === "undefined" || !at) return false;
+  try { return !!(await (await caches.open(TILE_CACHE)).match(tileUrl(lonLatToTile(at.lon, at.lat, zoom)))); } catch (e) { return false; }
+}
+
+/** v22.11: can the z17 tile under a point be fetched right now? */
+export async function probeTileAt(at, timeoutMs = 5000) {
+  if (!at) return false;
+  try { const r = await fetchWithTimeout(tileUrl(lonLatToTile(at.lon, at.lat, 17)), timeoutMs); return !!r.ok; } catch (e) { return false; }
+}
+
 /** Can one tile of this hole be fetched right now? (goes through the service worker, which caches it) */
 export async function probeTile(geo, key, timeoutMs = 5000) {
   const h = geo?.holes?.[key];
@@ -171,26 +184,40 @@ export async function probeTile(geo, key, timeoutMs = 5000) {
 }
 
 /**
- * Which map this hole gets (§4.3, §8 No satellite): { mode: "checking" | "satellite" | "fallback",
- * notice, markFailed }. geometry = the compact course geometry; key = its hole key.
+ * Which map this hole gets (§4.3, §8 No satellite): { mode: "checking" | "satellite" | "fallback"
+ * | "none" | "mark", notice, markFailed }. geometry = the compact course geometry; key = its hole key.
+ * v22.11: a hole with no geometry checks the tile under `at` (the ball's GPS fix) instead, and
+ * `greenMarked` says whether the marked-green synthetic hole is in play (overlay.js mapModeFor).
  */
-export function useSatellite(geo, key) {
+export function useSatellite(geo, key, { at = null, greenMarked = false, holeNo = null } = {}) {
   const online = () => typeof navigator === "undefined" || navigator.onLine !== false;
   const [st, setSt] = useState({ tilesCached: false, probeOk: null, failed: false, online: online() });
+  const hasHole = !!(geo && key != null && geo.holes?.[key]);
+  // ~100 m cells: a new fix nearby does not re-probe (and the map does not flicker to "checking")
+  const atKey = !hasHole && at && Number.isFinite(at.lat) && Number.isFinite(at.lon) ? `${at.lat.toFixed(3)},${at.lon.toFixed(3)}` : null;
   useEffect(() => {
     let live = true;
     setSt({ tilesCached: false, probeOk: null, failed: false, online: online() });
-    if (!geo || key == null || !geo.holes?.[key]) return undefined;
-    (async () => {
-      if (await holeTilesCached(geo, key)) { if (live) setSt((s) => ({ ...s, tilesCached: true })); return; }
-      if (!online()) return;
-      const ok = await probeTile(geo, key);
-      if (live) setSt((s) => ({ ...s, probeOk: ok }));
-    })();
+    if (hasHole) {
+      (async () => {
+        if (await holeTilesCached(geo, key)) { if (live) setSt((s) => ({ ...s, tilesCached: true })); return; }
+        if (!online()) return;
+        const ok = await probeTile(geo, key);
+        if (live) setSt((s) => ({ ...s, probeOk: ok }));
+      })();
+    } else if (atKey) {
+      const [lat, lon] = atKey.split(",").map(Number);
+      (async () => {
+        if (await pointTileCached({ lat, lon })) { if (live) setSt((s) => ({ ...s, tilesCached: true })); return; }
+        if (!online()) return;
+        const ok = await probeTileAt({ lat, lon });
+        if (live) setSt((s) => ({ ...s, probeOk: ok }));
+      })();
+    }
     return () => { live = false; };
-  }, [geo, key]);
+  }, [geo, key, hasHole, atKey]);
   const markFailed = useCallback(() => setSt((s) => (s.failed ? s : { ...s, failed: true })), []);
-  const m = mapModeFor({ hasHole: !!(geo && key != null && geo.holes?.[key]), libFailed: st.failed, tilesCached: st.tilesCached, online: st.online, probeOk: st.probeOk });
+  const m = mapModeFor({ hasHole, holeNo, libFailed: st.failed, tilesCached: st.tilesCached, online: st.online, probeOk: st.probeOk, hasGps: !!atKey, greenMarked });
   return { ...m, markFailed };
 }
 
@@ -231,11 +258,22 @@ const r1 = (n) => Math.round(n * 10) / 10;
  *                 Locating and Yards entered keep the last camera with no ball drawn, §8). Default:
  *                 ball / options.
  *   attributionBottom  px from the bottom of the map to the attribution (default insets.bottom − 10 = 6 above the bar)
+ *
+ * v22.11:
+ *   markAt        {lat, lon} — marked-green mode before the green is marked (hole must be null):
+ *                 satellite north-up on this GPS fix, the region 300 yds tall (overlay.js markCamera),
+ *                 the ball drawn there; drag-pan and pinch-zoom ON so a green beyond the first view
+ *                 can be found; a tap calls onMarkGreen({lat, lon}).
+ *   onRemark()    a long-press (600 ms) on or near a marked green's synthetic green (hole.synthetic)
+ *   pinView       the camera fits the green (+15 yds), the pin becomes the big marker, the shot
+ *                 overlay is hidden, and every tap does nothing. Press and hold the marker 300 ms,
+ *                 then drag: onPinDrag(p | null) live (p clamped inside the green, hole frame),
+ *                 onPinDrop(p) on release.
  */
 export function MapLayer({
   hole = null, geometry = null, ball = null, accuracyM = null, pin = null, options = null, active = "safe", sameShot = false,
   previousShots = [], insets = {}, fallback = false, onPinTap, onMapTap, onSatelliteFail, recomputing = false, attributionBottom,
-  fitBall, fitOptions,
+  fitBall, fitOptions, markAt = null, onMarkGreen, onRemark, pinView = false, onPinDrag, onPinDrop,
 }) {
   const camBall = fitBall !== undefined ? fitBall : ball;
   const camOptions = fitOptions !== undefined ? fitOptions : options;
@@ -244,6 +282,10 @@ export function MapLayer({
   const [vp, setVp] = useState(() => ({ width: (typeof window !== "undefined" && window.innerWidth) || 375, height: (typeof window !== "undefined" && window.innerHeight) || 812 }));
   const [, setTick] = useState(0);
   const [mapFailed, setMapFailed] = useState(false);
+  const [mapGen, setMapGen] = useState(0);                // bumps when a MapLibre map is created
+  const [drag, setDrag] = useState(null);                 // v22.11: the pin marker's frame point mid-drag
+  const dragRef = useRef(null);
+  const pressRef = useRef(null);
   const failRef = useRef(onSatelliteFail); failRef.current = onSatelliteFail;
 
   /* measure the map box */
@@ -258,25 +300,43 @@ export function MapLayer({
   }, []);
 
   const Fr = useMemo(() => frameOf(hole), [hole]);
-  const wantSat = !!hole && !!Fr && !fallback;
+  const markMode = !hole && !!markAt && Number.isFinite(markAt.lat) && Number.isFinite(markAt.lon ?? markAt.lng);
+  const markLat = markMode ? markAt.lat : null, markLon = markMode ? (markAt.lon ?? markAt.lng) : null;
+  const markF = useMemo(() => (markMode ? holeFrame({ origin: { lat: markLat, lon: markLon }, bearingDeg: 0 }) : null), [markMode, markLat, markLon]);
+  const PF = Fr || markF;                                  // the frame the overlay projects through
+  const inPinView = !!pinView && !!hole?.green;
+  const wantSat = !fallback && ((!!hole && !!Fr) || markMode);
   const { lib, failed: libFailed } = useMapLibre(wantSat);
   useEffect(() => { if (wantSat && libFailed && failRef.current) failRef.current("maplibre"); }, [wantSat, libFailed]);
   useEffect(() => { setMapFailed(false); }, [hole, fallback]);
   const drawn = !wantSat || libFailed || mapFailed;       // the §4.3 paper map
   const satellite = !drawn && !!lib;
 
-  /* camera — refit only when the cameraKey changes (§4.1, §9.7; T36) */
-  const key = cameraKey({ hole, ball: camBall, options: camOptions, viewport: vp, insets });
-  const camRef = useRef({ key: null, cam: null });
+  /* camera — refit only when the cameraKey changes (§4.1, §9.7; T36). v22.11: the mark view keys
+     on the fix, the pin view on the hole (a pin dragged inside it never refits). */
+  const vpKey = `${Math.round(vp.width)}x${Math.round(vp.height)}|${Math.round(insets.top || 0)},${Math.round(insets.right || 0)},${Math.round(insets.bottom || 0)}`;
+  const key = markMode ? `mark|${markLat.toFixed(6)},${markLon.toFixed(6)}|${vpKey}`
+    : inPinView ? pinViewKey({ hole, viewport: vp, insets })
+    : cameraKey({ hole, ball: camBall, options: camOptions, viewport: vp, insets });
+  const camRef = useRef({ key: null, cam: null, mark: null });
   if (camRef.current.key !== key) {
-    camRef.current = { key, cam: hole ? cameraFor(fitBounds(cameraPoints({ hole, ball: camBall, pin, options: camOptions })), vp, insets) : null };
+    camRef.current = {
+      key,
+      cam: markMode ? null : inPinView ? pinViewCamera(hole, vp, insets, { pin })
+        : hole ? cameraFor(fitBounds(cameraPoints({ hole, ball: camBall, pin, options: camOptions })), vp, insets) : null,
+      mark: markMode ? markCamera(vp, insets) : null,
+    };
   }
-  const cam = camRef.current.cam;
+  const cam = camRef.current.cam, markCam = camRef.current.mark;
   const camView = useMemo(() => {
+    if (markCam && markF) {
+      const c = markF.toLatLng(markCam.centerOffset);
+      return { center: [c.lon, c.lat], zoom: zoomForPxPerYd(markCam.pxPerYd, markLat), bearing: 0, pitch: 0 };
+    }
     if (!cam || !Fr) return null;
     const c = Fr.toLatLng(cam.center);
     return { center: [c.lon, c.lat], zoom: zoomForPxPerYd(cam.pxPerYd, Fr.origin.lat), bearing: hole.bearingDeg, pitch: 0 };
-  }, [cam, Fr, hole]);
+  }, [cam, markCam, Fr, markF, hole, markLat]);
 
   /* the map itself: created once per satellite session, removed when the drawn map takes over */
   useEffect(() => {
@@ -316,9 +376,21 @@ export function MapLayer({
     });
     if (typeof window !== "undefined") window.__loopMap = map;   // field-debug handle (Safari → Develop → console)
     mapRef.current = map;
+    setMapGen((g) => g + 1);
     bump();
     return () => { map.remove(); mapRef.current = null; if (typeof window !== "undefined" && window.__loopMap === map) window.__loopMap = null; };
   }, [satellite, lib, !!camView]);
+
+  /* v22.11: pan and pinch-zoom only in the mark view (no rotate, no pitch), so a green beyond the
+     first 300 yds can be brought on screen and tapped. Everywhere else every gesture stays off. */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    try {
+      if (markMode) { map.dragPan.enable(); map.touchZoomRotate.enable(); map.touchZoomRotate.disableRotation(); map.scrollZoom.enable(); }
+      else { map.dragPan.disable(); map.touchZoomRotate.disable(); map.scrollZoom.disable(); }
+    } catch (e) { /* an older MapLibre without a handler: the view stays fixed */ }
+  }, [markMode, mapGen]);
 
   /* camera + size changes → jumpTo (never animated: the camera only moves on a new ball / hole) */
   useEffect(() => {
@@ -331,36 +403,99 @@ export function MapLayer({
   /* projection: map.project on satellite, the camera's linear projection otherwise */
   const lin = cam ? linearProjector(cam, vp) : null;
   const map = satellite ? mapRef.current : null;
-  const project = map && Fr
-    ? (p) => { const q = Fr.toLatLng(p); const s = map.project([q.lon, q.lat]); return { x: s.x, y: s.y }; }
-    : lin ? lin.project : null;
-  const unproject = map && Fr
-    ? (s) => { const q = map.unproject([s.x, s.y]); return Fr.toFrame({ lat: q.lat, lon: q.lng }); }
-    : lin ? lin.unproject : null;
+  const project = map && PF
+    ? (p) => { const q = PF.toLatLng(p); const s = map.project([q.lon, q.lat]); return { x: s.x, y: s.y }; }
+    : lin && !markMode ? lin.project : null;
+  const unproject = map && PF
+    ? (s) => { const q = map.unproject([s.x, s.y]); return PF.toFrame({ lat: q.lat, lon: q.lng }); }
+    : lin && !markMode ? lin.unproject : null;
 
   const { active: opt, other } = overlayPair(options, active, sameShot);
+  const pinDrawn = (inPinView && drag) || pin;
   const redrawKey = [active, sameShot ? 1 : 0, opt?.club, opt?.target && `${r1(opt.target.x)},${r1(opt.target.y)}`, opt?.ell && `${r1(opt.ell.w)}x${r1(opt.ell.h)}`,
-    pin && `${r1(pin.x)},${r1(pin.y)}`].join("|");
+    pin && `${r1(pin.x)},${r1(pin.y)}`, inPinView ? "pv" : ""].join("|");
 
-  const model = hole && project ? overlayModel({
-    project, viewport: vp, hole, ball, accuracyM, pin, active: opt, other, previousShots,
-    palette: drawn ? "paper" : "satellite", idPrefix, redrawKey, recomputing,
+  // the pin view hides the shot (its ellipse and lines would sit on the green) — pin and ball only
+  const model = (hole || markMode) && project ? overlayModel({
+    project, viewport: vp, hole, ball: markMode ? { x: 0, y: 0 } : ball, accuracyM, pin: markMode ? null : pinDrawn,
+    active: inPinView ? null : opt, other: inPinView ? null : other, previousShots: inPinView ? [] : previousShots,
+    palette: drawn ? "paper" : "satellite", idPrefix, redrawKey, recomputing, pinMarker: inPinView, pinDragging: inPinView && !!drag,
   }) : [];
   const base = hole && drawn && project ? fallbackMapModel({ hole, project }) : [];
 
-  const onClick = (ev) => {
-    if (!hole || !unproject || !boxRef.current) return;
-    const r = boxRef.current.getBoundingClientRect();
-    const p = unproject({ x: ev.clientX - r.left, y: ev.clientY - r.top });
+  /* ---------- pointer input: tap, long-press (re-mark), press-hold-drag (pin view) ---------- */
+  const TAP_SLOP_PX = 8, HOLD_MS = 300, LONG_MS = 600;
+  const local = (ev) => { const r = boxRef.current.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; };
+  const endDrag = () => { dragRef.current = null; setDrag(null); if (onPinDrag) onPinDrag(null); };
+  const tap = (pt) => {
+    if (inPinView) return;                                // pin view: a tap does nothing else (B.3)
+    if (markMode) {
+      if (!map) return;
+      const q = map.unproject([pt.x, pt.y]);
+      if (onMarkGreen && Number.isFinite(q.lat) && Number.isFinite(q.lng)) onMarkGreen({ lat: q.lat, lon: q.lng });
+      return;
+    }
+    if (!hole || !unproject) return;
+    const p = unproject(pt);
     const pinP = p ? pinFromTap(hole, p) : null;
     if (pinP) { if (onPinTap) onPinTap(pinP); } else if (onMapTap) onMapTap();
   };
+  const onPointerDown = (ev) => {
+    if (!boxRef.current || (ev.button != null && ev.button > 0)) return;
+    const pt = local(ev);
+    const pr = { id: ev.pointerId, x0: pt.x, y0: pt.y, moved: false, mode: null, timer: null, grab: null };
+    pressRef.current = pr;
+    const pinPx = inPinView && pin && project ? project(pin) : null;
+    if (pinPx && unproject && pinMarkerHit(pinPx, pt)) {
+      pr.grab = { dx: pinPx.x - pt.x, dy: pinPx.y - pt.y };
+      pr.timer = setTimeout(() => {
+        if (pressRef.current !== pr) return;
+        pr.mode = "drag";
+        try { boxRef.current.setPointerCapture(pr.id); } catch (e) { /* synthetic events */ }
+        dragRef.current = { x: pin.x, y: pin.y }; setDrag(dragRef.current);
+        if (onPinDrag) onPinDrag(dragRef.current);
+      }, HOLD_MS);
+    } else if (!inPinView && hole?.synthetic && onRemark && unproject) {
+      const p = unproject(pt);
+      if (p && nearMarkedGreen(hole, p)) pr.timer = setTimeout(() => { if (pressRef.current === pr) { pr.mode = "long"; onRemark(); } }, LONG_MS);
+    }
+  };
+  const onPointerMove = (ev) => {
+    const pr = pressRef.current;
+    if (!pr || pr.id !== ev.pointerId) return;
+    const pt = local(ev);
+    if (pr.mode === "drag") {
+      const q = unproject ? unproject({ x: pt.x + pr.grab.dx, y: pt.y + pr.grab.dy }) : null;
+      if (q && hole?.green) { dragRef.current = clampToGreen(hole, q); setDrag(dragRef.current); if (onPinDrag) onPinDrag(dragRef.current); }
+      return;
+    }
+    if (!pr.moved && Math.hypot(pt.x - pr.x0, pt.y - pr.y0) > TAP_SLOP_PX) { pr.moved = true; clearTimeout(pr.timer); }
+  };
+  const onPointerUp = (ev) => {
+    const pr = pressRef.current;
+    if (!pr || pr.id !== ev.pointerId) return;
+    pressRef.current = null;
+    clearTimeout(pr.timer);
+    if (pr.mode === "drag") { const p = dragRef.current; endDrag(); if (p && onPinDrop) onPinDrop(p); return; }
+    if (pr.mode === "long" || pr.moved) return;
+    tap(local(ev));
+  };
+  const onPointerCancel = () => {
+    const pr = pressRef.current;
+    pressRef.current = null;
+    if (!pr) return;
+    clearTimeout(pr.timer);
+    if (pr.mode === "drag") endDrag();                    // the system took the touch: no pin change
+  };
+  useEffect(() => { if (!inPinView && dragRef.current) endDrag(); }, [inPinView]);
 
   const svgStyle = { position: "absolute", left: 0, top: 0, width: "100%", height: "100%", display: "block", overflow: "visible" };
   const attrBottom = attributionBottom ?? Math.max(6, (insets.bottom || 0) - 10);
   return (
-    <div ref={boxRef} className="loop-map" onClick={onClick}
-      style={{ position: "absolute", inset: 0, overflow: "hidden", background: drawn ? T.paper : SAT_BG, touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}>
+    <div ref={boxRef} className="loop-map" data-mode={markMode ? "mark" : inPinView ? "pin" : hole?.synthetic ? "marked" : hole ? "hole" : "none"}
+      onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel}
+      onContextMenu={(e) => e.preventDefault()}
+      style={{ position: "absolute", inset: 0, overflow: "hidden", background: drawn ? T.paper : SAT_BG, touchAction: "none", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}>
       <style dangerouslySetInnerHTML={{ __html: FADE_CSS }} />
       {!drawn && <div ref={mapBoxRef} style={{ position: "absolute", inset: 0 }} />}
       {base.length > 0 && (
@@ -371,8 +506,8 @@ export function MapLayer({
       <svg data-layer="overlay" style={{ ...svgStyle, pointerEvents: "none" }} width={vp.width} height={vp.height} viewBox={`0 0 ${vp.width} ${vp.height}`} aria-hidden="true">
         {renderNodes(model)}
       </svg>
-      {hole && (
-        <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", left: 6, bottom: attrBottom, padding: "1px 4px", background: "rgba(0,0,0,.4)",
+      {(hole || markMode) && (
+        <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()} style={{ position: "absolute", left: 6, bottom: attrBottom, padding: "1px 4px", background: "rgba(0,0,0,.4)",
           color: T.paper, fontFamily: F.label, fontSize: 9, lineHeight: "12px", whiteSpace: "nowrap", pointerEvents: "auto" }}>
           {!drawn && <><a href="https://www.maptiler.com/copyright/" target="_blank" rel="noopener" style={{ color: T.paper, textDecoration: "none" }}>© MapTiler</a>{" "}</>}
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style={{ color: T.paper, textDecoration: "none" }}>© OpenStreetMap contributors</a>

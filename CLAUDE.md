@@ -51,7 +51,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 3. On any deploy that ships user-facing changes, bump BOTH version markers together and keep the numbers in sync:
    - the cache name in `sw.js` (e.g. `loop-golf-v4` -> `-v5`). REQUIRED — without it, Brett's installed PWA keeps serving the old cached bundle.
    - the on-screen build tag: `const BUILD = "vN · <date>"` near the top of `src/app.jsx` (just after the icon definitions). Keep the existing `"vN · <date>"` format (e.g. `"v5 · Aug 2"`) and match `vN` to the new cache version.
-   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.9 on branch `claude/bold-pascal-2s136s`** (unshipped) / **v22.5 on `main`**. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
+   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.11 on branch `claude/bold-pascal-2s136s`** (PR open) / **v22.10 on `main`**. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
 4. Show Brett a diff.
 5. WAIT for his explicit "go" before git commit / git push. Never push without approval.
 6. Pages redeploys the same URL automatically (~1 min); Brett fully closes and reopens the app to load the new service worker.
@@ -175,7 +175,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
 - Handoffs live in `docs/`; `docs/README.md` says which is current. A thread that finishes a phase writes or updates its handoff, and the next thread starts by reading it.
 - Every thread starts with: `git status` (must be clean), `git log --oneline -3`, `npm test`. Every thread ends with its work committed and the push command handed to Brett.
 - `computeGhost` / `evalMatch` byte-identical check before every commit, as before.
-- `npm test` runs 160 tests as of the completed Sep 28–29 caddie build (T1–T42 across S1–S5, named
+- `npm test` runs 222 tests as of v22.11 (160 at the end of the Sep 28–29 caddie build (T1–T42 across S1–S5, named
   as in `docs/SPEC-caddie.md` §9 and `docs/SPEC-caddie-UI.md` §12, plus units); it globs
   `src/**/*.test.js`, so a later agent adding files under `src/caddie/` picks up new tests
   automatically. If a thread after this one sees a different count, an app-side agent has added or
@@ -183,17 +183,22 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   stale.
 
 ## Caddie (v22 build)
-- The caddie engine, shot log, learning loop and caddie screen are COMPLETE (S1–S5) on branch
-  `claude/bold-pascal-2s136s`, draft PR #5 — **unshipped**, `main` is still v21.4. Three versions
-  ride in this one PR: v22 (map layer + caddie screen), v22.1 (shot-log UI), v22.2 (learning loop +
-  aggression scorecard, the tag Brett will see once he ships). Read `docs/HANDOFF-NEXT.md` first.
+- The caddie engine, shot log, learning loop and caddie screen (S1–S5) SHIPPED as v22.2 (PR #5),
+  followed by v22.3–v22.5 (PR #6) and v22.6–v22.10 (PR #7: temperature, 27-hole picker, Setup
+  fixes, seed cards, the snapping score strip, the caddie-brain engine integration). `main` is
+  v22.10. v22.11 (marked-green mode + draggable pin) is on `claude/bold-pascal-2s136s`. Read
+  `docs/HANDOFF-NEXT.md` first.
 - `Start round` opens the **CaddieScreen** directly at hole 1, pre-tee; `‹ Card` goes to the
   scorecard, whose hole-nav row gains a `Caddie` control. The caddie needs GPS (permission prompt
   on the first `I'm on the tee`), the course's OSM geometry (fetched on Setup when a course is
   chosen, cached `bogeyman-matches:geo:v1:{apiId}`) and satellite tiles (prefetched on Setup into
-  `bogeyman-tiles-v1`); missing geometry means `Enter yards` only, missing tiles means a map drawn
-  from course data on paper. `Enter yards` = club-brain mode (profile only) whenever there's no
-  course map or no GPS fix.
+  `bogeyman-tiles-v1`); missing tiles means a map drawn from course data on paper. **Missing
+  geometry (a course not traced in OSM, e.g. Ironwood) → marked-green mode (v22.11, D47–D48,
+  `src/caddie/greens.js`):** satellite framed on the GPS fix, tap the green once per hole (stored in
+  `bogeyman-matches:greens:v1`), and the engine runs on a synthetic hazard-free hole ball → green.
+  No lie inference, no hole detection, distance-only pricing. `Enter yards` = club-brain mode
+  (profile only) whenever there's no GPS fix. The flag button on the map opens the pin view:
+  hold-and-drag the marker to set a custom pin (D49).
 - Storage added by this build, all still in the `bogeyman-matches:*` namespace: shots
   `bogeyman-matches:shots:v1`, lie overrides `bogeyman-matches:lieOverrides:v1`, per-course nine
   map `bogeyman-matches:nineMap:v1:{courseId}`, config overrides `bogeyman-matches:config:v1`
@@ -201,7 +206,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   Shot-log export/import lives on History.
 - Spec: `docs/SPEC-caddie.md` (locked) + `docs/SPEC-caddie-UI.md` (the UI addendum, §8 states / §13
   flags). Decisions made along the way that override the spec live in `docs/DECISIONS-caddie.md`
-  (D1–D31) — read it, don't copy it into other docs.
+  (D1–D50) — read it, don't copy it into other docs.
 - Refresh workflow (spec §5.8): after a round, export the shot log or a Shot Pattern export →
   hand it to the Golf project chat → it lands under `data/extracted/` → `npm run build:profile`
   regenerates `src/profile.json`.

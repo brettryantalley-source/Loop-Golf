@@ -6,22 +6,25 @@
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 160 tests; must be green
+npm install && npm test    # 222 tests; must be green
 ```
 
-## Where things stand
+## Where things stand (Sep 29, after the v22.11 build)
 
-Live at https://brettryantalley-source.github.io/Loop-Golf/ — **`main` is still v21.4**, untouched.
-The caddie build is **complete** on branch **`claude/bold-pascal-2s136s`**, draft PR
-**https://github.com/brettryantalley-source/Loop-Golf/pull/5** — **unshipped**. Three versions ride
-in this one PR: v22 (S3a map layer + S3b caddie screen, SHIP 1), v22.1 (S4 UI shot log, SHIP 2),
-v22.2 (S5 wiring — learning loop + aggression scorecard, SHIP 3). The live build tag Brett will see
-once he ships is **v22.2 · Sep 29**.
+Live at https://brettryantalley-source.github.io/Loop-Golf/ — **`main` is v22.10** (PR #7 merged
+Sep 29; PR #5 shipped the caddie as v22.2, PR #6 shipped v22.3–v22.5). Branch
+**`claude/bold-pascal-2s136s`** carries **v22.11** — marked-green mode for courses with no OSM
+geometry (`src/caddie/greens.js`, D47–D48) and the draggable pin (D49) — with its PR open.
+Brett merges a PR from his phone (GitHub app or "merge" in the Claude app); Pages redeploys in
+about a minute; he fully closes and reopens Loop and reads the build tag top-right of Setup.
 
-**How Brett ships this:** merge PR #5 into `main` — that merge is his "go" for the whole caddie
-feature, separate from the usual per-commit diff-and-go. GitHub Pages redeploys the same URL
-automatically (~1 min). Brett then fully closes and reopens the app so the new service worker
-(`loop-golf-v22-2`) takes over from the cached `v21.4` bundle.
+Engine as of v22.10 follows `docs/CADDIE-BRAIN-INTEGRATION.md` (D43–D46; known gaps in D46).
+`npm test` is 222 tests. Decisions run D1–D50 in `docs/DECISIONS-caddie.md`.
+
+**Ironwood (Fishers, IN) is not traced in OpenStreetMap.** v22.11's marked-green mode is the
+bridge (satellite on GPS, tap the green, distance-only pricing). The permanent fix is tracing the
+course in the OSM iD editor; a prompt for a web-enabled chat to check OSM coverage was handed to
+Brett on Sep 29.
 
 ## What each screen does now
 
