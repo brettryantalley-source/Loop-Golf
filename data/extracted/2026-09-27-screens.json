@@ -1,0 +1,5239 @@
+{
+ "batch": "2026-09-27",
+ "source": "Shot Pattern iOS app screenshots",
+ "rawDir": "data/raw/2026-09-27/",
+ "fileNaming": "NN_HHMMSS.png = capture order and capture time (from the original macOS screenshot filename)",
+ "filterRule": "A filter carries forward until a screenshot shows a new one. filterSource says seen / inherited / inferred / excluded.",
+ "companionReport": {
+  "file": "data/raw/2026-09-27/stats-report-last10.pdf",
+  "text": "data/extracted/2026-09-27-report.txt",
+  "filters": {
+   "roundType": "Casual",
+   "window": "Last 10",
+   "dateRange": [
+    "2026-06-27",
+    "2026-09-20"
+   ]
+  },
+  "note": "Exact text; prefer it over screenshot values where both exist."
+ },
+ "knownConflicts": [
+  "2Hy: Shot Distances chart 239/264 vs Key Stats 236-266 (screen 18)",
+  "2i: Shot Distances chart 224/264 vs Key Stats 216-265 (screen 19)"
+ ],
+ "screens": [
+  {
+   "file": "01_191019.png",
+   "tab": "Driving",
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Club Distances",
+     "subtitle": "Bars span your 25th–75th percentile · tick marks the median",
+     "data": {
+      "rows": [
+       {
+        "club": "Dr",
+        "value": 285
+       },
+       {
+        "club": "2Hy",
+        "value": 248
+       },
+       {
+        "club": "4Hy",
+        "value": 235
+       },
+       {
+        "club": "2i",
+        "value": 253
+       }
+      ]
+     }
+    },
+    {
+     "title": "Club Gapping",
+     "subtitle": "25th-75th percentile distance × ~90% width",
+     "data": {
+      "xAxisTicks": [
+       "57",
+       "35",
+       "20",
+       "20",
+       "35",
+       "57"
+      ],
+      "yAxisTicks": [
+       "300",
+       "275",
+       "250",
+       "225"
+      ],
+      "ellipseLabels": [
+       "Dr",
+       "2Hy",
+       "2i",
+       "4Hy"
+      ],
+      "chartNote": "Ellipses per club: x = lateral spread (left/right of center line), y = carry distance; Dr ellipse centered ~285 spanning ~263-302; 2Hy, 2i, 4Hy ellipses overlap around 225-258."
+     }
+    }
+   ],
+   "partialCards": "Club Distances top edge scrolled slightly under tab bar (all rows visible); Club Gapping cut off at bottom (legend not visible).",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 5",
+    "dateRange": [
+     "2026-08-15",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "inferred",
+   "filterNote": "No filter card on screen. Dr 285 / 2Hy 248 match the Last 5 values, not Last 10 (289). Confirmed by Brett 2026-09-28."
+  },
+  {
+   "file": "02_191311.png",
+   "tab": "Approach",
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Club Distances",
+     "subtitle": "Bars span your 25th–75th percentile · tick marks the median",
+     "data": {
+      "rows": [
+       {
+        "club": "2Hy",
+        "value": 224
+       },
+       {
+        "club": "5i",
+        "value": 204
+       },
+       {
+        "club": "6i",
+        "value": 194
+       },
+       {
+        "club": "7i",
+        "value": 181
+       },
+       {
+        "club": "8i",
+        "value": 168
+       },
+       {
+        "club": "9i",
+        "value": 153
+       },
+       {
+        "club": "Pw",
+        "value": 140
+       },
+       {
+        "club": "Gw",
+        "value": 119
+       },
+       {
+        "club": "Sw",
+        "value": 98
+       },
+       {
+        "club": "Lw",
+        "value": 85
+       }
+      ]
+     }
+    }
+   ],
+   "partialCards": "Screenshot is cropped (no bottom nav); only Club Distances shown in full.",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 5",
+    "dateRange": [
+     "2026-08-15",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "inferred",
+   "filterNote": "No filter card on screen. Dr 285 / 2Hy 248 match the Last 5 values, not Last 10 (289). Confirmed by Brett 2026-09-28."
+  },
+  {
+   "file": "03_191330.png",
+   "tab": "Approach",
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Club Distances",
+     "subtitle": null,
+     "data": {
+      "rows": [
+       {
+        "club": "Sw",
+        "value": 98
+       },
+       {
+        "club": "Lw",
+        "value": 85
+       }
+      ]
+     }
+    },
+    {
+     "title": "Club Gapping",
+     "subtitle": "Tee & fairway · Central 80% of shots",
+     "data": {
+      "xAxisTicks": [
+       "35",
+       "20",
+       "20",
+       "35"
+      ],
+      "yAxisTicks": [
+       "275",
+       "250",
+       "225",
+       "200",
+       "175",
+       "150",
+       "125",
+       "100",
+       "75",
+       "50"
+      ],
+      "ellipseLabels": [
+       "2Hy",
+       "5i",
+       "6i",
+       "8i",
+       "7i",
+       "9i",
+       "Pw",
+       "Gw",
+       "Sw",
+       "Lw"
+      ],
+      "legendChips": [
+       {
+        "label": "2Hy",
+        "count": 6
+       },
+       {
+        "label": "5i",
+        "count": 16
+       },
+       {
+        "label": "6i",
+        "count": 11
+       },
+       {
+        "label": "7i",
+        "count": 12
+       },
+       {
+        "label": "8i",
+        "count": "1? (cut off)"
+       }
+      ],
+      "chartNote": "Ellipses per club: x = lateral spread, y = distance; 2Hy largest (~165-270), 7i tall vertical ellipse (~105-235), Lw lowest (~50-110). Legend chips scroll horizontally beyond 8i."
+     }
+    }
+   ],
+   "partialCards": "Club Distances cut off at top (only Sw, Lw rows visible); Club Gapping legend chip row cut off at right after 8i.",
+   "uncertain": [
+    "8i legend count (only first digit '1' visible)",
+    "legend chips beyond 8i not visible"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 5",
+    "dateRange": [
+     "2026-08-15",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "inferred",
+   "filterNote": "No filter card on screen. Dr 285 / 2Hy 248 match the Last 5 values, not Last 10 (289). Confirmed by Brett 2026-09-28."
+  },
+  {
+   "file": "04_191358.png",
+   "tab": "Short Game",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": {
+     "distanceBucket": "0-25 Yards"
+    },
+    "caption": null
+   },
+   "sectionFilters": {
+    "mode": {
+     "options": [
+      "Proximity",
+      "Distance Control"
+     ],
+     "selected": "Proximity"
+    },
+    "lieChips": [
+     {
+      "label": "Fairway",
+      "selected": true
+     },
+     {
+      "label": "Rough",
+      "selected": true
+     },
+     {
+      "label": "Bunker",
+      "selected": true
+     },
+     {
+      "label": "Deep/Rec",
+      "selected": true
+     }
+    ]
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Proximity vs Rough benchmark · 0–25 yd",
+     "data": {
+      "chartLabels": [
+       "Long",
+       "Scratch",
+       "Pro",
+       "Left",
+       "Right",
+       "Short"
+      ],
+      "tiles": [
+       {
+        "value": "45%",
+        "label": "Pro",
+        "threshold": "15%"
+       },
+       {
+        "value": "8%",
+        "label": "Scratch",
+        "threshold": "18%"
+       },
+       {
+        "value": "47%",
+        "label": "Miss",
+        "threshold": ">18%"
+       }
+      ],
+      "chartNote": "Concentric rings (Pro inner green, Scratch middle, Miss outer red) with dots per shot colored green/blue/red by zone relative to hole at center crosshair."
+     }
+    }
+   ],
+   "partialCards": "Another card begins at bottom edge, hidden behind nav bar.",
+   "uncertain": [
+    "Lie chips all appear white/filled; interpreted as all selected"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "shortGameBucket": "0-25 yds"
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "05_191407.png",
+   "tab": "Short Game",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": {
+     "distanceBucket": "0-25 Yards"
+    },
+    "caption": null
+   },
+   "sectionFilters": {
+    "mode": {
+     "options": [
+      "Proximity",
+      "Distance Control"
+     ],
+     "selected": "Distance Control"
+    },
+    "lieChips": [
+     {
+      "label": "Fairway",
+      "selected": true
+     },
+     {
+      "label": "Rough",
+      "selected": true
+     },
+     {
+      "label": "Bunker",
+      "selected": true
+     },
+     {
+      "label": "Deep/Rec",
+      "selected": true
+     }
+    ]
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Distance control vs Rough benchmark · 0–25 yd",
+     "data": {
+      "chartLabels": [
+       "Long",
+       "On-target",
+       "Left",
+       "Right",
+       "Short"
+      ],
+      "tiles": [
+       {
+        "value": "53%",
+        "label": "On-target",
+        "threshold": "±15%"
+       },
+       {
+        "value": "31%",
+        "label": "Short",
+        "threshold": ">15%"
+       },
+       {
+        "value": "17%",
+        "label": "Long",
+        "threshold": ">15%"
+       }
+      ],
+      "chartNote": "Same shot dots as Proximity view, recolored: green inside horizontal On-target band, blue short, orange long."
+     }
+    }
+   ],
+   "partialCards": "Another card begins at bottom edge, hidden behind nav bar.",
+   "uncertain": [
+    "Lie chips all appear white/filled; interpreted as all selected"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "shortGameBucket": "0-25 yds"
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "06_200830.png",
+   "tab": null,
+   "filtersVisible": null,
+   "sectionFilters": {
+    "shotType": {
+     "options": [
+      "Tee",
+      "Appr"
+     ],
+     "selected": "Tee"
+    },
+    "distanceList": {
+     "options": [
+      "97y",
+      "84.7y",
+      "71.3y",
+      "69y"
+     ],
+     "selected": "97y"
+    }
+   },
+   "cards": [
+    {
+     "title": "Hole map (play/preview screen, not a stats tab)",
+     "subtitle": "Hole 1 • Par 4 · 363 Yards",
+     "data": {
+      "To Hole": "344 yd",
+      "From Tee": "4.18",
+      "upperSegment": "99 yd",
+      "driveSegment": "258 yd",
+      "driveStrokesGained": "+ 0.13 (FWY)",
+      "wind": "5 mph Live",
+      "mapMarkers": [
+       "+1",
+       "+1",
+       "+1",
+       "+1",
+       "+1",
+       "-1",
+       "-1"
+      ],
+      "sideToolbar": [
+       "3D",
+       "green heatmap icon",
+       "target rings icon",
+       "flag icon",
+       "pin icon",
+       "menu"
+      ],
+      "button": "TARGET",
+      "chartNote": "Satellite hole view with tee-shot line, landing arc and target markers."
+     }
+    }
+   ],
+   "partialCards": null,
+   "uncertain": [
+    "Marker labels on map partly obscured (some '+1'/'-1' overlaps)"
+   ],
+   "resolvedFilters": null,
+   "filterSource": "excluded",
+   "filterNote": "Hole-map screens; not profile data."
+  },
+  {
+   "file": "07_200853.png",
+   "tab": null,
+   "filtersVisible": {
+    "roundType": null,
+    "window": null,
+    "chips": [],
+    "otherControls": {
+     "club": "Driver",
+     "shots": "All Shots",
+     "distanceMode": "Plays Like",
+     "source": "Offline"
+    },
+    "caption": null
+   },
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Hole map with shot dispersion overlay",
+     "subtitle": null,
+     "data": {
+      "To Hole": "344 yd",
+      "From Tee": "4.18",
+      "upperSegment": "72 yd",
+      "driveSegment": "311 yd",
+      "driveStrokesGained": "+ 0.15 (RGH)",
+      "wind": "5 mph Live",
+      "markers": [
+       "+1",
+       "+1",
+       "+1"
+      ],
+      "chartNote": "Hundreds of white dots showing historical driver landing positions over the hole satellite map."
+     }
+    },
+    {
+     "title": "Driver",
+     "subtitle": "Cobra Adapt",
+     "data": {
+      "shots": "254 shots",
+      "strokes": "+0.02 Strokes",
+      "button": "Done"
+     }
+    }
+   ],
+   "partialCards": "Bottom sheet overlays lower map; right-side Tee/Appr and 97y controls partly covered; filter chip row cut off at right (Offline chip).",
+   "uncertain": [],
+   "resolvedFilters": null,
+   "filterSource": "excluded",
+   "filterNote": "Hole-map screens; not profile data."
+  },
+  {
+   "file": "08_200918.png",
+   "tab": null,
+   "filtersVisible": null,
+   "sectionFilters": {
+    "shotType": {
+     "options": [
+      "Tee",
+      "Appr"
+     ],
+     "selected": "Appr"
+    },
+    "distanceList": {
+     "options": [
+      "56'",
+      "39'",
+      "30'",
+      "29'"
+     ],
+     "selected": "39'"
+    }
+   },
+   "cards": [
+    {
+     "title": "Hole map (approach)",
+     "subtitle": "Hole 1 • Par 4 · 363 Yards",
+     "data": {
+      "To Hole": "84 yd",
+      "From Fwy": "2.97",
+      "beyondSegment": "29 yd",
+      "approachSegment": "113 yd",
+      "approachStrokesGained": "-0.79 (RGH)",
+      "wind": "5 mph Live",
+      "markers": [
+       "+1",
+       "+1",
+       "+1",
+       "+1"
+      ],
+      "button": "TARGET",
+      "chartNote": "Satellite view: approach line from blue ball position to a circled target behind the green, with pin marker on green."
+     }
+    }
+   ],
+   "partialCards": null,
+   "uncertain": [],
+   "resolvedFilters": null,
+   "filterSource": "excluded",
+   "filterNote": "Hole-map screens; not profile data."
+  },
+  {
+   "file": "09_201000.png",
+   "tab": null,
+   "filtersVisible": null,
+   "sectionFilters": {
+    "shotType": {
+     "options": [
+      "Tee",
+      "Appr"
+     ],
+     "selected": "Appr"
+    },
+    "distanceList": {
+     "options": [
+      "56'",
+      "39'",
+      "30'",
+      "29'"
+     ],
+     "selected": "39'"
+    }
+   },
+   "cards": [
+    {
+     "title": "Preview Options",
+     "subtitle": null,
+     "data": {
+      "items": [
+       {
+        "label": "Tools",
+        "detail": "Elevation, wind, line, notes & scorecard units"
+       },
+       {
+        "label": "Switch Map",
+        "detail": "Realistic"
+       },
+       {
+        "label": "Print Book",
+        "detail": "Yardage book PDF with tee lines"
+       },
+       {
+        "label": "Exit Preview",
+        "detail": null
+       }
+      ]
+     }
+    },
+    {
+     "title": "Hole map (background)",
+     "subtitle": "Hole 2 • Par 5 · 539 Yards",
+     "data": {
+      "To Hole": "531 yd",
+      "From Tee": "5.03",
+      "segment": "245 yd",
+      "markers": [
+       "+1",
+       "+1",
+       "+1",
+       "0"
+      ],
+      "button": "TARGET",
+      "chartNote": "Dimmed satellite map behind modal."
+     }
+    }
+   ],
+   "partialCards": "Background map values behind modal obscured (a '286 yd' and '+0.24 (FWY)' faintly visible).",
+   "uncertain": [
+    "Obscured background values '286 yd' and '+0.24 (FWY)'"
+   ],
+   "resolvedFilters": null,
+   "filterSource": "excluded",
+   "filterNote": "Hole-map screens; not profile data."
+  },
+  {
+   "file": "10_201633.png",
+   "tab": null,
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Loop Setup screen (Loop app, not Shot Pattern)",
+     "subtitle": null,
+     "data": {
+      "COURSE": "Ironwood Golf Club",
+      "par": 72,
+      "TEE": "Gold",
+      "teeYards": "6,660",
+      "RATING": "72.6",
+      "SLOPE": "138",
+      "YARDS": "6,660",
+      "HCAP DIFF": "7.4 / 82",
+      "YOUR LAST FIVE": {
+       "note": "the ghost is built from these",
+       "values": [
+        "4.5",
+        "7.6",
+        "6.1",
+        "12.8",
+        "6.1"
+       ]
+      },
+      "RECORD VS. THE GHOST": {
+       "streak": "streak W1 · avg +4.0",
+       "Won": null,
+       "Lost": "—",
+       "Halved": "—"
+      },
+      "button": "START ROUND",
+      "ROUND HISTORY": "· 1"
+     }
+    }
+   ],
+   "partialCards": null,
+   "uncertain": [
+    "'Won' count not printed/visible"
+   ],
+   "resolvedFilters": null,
+   "filterSource": "excluded",
+   "filterNote": "Loop app screenshots, not Shot Pattern."
+  },
+  {
+   "file": "11_201653.png",
+   "tab": null,
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Loop round scoring screen (Loop app, not Shot Pattern)",
+     "subtitle": "Ironwood Golf Club · Gold · segment 1 of 6 · holes 1–3",
+     "data": {
+      "header": {
+       "YOU": "0",
+       "status": "all square",
+       "GHOST": "0"
+      },
+      "segmentTable": [
+       [
+        "HOLE",
+        "1 par 4 idx 5",
+        "2 par 4 idx 11",
+        "3 par 4 idx 7"
+       ],
+       [
+        "GHOST",
+        "5",
+        "4",
+        "5"
+       ],
+       [
+        "YOU",
+        "",
+        "",
+        ""
+       ]
+      ],
+      "currentHole": {
+       "hole": 1,
+       "par": 4,
+       "index": 5,
+       "ghost": "5",
+       "you": ""
+      },
+      "scoreOptions": [
+       "2",
+       "3",
+       "4",
+       "5",
+       "6+"
+      ],
+      "nav": {
+       "prev": "HOLE 0",
+       "next": "HOLE 2"
+      },
+      "OUT": {
+       "status": "S1 · S2 · S3 open",
+       "holes": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+       ],
+       "you": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+       ],
+       "gh": [
+        "5",
+        "4",
+        "5",
+        "5",
+        "3",
+        "6",
+        "3",
+        "5",
+        "5"
+       ]
+      },
+      "IN": {
+       "status": "S4 · S5 · S6 open",
+       "holes": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+       ],
+       "you": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+       ],
+       "gh": [
+        "4",
+        "4",
+        "4",
+        "5",
+        "3",
+        "6",
+        "4",
+        "6",
+        "5"
+       ]
+      },
+      "totals": {
+       "OUT": "open",
+       "IN": "open",
+       "TOTAL": "open"
+      }
+     }
+    }
+   ],
+   "partialCards": null,
+   "uncertain": [],
+   "resolvedFilters": null,
+   "filterSource": "excluded",
+   "filterNote": "Loop app screenshots, not Shot Pattern."
+  },
+  {
+   "file": "12_224754.png",
+   "tab": "Driving",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [
+     {
+      "label": "Dr",
+      "count": 89,
+      "selected": true
+     },
+     {
+      "label": "2Hy",
+      "count": 10,
+      "selected": false
+     },
+     {
+      "label": "4Hy",
+      "count": 14,
+      "selected": false
+     },
+     {
+      "label": "2i",
+      "count": 14,
+      "selected": false
+     },
+     {
+      "label": "9i",
+      "count": 1,
+      "selected": false
+     }
+    ],
+    "otherControls": null,
+    "caption": "10 rounds · 89 tee shots"
+   },
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Landing Zones",
+     "subtitle": "Safe, playable, & foul ball corridors",
+     "data": {
+      "lateralLabels": [
+       "40 yd",
+       "70 yd"
+      ],
+      "distanceAxisTicks": [
+       350,
+       300,
+       250
+      ],
+      "histogram": {
+       "leftOffChart": "◄ 10",
+       "leftOfCenter": "39%",
+       "rightOfCenter": "60%",
+       "rightOffChart": "14 ►"
+      },
+      "zones": [
+       {
+        "pct": "53%",
+        "label": "Always Safe",
+        "range": "±20 yd"
+       },
+       {
+        "pct": "20%",
+        "label": "Often Playable",
+        "range": "±35 yd"
+       },
+       {
+        "pct": "27%",
+        "label": "Foul Balls",
+        "range": "beyond"
+       }
+      ],
+      "chartNote": "Scatter of driver tee-shot landing points (green/orange/red by corridor) over vertical safe/playable/foul bands, white X marks center; lateral histogram below."
+     }
+    }
+   ],
+   "partialCards": "Next card cut off at bottom (title obscured by nav bar)",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen",
+   "filterNote": "Driving chip selection is per screen; see filtersVisible.chips."
+  },
+  {
+   "file": "13_224839.png",
+   "tab": "Driving",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [
+     {
+      "label": "Dr",
+      "count": 89,
+      "selected": false
+     },
+     {
+      "label": "2Hy",
+      "count": 10,
+      "selected": true
+     },
+     {
+      "label": "4Hy",
+      "count": 14,
+      "selected": false
+     },
+     {
+      "label": "2i",
+      "count": 14,
+      "selected": false
+     },
+     {
+      "label": "9i",
+      "count": 1,
+      "selected": false
+     }
+    ],
+    "otherControls": null,
+    "caption": "10 rounds · 10 tee shots"
+   },
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Landing Zones",
+     "subtitle": "Safe, playable, & foul ball corridors",
+     "data": {
+      "lateralLabels": [
+       "40 yd",
+       "70 yd"
+      ],
+      "distanceAxisTicks": [
+       250,
+       225
+      ],
+      "histogram": {
+       "leftOffChart": "◄ 0",
+       "leftOfCenter": "40%",
+       "rightOfCenter": "60%",
+       "rightOffChart": "1 ►"
+      },
+      "zones": [
+       {
+        "pct": "60%",
+        "label": "Always Safe",
+        "range": "±20 yd"
+       },
+       {
+        "pct": "30%",
+        "label": "Often Playable",
+        "range": "±35 yd"
+       },
+       {
+        "pct": "10%",
+        "label": "Foul Balls",
+        "range": "beyond"
+       }
+      ],
+      "chartNote": "Scatter of 2Hy tee-shot landing points over corridor bands, white X center; lateral histogram below."
+     }
+    }
+   ],
+   "partialCards": "Next card cut off at bottom",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen",
+   "filterNote": "Driving chip selection is per screen; see filtersVisible.chips."
+  },
+  {
+   "file": "14_224846.png",
+   "tab": "Driving",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [
+     {
+      "label": "Dr",
+      "count": 89,
+      "selected": false
+     },
+     {
+      "label": "2Hy",
+      "count": 10,
+      "selected": true
+     },
+     {
+      "label": "4Hy",
+      "count": 14,
+      "selected": true
+     },
+     {
+      "label": "2i",
+      "count": 14,
+      "selected": false
+     },
+     {
+      "label": "9i",
+      "count": 1,
+      "selected": false
+     }
+    ],
+    "otherControls": null,
+    "caption": "10 rounds · 24 tee shots"
+   },
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Landing Zones",
+     "subtitle": "Safe, playable, & foul ball corridors",
+     "data": {
+      "lateralLabels": [
+       "40 yd",
+       "70 yd"
+      ],
+      "distanceAxisTicks": [
+       275,
+       250,
+       225
+      ],
+      "histogram": {
+       "leftOffChart": "◄ 2",
+       "leftOfCenter": "46%",
+       "rightOfCenter": "54%",
+       "rightOffChart": "1 ►"
+      },
+      "zones": [
+       {
+        "pct": "63%",
+        "label": "Always Safe",
+        "range": "±20 yd"
+       },
+       {
+        "pct": "25%",
+        "label": "Often Playable",
+        "range": "±35 yd"
+       },
+       {
+        "pct": "13%",
+        "label": "Foul Balls",
+        "range": "beyond"
+       }
+      ],
+      "chartNote": "Scatter of combined 2Hy+4Hy tee-shot landing points over corridor bands, white X center; lateral histogram below."
+     }
+    }
+   ],
+   "partialCards": "Next card cut off at bottom",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen",
+   "filterNote": "Driving chip selection is per screen; see filtersVisible.chips."
+  },
+  {
+   "file": "15_224856.png",
+   "tab": "Driving",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [
+     {
+      "label": "Dr",
+      "count": 89,
+      "selected": false
+     },
+     {
+      "label": "2Hy",
+      "count": 10,
+      "selected": false
+     },
+     {
+      "label": "4Hy",
+      "count": 14,
+      "selected": true
+     },
+     {
+      "label": "2i",
+      "count": 14,
+      "selected": false
+     },
+     {
+      "label": "9i",
+      "count": 1,
+      "selected": false
+     }
+    ],
+    "otherControls": null,
+    "caption": "10 rounds · 14 tee shots"
+   },
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Landing Zones",
+     "subtitle": "Safe, playable, & foul ball corridors",
+     "data": {
+      "lateralLabels": [
+       "40 yd",
+       "70 yd"
+      ],
+      "distanceAxisTicks": [
+       275,
+       250,
+       225
+      ],
+      "histogram": {
+       "leftOffChart": "◄ 2",
+       "leftOfCenter": "50%",
+       "rightOfCenter": "50%",
+       "rightOffChart": "0 ►"
+      },
+      "zones": [
+       {
+        "pct": "64%",
+        "label": "Always Safe",
+        "range": "±20 yd"
+       },
+       {
+        "pct": "21%",
+        "label": "Often Playable",
+        "range": "±35 yd"
+       },
+       {
+        "pct": "14%",
+        "label": "Foul Balls",
+        "range": "beyond"
+       }
+      ],
+      "chartNote": "Scatter of 4Hy tee-shot landing points over corridor bands, white X center; lateral histogram below."
+     }
+    }
+   ],
+   "partialCards": "Next card cut off at bottom",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen",
+   "filterNote": "Driving chip selection is per screen; see filtersVisible.chips."
+  },
+  {
+   "file": "16_224902.png",
+   "tab": "Driving",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [
+     {
+      "label": "Dr",
+      "count": 89,
+      "selected": false
+     },
+     {
+      "label": "2Hy",
+      "count": 10,
+      "selected": false
+     },
+     {
+      "label": "4Hy",
+      "count": 14,
+      "selected": false
+     },
+     {
+      "label": "2i",
+      "count": 14,
+      "selected": true
+     },
+     {
+      "label": "9i",
+      "count": 1,
+      "selected": false
+     }
+    ],
+    "otherControls": null,
+    "caption": "10 rounds · 14 tee shots"
+   },
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Landing Zones",
+     "subtitle": "Safe, playable, & foul ball corridors",
+     "data": {
+      "lateralLabels": [
+       "40 yd",
+       "70 yd"
+      ],
+      "distanceAxisTicks": [
+       275,
+       250,
+       225
+      ],
+      "histogram": {
+       "leftOffChart": "◄ 2",
+       "leftOfCenter": "71%",
+       "rightOfCenter": "21%",
+       "rightOffChart": "0 ►"
+      },
+      "zones": [
+       {
+        "pct": "50%",
+        "label": "Always Safe",
+        "range": "±20 yd"
+       },
+       {
+        "pct": "36%",
+        "label": "Often Playable",
+        "range": "±35 yd"
+       },
+       {
+        "pct": "14%",
+        "label": "Foul Balls",
+        "range": "beyond"
+       }
+      ],
+      "chartNote": "Scatter of 2i tee-shot landing points over corridor bands, white X center (left of centerline); lateral histogram below."
+     }
+    }
+   ],
+   "partialCards": "Next card cut off at bottom",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen",
+   "filterNote": "Driving chip selection is per screen; see filtersVisible.chips."
+  },
+  {
+   "file": "17_224939.png",
+   "tab": null,
+   "sheetTitle": "Dr - Cobra Adapt",
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Landing Zones",
+     "subtitle": null,
+     "data": {
+      "distanceAxisTicks": [
+       250
+      ],
+      "histogram": {
+       "leftOffChart": "◄ 10",
+       "leftOfCenter": "39%",
+       "rightOfCenter": "60%",
+       "rightOffChart": "14 ►"
+      },
+      "zones": [
+       {
+        "pct": "53%",
+        "label": "Always Safe",
+        "range": "±20 yd"
+       },
+       {
+        "pct": "20%",
+        "label": "Often Playable",
+        "range": "±35 yd"
+       },
+       {
+        "pct": "27%",
+        "label": "Foul Balls",
+        "range": "beyond"
+       }
+      ],
+      "chartNote": "Lower portion of driver landing-zone scatter (club detail sheet)."
+     }
+    },
+    {
+     "title": "Shot Distances",
+     "subtitle": "Press & hold to explore",
+     "data": {
+      "median": "289",
+      "medianLabel": "median yd",
+      "p25": "268",
+      "p25Label": "25th",
+      "p75": "305",
+      "p75Label": "75th",
+      "chartNote": "Strip plot of shot distances with green 25th–75th box and median tick."
+     }
+    },
+    {
+     "title": "Key Stats",
+     "subtitle": null,
+     "data": {
+      "Distance": [
+       {
+        "value": "289 yd",
+        "label": "Median"
+       },
+       {
+        "value": "268–305 yd",
+        "label": "25th–75th"
+       },
+       {
+        "value": "378 yd",
+        "label": "Longest"
+       }
+      ],
+      "Accuracy": [
+       {
+        "value": "23 yd",
+        "label": "Avg. Offline"
+       },
+       {
+        "value": "61 yd",
+        "label": "68% Arc"
+       },
+       {
+        "value": "125 yd",
+        "label": "95% Arc"
+       }
+      ],
+      "Strokes Gained": [
+       {
+        "value": "0.0",
+        "label": "SG / Shot"
+       },
+       {
+        "value": "72%",
+        "label": "Gaining"
+       },
+       {
+        "value": "22%",
+        "label": "Big Miss"
+       }
+      ]
+     }
+    }
+   ],
+   "partialCards": "Landing Zones card cut off at top (title and upper scatter scrolled away)",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "inherited from 16",
+   "filterNote": "Per-club sheets; the club is in the sheet title."
+  },
+  {
+   "file": "18_225009.png",
+   "tab": null,
+   "sheetTitle": "2Hy - Sub 70 949 pro",
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Landing Zones",
+     "subtitle": null,
+     "data": {
+      "distanceAxisTicks": [
+       225
+      ],
+      "histogram": {
+       "leftOffChart": "◄ 0",
+       "leftOfCenter": "40%",
+       "rightOfCenter": "60%",
+       "rightOffChart": "1 ►"
+      },
+      "zones": [
+       {
+        "pct": "60%",
+        "label": "Always Safe",
+        "range": "±20 yd"
+       },
+       {
+        "pct": "30%",
+        "label": "Often Playable",
+        "range": "±35 yd"
+       },
+       {
+        "pct": "10%",
+        "label": "Foul Balls",
+        "range": "beyond"
+       }
+      ],
+      "chartNote": "Lower portion of 2Hy landing-zone scatter."
+     }
+    },
+    {
+     "title": "Shot Distances",
+     "subtitle": "Press & hold to explore",
+     "data": {
+      "median": "253",
+      "medianLabel": "median yd",
+      "p25": "239",
+      "p25Label": "25th",
+      "p75": "264",
+      "p75Label": "75th",
+      "chartNote": "Strip plot with 25th–75th box and median tick. Note: chart labels (239/264) differ from Key Stats range (236–266) as printed."
+     }
+    },
+    {
+     "title": "Key Stats",
+     "subtitle": null,
+     "data": {
+      "Distance": [
+       {
+        "value": "253 yd",
+        "label": "Median"
+       },
+       {
+        "value": "236–266 yd",
+        "label": "25th–75th"
+       },
+       {
+        "value": "268 yd",
+        "label": "Longest"
+       }
+      ],
+      "Accuracy": [
+       {
+        "value": "17 yd",
+        "label": "Avg. Offline"
+       },
+       {
+        "value": "34 yd",
+        "label": "68% Arc"
+       },
+       {
+        "value": "70 yd",
+        "label": "95% Arc"
+       }
+      ],
+      "Strokes Gained": [
+       {
+        "value": "-0.12",
+        "label": "SG / Shot"
+       },
+       {
+        "value": "50%",
+        "label": "Gaining"
+       },
+       {
+        "value": "20%",
+        "label": "Big Miss"
+       }
+      ]
+     }
+    }
+   ],
+   "partialCards": "Landing Zones cut off at top; another card begins at very bottom",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "inherited from 16",
+   "filterNote": "Per-club sheets; the club is in the sheet title."
+  },
+  {
+   "file": "19_225024.png",
+   "tab": null,
+   "sheetTitle": "2i - Sub 70 699",
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Landing Zones",
+     "subtitle": null,
+     "data": {
+      "distanceAxisTicks": [
+       225
+      ],
+      "histogram": {
+       "leftOffChart": "◄ 2",
+       "leftOfCenter": "71%",
+       "rightOfCenter": "21%",
+       "rightOffChart": "0 ►"
+      },
+      "zones": [
+       {
+        "pct": "50%",
+        "label": "Always Safe",
+        "range": "±20 yd"
+       },
+       {
+        "pct": "36%",
+        "label": "Often Playable",
+        "range": "±35 yd"
+       },
+       {
+        "pct": "14%",
+        "label": "Foul Balls",
+        "range": "beyond"
+       }
+      ],
+      "chartNote": "Lower portion of 2i landing-zone scatter."
+     }
+    },
+    {
+     "title": "Shot Distances",
+     "subtitle": "Press & hold to explore",
+     "data": {
+      "median": "261",
+      "medianLabel": "median yd",
+      "p25": "224",
+      "p25Label": "25th",
+      "p75": "264",
+      "p75Label": "75th",
+      "chartNote": "Strip plot with 25th–75th box and median tick near right end of box. Chart labels (224/264) differ from Key Stats range (216–265) as printed."
+     }
+    },
+    {
+     "title": "Key Stats",
+     "subtitle": null,
+     "data": {
+      "Distance": [
+       {
+        "value": "261 yd",
+        "label": "Median"
+       },
+       {
+        "value": "216–265 yd",
+        "label": "25th–75th"
+       },
+       {
+        "value": "277 yd",
+        "label": "Longest"
+       }
+      ],
+      "Accuracy": [
+       {
+        "value": "21 yd",
+        "label": "Avg. Offline"
+       },
+       {
+        "value": "44 yd",
+        "label": "68% Arc"
+       },
+       {
+        "value": "84 yd",
+        "label": "95% Arc"
+       }
+      ],
+      "Strokes Gained": [
+       {
+        "value": "-0.20",
+        "label": "SG / Shot"
+       },
+       {
+        "value": "57%",
+        "label": "Gaining"
+       },
+       {
+        "value": "29%",
+        "label": "Big Miss"
+       }
+      ]
+     }
+    }
+   ],
+   "partialCards": "Landing Zones cut off at top",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "inherited from 16",
+   "filterNote": "Per-club sheets; the club is in the sheet title."
+  },
+  {
+   "file": "20_225034.png",
+   "tab": null,
+   "sheetTitle": "4Hy - Cobra F6",
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Landing Zones",
+     "subtitle": null,
+     "data": {
+      "histogram": {
+       "leftOffChart": "◄ 2",
+       "leftOfCenter": "50%",
+       "rightOfCenter": "50%",
+       "rightOffChart": "0 ►"
+      },
+      "zones": [
+       {
+        "pct": "64%",
+        "label": "Always Safe",
+        "range": "±20 yd"
+       },
+       {
+        "pct": "21%",
+        "label": "Often Playable",
+        "range": "±35 yd"
+       },
+       {
+        "pct": "14%",
+        "label": "Foul Balls",
+        "range": "beyond"
+       }
+      ],
+      "chartNote": "Bottom sliver of 4Hy landing-zone scatter."
+     }
+    },
+    {
+     "title": "Shot Distances",
+     "subtitle": "Press & hold to explore",
+     "data": {
+      "median": "232",
+      "medianLabel": "median yd",
+      "p25": "224",
+      "p25Label": "25th",
+      "p75": "245",
+      "p75Label": "75th",
+      "chartNote": "Strip plot with 25th–75th box and median tick."
+     }
+    },
+    {
+     "title": "Key Stats",
+     "subtitle": null,
+     "data": {
+      "Distance": [
+       {
+        "value": "232 yd",
+        "label": "Median"
+       },
+       {
+        "value": "223–245 yd",
+        "label": "25th–75th"
+       },
+       {
+        "value": "284 yd",
+        "label": "Longest"
+       }
+      ],
+      "Accuracy": [
+       {
+        "value": "21 yd",
+        "label": "Avg. Offline"
+       },
+       {
+        "value": "55 yd",
+        "label": "68% Arc"
+       },
+       {
+        "value": "75 yd",
+        "label": "95% Arc"
+       }
+      ],
+      "Strokes Gained": [
+       {
+        "value": "-0.31",
+        "label": "SG / Shot"
+       },
+       {
+        "value": "29%",
+        "label": "Gaining"
+       },
+       {
+        "value": "36%",
+        "label": "Big Miss"
+       }
+      ]
+     }
+    },
+    {
+     "title": "Shot List",
+     "subtitle": "14 shots",
+     "data": {}
+    }
+   ],
+   "partialCards": "Landing Zones cut off at top; Shot List cut off at bottom (only header visible)",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "inherited from 16",
+   "filterNote": "Per-club sheets; the club is in the sheet title."
+  },
+  {
+   "file": "21_225116.png",
+   "tab": "Approach",
+   "filtersVisible": {
+    "roundType": null,
+    "window": "…st 10 (cut off; likely Last 10)",
+    "chips": [
+     {
+      "label": "(cut off)",
+      "count": null,
+      "selected": true
+     },
+     {
+      "label": "9i",
+      "count": 11,
+      "selected": true
+     },
+     {
+      "label": "Pw",
+      "count": 4,
+      "selected": true
+     },
+     {
+      "label": "Gw",
+      "count": 15,
+      "selected": true
+     },
+     {
+      "label": "Sw",
+      "count": 9,
+      "selected": true
+     },
+     {
+      "label": "Lw",
+      "count": 15,
+      "selected": true
+     }
+    ],
+    "otherControls": {
+     "lie": "Tee & Fairway",
+     "distance": "All Distances"
+    },
+    "caption": "10 rounds · 104 approach shots from tee & fairway"
+   },
+   "sectionFilters": {
+    "control": "Proximity / Left / Right / Short / Long",
+    "selected": "Proximity"
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Proximity to target as % of start distance",
+     "data": {
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right"
+      ],
+      "ringLabels": [
+       "10%",
+       "8%"
+      ],
+      "zones": [
+       {
+        "pct": "23%",
+        "label": "Pro",
+        "range": "≤5%"
+       },
+       {
+        "pct": "22%",
+        "label": "Scratch",
+        "range": "5–8%"
+       },
+       {
+        "pct": "11%",
+        "label": "5-Index",
+        "range": "8–10%"
+       },
+       {
+        "pct": "44%",
+        "label": "Miss",
+        "range": ">10%"
+       }
+      ],
+      "chartNote": "Polar scatter of approach leave positions colored by proximity ring (green/cyan/orange/red) around a center target."
+     }
+    }
+   ],
+   "partialCards": "Filters card cut off at top (horizontally scrolled; round-type dropdown and first chip hidden); Leave Zones stat boxes partly behind nav bar",
+   "uncertain": [
+    "5% inner ring label obscured by dots",
+    "window dropdown only shows 'st 10'",
+    "first chip label cut off"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "startLie": "Tee & Fairway",
+    "distance": "All Distances",
+    "clubs": [
+     "9i",
+     "Pw",
+     "Gw",
+     "Sw",
+     "Lw"
+    ],
+    "shots": 104
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "22_225122.png",
+   "tab": "Approach",
+   "filtersVisible": {
+    "roundType": null,
+    "window": "…st 10 (cut off; likely Last 10)",
+    "chips": [
+     {
+      "label": "(cut off)",
+      "count": null,
+      "selected": true
+     },
+     {
+      "label": "9i",
+      "count": 11,
+      "selected": true
+     },
+     {
+      "label": "Pw",
+      "count": 4,
+      "selected": true
+     },
+     {
+      "label": "Gw",
+      "count": 15,
+      "selected": true
+     },
+     {
+      "label": "Sw",
+      "count": 9,
+      "selected": true
+     },
+     {
+      "label": "Lw",
+      "count": 15,
+      "selected": true
+     }
+    ],
+    "otherControls": {
+     "lie": "Tee & Fairway",
+     "distance": "All Distances"
+    },
+    "caption": "10 rounds · 104 approach shots from tee & fairway"
+   },
+   "sectionFilters": {
+    "control": "Proximity / Left / Right / Short / Long",
+    "selected": "Left / Right"
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Proximity to target as % of start distance",
+     "data": {
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right"
+      ],
+      "bandLabels": [
+       "8%",
+       "8%"
+      ],
+      "zones": [
+       {
+        "pct": "11%",
+        "label": "Well Left",
+        "range": ">8%"
+       },
+       {
+        "pct": "39%",
+        "label": "Left",
+        "range": "≤8%"
+       },
+       {
+        "pct": "34%",
+        "label": "Right",
+        "range": "≤8%"
+       },
+       {
+        "pct": "16%",
+        "label": "Well Right",
+        "range": ">8%"
+       }
+      ],
+      "chartNote": "Same leave scatter colored by lateral band: green within ±8% vertical band, red outside."
+     }
+    }
+   ],
+   "partialCards": "Filters card cut off at top; stat boxes partly behind nav bar",
+   "uncertain": [
+    "window dropdown only shows 'st 10'",
+    "first chip label cut off"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "startLie": "Tee & Fairway",
+    "distance": "All Distances",
+    "clubs": [
+     "9i",
+     "Pw",
+     "Gw",
+     "Sw",
+     "Lw"
+    ],
+    "shots": 104
+   },
+   "filterSource": "inherited from 21"
+  },
+  {
+   "file": "23_225128.png",
+   "tab": "Approach",
+   "filtersVisible": {
+    "roundType": null,
+    "window": "…st 10 (cut off; likely Last 10)",
+    "chips": [
+     {
+      "label": "(cut off)",
+      "count": null,
+      "selected": true
+     },
+     {
+      "label": "9i",
+      "count": 11,
+      "selected": true
+     },
+     {
+      "label": "Pw",
+      "count": 4,
+      "selected": true
+     },
+     {
+      "label": "Gw",
+      "count": 15,
+      "selected": true
+     },
+     {
+      "label": "Sw",
+      "count": 9,
+      "selected": true
+     },
+     {
+      "label": "Lw",
+      "count": 15,
+      "selected": true
+     }
+    ],
+    "otherControls": {
+     "lie": "Tee & Fairway",
+     "distance": "All Distances"
+    },
+    "caption": "10 rounds · 104 approach shots from tee & fairway"
+   },
+   "sectionFilters": {
+    "control": "Proximity / Left / Right / Short / Long",
+    "selected": "Short / Long"
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Proximity to target as % of start distance",
+     "data": {
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right"
+      ],
+      "bandLabels": [
+       "8%",
+       "8%"
+      ],
+      "zones": [
+       {
+        "pct": "23%",
+        "label": "Well Short",
+        "range": ">8%"
+       },
+       {
+        "pct": "43%",
+        "label": "Short",
+        "range": "≤8%"
+       },
+       {
+        "pct": "24%",
+        "label": "Long",
+        "range": "≤8%"
+       },
+       {
+        "pct": "10%",
+        "label": "Well Long",
+        "range": ">8%"
+       }
+      ],
+      "chartNote": "Same leave scatter colored by depth band: green within ±8% horizontal band, red outside."
+     }
+    }
+   ],
+   "partialCards": "Filters card cut off at top; stat boxes partly behind nav bar",
+   "uncertain": [
+    "window dropdown only shows 'st 10'",
+    "first chip label cut off"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "startLie": "Tee & Fairway",
+    "distance": "All Distances",
+    "clubs": [
+     "9i",
+     "Pw",
+     "Gw",
+     "Sw",
+     "Lw"
+    ],
+    "shots": 104
+   },
+   "filterSource": "inherited from 21"
+  },
+  {
+   "file": "24_225139.png",
+   "tab": "Approach",
+   "filtersVisible": null,
+   "sectionFilters": {
+    "control": "By Club / By Distance",
+    "selected": "By Distance"
+   },
+   "cards": [
+    {
+     "title": "Breakdown",
+     "subtitle": null,
+     "data": {
+      "legend": [
+       "Pro",
+       "Scratch",
+       "5-Index",
+       "Miss"
+      ],
+      "rowsNote": "Segment values in order Pro/Scratch/5-Index/Miss; 'unlabeled' = segment drawn with no printed number; absent = no segment drawn",
+      "rows": [
+       {
+        "bucket": "50–75 yd",
+        "shots": "6 shots",
+        "Pro": "17",
+        "Scratch": "17",
+        "5-Index": null,
+        "Miss": "67"
+       },
+       {
+        "bucket": "75–100 yd",
+        "shots": "11 shots",
+        "Pro": "18",
+        "Scratch": "36",
+        "5-Index": null,
+        "Miss": "45"
+       },
+       {
+        "bucket": "100–125 yd",
+        "shots": "15 shots",
+        "Pro": "unlabeled",
+        "Scratch": "27",
+        "5-Index": "20",
+        "Miss": "47"
+       },
+       {
+        "bucket": "125–150 yd",
+        "shots": "15 shots",
+        "Pro": "53",
+        "Scratch": "unlabeled",
+        "5-Index": "13",
+        "Miss": "27"
+       },
+       {
+        "bucket": "150–175 yd",
+        "shots": "19 shots",
+        "Pro": "26",
+        "Scratch": "16",
+        "5-Index": "unlabeled",
+        "Miss": "47"
+       },
+       {
+        "bucket": "175–200 yd",
+        "shots": "21 shots",
+        "Pro": "24",
+        "Scratch": "38",
+        "5-Index": "14",
+        "Miss": "24"
+       },
+       {
+        "bucket": "200+ yd",
+        "shots": "17 shots",
+        "Pro": "unlabeled",
+        "Scratch": "unlabeled",
+        "5-Index": "unlabeled",
+        "Miss": "71"
+       }
+      ]
+     }
+    },
+    {
+     "title": "Proximity by Distance",
+     "subtitle": "Median leave vs. Pro / Scratch / 5-Index benchmarks",
+     "data": {
+      "yAxisLabel": "leave (% of distance)",
+      "referenceLines": [
+       "5-Index"
+      ],
+      "barsVisible": [
+       {
+        "value": "13%",
+        "n": "6"
+       },
+       {
+        "value": "10%",
+        "n": "15"
+       },
+       {
+        "value": "8%",
+        "n": null
+       }
+      ],
+      "chartNote": "Bar chart cut off by nav bar; see 26 for full card."
+     }
+    }
+   ],
+   "partialCards": "Proximity by Distance cut off at bottom",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "startLie": "Tee & Fairway",
+    "distance": "All Distances",
+    "clubs": [
+     "9i",
+     "Pw",
+     "Gw",
+     "Sw",
+     "Lw"
+    ],
+    "shots": 104
+   },
+   "filterSource": "inherited from 21"
+  },
+  {
+   "file": "25_225151.png",
+   "tab": "Approach",
+   "filtersVisible": null,
+   "sectionFilters": {
+    "control": "By Club / By Distance",
+    "selected": "By Club"
+   },
+   "cards": [
+    {
+     "title": "Breakdown (title scrolled off; inferred from control)",
+     "subtitle": null,
+     "data": {
+      "legend": [
+       "Pro",
+       "Scratch",
+       "5-Index",
+       "Miss"
+      ],
+      "rowsNote": "Segment values in order Pro/Scratch/5-Index/Miss; 'unlabeled' = segment drawn without number; null = no segment",
+      "rows": [
+       {
+        "club": "2Hy",
+        "shots": "5 shots",
+        "Pro": null,
+        "Scratch": "20",
+        "5-Index": null,
+        "Miss": "80"
+       },
+       {
+        "club": "4Hy",
+        "shots": "2 shots",
+        "Pro": null,
+        "Scratch": null,
+        "5-Index": null,
+        "Miss": "100"
+       },
+       {
+        "club": "2i",
+        "shots": "0 shots",
+        "Pro": null,
+        "Scratch": null,
+        "5-Index": null,
+        "Miss": null,
+        "note": "empty grey bar"
+       },
+       {
+        "club": "5i",
+        "shots": "13 shots",
+        "Pro": "15",
+        "Scratch": "31",
+        "5-Index": "unlabeled",
+        "Miss": "46"
+       },
+       {
+        "club": "6i",
+        "shots": "10 shots",
+        "Pro": "20",
+        "Scratch": "40",
+        "5-Index": "unlabeled",
+        "Miss": "30"
+       },
+       {
+        "club": "7i",
+        "shots": "9 shots",
+        "Pro": "33",
+        "Scratch": "22",
+        "5-Index": null,
+        "Miss": "44"
+       },
+       {
+        "club": "8i",
+        "shots": "11 shots",
+        "Pro": "36",
+        "Scratch": "unlabeled",
+        "5-Index": "27",
+        "Miss": "27"
+       },
+       {
+        "club": "9i",
+        "shots": "11 shots",
+        "Pro": "27",
+        "Scratch": "unlabeled",
+        "5-Index": "18",
+        "Miss": "45"
+       },
+       {
+        "club": "Pw",
+        "shots": "4 shots",
+        "Pro": "50",
+        "Scratch": "25",
+        "5-Index": null,
+        "Miss": "25"
+       },
+       {
+        "club": "Gw",
+        "shots": "15 shots",
+        "Pro": "27",
+        "Scratch": "20",
+        "5-Index": "20",
+        "Miss": "33"
+       },
+       {
+        "club": "Sw",
+        "shots": "9 shots",
+        "Pro": "unlabeled",
+        "Scratch": "33",
+        "5-Index": null,
+        "Miss": "56"
+       },
+       {
+        "club": "Lw",
+        "shots": "15 shots",
+        "Pro": "20",
+        "Scratch": "20",
+        "5-Index": "unlabeled",
+        "Miss": "53"
+       }
+      ]
+     }
+    }
+   ],
+   "partialCards": "Breakdown card title cut off at top",
+   "uncertain": [
+    "4Hy bar may have a tiny sliver at left edge (not labeled)"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "startLie": "Tee & Fairway",
+    "distance": "All Distances",
+    "clubs": [
+     "9i",
+     "Pw",
+     "Gw",
+     "Sw",
+     "Lw"
+    ],
+    "shots": 104
+   },
+   "filterSource": "inherited from 21"
+  },
+  {
+   "file": "26_225158.png",
+   "tab": "Approach",
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Proximity by Distance",
+     "subtitle": "Median leave vs. Pro / Scratch / 5-Index benchmarks",
+     "data": {
+      "yAxisLabel": "leave (% of distance)",
+      "referenceLines": [
+       "5-Index",
+       "Scratch",
+       "Pro"
+      ],
+      "bars": [
+       {
+        "bucket": "50–75",
+        "value": "13%",
+        "n": "6",
+        "color": "red"
+       },
+       {
+        "bucket": "75–100",
+        "value": "7%",
+        "n": "11",
+        "color": "cyan"
+       },
+       {
+        "bucket": "100–125",
+        "value": "10%",
+        "n": "15",
+        "color": "orange"
+       },
+       {
+        "bucket": "125–150",
+        "value": "5%",
+        "n": "15",
+        "color": "green"
+       },
+       {
+        "bucket": "150–175",
+        "value": "8%",
+        "n": "19",
+        "color": "orange"
+       }
+      ],
+      "footnote": "Start distance (yd) · faded bars use fewer than 4 shots."
+     }
+    },
+    {
+     "title": "Club Distances",
+     "subtitle": "Bars span your 25th–75th percentile · tick marks the median",
+     "data": {
+      "rows": [
+       {
+        "club": "2Hy",
+        "value": "224"
+       },
+       {
+        "club": "5i",
+        "value": "203"
+       },
+       {
+        "club": "6i",
+        "value": "194"
+       },
+       {
+        "club": "7i",
+        "value": "180"
+       },
+       {
+        "club": "8i",
+        "value": "168"
+       },
+       {
+        "club": "9i",
+        "value": "152"
+       },
+       {
+        "club": "Gw",
+        "value": "119"
+       },
+       {
+        "club": "Sw",
+        "value": "95"
+       }
+      ],
+      "chartNote": "Horizontal range bars (25th–75th) with median tick; number at right per club."
+     }
+    }
+   ],
+   "partialCards": "Breakdown card bottom edge at top; Club Distances cut off at bottom (Sw row partly hidden, further rows not visible)",
+   "uncertain": [
+    "Sw value 95 partly obscured"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "startLie": "Tee & Fairway",
+    "distance": "All Distances",
+    "clubs": [
+     "9i",
+     "Pw",
+     "Gw",
+     "Sw",
+     "Lw"
+    ],
+    "shots": 104
+   },
+   "filterSource": "inherited from 21"
+  },
+  {
+   "file": "27_225249.png",
+   "tab": "Approach",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [
+     {
+      "label": "2Hy",
+      "count": 1,
+      "selected": true
+     },
+     {
+      "label": "4Hy",
+      "count": 3,
+      "selected": true
+     },
+     {
+      "label": "5i",
+      "count": 5,
+      "selected": true
+     },
+     {
+      "label": "7i",
+      "count": 4,
+      "selected": true
+     },
+     {
+      "label": "8i",
+      "count": 5,
+      "selected": true
+     },
+     {
+      "label": "9i",
+      "count": null,
+      "selected": true
+     }
+    ],
+    "otherControls": {
+     "lie": "Rough",
+     "distance": "All Dist… (cut off)"
+    },
+    "caption": "10 rounds · 45 approach shots from rough"
+   },
+   "sectionFilters": {
+    "control": "Proximity / Left / Right / Short / Long",
+    "selected": "Proximity"
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Proximity to target as % of start distance",
+     "data": {
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right"
+      ],
+      "ringLabels": [
+       "10%",
+       "8%",
+       "5%"
+      ],
+      "zones": [
+       {
+        "pct": "9%",
+        "label": "Pro",
+        "range": "≤5%"
+       },
+       {
+        "pct": "29%",
+        "label": "Scratch",
+        "range": "5–8%"
+       },
+       {
+        "pct": "9%",
+        "label": "5-Index",
+        "range": "8–10%"
+       },
+       {
+        "pct": "53%",
+        "label": "Miss",
+        "range": ">10%"
+       }
+      ],
+      "chartNote": "Polar scatter of approach-from-rough leave positions colored by proximity ring."
+     }
+    }
+   ],
+   "partialCards": "Filters card title cut off at top; chips row cut off at right (9i count hidden, more chips may follow). Top tab bar now shows Scoring, Driving, Approach, Short Game",
+   "uncertain": [
+    "9i chip count not visible",
+    "distance dropdown text truncated"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "startLie": "Rough",
+    "clubs": [
+     "2Hy",
+     "4Hy",
+     "5i",
+     "7i",
+     "8i",
+     "9i"
+    ],
+    "shots": 45
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "28_225254.png",
+   "tab": "Approach",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [
+     {
+      "label": "2Hy",
+      "count": 1,
+      "selected": true
+     },
+     {
+      "label": "4Hy",
+      "count": 3,
+      "selected": true
+     },
+     {
+      "label": "5i",
+      "count": 5,
+      "selected": true
+     },
+     {
+      "label": "7i",
+      "count": 4,
+      "selected": true
+     },
+     {
+      "label": "8i",
+      "count": 5,
+      "selected": true
+     },
+     {
+      "label": "9i",
+      "count": null,
+      "selected": true
+     }
+    ],
+    "otherControls": {
+     "lie": "Rough",
+     "distance": "All Dist… (cut off)"
+    },
+    "caption": "10 rounds · 45 approach shots from rough"
+   },
+   "sectionFilters": {
+    "Leave Zones view": "Left / Right",
+    "options": [
+     "Proximity",
+     "Left / Right",
+     "Short / Long"
+    ]
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Proximity to target as % of start distance",
+     "data": {
+      "chartLabels": [
+       "8%",
+       "Long",
+       "8%",
+       "Left",
+       "Right",
+       "Short"
+      ],
+      "zones": [
+       {
+        "pct": "20%",
+        "label": "Well Left",
+        "range": ">8%"
+       },
+       {
+        "pct": "36%",
+        "label": "Left",
+        "range": "≤8%"
+       },
+       {
+        "pct": "40%",
+        "label": "Right",
+        "range": "≤8%"
+       },
+       {
+        "pct": "4%",
+        "label": "Well Right",
+        "range": ">8%"
+       }
+      ],
+      "footnote": "Acceptable = within ±8% of start distance (Scratch benchmark).",
+      "chartNote": "Scatter of approach leaves relative to target; vertical dashed lines at ±8% left/right, green dots inside band, red outside."
+     }
+    }
+   ],
+   "partialCards": "Filters card cut off at top (title hidden); chip row and filter dropdown row cut off at right (9i count and 'All Dist…' label truncated).",
+   "uncertain": [
+    "9i chip count not visible",
+    "distance dropdown full label truncated ('All Dist…')"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "startLie": "Rough",
+    "clubs": [
+     "2Hy",
+     "4Hy",
+     "5i",
+     "7i",
+     "8i",
+     "9i"
+    ],
+    "shots": 45
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "29_225300.png",
+   "tab": "Approach",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [
+     {
+      "label": "2Hy",
+      "count": 1,
+      "selected": true
+     },
+     {
+      "label": "4Hy",
+      "count": 3,
+      "selected": true
+     },
+     {
+      "label": "5i",
+      "count": 5,
+      "selected": true
+     },
+     {
+      "label": "7i",
+      "count": 4,
+      "selected": true
+     },
+     {
+      "label": "8i",
+      "count": 5,
+      "selected": true
+     },
+     {
+      "label": "9i",
+      "count": null,
+      "selected": true
+     }
+    ],
+    "otherControls": {
+     "lie": "Rough",
+     "distance": "All Dist… (cut off)"
+    },
+    "caption": "10 rounds · 45 approach shots from rough"
+   },
+   "sectionFilters": {
+    "Leave Zones view": "Short / Long",
+    "options": [
+     "Proximity",
+     "Left / Right",
+     "Short / Long"
+    ]
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Proximity to target as % of start distance",
+     "data": {
+      "chartLabels": [
+       "Long",
+       "8%",
+       "Left",
+       "Right",
+       "8%",
+       "Short"
+      ],
+      "zones": [
+       {
+        "pct": "27%",
+        "label": "Well Short",
+        "range": ">8%"
+       },
+       {
+        "pct": "24%",
+        "label": "Short",
+        "range": "≤8%"
+       },
+       {
+        "pct": "29%",
+        "label": "Long",
+        "range": "≤8%"
+       },
+       {
+        "pct": "20%",
+        "label": "Well Long",
+        "range": ">8%"
+       }
+      ],
+      "footnote": "Acceptable = within ±8% of start distance (Scratch benchmark).",
+      "chartNote": "Same scatter as prior screen; horizontal dashed lines at ±8% short/long, green inside band, red outside."
+     }
+    }
+   ],
+   "partialCards": "Filters card cut off at top; chip row and dropdown row truncated at right.",
+   "uncertain": [
+    "9i chip count not visible",
+    "distance dropdown full label truncated"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "startLie": "Rough",
+    "clubs": [
+     "2Hy",
+     "4Hy",
+     "5i",
+     "7i",
+     "8i",
+     "9i"
+    ],
+    "shots": 45
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "30_225311.png",
+   "tab": "Approach",
+   "filtersVisible": null,
+   "sectionFilters": {
+    "Breakdown view": "By Club",
+    "options": [
+     "By Club",
+     "By Distance"
+    ]
+   },
+   "cards": [
+    {
+     "title": "(Breakdown — title scrolled off)",
+     "subtitle": null,
+     "data": {
+      "rows": [
+       {
+        "club": "2Hy",
+        "shots": "1 shots",
+        "bars": {
+         "Miss": 100
+        }
+       },
+       {
+        "club": "4Hy",
+        "shots": "3 shots",
+        "bars": {
+         "Scratch": 67,
+         "Miss": 33
+        }
+       },
+       {
+        "club": "2i",
+        "shots": "0 shots",
+        "bars": {}
+       },
+       {
+        "club": "5i",
+        "shots": "5 shots",
+        "bars": {
+         "Scratch": 20,
+         "5-Index": 20,
+         "Miss": 60
+        }
+       },
+       {
+        "club": "6i",
+        "shots": "0 shots",
+        "bars": {}
+       },
+       {
+        "club": "7i",
+        "shots": "4 shots",
+        "bars": {
+         "Scratch": 25,
+         "5-Index": 50,
+         "Miss": 25
+        }
+       },
+       {
+        "club": "8i",
+        "shots": "5 shots",
+        "bars": {
+         "Scratch": 20,
+         "Miss": 80
+        }
+       },
+       {
+        "club": "9i",
+        "shots": "4 shots",
+        "bars": {
+         "Scratch": 75,
+         "Miss": 25
+        }
+       },
+       {
+        "club": "Pw",
+        "shots": "8 shots",
+        "bars": {
+         "Pro": 50,
+         "Scratch": 38,
+         "Miss": 13
+        }
+       },
+       {
+        "club": "Gw",
+        "shots": "3 shots",
+        "bars": {
+         "5-Index": 33,
+         "Miss": 67
+        }
+       },
+       {
+        "club": "Sw",
+        "shots": "5 shots",
+        "bars": {
+         "Miss": 100
+        }
+       },
+       {
+        "club": "Lw",
+        "shots": "7 shots",
+        "bars": {
+         "Scratch": 29,
+         "Miss": 71
+        }
+       }
+      ],
+      "legend": [
+       "Pro (green)",
+       "Scratch (cyan)",
+       "5-Index (orange)",
+       "Miss (red)"
+      ]
+     }
+    }
+   ],
+   "partialCards": "Card title cut off at top (segmented By Club/By Distance visible); card continues below legend.",
+   "uncertain": [
+    "Bar segment category assigned by color: green=Pro, cyan=Scratch, orange=5-Index, red=Miss"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "startLie": "Rough",
+    "clubs": [
+     "2Hy",
+     "4Hy",
+     "5i",
+     "7i",
+     "8i",
+     "9i"
+    ],
+    "shots": 45
+   },
+   "filterSource": "inherited from 29",
+   "filterNote": "Screen 32 carries Brett's hand-written 'Rough' note."
+  },
+  {
+   "file": "31_225320.png",
+   "tab": "Approach",
+   "filtersVisible": null,
+   "sectionFilters": {
+    "Breakdown view": "By Distance",
+    "options": [
+     "By Club",
+     "By Distance"
+    ]
+   },
+   "cards": [
+    {
+     "title": "Breakdown",
+     "subtitle": null,
+     "data": {
+      "rows": [
+       {
+        "bucket": "50–75 yd",
+        "shots": "7 shots",
+        "bars": {
+         "Scratch": 14,
+         "Miss": 86
+        }
+       },
+       {
+        "bucket": "75–100 yd",
+        "shots": "3 shots",
+        "bars": {
+         "Scratch": 33,
+         "Miss": 67
+        }
+       },
+       {
+        "bucket": "100–125 yd",
+        "shots": "4 shots",
+        "bars": {
+         "Pro": 50,
+         "5-Index": 25,
+         "Miss": 25
+        }
+       },
+       {
+        "bucket": "125–150 yd",
+        "shots": "9 shots",
+        "bars": {
+         "Pro": 22,
+         "Scratch": 33,
+         "Miss": 44
+        }
+       },
+       {
+        "bucket": "150–175 yd",
+        "shots": "8 shots",
+        "bars": {
+         "Scratch": 50,
+         "Miss": 50
+        }
+       },
+       {
+        "bucket": "175–200 yd",
+        "shots": "6 shots",
+        "bars": {
+         "Scratch": 33,
+         "5-Index": 50,
+         "Miss": 17
+        }
+       },
+       {
+        "bucket": "200+ yd",
+        "shots": "7 shots",
+        "bars": {
+         "Scratch": 29,
+         "Miss": 71
+        }
+       }
+      ],
+      "legend": [
+       "Pro",
+       "Scratch",
+       "5-Index",
+       "Miss"
+      ]
+     }
+    },
+    {
+     "title": "Proximity by Distance",
+     "subtitle": "Median leave vs. Pro / Scratch / 5-Index benchmarks",
+     "data": {
+      "axisLabel": "leave (% of distance)",
+      "bars": [
+       {
+        "value": "18%",
+        "n": "7"
+       },
+       {
+        "value": "14%",
+        "n": "3"
+       },
+       {
+        "value": "11%",
+        "n": "8"
+       }
+      ],
+      "chartNote": "Vertical bar chart of median leave %; only first bars visible (first bright red, second dark red, a third labeled 11%/8 at far right); x-axis labels not visible."
+     }
+    }
+   ],
+   "partialCards": "Proximity by Distance cut off at bottom (x-axis labels and remaining bars hidden).",
+   "uncertain": [
+    "Which distance buckets the 18%/14%/11% bars correspond to is not printed on screen (likely 50–75, 75–100, 150–175 by n counts, not verified)",
+    "small grey numbers under bar values (7, 3, 8) read as shot counts"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "startLie": "Rough",
+    "clubs": [
+     "2Hy",
+     "4Hy",
+     "5i",
+     "7i",
+     "8i",
+     "9i"
+    ],
+    "shots": 45
+   },
+   "filterSource": "inherited from 29",
+   "filterNote": "Screen 32 carries Brett's hand-written 'Rough' note."
+  },
+  {
+   "file": "32_225338.png",
+   "tab": "Approach",
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "(card above, title scrolled off)",
+     "subtitle": null,
+     "data": {
+      "rows": [
+       {
+        "club": "Sw",
+        "value": "95"
+       },
+       {
+        "club": "Lw",
+        "value": "85"
+       }
+      ],
+      "chartNote": "Horizontal range-slider style bars with green marker per club and value at right."
+     }
+    },
+    {
+     "title": "Club Gapping",
+     "subtitle": "Tee & fairway · Central 80% of shots",
+     "data": {
+      "xAxisTicks": [
+       "36",
+       "20",
+       "20",
+       "36"
+      ],
+      "yAxisTicks": [
+       "275",
+       "250",
+       "225",
+       "200",
+       "175",
+       "150",
+       "125",
+       "100",
+       "75",
+       "50"
+      ],
+      "ellipseLabels": [
+       "2Hy",
+       "5i",
+       "6i",
+       "8i",
+       "7i",
+       "9i",
+       "Gw",
+       "Sw",
+       "Lw"
+      ],
+      "legendChips": [
+       {
+        "label": "2Hy",
+        "count": 6
+       },
+       {
+        "label": "5i",
+        "count": 13
+       },
+       {
+        "label": "6i",
+        "count": 10
+       },
+       {
+        "label": "7i",
+        "count": 10
+       },
+       {
+        "label": "8i",
+        "count": null
+       }
+      ],
+      "chartNote": "Overlapping dispersion ellipses per club (lateral yds on x, carry/total yds on y). A hand-drawn red annotation reading 'Rough' is scribbled over the lower chart."
+     }
+    }
+   ],
+   "partialCards": "Top card (Sw 95, Lw 85 rows) cut off at top; Club Gapping legend chips truncated at right (8i count and later chips hidden).",
+   "uncertain": [
+    "8i legend count cut off",
+    "Sw/Lw row values' card title not visible",
+    "user's hand-drawn 'Rough' annotation obscures part of chart"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "startLie": "Rough",
+    "clubs": [
+     "2Hy",
+     "4Hy",
+     "5i",
+     "7i",
+     "8i",
+     "9i"
+    ],
+    "shots": 45
+   },
+   "filterSource": "inherited from 29",
+   "filterNote": "Screen 32 carries Brett's hand-written 'Rough' note."
+  },
+  {
+   "file": "33_225358.png",
+   "tab": "Short Game",
+   "filtersVisible": null,
+   "sectionFilters": {
+    "view": "Proximity",
+    "lie": "Fairway",
+    "viewOptions": [
+     "Proximity",
+     "Distance Control"
+    ],
+    "lieOptions": [
+     "Fairway",
+     "Rough",
+     "Bunker",
+     "Deep/Rec"
+    ]
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Proximity vs Fairway benchmark · 0–25 yd",
+     "data": {
+      "ringLabels": [
+       "Long",
+       "Scratch",
+       "Pro",
+       "Left",
+       "Right",
+       "Short"
+      ],
+      "zones": [
+       {
+        "pct": "18%",
+        "label": "Pro",
+        "threshold": "10%"
+       },
+       {
+        "pct": "9%",
+        "label": "Scratch",
+        "threshold": "12%"
+       },
+       {
+        "pct": "73%",
+        "label": "Miss",
+        "threshold": ">12%"
+       }
+      ],
+      "chartNote": "Concentric rings (Pro inner green, Scratch middle, Miss outer red) with shot dots relative to hole."
+     }
+    },
+    {
+     "title": "ALL LIES",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "10' 9\""
+     }
+    }
+   ],
+   "partialCards": "ALL LIES card cut off at bottom (only Avg. Proximity row visible). Page filter card (distance/round type/window) not on screen.",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "shortGameBucket": "0-25 yds"
+   },
+   "filterSource": "inherited from 05"
+  },
+  {
+   "file": "34_225406.png",
+   "tab": "Short Game",
+   "filtersVisible": null,
+   "sectionFilters": {
+    "view": "Distance Control",
+    "lie": "Fairway",
+    "viewOptions": [
+     "Proximity",
+     "Distance Control"
+    ],
+    "lieOptions": [
+     "Fairway",
+     "Rough",
+     "Bunker",
+     "Deep/Rec"
+    ]
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Distance control vs Fairway benchmark · 0–25 yd",
+     "data": {
+      "chartLabels": [
+       "Long",
+       "On-target",
+       "Left",
+       "Right",
+       "Short"
+      ],
+      "zones": [
+       {
+        "pct": "64%",
+        "label": "On-target",
+        "threshold": "±10%"
+       },
+       {
+        "pct": "27%",
+        "label": "Short",
+        "threshold": ">10%"
+       },
+       {
+        "pct": "9%",
+        "label": "Long",
+        "threshold": ">10%"
+       }
+      ],
+      "chartNote": "Same dots as proximity view; horizontal on-target band; green=on-target, blue=short, orange=long."
+     }
+    },
+    {
+     "title": "ALL LIES",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "10' 9\""
+     }
+    }
+   ],
+   "partialCards": "ALL LIES card cut off at bottom.",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "shortGameBucket": "0-25 yds"
+   },
+   "filterSource": "inherited from 05"
+  },
+  {
+   "file": "35_225416.png",
+   "tab": "Short Game",
+   "filtersVisible": null,
+   "sectionFilters": {
+    "view": "Proximity",
+    "lie": "Rough",
+    "viewOptions": [
+     "Proximity",
+     "Distance Control"
+    ],
+    "lieOptions": [
+     "Fairway",
+     "Rough",
+     "Bunker",
+     "Deep/Rec"
+    ]
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Proximity vs Rough benchmark · 0–25 yd",
+     "data": {
+      "ringLabels": [
+       "Long",
+       "Scratch",
+       "Pro",
+       "Left",
+       "Right",
+       "Short"
+      ],
+      "zones": [
+       {
+        "pct": "46%",
+        "label": "Pro",
+        "threshold": "15%"
+       },
+       {
+        "pct": "9%",
+        "label": "Scratch",
+        "threshold": "18%"
+       },
+       {
+        "pct": "45%",
+        "label": "Miss",
+        "threshold": ">18%"
+       }
+      ],
+      "chartNote": "Concentric ring proximity chart, rough lie shots."
+     }
+    },
+    {
+     "title": "ALL LIES",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "10' 9\""
+     }
+    }
+   ],
+   "partialCards": "ALL LIES card cut off at bottom.",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "shortGameBucket": "0-25 yds"
+   },
+   "filterSource": "inherited from 05"
+  },
+  {
+   "file": "36_225422.png",
+   "tab": "Short Game",
+   "filtersVisible": null,
+   "sectionFilters": {
+    "view": "Distance Control",
+    "lie": "Rough",
+    "viewOptions": [
+     "Proximity",
+     "Distance Control"
+    ],
+    "lieOptions": [
+     "Fairway",
+     "Rough",
+     "Bunker",
+     "Deep/Rec"
+    ]
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Distance control vs Rough benchmark · 0–25 yd",
+     "data": {
+      "chartLabels": [
+       "Long",
+       "On-target",
+       "Left",
+       "Right",
+       "Short"
+      ],
+      "zones": [
+       {
+        "pct": "52%",
+        "label": "On-target",
+        "threshold": "±15%"
+       },
+       {
+        "pct": "30%",
+        "label": "Short",
+        "threshold": ">15%"
+       },
+       {
+        "pct": "18%",
+        "label": "Long",
+        "threshold": ">15%"
+       }
+      ],
+      "chartNote": "Distance control band chart, rough lie."
+     }
+    },
+    {
+     "title": "ALL LIES",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "10' 9\""
+     }
+    }
+   ],
+   "partialCards": "ALL LIES card cut off at bottom.",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "shortGameBucket": "0-25 yds"
+   },
+   "filterSource": "inherited from 05"
+  },
+  {
+   "file": "37_225439.png",
+   "tab": "Short Game",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": {
+     "distance": "25-50 Yards"
+    },
+    "caption": null
+   },
+   "sectionFilters": {
+    "view": "Proximity",
+    "lie": "Fairway",
+    "viewOptions": [
+     "Proximity",
+     "Distance Control"
+    ],
+    "lieOptions": [
+     "Fairway",
+     "Rough",
+     "Bunker",
+     "Deep/Rec"
+    ]
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Proximity vs Fairway benchmark · 25–50 yd",
+     "data": {
+      "ringLabels": [
+       "Long",
+       "Scratch",
+       "Pro",
+       "Left",
+       "Right",
+       "Short"
+      ],
+      "zones": [
+       {
+        "pct": "54%",
+        "label": "Pro",
+        "threshold": "9%"
+       },
+       {
+        "pct": "8%",
+        "label": "Scratch",
+        "threshold": "12%"
+       },
+       {
+        "pct": "38%",
+        "label": "Miss",
+        "threshold": ">12%"
+       }
+      ],
+      "chartNote": "Concentric ring proximity chart, fairway lie, 25–50 yd."
+     }
+    }
+   ],
+   "partialCards": "Next card top edge visible at bottom, no content readable.",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "shortGameBucket": "25-50 yds"
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "38_225445.png",
+   "tab": "Short Game",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": {
+     "distance": "25-50 Yards"
+    },
+    "caption": null
+   },
+   "sectionFilters": {
+    "view": "Distance Control",
+    "lie": "Fairway",
+    "viewOptions": [
+     "Proximity",
+     "Distance Control"
+    ],
+    "lieOptions": [
+     "Fairway",
+     "Rough",
+     "Bunker",
+     "Deep/Rec"
+    ]
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Distance control vs Fairway benchmark · 25–50 yd",
+     "data": {
+      "chartLabels": [
+       "Long",
+       "On-target",
+       "Left",
+       "Right",
+       "Short"
+      ],
+      "zones": [
+       {
+        "pct": "62%",
+        "label": "On-target",
+        "threshold": "±9%"
+       },
+       {
+        "pct": "15%",
+        "label": "Short",
+        "threshold": ">9%"
+       },
+       {
+        "pct": "23%",
+        "label": "Long",
+        "threshold": ">9%"
+       }
+      ],
+      "chartNote": "Distance control band chart, fairway lie, 25–50 yd."
+     }
+    }
+   ],
+   "partialCards": "Next card top edge visible at bottom.",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "shortGameBucket": "25-50 yds"
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "39_225450.png",
+   "tab": "Short Game",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": {
+     "distance": "25-50 Yards"
+    },
+    "caption": null
+   },
+   "sectionFilters": {
+    "view": "Distance Control",
+    "lie": "Rough",
+    "viewOptions": [
+     "Proximity",
+     "Distance Control"
+    ],
+    "lieOptions": [
+     "Fairway",
+     "Rough",
+     "Bunker",
+     "Deep/Rec"
+    ]
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Distance control vs Rough benchmark · 25–50 yd",
+     "data": {
+      "chartLabels": [
+       "Long",
+       "On-target",
+       "Left",
+       "Right",
+       "Short"
+      ],
+      "zones": [
+       {
+        "pct": "52%",
+        "label": "On-target",
+        "threshold": "±10%"
+       },
+       {
+        "pct": "41%",
+        "label": "Short",
+        "threshold": ">10%"
+       },
+       {
+        "pct": "7%",
+        "label": "Long",
+        "threshold": ">10%"
+       }
+      ],
+      "chartNote": "Distance control band chart, rough lie, 25–50 yd."
+     }
+    }
+   ],
+   "partialCards": "Next card top edge visible at bottom.",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "shortGameBucket": "25-50 yds"
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "40_225456.png",
+   "tab": "Short Game",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": {
+     "distance": "25-50 Yards"
+    },
+    "caption": null
+   },
+   "sectionFilters": {
+    "view": "Proximity",
+    "lie": "Rough",
+    "viewOptions": [
+     "Proximity",
+     "Distance Control"
+    ],
+    "lieOptions": [
+     "Fairway",
+     "Rough",
+     "Bunker",
+     "Deep/Rec"
+    ]
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Proximity vs Rough benchmark · 25–50 yd",
+     "data": {
+      "ringLabels": [
+       "Long",
+       "Scratch",
+       "Pro",
+       "Left",
+       "Right",
+       "Short"
+      ],
+      "zones": [
+       {
+        "pct": "37%",
+        "label": "Pro",
+        "threshold": "10%"
+       },
+       {
+        "pct": "22%",
+        "label": "Scratch",
+        "threshold": "15%"
+       },
+       {
+        "pct": "41%",
+        "label": "Miss",
+        "threshold": ">15%"
+       }
+      ],
+      "chartNote": "Concentric ring proximity chart, rough lie, 25–50 yd."
+     }
+    }
+   ],
+   "partialCards": "Next card top edge visible at bottom.",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "shortGameBucket": "25-50 yds"
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "41_225507.png",
+   "tab": "Short Game",
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "ALL LIES",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "15' 6\"",
+      "Strokes Gained (per 18)": "+0.36",
+      "Missed Green %": "5/44 (11%)"
+     }
+    },
+    {
+     "title": "FAIRWAY",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "10' 8\"",
+      "Strokes Gained (per 18)": "+0.06",
+      "Missed Green %": "0/13 (0%)"
+     }
+    },
+    {
+     "title": "ROUGH",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "17' 1\"",
+      "Strokes Gained (per 18)": "+0.09",
+      "Missed Green %": "4/27 (15%)"
+     }
+    },
+    {
+     "title": "BUNKER",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "8' 2\"",
+      "Strokes Gained (per 18)": "+0.04",
+      "Missed Green %": "(cut off)"
+     }
+    }
+   ],
+   "partialCards": "BUNKER card cut off at bottom (Missed Green % row obscured by tab bar).",
+   "uncertain": [
+    "Distance filter not on screen; values differ from 0–25 yd ALL LIES (10' 9\"), presumably the 25–50 yd bucket but not printed here",
+    "BUNKER Missed Green % obscured (shown as 0/1 (0%) on next screen)"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "shortGameBucket": "25-50 yds"
+   },
+   "filterSource": "inherited from 40",
+   "filterNote": "Confirmed by Brett 2026-09-28."
+  },
+  {
+   "file": "42_225513.png",
+   "tab": "Short Game",
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "(FAIRWAY — header scrolled off)",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "10' 8\"",
+      "Strokes Gained (per 18)": "+0.06",
+      "Missed Green %": "0/13 (0%)"
+     }
+    },
+    {
+     "title": "ROUGH",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "17' 1\"",
+      "Strokes Gained (per 18)": "+0.09",
+      "Missed Green %": "4/27 (15%)"
+     }
+    },
+    {
+     "title": "BUNKER",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "8' 2\"",
+      "Strokes Gained (per 18)": "+0.04",
+      "Missed Green %": "0/1 (0%)"
+     }
+    },
+    {
+     "title": "DEEP ROUGH & RECOVERY",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "23' 10\"",
+      "Strokes Gained (per 18)": "+0.17",
+      "Missed Green %": "1/3 (33%)"
+     }
+    }
+   ],
+   "partialCards": "First card's header cut off at top (values match FAIRWAY from prior screen).",
+   "uncertain": [
+    "Distance filter not on screen (same set as screen 41)"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "shortGameBucket": "25-50 yds"
+   },
+   "filterSource": "inherited from 40",
+   "filterNote": "Confirmed by Brett 2026-09-28."
+  },
+  {
+   "file": "43_225525.png",
+   "tab": "Short Game",
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "ALL LIES",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "10' 9\"",
+      "Strokes Gained (per 18)": "-0.46",
+      "Missed Green %": "9/78 (12%)"
+     }
+    },
+    {
+     "title": "FAIRWAY",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "7' 7\"",
+      "Strokes Gained (per 18)": "-0.21",
+      "Missed Green %": "1/11 (9%)"
+     }
+    },
+    {
+     "title": "ROUGH",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "10' 0\"",
+      "Strokes Gained (per 18)": "-0.39",
+      "Missed Green %": "6/56 (11%)"
+     }
+    },
+    {
+     "title": "BUNKER",
+     "subtitle": null,
+     "data": {
+      "Avg. Proximity": "12' 8\"",
+      "Strokes Gained (per 18)": "+0.06",
+      "Missed Green %": "0/7 (0%)"
+     }
+    }
+   ],
+   "partialCards": "BUNKER card partly behind tab bar at bottom; DEEP ROUGH card not visible.",
+   "uncertain": [
+    "Distance filter not on screen; ALL LIES 10' 9\" matches the 0–25 yd screens (33–36), presumably that bucket but not printed here",
+    "minus signs rendered as hyphen-style '-' in red"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ],
+    "shortGameBucket": "0-25 yds"
+   },
+   "filterSource": "inferred",
+   "filterNote": "ALL LIES 10' 9\" matches the 0-25 screens; filter switched back off-screen. Confirmed by Brett 2026-09-28."
+  },
+  {
+   "file": "44_225602.png",
+   "tab": "Putting",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": null,
+    "caption": null
+   },
+   "sectionFilters": {
+    "segmented": {
+     "options": [
+      "Direction",
+      "Speed Control"
+     ],
+     "selected": "Direction"
+    },
+    "distanceChips": {
+     "visibleOptions": [
+      "0-3'",
+      "4-6'",
+      "7-9'",
+      "10-15'",
+      "16-24'",
+      "(partial, cut off at right)"
+     ],
+     "selected": "4-6'"
+    }
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Make & miss direction · 4-6'",
+     "data": {
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right"
+      ],
+      "summaryBoxes": [
+       {
+        "label": "Miss Left",
+        "pct": "32%",
+        "count": 13
+       },
+       {
+        "label": "Make",
+        "pct": "49%",
+        "count": 20
+       },
+       {
+        "label": "Miss Right",
+        "pct": "20%",
+        "count": 8
+       }
+      ],
+      "chartNote": "Scatter of putt end positions relative to hole (+ at center); blue=miss left, orange=miss right, dark-blue/brown halves shaded"
+     }
+    }
+   ],
+   "partialCards": "A further card begins just below Leave Zones at bottom (only top edge visible, behind tab bar)",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "45_225611.png",
+   "tab": "Putting",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": null,
+    "caption": null
+   },
+   "sectionFilters": {
+    "segmented": {
+     "options": [
+      "Direction",
+      "Speed Control"
+     ],
+     "selected": "Direction"
+    },
+    "distanceChips": {
+     "visibleOptions": [
+      "0-3'",
+      "4-6'",
+      "7-9'",
+      "10-15'",
+      "16-24'",
+      "(partial, cut off at right)"
+     ],
+     "selected": "7-9'"
+    }
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Make & miss direction · 7-9'",
+     "data": {
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right"
+      ],
+      "summaryBoxes": [
+       {
+        "label": "Miss Left",
+        "pct": "27%",
+        "count": 8
+       },
+       {
+        "label": "Make",
+        "pct": "23%",
+        "count": 7
+       },
+       {
+        "label": "Miss Right",
+        "pct": "50%",
+        "count": 15
+       }
+      ],
+      "chartNote": "Scatter of putt end positions relative to hole (+ at center); blue=miss left, orange=miss right, dark-blue/brown halves shaded"
+     }
+    }
+   ],
+   "partialCards": "A further card begins just below Leave Zones at bottom (only top edge visible, behind tab bar)",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "46_225617.png",
+   "tab": "Putting",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": null,
+    "caption": null
+   },
+   "sectionFilters": {
+    "segmented": {
+     "options": [
+      "Direction",
+      "Speed Control"
+     ],
+     "selected": "Speed Control"
+    },
+    "distanceChips": {
+     "visibleOptions": [
+      "0-3'",
+      "4-6'",
+      "7-9'",
+      "10-15'",
+      "16-24'",
+      "(partial, cut off at right)"
+     ],
+     "selected": "7-9'"
+    }
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Speed · hole to +2 ft = good · 7-9'",
+     "data": {
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right",
+       "Good (label on shaded band)"
+      ],
+      "summaryBoxes": [
+       {
+        "label": "Short",
+        "pct": "13%",
+        "count": 4
+       },
+       {
+        "label": "Good",
+        "pct": "73%",
+        "count": 22
+       },
+       {
+        "label": "Long",
+        "pct": "13%",
+        "count": 4
+       }
+      ],
+      "chartNote": "Scatter of putt end positions relative to hole (+ at center); green shaded dashed band = Good speed zone; orange=long, green=good, blue=short"
+     }
+    }
+   ],
+   "partialCards": "A further card begins just below Leave Zones at bottom (only top edge visible, behind tab bar)",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "47_225628.png",
+   "tab": "Putting",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": null,
+    "caption": null
+   },
+   "sectionFilters": {
+    "segmented": {
+     "options": [
+      "Direction",
+      "Speed Control"
+     ],
+     "selected": "Direction"
+    },
+    "distanceChips": {
+     "visibleOptions": [
+      "0-3'",
+      "4-6'",
+      "7-9'",
+      "10-15'",
+      "16-24'",
+      "(partial, cut off at right)"
+     ],
+     "selected": "10-15'"
+    }
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Make & miss direction · 10-15'",
+     "data": {
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right"
+      ],
+      "summaryBoxes": [
+       {
+        "label": "Miss Left",
+        "pct": "53%",
+        "count": 18
+       },
+       {
+        "label": "Make",
+        "pct": "6%",
+        "count": 2
+       },
+       {
+        "label": "Miss Right",
+        "pct": "41%",
+        "count": 14
+       }
+      ],
+      "chartNote": "Scatter of putt end positions relative to hole (+ at center); blue=miss left, orange=miss right, dark-blue/brown halves shaded"
+     }
+    }
+   ],
+   "partialCards": "A further card begins just below Leave Zones at bottom (only top edge visible, behind tab bar)",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "48_225634.png",
+   "tab": "Putting",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": null,
+    "caption": null
+   },
+   "sectionFilters": {
+    "segmented": {
+     "options": [
+      "Direction",
+      "Speed Control"
+     ],
+     "selected": "Speed Control"
+    },
+    "distanceChips": {
+     "visibleOptions": [
+      "0-3'",
+      "4-6'",
+      "7-9'",
+      "10-15'",
+      "16-24'",
+      "(partial, cut off at right)"
+     ],
+     "selected": "10-15'"
+    }
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Speed · hole to +2 ft = good · 10-15'",
+     "data": {
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right",
+       "Good (label on shaded band)"
+      ],
+      "summaryBoxes": [
+       {
+        "label": "Short",
+        "pct": "21%",
+        "count": 7
+       },
+       {
+        "label": "Good",
+        "pct": "59%",
+        "count": 20
+       },
+       {
+        "label": "Long",
+        "pct": "21%",
+        "count": 7
+       }
+      ],
+      "chartNote": "Scatter of putt end positions relative to hole (+ at center); green shaded dashed band = Good speed zone; orange=long, green=good, blue=short"
+     }
+    }
+   ],
+   "partialCards": "A further card begins just below Leave Zones at bottom (only top edge visible, behind tab bar)",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "49_225641.png",
+   "tab": "Putting",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": null,
+    "caption": null
+   },
+   "sectionFilters": {
+    "segmented": {
+     "options": [
+      "Direction",
+      "Speed Control"
+     ],
+     "selected": "Direction"
+    },
+    "distanceChips": {
+     "visibleOptions": [
+      "0-3'",
+      "4-6'",
+      "7-9'",
+      "10-15'",
+      "16-24'",
+      "(partial, cut off at right)"
+     ],
+     "selected": "16-24'"
+    }
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Make & miss direction · 16-24'",
+     "data": {
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right"
+      ],
+      "summaryBoxes": [
+       {
+        "label": "Miss Left",
+        "pct": "31%",
+        "count": 11
+       },
+       {
+        "label": "Make",
+        "pct": "11%",
+        "count": 4
+       },
+       {
+        "label": "Miss Right",
+        "pct": "58%",
+        "count": 21
+       }
+      ],
+      "chartNote": "Scatter of putt end positions relative to hole (+ at center); blue=miss left, orange=miss right, dark-blue/brown halves shaded"
+     }
+    }
+   ],
+   "partialCards": "A further card begins just below Leave Zones at bottom (only top edge visible, behind tab bar)",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "50_225646.png",
+   "tab": "Putting",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": null,
+    "caption": null
+   },
+   "sectionFilters": {
+    "segmented": {
+     "options": [
+      "Direction",
+      "Speed Control"
+     ],
+     "selected": "Speed Control"
+    },
+    "distanceChips": {
+     "visibleOptions": [
+      "0-3'",
+      "4-6'",
+      "7-9'",
+      "10-15'",
+      "16-24'",
+      "(partial, cut off at right)"
+     ],
+     "selected": "16-24'"
+    }
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Speed · within ±10% = good · 16-24'",
+     "data": {
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right",
+       "Good (label on shaded band)"
+      ],
+      "summaryBoxes": [
+       {
+        "label": "Short",
+        "pct": "8%",
+        "count": 3
+       },
+       {
+        "label": "Good",
+        "pct": "72%",
+        "count": 26
+       },
+       {
+        "label": "Long",
+        "pct": "19%",
+        "count": 7
+       }
+      ],
+      "chartNote": "Scatter of putt end positions relative to hole (+ at center); green shaded dashed band = Good speed zone; orange=long, green=good, blue=short"
+     }
+    }
+   ],
+   "partialCards": "A further card begins just below Leave Zones at bottom (only top edge visible, behind tab bar)",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "51_225652.png",
+   "tab": "Putting",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": null,
+    "caption": null
+   },
+   "sectionFilters": {
+    "segmented": {
+     "options": [
+      "Direction",
+      "Speed Control"
+     ],
+     "selected": "Direction"
+    },
+    "distanceChips": {
+     "visibleOptions": [
+      "(partial, cut off at left, ends \"'\")",
+      "7-9'",
+      "10-15'",
+      "16-24'",
+      "25-40'",
+      "41+ (partial, cut off at right)"
+     ],
+     "selected": "25-40'"
+    }
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Make & miss direction · 25-40'",
+     "data": {
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right"
+      ],
+      "summaryBoxes": [
+       {
+        "label": "Miss Left",
+        "pct": "39%",
+        "count": 13
+       },
+       {
+        "label": "Make",
+        "pct": "3%",
+        "count": 1
+       },
+       {
+        "label": "Miss Right",
+        "pct": "58%",
+        "count": 19
+       }
+      ],
+      "chartNote": "Scatter of putt end positions relative to hole (+ at center); blue=miss left, orange=miss right, dark-blue/brown halves shaded"
+     }
+    }
+   ],
+   "partialCards": "A further card begins just below Leave Zones at bottom (only top edge visible, behind tab bar)",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "52_225657.png",
+   "tab": "Putting",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": null,
+    "caption": null
+   },
+   "sectionFilters": {
+    "segmented": {
+     "options": [
+      "Direction",
+      "Speed Control"
+     ],
+     "selected": "Speed Control"
+    },
+    "distanceChips": {
+     "visibleOptions": [
+      "(partial, cut off at left, ends \"'\")",
+      "7-9'",
+      "10-15'",
+      "16-24'",
+      "25-40'",
+      "41+ (partial, cut off at right)"
+     ],
+     "selected": "25-40'"
+    }
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Speed · within ±10% = good · 25-40'",
+     "data": {
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right",
+       "Good (label on shaded band)"
+      ],
+      "summaryBoxes": [
+       {
+        "label": "Short",
+        "pct": "21%",
+        "count": 7
+       },
+       {
+        "label": "Good",
+        "pct": "73%",
+        "count": 24
+       },
+       {
+        "label": "Long",
+        "pct": "6%",
+        "count": 2
+       }
+      ],
+      "chartNote": "Scatter of putt end positions relative to hole (+ at center); green shaded dashed band = Good speed zone; orange=long, green=good, blue=short"
+     }
+    }
+   ],
+   "partialCards": "A further card begins just below Leave Zones at bottom (only top edge visible, behind tab bar)",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "53_225705.png",
+   "tab": "Putting",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": null,
+    "caption": null
+   },
+   "sectionFilters": {
+    "segmented": {
+     "options": [
+      "Direction",
+      "Speed Control"
+     ],
+     "selected": "Direction"
+    },
+    "distanceChips": {
+     "visibleOptions": [
+      "7-9'",
+      "10-15'",
+      "16-24'",
+      "25-40'",
+      "41+'"
+     ],
+     "selected": "41+'"
+    }
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Make & miss direction · 41+'",
+     "data": {
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right"
+      ],
+      "summaryBoxes": [
+       {
+        "label": "Miss Left",
+        "pct": "13%",
+        "count": 1
+       },
+       {
+        "label": "Make",
+        "pct": "0%",
+        "count": 0
+       },
+       {
+        "label": "Miss Right",
+        "pct": "88%",
+        "count": 7
+       }
+      ],
+      "chartNote": "Scatter of putt end positions relative to hole (+ at center); blue=miss left, orange=miss right, dark-blue/brown halves shaded"
+     }
+    }
+   ],
+   "partialCards": "A further card begins just below Leave Zones at bottom (only top edge visible, behind tab bar)",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "54_225709.png",
+   "tab": "Putting",
+   "filtersVisible": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "chips": [],
+    "otherControls": null,
+    "caption": null
+   },
+   "sectionFilters": {
+    "segmented": {
+     "options": [
+      "Direction",
+      "Speed Control"
+     ],
+     "selected": "Speed Control"
+    },
+    "distanceChips": {
+     "visibleOptions": [
+      "7-9'",
+      "10-15'",
+      "16-24'",
+      "25-40'",
+      "41+'"
+     ],
+     "selected": "41+'"
+    }
+   },
+   "cards": [
+    {
+     "title": "Leave Zones",
+     "subtitle": "Speed · within ±10% = good · 41+'",
+     "data": {
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right",
+       "Good (label on shaded band)"
+      ],
+      "summaryBoxes": [
+       {
+        "label": "Short",
+        "pct": "50%",
+        "count": 4
+       },
+       {
+        "label": "Good",
+        "pct": "25%",
+        "count": 2
+       },
+       {
+        "label": "Long",
+        "pct": "25%",
+        "count": 2
+       }
+      ],
+      "chartNote": "Scatter of putt end positions relative to hole (+ at center); green shaded dashed band = Good speed zone; orange=long, green=good, blue=short"
+     }
+    }
+   ],
+   "partialCards": "A further card begins just below Leave Zones at bottom (only top edge visible, behind tab bar)",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "seen"
+  },
+  {
+   "file": "55_225725.png",
+   "tab": "Putting",
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "4-6'",
+     "subtitle": null,
+     "data": {
+      "Make Rate": "20/41 (49%)",
+      "Strokes Gained (per 18)": "-0.77 (red)",
+      "Three Putt Frequency": "0%",
+      "Short/Long": "2% / 49%",
+      "Average Leave (misses)": "1'7\""
+     }
+    },
+    {
+     "title": "7-9'",
+     "subtitle": null,
+     "data": {
+      "Make Rate": "7/30 (23%)",
+      "Strokes Gained (per 18)": "-0.61 (red)",
+      "Three Putt Frequency": "0%",
+      "Short/Long": "13% / 63%",
+      "Average Leave (misses)": "1'9\""
+     }
+    },
+    {
+     "title": "10-15'",
+     "subtitle": null,
+     "data": {
+      "Make Rate": "2/34 (6%)",
+      "Strokes Gained (per 18)": "-0.71 (red)",
+      "Three Putt Frequency": "6%",
+      "Short/Long": "21% / 74% (partially cut off)"
+     }
+    }
+   ],
+   "partialCards": "10-15' card cut off at bottom: Short/Long row half hidden, Average Leave not visible. Each card has a > chevron.",
+   "uncertain": [
+    "10-15' Short/Long value read from half-cut text as 21% / 74%"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "inherited from 54"
+  },
+  {
+   "file": "56_225736.png",
+   "tab": "Putting",
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "16-24'",
+     "subtitle": null,
+     "data": {
+      "Make Rate": "4/36 (11%)",
+      "Strokes Gained (per 18)": "-0.18 (red)",
+      "Three Putt Frequency": "8%",
+      "Short/Long": "33% / 56%",
+      "Average Leave (misses)": "2'6\""
+     }
+    },
+    {
+     "title": "25-40'",
+     "subtitle": null,
+     "data": {
+      "Make Rate": "1/33 (3%)",
+      "Strokes Gained (per 18)": "-0.21 (red)",
+      "Three Putt Frequency": "15%",
+      "Short/Long": "70% / 27%",
+      "Average Leave (misses)": "3'0\""
+     }
+    },
+    {
+     "title": "41+'",
+     "subtitle": null,
+     "data": {
+      "Make Rate": "0/8 (0%)",
+      "Strokes Gained (per 18)": "-0.17 (red)",
+      "Three Putt Frequency": "62%",
+      "Short/Long": "50% / 50% (partially cut off)"
+     }
+    }
+   ],
+   "partialCards": "41+' card cut off at bottom: Short/Long row half hidden, Average Leave not visible. Each card has a > chevron.",
+   "uncertain": [
+    "41+' Short/Long value read from half-cut text as 50% / 50%"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "inherited from 54"
+  },
+  {
+   "file": "57_225757.png",
+   "tab": "Scoring",
+   "filtersVisible": null,
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Positive Strokes Gained Rounds",
+     "subtitle": "How often each area gains strokes · Last 10",
+     "data": [
+      {
+       "label": "Total",
+       "pct": "0%",
+       "count": "0/10",
+       "color": "red"
+      },
+      {
+       "label": "Driving",
+       "pct": "30%",
+       "count": "3/10",
+       "color": "red"
+      },
+      {
+       "label": "Approach",
+       "pct": "30%",
+       "count": "3/10",
+       "color": "red"
+      },
+      {
+       "label": "Short Game",
+       "pct": "50%",
+       "count": "5/10",
+       "color": "green"
+      },
+      {
+       "label": "Putting",
+       "pct": "10%",
+       "count": "1/10",
+       "color": "red"
+      }
+     ]
+    },
+    {
+     "title": "SCORING",
+     "subtitle": null,
+     "data": {
+      "link": "Round History >",
+      "Average": "81.7",
+      "To Par": "+10.2",
+      "Low - High": "78 - 85",
+      "Par 3s": "3.60",
+      "Par 4s": "4.62",
+      "Par 5s": "5.38",
+      "Birdies+": "0.9",
+      "Pars": "8.6",
+      "Bogeys": "6.1",
+      "Doubles+": "2.4"
+     }
+    },
+    {
+     "title": "Scoring vs Scratch",
+     "subtitle": "Last 10 · per 18 holes",
+     "data": {
+      "banner": {
+       "text": "Cut the doubles",
+       "value": "2.4 vs 0.7 target"
+      },
+      "tiles": [
+       {
+        "label": "Birdies+",
+        "value": "0.9",
+        "scratch": "2.2"
+       },
+       {
+        "label": "Pars",
+        "value": "8.6",
+        "scratch": "10.5"
+       },
+       {
+        "label": "Bogeys",
+        "value": "6.1",
+        "scratch": "4.6"
+       },
+       {
+        "label": "Doubles+",
+        "value": "2.4",
+        "scratch": "0.7"
+       }
+      ]
+     }
+    }
+   ],
+   "partialCards": "A card's bottom edge visible at top (above Positive Strokes Gained Rounds); another card begins at bottom behind tab bar. Tab row shows Scoring, Driving, Approach, Short Game (Putting off-screen).",
+   "uncertain": [],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "inherited from 54"
+  },
+  {
+   "file": "58_225811.png",
+   "tab": "Heat Map (modal) - segmented Driving selected",
+   "filtersVisible": {
+    "roundType": null,
+    "window": null,
+    "chips": [],
+    "otherControls": {
+     "View": "View: End Lie",
+     "Clubs": "All Clubs",
+     "End Lies": "All End Lies",
+     "segmented": "Driving (vs Approach)"
+    },
+    "caption": null
+   },
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Heat Map",
+     "subtitle": null,
+     "data": {
+      "legend": [
+       "Green",
+       "Fairway",
+       "Rough",
+       "Bunker",
+       "Trouble"
+      ],
+      "stats": [
+       {
+        "label": "Avg Dist",
+        "value": "271",
+        "unit": "yd"
+       },
+       {
+        "label": "Avg Offline",
+        "value": "23.8",
+        "unit": "yd"
+       },
+       {
+        "label": "Avg SG",
+        "value": "-0.09",
+        "unit": "per shot",
+        "color": "red"
+       }
+      ],
+      "axisTicks": {
+       "x": [
+        "40 yd",
+        "70 yd"
+       ],
+       "y": [
+        "350",
+        "300",
+        "250"
+       ]
+      },
+      "summaryBoxes": [
+       {
+        "label": "Fairway",
+        "pct": "40%",
+        "count": 56
+       },
+       {
+        "label": "Rough",
+        "pct": "33%",
+        "count": 47
+       },
+       {
+        "label": "Bunker",
+        "pct": "1%",
+        "count": 2
+       },
+       {
+        "label": "Rec/Pen",
+        "pct": "26%",
+        "count": 36
+       }
+      ],
+      "chartNote": "Scatter of tee-shot end positions (distance vs offline) coloured by end lie; X marks average; vertical dashed lines at offline bands"
+     }
+    }
+   ],
+   "partialCards": "Shot List header cut off at very bottom (appears to read 'Shot List • 1?? shots')",
+   "uncertain": [
+    "Shot List shot count cut off at bottom (possibly 141 or 166)"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "inherited from 54"
+  },
+  {
+   "file": "59_225826.png",
+   "tab": "Heat Map (modal) - segmented Approach selected",
+   "filtersVisible": {
+    "roundType": null,
+    "window": null,
+    "chips": [],
+    "otherControls": {
+     "Reference": "vs. Target",
+     "View": "View: End Lie",
+     "Start Lies": "All Start Lies",
+     "segmented": "Approach (vs Driving)"
+    },
+    "caption": null
+   },
+   "sectionFilters": null,
+   "cards": [
+    {
+     "title": "Heat Map",
+     "subtitle": null,
+     "data": {
+      "legend": [
+       "Green",
+       "Fairway",
+       "Rough",
+       "Bunker",
+       "Trouble"
+      ],
+      "stats": [
+       {
+        "label": "Avg Prox",
+        "value": "55",
+        "unit": "ft"
+       },
+       {
+        "label": "GIR",
+        "value": "41%",
+        "unit": "green in reg"
+       },
+       {
+        "label": "Avg SG",
+        "value": "-0.11",
+        "unit": "per shot",
+        "color": "red"
+       }
+      ],
+      "axisLabels": [
+       "Long",
+       "Short",
+       "Left",
+       "Right"
+      ],
+      "summaryBoxes": [
+       {
+        "label": "Green",
+        "pct": "41%",
+        "count": 72
+       },
+       {
+        "label": "Fairway",
+        "pct": "12%",
+        "count": 21
+       },
+       {
+        "label": "Rough",
+        "pct": "35%",
+        "count": 61
+       },
+       {
+        "label": "Bunker/Other",
+        "pct": "11%",
+        "count": 20
+       }
+      ],
+      "chartNote": "Circular scatter of approach end positions relative to target, coloured by end lie; tight cluster near center with a tail short"
+     }
+    },
+    {
+     "title": "Shot List",
+     "subtitle": "174 shots",
+     "data": {
+      "columns": [
+       "Course",
+       "Club",
+       "Start Lie",
+       "Dist",
+       "To Tgt"
+      ],
+      "rows": [
+       [
+        "Hampton Golf Village - #1 (cut off)",
+        null,
+        null,
+        null,
+        null
+       ]
+      ]
+     }
+    }
+   ],
+   "partialCards": "Shot List cut off after first row's course name ('Hampton Golf Village – #1', second line cut)",
+   "uncertain": [
+    "First Shot List row text partially cut"
+   ],
+   "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+     "2026-06-27",
+     "2026-09-20"
+    ]
+   },
+   "filterSource": "inherited from 54"
+  }
+ ]
+}

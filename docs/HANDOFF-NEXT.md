@@ -11,16 +11,21 @@ npm install && npm test    # 43 tests, must be green
 
 ## Where things stand
 
-Live at https://brettryantalley-source.github.io/Loop-Golf/ — **`main` is v21.2**.
+Live at https://brettryantalley-source.github.io/Loop-Golf/ — **`main` is v21.4** (the `history-paper` work is merged). Next user-facing ship is **v22**.
 
-**Unshipped work sits on branch `history-paper` (v21.4), pushed, not merged, not deployed:**
+## Caddie S0 audit — done Sep 28
+- The v18 caddie is NOT in `app.jsx`; it is parked in `src/caddie.js` + `src/profile.json` (v1). S1 **replaces** both.
+- `src/geometry.js`, `src/holeMap.jsx`, `vendor/`, the tile cache: **keep**. `parseOverpass` must be extended for rough, trees and the course boundary (lie inference, OB).
+- `bogeyman-matches:caddie-flags:v1` (tight/water) retires once polygons price trouble.
+- `npm test` names its test files explicitly — add new engine tests to the script.
 
-| | |
-|---|---|
-| v21.3 | History redesigned as a paper ledger. The dark palette is deleted — every screen is paper now. |
-| v21.4 | Service-worker fix: it was answering failed font requests with `index.html`, so fonts silently fell back. Also per-entry install and font preloads. |
+**Decisions (Brett, Sep 28) — these override spec §5.8 and §8:**
+1. Storage keys stay in the `bogeyman-matches:*` namespace (`bogeyman-matches:shots:v1`, `:lieOverrides:v1`, `:nineMap:v1:{courseId}`, `:config:v1`). No `loop.*` keys.
+2. The profile stays **bundled** at `src/profile.json`, built from `data/`. No runtime fetch.
+3. Driver big miss is **right** more than left: 15.2% R / 12.0% L (Last 10 report). Appendix A's left-heavy figure is superseded.
+4. Seed source is the Last 10 batch in `data/` (see `data/README.md`), not Appendix A.
 
-Merging that branch to `main` deploys both. Nothing else is in flight.
+**Still blocking S1:** a published strokes-gained baseline table (cite it in code).
 
 ## Open questions
 
@@ -55,4 +60,4 @@ The Caddie, Hole View, GPS, Overpass geometry: `src/caddie.js`, `src/geometry.js
 
 ## The feature
 
-_Describe it here._
+Caddie engine, shot log and learning profile: **`docs/SPEC-caddie.md`** (locked Sep 27). The decisions above override it where they disagree. Build order is its §9; this thread is **S1**.
