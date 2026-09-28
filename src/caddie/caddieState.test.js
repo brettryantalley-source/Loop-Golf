@@ -244,7 +244,7 @@ test("§8: every state's rail aim, bar labels and notice", () => {
     nofix:       ["No GPS fix", ["Try again", "Enter yards", false], "No GPS fix. Step into the open and tap Try again."],
     locationoff: ["Location off", ["Try again", "Enter yards", false], "Location is off for Loop. Turn it on in Settings, then tap Try again."],
     yards:       ["Club only", ["I'm at my ball", "Log shot", false], null],
-    nomap:       ["No course map", ["Enter yards", null, false], "No course map for hole 7. Enter yards for a club."],
+    nomap:       ["No course map", ["I'm on the tee", "Log shot", false], "No course map for hole 7. Enter yards for a club."],
     noprofile:   ["No profile", ["Try again", null, false], "Profile didn't load. Reconnect and tap Try again."],
   };
   for (const [name, [aim, b, notice]] of Object.entries(table)) {
@@ -778,23 +778,23 @@ test("marked-green views: pre-tee offers the tee and yards; a fix with no green 
   const S = initialCaddie(7);
   const bar = (v) => [v.bar.primary.label, v.bar.secondary?.label ?? null];
   const pre = caddieView({ state: S, par: 4, mapOk: false, markable: true });
-  assert.equal(pre.view, "pretee"); assert.deepEqual(bar(pre), ["I'm on the tee", "Enter yards"]);
+  assert.equal(pre.view, "pretee"); assert.deepEqual(bar(pre), ["I'm on the tee", "Log shot"]);
   assert.equal(pre.notice, "No course map for hole 7. Tap I'm on the tee for satellite.");
   assert.equal(caddieView({ state: S, par: 4, mapOk: false, markable: true, greenMarked: true }).notice, "Hole 7: green marked. Tap I'm on the tee for satellite.");
   const fixed = run(S, { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
   const mark = caddieView({ state: fixed, par: 4, mapOk: false, markable: true });
   assert.equal(mark.view, "markgreen"); assert.equal(mark.rail.aim, "Tap the green"); assert.equal(mark.rail.club, "—"); assert.equal(mark.rail.toggle, null);
-  assert.deepEqual(bar(mark), ["I'm at my ball", "Enter yards"]);
+  assert.deepEqual(bar(mark), ["I'm at my ball", "Log shot"]);
   assert.equal(mark.notice, "No course map. Satellite on GPS — tap the green to mark it.");
   const nofix = caddieView({ state: run(S, { type: "tee" }, { type: "fixError", code: 3 }), par: 4, mapOk: false, markable: true });
   assert.equal(nofix.view, "nofix"); assert.deepEqual(bar(nofix), ["Try again", "Enter yards"]);
   // not markable (no satellite for the fix): exactly the old No course map state
   const old = caddieView({ state: fixed, par: 4, mapOk: false, markable: false });
-  assert.equal(old.view, "nomap"); assert.deepEqual(bar(old), ["Enter yards", null]); assert.equal(old.notice, "No course map for hole 7. Enter yards for a club.");
+  assert.equal(old.view, "nomap"); assert.deepEqual(bar(old), ["I'm at my ball", "Log shot"]); assert.equal(old.notice, "No course map for hole 7. Enter yards for a club.");
   // Enter yards on an unmapped hole: club-brain as today; the bar can go back to GPS
   const yv = caddieView({ state: run(S, { type: "yards", yards: 150 }), par: 4, mapOk: false, markable: true, res: fakeRes() });
   assert.equal(yv.view, "yards"); assert.deepEqual(bar(yv), ["I'm at my ball", "Log shot"]);
-  assert.equal(caddieView({ state: run(S, { type: "yards", yards: 150 }), par: 4, mapOk: false, res: fakeRes() }).bar.primary.label, "Enter yards", "unchanged when not markable");
+  assert.equal(caddieView({ state: run(S, { type: "yards", yards: 150 }), par: 4, mapOk: false, res: fakeRes() }).bar.primary.label, "I'm at my ball", "v22.12: markable or not");
   // once marked the synthetic hole makes it an ordinary Ready screen, with the no-hazards line in details
   const ready = caddieView({ state: fixed, par: 4, mapOk: true, markable: true, synthetic: true, res: fakeRes(), ballXY: { x: 0, y: 0 } });
   assert.equal(ready.view, "ready"); assert.equal(ready.notice, null);
@@ -856,4 +856,67 @@ test("drag → custom pin: released anywhere, clamped inside the green, stored a
   s = run(s, { type: "ball" }, { type: "fix", fix: fix(), point: { x: 0, y: 80 } });
   assert.deepEqual(pinSetting(s), { lat: v.lat, lng: v.lng });
   assert.equal(pinSetting(caddieReducer(s, { type: "chip", key: "pin", value: "front" })), "front");
+});
+
+/* ---------- v22.12: Log shot and I'm at my ball with no map ---------- */
+
+test("v22.12 bar: every no-map state keeps I'm at my ball / the tee + Log shot, Enter yards moves to the rail", () => {
+  const S = initialCaddie(4);
+  const fixed = run(S, { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
+  const bar = (v) => [v.view, v.bar.primary.label, v.bar.primary.action, v.bar.secondary?.label ?? null, v.bar.secondary?.action ?? null, v.rail.action?.label ?? null];
+  const cases = [
+    // no map, a fix, no satellite (not markable)
+    [caddieView({ state: fixed, par: 4, mapOk: false, markable: false }), ["nomap", "I'm at my ball", "ball", "Log shot", "logshot", "Enter yards"]],
+    // Enter yards not used yet vs used — with a recommendation the bar is the Ready bar, the rail keeps Enter yards
+    [caddieView({ state: run(fixed, { type: "yards", yards: 160, same: true }), par: 4, mapOk: false, res: fakeRes() }), ["yards", "I'm at my ball", "ball", "Log shot", "logshot", "Enter yards"]],
+    // the satellite works, no green marked yet
+    [caddieView({ state: fixed, par: 4, mapOk: false, markable: true }), ["markgreen", "I'm at my ball", "ball", "Log shot", "logshot", "Enter yards"]],
+    // pre-tee with the marked-green bridge on
+    [caddieView({ state: S, par: 4, mapOk: false, markable: true }), ["pretee", "I'm on the tee", "tee", "Log shot", "logshot", "Enter yards"]],
+    // a marked green on the drawn map (no satellite): the synthetic hole is a map, so the ordinary Ready bar
+    [caddieView({ state: fixed, par: 4, mapOk: true, markable: true, synthetic: true, res: fakeRes(), ballXY: { x: 0, y: 0 } }), ["ready", "I'm at my ball", "ball", "Log shot", "logshot", null]],
+    // …and Ready with no recommendation (the engine returned nothing) still offers Log shot
+    [caddieView({ state: fixed, par: 4, mapOk: true, res: null, ballXY: { x: 0, y: 0 } }), ["ready", "I'm at my ball", "ball", "Log shot", "logshot", null]],
+  ];
+  for (const [v, want] of cases) {
+    assert.deepEqual(bar(v), want, want[0]);
+    assert.ok(!v.bar.primary.disabled);
+  }
+  // mapped holes: no rail button, the §8 bars unchanged
+  assert.equal(caddieView({ state: S, par: 4 }).rail.action, null);
+  assert.equal(caddieView({ state: run(S, { type: "yards", yards: 150 }), par: 4, res: fakeRes() }).rail.action, null);
+  // a GPS error on an unmapped hole shows the GPS state (Try again), not No course map
+  const err = caddieView({ state: run(fixed, { type: "ball" }, { type: "fixError", code: 3 }), par: 4, mapOk: false, markable: false });
+  assert.equal(err.view, "nofix"); assert.equal(err.bar.primary.label, "Try again"); assert.equal(err.bar.secondary.label, "Enter yards");
+  // at most two pills, always
+  for (const [v] of cases) assert.ok([v.bar.primary, v.bar.secondary].filter(Boolean).length <= 2);
+});
+
+test("v22.12 notice: no map + no satellite names the part that failed", () => {
+  const fixed = run(initialCaddie(5), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
+  const v = caddieView({ state: fixed, par: 4, mapOk: false, markable: false, satFailure: "tiles blocked (HTTP 403)" });
+  assert.equal(v.notice, "Satellite: tiles blocked (HTTP 403). Enter yards for a club.");
+  assert.equal(caddieView({ state: fixed, par: 4, mapOk: false, satFailure: "map library failed to load" }).notice, "Satellite: map library failed to load. Enter yards for a club.");
+  assert.equal(caddieView({ state: fixed, par: 4, mapOk: false }).notice, "No course map for hole 5. Enter yards for a club.", "no reason known: the old line");
+  assert.equal(caddieView({ state: initialCaddie(5), par: 4, mapOk: false, satFailure: "tiles unreachable (timeout)" }).notice, "No course map for hole 5. Enter yards for a club.", "no fix: nothing was probed here");
+  assert.ok(!v.notice.includes("!"));
+  assert.equal(COPY.markHere, "Mark green here");
+});
+
+test("v22.12 yards for the same ball: the rail's Enter yards keeps the shot number, the fix and the chips", () => {
+  const fixed = run(initialCaddie(4), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 1, y: 2 } }, { type: "ball" }, { type: "fix", fix: fix(39.9, -85.9), point: { x: 3, y: 150 } }, { type: "chip", key: "lie", value: "rough" });
+  assert.equal(fixed.shotNo, 2);
+  let s = run(fixed, { type: "yards", yards: 142, same: true });
+  assert.equal(s.phase, "yards"); assert.equal(s.shotNo, 2, "same ball"); assert.equal(s.yards, 142);
+  assert.deepEqual(s.ball, fixed.ball); assert.deepEqual(s.ballXY, { x: 3, y: 150 }); assert.equal(s.chips.lie, "rough");
+  s = run(s, { type: "yards", yards: 138, same: true });
+  assert.equal(s.shotNo, 2, "a corrected distance is still the same ball"); assert.equal(s.yards, 138);
+  // I'm at my ball from there advances as on a mapped hole, and the previous-shot line starts at the kept fix
+  s = run(s, { type: "ball" }, { type: "fix", fix: fix(39.91, -85.9), point: { x: 4, y: 290 } });
+  assert.equal(s.shotNo, 3); assert.equal(s.phase, "ready"); assert.equal(s.yards, null);
+  assert.deepEqual(s.shots[4].at(-1), { from: { x: 3, y: 150 }, to: { x: 4, y: 290 } });
+  // without `same` (the GPS-error bar's Enter yards) the old rule stands: a new ball
+  assert.equal(run(fixed, { type: "yards", yards: 120 }).shotNo, 3);
+  // `same` from pre-tee is shot 1 as always
+  assert.equal(run(initialCaddie(4), { type: "yards", yards: 380, same: true }).shotNo, 1);
 });

@@ -11,7 +11,7 @@ import {
   routeShot, newShotRecord, quickLog, detailLog, skipShot, closeOutShot,
   migrateShot, loadShots, saveShot, allShots, exportShots, importShots,
   missCauseSample, recordLieOverride, loadLieOverrides,
-  PUTT_AXES, newPuttRecord, quickMade,
+  PUTT_AXES, newPuttRecord, quickMade, bareShotRecord,
 } from "./shotlog.js";
 
 /** In-memory localStorage-shaped stub. */
@@ -356,4 +356,40 @@ test("detailLog: only the given fields override the defaults; logged is full", (
   assert.equal(rec.contact, -1);
   assert.equal(rec.strike, "toe");
   assert.equal(rec.startLine, "on"); // untouched field keeps its default
+});
+
+/* ---------- v22.12: a shot logged with no recommendation ---------- */
+
+test("bareShotRecord: no recommendation, no target, nulls where nothing is known; saves and closes out cleanly", () => {
+  const r = bareShotRecord({ roundId: "r9", courseId: "123", nine: "front", hole: 3, shotNo: 2, gps: { lat: 39.99, lng: -85.98, accuracyM: 4 }, club: "7i" });
+  assert.equal(r.recommendation, null);
+  assert.equal(r.target, null);
+  assert.equal(r.club, "7i");
+  assert.equal(r.linePlayed, "own", "nothing to match against");
+  assert.deepEqual(r.start, { lat: 39.99, lng: -85.98, accuracyM: 4, distanceToPinYds: null, playsLikeYds: null, frame: null });
+  assert.deepEqual(r.lie, { inferred: null, confidence: null, confirmed: null, quality: "standard" });
+  assert.equal(r.shotType, "full"); assert.equal(r.conditions, "normal"); assert.equal(r.logged, "quick");
+  // no fix, entered yards, a wedge inside 120 → finesse as §4.2 says
+  const y = bareShotRecord({ hole: 5, shotNo: 3, gps: null, distanceToPinYds: 96.4, club: "SW", lie: "rough" });
+  assert.deepEqual([y.start.lat, y.start.lng, y.start.distanceToPinYds], [null, null, 96]);
+  assert.equal(y.shotType, "finesse"); assert.equal(y.lie.confirmed, "rough");
+  // no club yet (the card has not been touched) is still a valid record
+  const empty = bareShotRecord({ hole: 1, shotNo: 1, distanceToPinYds: NaN });
+  assert.equal(empty.club, null); assert.equal(empty.start.distanceToPinYds, null);
+  // quick / detail / skip keep it recommendation-less
+  const q = quickLog(r), d = detailLog(r, { contact: -1, club: "6i" }), k = skipShot(r);
+  assert.equal(q.recommendation, null); assert.equal(d.club, "6i"); assert.equal(d.logged, "full"); assert.equal(k.logged, "skipped");
+  // closeout: with or without an end frame the miss math is null, never NaN
+  for (const end of [{ endGps: { lat: 39.991, lng: -85.98 }, endLie: null, endAccuracyM: 5, endFrame: { x: 3, y: 140 } }, { endGps: { lat: 39.991, lng: -85.98 } }, {}]) {
+    const c = closeOutShot(q, end);
+    assert.deepEqual(c.derived, { distanceMissYds: null, lateralMissYds: null, onTarget: null, intendedYds: null, actualYds: null });
+    assert.ok(!JSON.stringify(c).includes("NaN"));
+  }
+  assert.equal(closeOutShot(q, { endGps: { lat: 1, lng: 2 }, endAccuracyM: 5 }).end.lat, 1);
+  // round-trips storage
+  const st = makeStorage();
+  saveShot(st, closeOutShot(q, {}));
+  const back = loadShots(st, "r9");
+  assert.equal(back.length, 1); assert.equal(back[0].id, r.id); assert.equal(back[0].recommendation, null); assert.equal(back[0].derived.intendedYds, null);
+  assert.equal(JSON.parse(exportShots(st)).shots.length, 1);
 });

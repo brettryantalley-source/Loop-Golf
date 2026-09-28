@@ -12,6 +12,7 @@ import { DEFAULT_CONFIG, mergeConfig, lieDistAdj } from "./config.js";
 import { loadProfile } from "./profile.js";
 import { ellipseSampler } from "./engine.js";
 import { makeSamples } from "./random.js";
+import { bareShotRecord, closeOutShot, quickLog, detailLog } from "./shotlog.js";
 import {
   familyOf, withinRound, recencyWeight, shrink, priorFor, applyShotLog, entryWithOverlay,
   lieOverrideAt, aggressionScorecard, clubGapYds, fitEll80, entryKey,
@@ -456,4 +457,29 @@ test("applyShotLog: a prior borrowed from an adjacent lie is put on the entry's 
   const fw = applyShotLog(P, [shot({ hole: 2, dist: 0, intended: 176 })], {})[entryKey("7i", "full", "fairway")];
   assert.equal(fw.prior.totalMedianYds.value, 176);
   assert.equal(fw.prior.totalMedianYds.lieFactor, undefined);
+});
+
+/* ---------- v22.12: records logged with no recommendation ---------- */
+
+test("recommendation-less records: learning skips their misses, counts their contact, never throws", () => {
+  const bare = (i, extra = {}) => closeOutShot(detailLog(bareShotRecord({
+    roundId: "rB", hole: 1 + i, shotNo: 2, club: "7i", lie: i % 2 ? "fairway" : null, gps: { lat: 39.99, lng: -85.98 },
+    ts: `2026-09-29T1${i}:00:00.000Z`, id: `b${i}`,
+  }), { contact: -1, ...extra }), { endGps: { lat: 39.991, lng: -85.98 }, endFrame: { x: 2, y: 150 } });
+  const shots = [0, 1, 2, 3, 4].map((i) => bare(i));
+  assert.ok(shots.every((s) => s.derived.intendedYds === null && s.derived.distanceMissYds === null));
+  // §5.3: no derived misses → no overlay
+  assert.deepEqual(applyShotLog(P, shots, { roundIndexById: { rB: 1 } }, DEFAULT_CONFIG), {});
+  // §5.5: no distance / direction nudge, but five fat strikes still raise the contact flag
+  const w = withinRound(shots, DEFAULT_CONFIG, { P, lie: "fairway" });
+  assert.deepEqual(w.adjust.distYds, {}); assert.deepEqual(w.adjust.aimYds, {});
+  assert.equal(w.nudges.length, 0);
+  assert.ok(w.flags.length >= 1, "contact is real data, recommendation or not");
+  // no intended distance and no profile entry for the club: tolerances fall back, nothing NaN
+  const odd = bare(9, { club: "3w" });
+  assert.doesNotThrow(() => withinRound([odd, odd, odd], DEFAULT_CONFIG, { P }));
+  // §5.7: counted as own call, never priced (no expScore)
+  const sc = aggressionScorecard(shots.map(quickLog), { rB: Array(18).fill(4) });
+  assert.equal(sc.own.n, 5); assert.equal(sc.own.scored, 0); assert.equal(sc.text, null);
+  assert.ok(!JSON.stringify(sc).includes("NaN"));
 });

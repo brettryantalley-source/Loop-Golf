@@ -6,23 +6,26 @@
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 222 tests; must be green
+npm install && npm test    # 237 tests; must be green
 ```
 
 ## Where things stand (Sep 29, after the v22.11 build)
 
-Live at https://brettryantalley-source.github.io/Loop-Golf/ — **`main` is v22.10** (PR #7 merged
-Sep 29; PR #5 shipped the caddie as v22.2, PR #6 shipped v22.3–v22.5). Branch
-**`claude/bold-pascal-2s136s`** carries **v22.11** — marked-green mode for courses with no OSM
-geometry (`src/caddie/greens.js`, D47–D48) and the draggable pin (D49) — with its PR open.
+Live at https://brettryantalley-source.github.io/Loop-Golf/ — **`main` is v22.11** (PR #8 merged
+Sep 29: marked-green mode + draggable pin; PR #7 v22.6–v22.10; PR #6 v22.3–v22.5; PR #5 the caddie).
+Branch **`claude/bold-pascal-2s136s`** carries **v22.12** — the Ironwood field-test fixes (D51–D55:
+Satellite check, Mark green here, Log shot everywhere, odd/even stroke index, Ironwood's card in
+`src/localCards.js`) — with its PR open.
 Brett merges a PR from his phone (GitHub app or "merge" in the Claude app); Pages redeploys in
 about a minute; he fully closes and reopens Loop and reads the build tag top-right of Setup.
 
 Engine as of v22.10 follows `docs/CADDIE-BRAIN-INTEGRATION.md` (D43–D46; known gaps in D46).
-`npm test` is 222 tests. Decisions run D1–D50 in `docs/DECISIONS-caddie.md`.
+`npm test` is 237 tests. Decisions run D1–D55 in `docs/DECISIONS-caddie.md`.
 
 **Ironwood (Fishers, IN) is not traced in OpenStreetMap.** v22.11's marked-green mode is the
-bridge (satellite on GPS, tap the green, distance-only pricing). The permanent fix is tracing the
+bridge (satellite on GPS, tap the green, distance-only pricing). First round there (Sep 29, v22.11):
+the satellite never loaded and the app could not say why — v22.12 adds the Setup `Satellite check`
+line; read it before the next round and report the exact text. The permanent fix is tracing the
 course in the OSM iD editor; a prompt for a web-enabled chat to check OSM coverage was handed to
 Brett on Sep 29.
 

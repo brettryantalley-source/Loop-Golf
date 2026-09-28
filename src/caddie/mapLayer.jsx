@@ -26,7 +26,7 @@
  */
 import {
   cameraKey, cameraFor, cameraPoints, fitBounds, linearProjector, zoomForPxPerYd,
-  overlayModel, fallbackMapModel, mapModeFor, markCamera, pinViewCamera, pinViewKey, pinMarkerHit,
+  overlayModel, fallbackMapModel, mapModeFor, markCamera, pinViewCamera, pinViewKey, pinMarkerHit, satelliteFailure,
 } from "./overlay.js";
 import { frameOf, pinFromTap, holeFrame, clampToGreen } from "./geo.js";
 import { nearMarkedGreen } from "./greens.js";
@@ -169,18 +169,42 @@ export async function pointTileCached(at, zoom = 17) {
   try { return !!(await (await caches.open(TILE_CACHE)).match(tileUrl(lonLatToTile(at.lon, at.lat, zoom)))); } catch (e) { return false; }
 }
 
-/** v22.11: can the z17 tile under a point be fetched right now? */
-export async function probeTileAt(at, timeoutMs = 5000) {
-  if (!at) return false;
-  try { const r = await fetchWithTimeout(tileUrl(lonLatToTile(at.lon, at.lat, 17)), timeoutMs); return !!r.ok; } catch (e) { return false; }
+/**
+ * v22.12: fetch the z17 tile under a point and say what happened: { ok, status, error } — the HTTP
+ * status when the server answered (403 = the key / origin refused), else the error's name
+ * ("timeout" when our own timer aborted it, "TypeError" for a network failure or CORS refusal).
+ * Goes through the service worker, which caches a good tile.
+ */
+export async function probeTileDetail(at, timeoutMs = 8000) {
+  if (!at || !Number.isFinite(at.lat) || !Number.isFinite(at.lon ?? at.lng)) return { ok: false, status: null, error: "no location" };
+  const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  let timedOut = false;
+  const t = setTimeout(() => { timedOut = true; if (ctl) ctl.abort(); }, timeoutMs);
+  try {
+    const r = await fetch(tileUrl(lonLatToTile(at.lon ?? at.lng, at.lat, 17)), ctl ? { signal: ctl.signal } : undefined);
+    return { ok: !!r.ok, status: r.status, error: null };
+  } catch (e) {
+    return { ok: false, status: null, error: timedOut ? "timeout" : (e && e.name) || "error" };
+  } finally { clearTimeout(t); }
 }
 
+/** v22.11: can the z17 tile under a point be fetched right now? */
+export async function probeTileAt(at, timeoutMs = 5000) { return (await probeTileDetail(at, timeoutMs)).ok; }
+
 /** Can one tile of this hole be fetched right now? (goes through the service worker, which caches it) */
-export async function probeTile(geo, key, timeoutMs = 5000) {
-  const h = geo?.holes?.[key];
-  const c = h?.green?.center || h?.line?.[0];
-  if (!c) return false;
-  try { const r = await fetchWithTimeout(tileUrl(lonLatToTile(c.lon, c.lat, 17)), timeoutMs); return !!r.ok; } catch (e) { return false; }
+export async function probeTile(geo, key, timeoutMs = 5000) { return (await probeTileDetail(holeProbePoint(geo, key), timeoutMs)).ok; }
+const holeProbePoint = (geo, key) => { const h = geo?.holes?.[key]; return h?.green?.center || h?.line?.[0] || null; };
+
+/**
+ * v22.12 Setup's `Satellite check`: MapLibre loads (from vendor/, as the caddie loads it) and one
+ * z17 tile at the course's location comes back. → { lib: bool, tile: probeTileDetail | null,
+ * noLocation }. Never throws. Overlay.js satelliteCheckLine turns it into the line.
+ */
+export async function satelliteCheck(at, { timeoutMs = 8000 } = {}) {
+  const lib = loadMapLibre().then(() => true, () => false);
+  const tile = at ? probeTileDetail(at, timeoutMs) : Promise.resolve(null);
+  const [libOk, t] = await Promise.all([lib, tile]);
+  return { lib: libOk, tile: t, noLocation: !at };
 }
 
 /**
@@ -191,34 +215,37 @@ export async function probeTile(geo, key, timeoutMs = 5000) {
  */
 export function useSatellite(geo, key, { at = null, greenMarked = false, holeNo = null } = {}) {
   const online = () => typeof navigator === "undefined" || navigator.onLine !== false;
-  const [st, setSt] = useState({ tilesCached: false, probeOk: null, failed: false, online: online() });
+  // v22.12: `probe` keeps the tile fetch's status / error and `failReason` what MapLayer reported,
+  // so the caddie can say which part failed (overlay.js satelliteFailure)
+  const [st, setSt] = useState({ tilesCached: false, probeOk: null, probe: null, failed: false, failReason: null, online: online() });
   const hasHole = !!(geo && key != null && geo.holes?.[key]);
   // ~100 m cells: a new fix nearby does not re-probe (and the map does not flicker to "checking")
   const atKey = !hasHole && at && Number.isFinite(at.lat) && Number.isFinite(at.lon) ? `${at.lat.toFixed(3)},${at.lon.toFixed(3)}` : null;
   useEffect(() => {
     let live = true;
-    setSt({ tilesCached: false, probeOk: null, failed: false, online: online() });
+    setSt({ tilesCached: false, probeOk: null, probe: null, failed: false, failReason: null, online: online() });
     if (hasHole) {
       (async () => {
         if (await holeTilesCached(geo, key)) { if (live) setSt((s) => ({ ...s, tilesCached: true })); return; }
         if (!online()) return;
-        const ok = await probeTile(geo, key);
-        if (live) setSt((s) => ({ ...s, probeOk: ok }));
+        const probe = await probeTileDetail(holeProbePoint(geo, key), 5000);
+        if (live) setSt((s) => ({ ...s, probeOk: probe.ok, probe }));
       })();
     } else if (atKey) {
       const [lat, lon] = atKey.split(",").map(Number);
       (async () => {
         if (await pointTileCached({ lat, lon })) { if (live) setSt((s) => ({ ...s, tilesCached: true })); return; }
         if (!online()) return;
-        const ok = await probeTileAt({ lat, lon });
-        if (live) setSt((s) => ({ ...s, probeOk: ok }));
+        const probe = await probeTileDetail({ lat, lon }, 5000);
+        if (live) setSt((s) => ({ ...s, probeOk: probe.ok, probe }));
       })();
     }
     return () => { live = false; };
   }, [geo, key, hasHole, atKey]);
-  const markFailed = useCallback(() => setSt((s) => (s.failed ? s : { ...s, failed: true })), []);
+  const markFailed = useCallback((reason) => setSt((s) => (s.failed ? s : { ...s, failed: true, failReason: reason || null })), []);
   const m = mapModeFor({ hasHole, holeNo, libFailed: st.failed, tilesCached: st.tilesCached, online: st.online, probeOk: st.probeOk, hasGps: !!atKey, greenMarked });
-  return { ...m, markFailed };
+  const out = m.mode === "none" || m.mode === "fallback";
+  return { ...m, failure: out ? satelliteFailure({ probe: st.probe, failReason: st.failed ? st.failReason || "tiles" : null, online: st.online }) : null, markFailed };
 }
 
 /* ---------- rendering overlay.js descriptors ---------- */

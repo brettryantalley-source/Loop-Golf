@@ -146,6 +146,36 @@ export function newShotRecord(input = {}) {
   };
 }
 
+/**
+ * v22.12 — a shot logged with NO recommendation on screen: no course map and no satellite, a
+ * marked-green hole before the tee, or Enter yards not used yet. Brett picks the club on the card.
+ * Whatever the caddie did not work out is null rather than guessed: no target, no recommendation
+ * snapshot, no frame — so its §4.5 closeout has no miss math (derived all null), §5.3 learning
+ * (applyShotLog) skips it, and within the round only its contact counts. `gps` = the ball's fix
+ * ({ lat, lng, accuracyM }) or null; `distanceToPinYds` = entered yards or the card's yardage, or
+ * null; `lie` = the Lie chip or the tee on shot 1, else null. linePlayed reads "own" (spec §4.2's
+ * rule with nothing to match against).
+ */
+export function bareShotRecord(input = {}) {
+  const g = input.gps && Number.isFinite(input.gps.lat) && Number.isFinite(input.gps.lng ?? input.gps.lon) ? input.gps : null;
+  const yds = Number.isFinite(input.distanceToPinYds) && input.distanceToPinYds > 0 ? Math.round(input.distanceToPinYds) : null;
+  return newShotRecord({
+    id: input.id, ts: input.ts,
+    roundId: input.roundId, courseId: input.courseId, nine: input.nine, hole: input.hole, shotNo: input.shotNo,
+    start: {
+      lat: g ? g.lat : null, lng: g ? (g.lng ?? g.lon) : null, accuracyM: g && Number.isFinite(g.accuracyM) ? g.accuracyM : null,
+      distanceToPinYds: yds, playsLikeYds: null, frame: null,
+    },
+    target: null,
+    lie: { inferred: null, confidence: null, confirmed: input.lie ?? null, quality: input.quality ?? "standard" },
+    conditions: input.conditions ?? "normal",
+    wind: null,
+    recommendation: null,
+    club: input.club ?? null,
+    history: input.history,
+  });
+}
+
 /* ---------- §4.3 quick path / detail / skip ---------- */
 
 /** "Good shot ✓" — every field at its default, `logged: "quick"`. */

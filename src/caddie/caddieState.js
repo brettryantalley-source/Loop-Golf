@@ -52,6 +52,7 @@ export const COPY = Object.freeze({
   aimNoMap: "No course map",
   aimNoProfile: "No profile",
   aimMark: "Tap the green",
+  markHere: "Mark green here",          // v22.12: the fix, stored as this hole's green (no imagery needed)
   pinYds: (n) => `${n} yds to the pin`,
   done: "Done",
   useInferred: (v) => `Use inferred · ${v}`,
@@ -69,6 +70,8 @@ export const NOTICES = Object.freeze({
   markedPreTee: (n) => `Hole ${n}: green marked. Tap I'm on the tee for satellite.`,
   mark: NOTICE_MARK_GREEN,
   noHazards: NOTE_NO_HAZARDS,
+  /* v22.12: an unmapped hole with a fix but no satellite says which part failed (overlay.js satelliteFailure) */
+  noSatellite: (why) => `Satellite: ${why}. Enter yards for a club.`,
 });
 
 /* ---------- 1. state ---------- */
@@ -152,6 +155,11 @@ export function caddieReducer(s, a) {
     case "yards": {
       const n = Math.round(a.yards);
       if (!(n > 0)) return s;
+      // v22.12: `same` = yards for the ball Brett is standing at (the rail's Enter yards on a hole
+      // with no map): the shot number, the fix and the chips stay; only the distance is new.
+      if (a.same && ((s.phase === "ready" && s.ball) || s.phase === "yards")) {
+        return { ...s, phase: "yards", prevPhase: null, yards: n, pinView: false, remark: false };
+      }
       const fresh = s.phase === "pretee" || ((s.phase === "nofix" || s.phase === "locationoff" || s.phase === "locating") && s.trigger === "tee");
       return newBall({ ...s, phase: "yards", prevPhase: null, trigger: fresh ? "tee" : "ball", shotNo: fresh ? 1 : s.shotNo + 1, ball: null, ballXY: null, yards: n });
     }
@@ -694,7 +702,7 @@ export function mapInput({ state, view, ballXY = null, accuracyM = null, options
 export function caddieView({
   state, par = null, profileOk = true, mapOk = true, res = null, options = null, inferred = null, onGreen = false,
   ballXY = null, green = null, config = DEFAULT_CONFIG,
-  markable = false, greenMarked = false, synthetic = false, pinYds = null,
+  markable = false, greenMarked = false, synthetic = false, pinYds = null, satFailure = null,
 }) {
   const s = state;
   const holeNo = s.hole;
@@ -708,13 +716,15 @@ export function caddieView({
   else if (!mapOk && s.phase !== "yards" && markable) {
     view = s.phase === "nofix" || s.phase === "locationoff" ? s.phase : s.phase === "ready" ? "markgreen" : "pretee";
   }
+  else if (s.phase === "nofix" || s.phase === "locationoff") view = s.phase;   // v22.12: a GPS error says so, map or not
   else if (!mapOk && s.phase !== "yards") view = "nomap";
-  else if (s.phase === "nofix" || s.phase === "locationoff") view = s.phase;
   else if (s.phase === "yards") view = "yards";
   else if (s.phase === "ready") view = onGreen ? "green" : res?.sameShot ? "sameshot" : "ready";
   else view = "pretee";
 
   const hasRec = (view === "ready" || view === "sameshot" || view === "yards") && !!res?.safe;
+  // v22.12: the no-map states, where nothing on screen prices the shot yet
+  const bare = !mapOk && (view === "nomap" || view === "markgreen" || view === "yards" || (view === "pretee" && markable));
   const sameShot = hasRec && !!res.sameShot;
   const activeKey = sameShot ? "safe" : s.opt;
   const opts = options || { safe: res?.safe || null, aggressive: res?.aggressive || null };
@@ -740,6 +750,9 @@ export function caddieView({
     toTargetPencil: view === "yards" && !!active,
     aim: view === "ready" || view === "sameshot" ? aimShort(active, { ball: ballXY, green }) : view === "yards" && !active ? DASH : AIM[view],
     details: s.exp ? COPY.close : COPY.details,
+    // v22.12: on a hole with no map the bar carries I'm at my ball + Log shot, so Enter yards (for
+    // the ball Brett is at) moves here as a text button under the aim
+    action: bare ? { label: COPY.yards, action: "yardsSame" } : null,
   };
 
   /* details column */
@@ -780,20 +793,22 @@ export function caddieView({
     mapNote: synthetic && (hasRec || view === "green" || view === "pretee") ? NOTICES.noHazards : null,   // v22.11: said once, in the details
   };
 
-  /* bar (§3.4, §8). Log shot stays hidden until S4. */
+  /* bar (§3.4, §8). v22.12: every post-tee state with no map keeps the Ready bar — I'm at my ball
+     advances the shot as it does on a mapped hole, Log shot logs it with or without a
+     recommendation — and Enter yards moves to the rail (rail.action above). */
   let primary, secondary = null;
   if (view === "noprofile") primary = { label: COPY.retry, action: "profile" };
   else if (view === "locating") primary = { label: COPY.locating, action: null, disabled: true };
-  else if (view === "nomap" || (view === "yards" && !mapOk && !markable)) primary = { label: COPY.yards, action: "yards" };
-  else if (view === "markgreen") { primary = { label: COPY.ball, action: "ball" }; secondary = { label: COPY.yards, action: "yards" }; }
-  else if (view === "pretee" && markable && !mapOk) { primary = { label: COPY.tee, action: "tee" }; secondary = { label: COPY.yards, action: "yards" }; }
+  else if (view === "nomap") { primary = s.phase === "pretee" ? { label: COPY.tee, action: "tee" } : { label: COPY.ball, action: "ball" }; secondary = { label: COPY.logShot, action: "logshot" }; }
+  else if (view === "markgreen") { primary = { label: COPY.ball, action: "ball" }; secondary = { label: COPY.logShot, action: "logshot" }; }
+  else if (view === "pretee" && markable && !mapOk) { primary = { label: COPY.tee, action: "tee" }; secondary = { label: COPY.logShot, action: "logshot" }; }
   else if (view === "nofix" || view === "locationoff") { primary = { label: COPY.retry, action: "retry" }; secondary = { label: COPY.yards, action: "yards" }; }
   else if (view === "pretee") primary = { label: COPY.tee, action: "tee" };
   else if (view === "green") { primary = { label: COPY.score(holeNo), action: "score" }; secondary = { label: COPY.logPutt, action: "logputt" }; }
   else { primary = { label: COPY.ball, action: "ball" }; secondary = { label: COPY.logShot, action: "logshot" }; }
 
   const notice = view === "noprofile" ? NOTICES.noprofile
-    : view === "nomap" ? NOTICES.nomap(holeNo)
+    : view === "nomap" ? (satFailure && s.ball ? NOTICES.noSatellite(satFailure) : NOTICES.nomap(holeNo))
     : view === "nofix" ? NOTICES.nofix
     : view === "locationoff" ? NOTICES.locationoff
     : view === "markgreen" ? NOTICES.mark

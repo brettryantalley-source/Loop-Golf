@@ -21,6 +21,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 - `src/theme.jsx` — the design system (v21): colour and type tokens, the pencil filters, the Loop wordmark. Every screen reads its values from here.
 - `loop-design/` — the design SOURCE: `SPEC.md`, the two approved reference screens (standalone HTML + 2x PNGs), the pencil filter and the logo. `theme.jsx` implements it; this is what it implements.
 - `fonts/` — bundled woff2, COMMITTED and cached by the service worker. Never fetch a font at runtime.
+- `src/localCards.js` — scorecards Brett verified by hand for clubs the course API gets wrong (Ironwood, v22.12, D55); `src/routing.js` — 27-hole clubs: routings, nine composition, the odd/even stroke index (D54).
 - `src/holeMap.jsx`, `src/fixtures/` — PARKED. Nothing imports them and they are not bundled, but their tests still run. See "Parked, not deleted".
 - `vendor/` (MapLibre GL) — LIVE again as of v22: lazy-loaded from disk the first time the caddie screen opens, served same-origin, cached by the service worker.
 - `src/caddie/` — the caddie engine, shot log, learning loop and caddie screen (S1–S5, complete on branch `claude/bold-pascal-2s136s`, draft PR #5, unshipped; see "Caddie (v22 build)" below). Pure logic modules have no DOM/storage/network except where noted; storage and fetch are injected. One line each:
@@ -51,7 +52,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 3. On any deploy that ships user-facing changes, bump BOTH version markers together and keep the numbers in sync:
    - the cache name in `sw.js` (e.g. `loop-golf-v4` -> `-v5`). REQUIRED — without it, Brett's installed PWA keeps serving the old cached bundle.
    - the on-screen build tag: `const BUILD = "vN · <date>"` near the top of `src/app.jsx` (just after the icon definitions). Keep the existing `"vN · <date>"` format (e.g. `"v5 · Aug 2"`) and match `vN` to the new cache version.
-   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.11 on branch `claude/bold-pascal-2s136s`** (PR open) / **v22.10 on `main`**. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
+   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.12 on branch `claude/bold-pascal-2s136s`** (PR open) / **v22.11 on `main`**. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
 4. Show Brett a diff.
 5. WAIT for his explicit "go" before git commit / git push. Never push without approval.
 6. Pages redeploys the same URL automatically (~1 min); Brett fully closes and reopens the app to load the new service worker.
@@ -175,7 +176,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
 - Handoffs live in `docs/`; `docs/README.md` says which is current. A thread that finishes a phase writes or updates its handoff, and the next thread starts by reading it.
 - Every thread starts with: `git status` (must be clean), `git log --oneline -3`, `npm test`. Every thread ends with its work committed and the push command handed to Brett.
 - `computeGhost` / `evalMatch` byte-identical check before every commit, as before.
-- `npm test` runs 222 tests as of v22.11 (160 at the end of the Sep 28–29 caddie build (T1–T42 across S1–S5, named
+- `npm test` runs 237 tests as of v22.12 (160 at the end of the Sep 28–29 caddie build (T1–T42 across S1–S5, named
   as in `docs/SPEC-caddie.md` §9 and `docs/SPEC-caddie-UI.md` §12, plus units); it globs
   `src/**/*.test.js`, so a later agent adding files under `src/caddie/` picks up new tests
   automatically. If a thread after this one sees a different count, an app-side agent has added or
@@ -186,8 +187,8 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
 - The caddie engine, shot log, learning loop and caddie screen (S1–S5) SHIPPED as v22.2 (PR #5),
   followed by v22.3–v22.5 (PR #6) and v22.6–v22.10 (PR #7: temperature, 27-hole picker, Setup
   fixes, seed cards, the snapping score strip, the caddie-brain engine integration). `main` is
-  v22.10. v22.11 (marked-green mode + draggable pin) is on `claude/bold-pascal-2s136s`. Read
-  `docs/HANDOFF-NEXT.md` first.
+  v22.11 (PR #8: marked-green mode + draggable pin). v22.12 (Ironwood field-test fixes, D51–D55)
+  is on `claude/bold-pascal-2s136s`. Read `docs/HANDOFF-NEXT.md` first.
 - `Start round` opens the **CaddieScreen** directly at hole 1, pre-tee; `‹ Card` goes to the
   scorecard, whose hole-nav row gains a `Caddie` control. The caddie needs GPS (permission prompt
   on the first `I'm on the tee`), the course's OSM geometry (fetched on Setup when a course is
@@ -206,7 +207,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   Shot-log export/import lives on History.
 - Spec: `docs/SPEC-caddie.md` (locked) + `docs/SPEC-caddie-UI.md` (the UI addendum, §8 states / §13
   flags). Decisions made along the way that override the spec live in `docs/DECISIONS-caddie.md`
-  (D1–D50) — read it, don't copy it into other docs.
+  (D1–D55) — read it, don't copy it into other docs.
 - Refresh workflow (spec §5.8): after a round, export the shot log or a Shot Pattern export →
   hand it to the Golf project chat → it lands under `data/extracted/` → `npm run build:profile`
   regenerates `src/profile.json`.
