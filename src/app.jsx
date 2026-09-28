@@ -4,7 +4,10 @@ import { initializeFirestore, persistentLocalCache, persistentSingleTabManager, 
 import { T, F, caps, printed, written, writtenWord, rule, hairline, doubleRule, PencilDefs, Logo, teeTint } from "./theme.jsx";
 /* Caddie (S3a, v22): the map layer. The profile is bundled, never fetched (addendum §11.1). */
 import { fetchGeometry } from "./geometry.js";
-import { buildHole, frameOf, detectHole, needsNineMap, nineMapCandidates, saveNineMap, loadNineMap, loadGeometryCache, saveGeometryCache, inferLie, ll } from "./caddie/geo.js";
+import { buildHole, frameOf, detectHole, needsNineMap, nineMapCandidates, saveNineMap, loadNineMap, loadGeometryCache, saveGeometryCache, inferLie, ll,
+  nineMapFromRouting, playFromRouting, ninesAssociation, guessPlay } from "./caddie/geo.js";
+/* v22.7: clubs with more than 18 holes — one picker row per club, the nines chosen on Setup. */
+import { groupResultsByClub, clubKeyOf, routingLabel, routingNines, splitTee27, nineCombos, teeForCombo, loadLastRouting, saveLastRouting, defaultRoutingIndex } from "./routing.js";
 import { loadProfile, resolveEntry } from "./caddie/profile.js";
 import { MapLayer, useSatellite, prefetchTiles, TILE_PREFETCH_ENABLED } from "./caddie/mapLayer.jsx";
 /* Caddie (S3b, v22): the engine, its inputs and the screen's state + render model. */
@@ -55,7 +58,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.6 · Sep 29";
+const BUILD = "v22.7 · Sep 29";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -90,17 +93,40 @@ async function loadFullCourse(id) {
   return course;
 }
 
-/* Flatten tees.male + tees.female into one picker list; skip any non-18-hole tee. */
+/* Flatten tees.male + tees.female into one picker list. 18-hole tees as before; a 27-hole tee
+   (v22.7) is kept with its three nines split out (`nines`) — Setup turns it into one tee per
+   two-nine combination. Anything else is skipped. */
 function teeOptions(fullCourse) {
   const tees = fullCourse.tees || {};
   const out = [];
   ["male", "female"].forEach(gender => {
     const arr = Array.isArray(tees[gender]) ? tees[gender] : [];
     arr.forEach((tee, i) => {
-      if (Array.isArray(tee.holes) && tee.holes.length === 18) out.push({ key: `${gender}:${i}`, gender, tee });
+      if (!Array.isArray(tee.holes)) return;
+      if (tee.holes.length === 18) out.push({ key: `${gender}:${i}`, gender, tee });
+      else if (tee.holes.length === 27) out.push({ key: `${gender}:${i}`, gender, tee, nines: splitTee27(tee) });
     });
   });
   return out;
+}
+const teeNameOf = (o) => o.tee.tee_name || o.gender;
+/* The tees Setup lists for one routing: a 27-hole combination composes each 27-hole tee into
+   that 18; an ordinary routing lists its 18-hole tees. */
+function teesForRouting(opts, route) {
+  if (route && route.combo) {
+    return opts.filter(o => o.nines).map(o => {
+      const tee = teeForCombo(o.tee, o.nines, route.combo);
+      return tee ? { ...o, key: `${o.key}~${route.combo.join("")}`, tee, ratingSource: "27-hole tee" } : null;
+    }).filter(Boolean);
+  }
+  return opts.filter(o => !o.nines);
+}
+/* A single entry with a 27-hole tee: its three combinations are the routings. */
+function combosFor(full, opts) {
+  const t27 = opts.find(o => o.nines);
+  if (!t27) return [];
+  const club = t27.nines.map(n => n.label);
+  return nineCombos(t27.nines).map(k => ({ key: `c:${k.combo.join("")}`, id: full.id, combo: k.combo, label: k.label, nines: k.nines, club }));
 }
 
 /* Total yardage of a tee option — summed from its holes (the API's own total is
@@ -110,11 +136,11 @@ const teeYards = (opt) => (opt.tee.holes || []).reduce((a, h) => a + (h.yardage 
 /* Build the engine course object from a full course + a chosen tee option.
    Field mapping (do NOT rename): handicap->si, yardage->yards, course_rating->rating,
    slope_rating->slope, par_total->par. */
-function buildCourse(fullCourse, teeOpt) {
+function buildCourse(fullCourse, teeOpt, club) {
   const t = teeOpt.tee;
   const name = fullCourse.club_name || fullCourse.course_name || "Course";
   const loc = fullCourse.location || {};
-  return {
+  const c = {
     id: `${fullCourse.id}:${teeOpt.key}`,
     apiId: fullCourse.id,
     lat: typeof loc.latitude === "number" ? loc.latitude : undefined,
@@ -126,6 +152,16 @@ function buildCourse(fullCourse, teeOpt) {
     par: t.par_total,
     holes: t.holes.map(h => ({ par: h.par, si: h.handicap, yards: h.yardage })),
   };
+  /* v22.7 — clubs with more than 18 holes. clubApiId keys the club-level map (geometry cache,
+     tile prefetch, nine map); routing is the pill's label ("Village / School"); nines is what the
+     caddie's nine map reads: { play: [first, second], club: [all nines], ordered }. */
+  if (club && club.clubApiId != null && (club.route || String(club.clubApiId) !== String(fullCourse.id))) c.clubApiId = club.clubApiId;
+  if (club && club.route) {
+    c.routing = club.route.label;
+    if (Array.isArray(club.route.nines)) c.nines = { play: club.route.nines, club: club.route.club || club.route.nines, ordered: !!club.route.combo };
+  }
+  if (teeOpt.ratingSource) c.ratingSource = teeOpt.ratingSource;
+  return c;
 }
 
 /* Validate a persisted course object before restoring an in-progress round. */
@@ -140,6 +176,9 @@ function validCourse(c) {
    cache per course under bogeyman-matches:geo:v1:{apiId}), then the satellite tiles for every
    hole (addendum §11.2). Setup shows one status line; the caddie reads the cached geometry. */
 const apiIdOf = (course) => course?.apiId ?? (course?.id != null ? String(course.id).split(":")[0] : null);
+/* The club's key for everything that is one per club, not one per routing: the OSM geometry, the
+   tile prefetch and the nine map. An 18-hole course has no clubApiId, so this is its apiId. */
+const clubIdOf = (course) => course?.clubApiId ?? apiIdOf(course);
 function courseAnchor(course) {
   if (!course) return null;
   if (typeof course.lat === "number" && typeof course.lon === "number") return { lat: course.lat, lon: course.lon };
@@ -153,7 +192,7 @@ function courseAnchor(course) {
 const safeStorage = () => { try { return window.localStorage; } catch (e) { return null; } };
 /* { geometry, phase: none | loading | ready | unavailable, done, total } */
 function useCourseMap(course) {
-  const apiId = apiIdOf(course);
+  const apiId = clubIdOf(course);                     // per club: switching routings never refetches
   const [geometry, setGeometry] = useState(() => (apiId != null ? loadGeometryCache(safeStorage(), apiId) : null));
   const [st, setSt] = useState({ phase: "none", done: 0, total: 0 });
   useEffect(() => {
@@ -501,9 +540,12 @@ function CoursePicker({ onPick, onClose }) {
   };
   const CAP = 12;
   const stateOf = (r) => (r.location && r.location.state) || "";
+  /* v22.7: one row per club. A 27-hole club comes back as one result per routing sharing a
+     club_name; they fold into one row and the nines are chosen on Setup. */
   const displayed = useMemo(() => {
-    if (!homeState) return results.slice(0, CAP);
-    return [...results.filter(r => stateOf(r) === homeState), ...results.filter(r => stateOf(r) !== homeState)].slice(0, CAP);
+    const clubs = groupResultsByClub(results);
+    if (!homeState) return clubs.slice(0, CAP);
+    return [...clubs.filter(r => stateOf(r) === homeState), ...clubs.filter(r => stateOf(r) !== homeState)].slice(0, CAP);
   }, [results, homeState]);
 
   useEffect(() => {
@@ -548,15 +590,20 @@ function CoursePicker({ onPick, onClose }) {
         {searchState === "loading" && <div style={{ ...caps(11, 400, "0"), fontFamily: F.label, color: T.muted, padding: "14px 0" }}>Searching…</div>}
         {searchState === "empty" && <div style={{ ...caps(11, 400, "0"), fontFamily: F.label, color: T.muted, padding: "14px 0" }}>No courses found — try a different spelling.</div>}
         {searchState === "error" && <div style={{ ...caps(11, 400, "0"), fontFamily: F.label, color: T.double, padding: "14px 0" }}>Course search unavailable — check your connection.</div>}
-        {searchState === "done" && displayed.map(r => (
-          <button key={r.id} onClick={() => onPick(r.id)} style={{ display: "block", width: "100%", textAlign: "left",
-            padding: "11px 0", background: "none", border: "none", borderBottom: hairline, color: T.ink }}>
-            <div style={{ fontFamily: F.hand, fontSize: 24, lineHeight: "24px", color: T.pencil, filter: "url(#pencil)" }}>{r.club_name || r.course_name}</div>
-            <div style={{ fontFamily: F.label, fontSize: 11, color: T.muted, marginTop: 2 }}>
-              {[r.course_name && r.course_name !== r.club_name ? r.course_name : null, r.location && [r.location.city, r.location.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
-            </div>
-          </button>
-        ))}
+        {searchState === "done" && displayed.map(g => {
+          const r = g.entries[0], many = g.entries.length > 1;
+          return (
+            <button key={g.key} data-club={g.key} onClick={() => onPick(g)} style={{ display: "block", width: "100%", textAlign: "left",
+              padding: "11px 0", background: "none", border: "none", borderBottom: hairline, color: T.ink }}>
+              <div style={{ fontFamily: F.hand, fontSize: 24, lineHeight: "24px", color: T.pencil, filter: "url(#pencil)" }}>{g.club_name || r.course_name}</div>
+              <div style={{ fontFamily: F.label, fontSize: 11, color: T.muted, marginTop: 2 }}>
+                {[!many && r.course_name && r.course_name !== r.club_name ? r.course_name : null,
+                  g.location && [g.location.city, g.location.state].filter(Boolean).join(", "),
+                  many ? `${g.entries.length} routings` : null].filter(Boolean).join(" · ")}
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -581,31 +628,91 @@ function defaultTee(opts, full, history) {
   return byYards[Math.floor((byYards.length - 1) / 2)];
 }
 
+/* The nines of every routing of a club, in first-seen order ("Village/School", "Mill/School" → Village, School, Mill). */
+function clubNinesOf(routes) {
+  const out = [];
+  routes.forEach(r => (r.nines || []).forEach(n => { if (!out.some(x => x.toLowerCase() === n.toLowerCase())) out.push(n); }));
+  return out;
+}
+
 function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHistory, courseMap }) {
   const [picking, setPicking] = useState(false);
+  const [club, setClub] = useState(null);                 // v22.7: the picked club { key, club_name, clubApiId, entries }
+  const [routings, setRoutings] = useState([]);           // its routings (entries or 27-hole combinations)
+  const [routingKey, setRoutingKey] = useState("");
   const [selectedFull, setSelectedFull] = useState(null);
   const [tees, setTees] = useState([]);
   const [teeKey, setTeeKey] = useState("");
   const [loadState2, setLoadState2] = useState("idle");   // idle | loading | error
-  const [pendingId, setPendingId] = useState(null);
+  const retry = React.useRef(null);
+  const seq = React.useRef(0);                            // a late load for an earlier tap never wins
 
-  const pickCourse = (id) => {
-    setPicking(false);
-    setCourse(null); setTees([]); setTeeKey("");
-    setPendingId(id); setLoadState2("loading");
-    loadFullCourse(id)
+  /* One routing: fetch its full course (cached after the first time), list its tees, keep the
+     tee name already chosen when this routing has it. No route = a single-entry club, which may
+     turn out to carry a 27-hole tee — then its three combinations become the routings. */
+  const showRouting = (c, routes, route, keepName) => {
+    const my = ++seq.current;
+    retry.current = () => showRouting(c, routes, route, keepName);
+    setRoutingKey(route ? route.key : ""); setCourse(null); setTeeKey(""); setLoadState2("loading");
+    loadFullCourse(route ? route.id : c.entries[0].id)
       .then(full => {
+        if (my !== seq.current) return;
         const opts = teeOptions(full);
-        setSelectedFull(full); setTees(opts); setLoadState2("idle");
-        if (opts.length) pickTee(defaultTee(opts, full, history).key, opts, full);
+        let rs = routes, r = route;
+        if (!rs.length || (r && r.combo)) {
+          const combos = combosFor(full, opts);
+          if (combos.length) {
+            rs = combos;
+            if (!r) r = combos[defaultRoutingIndex(combos, loadLastRouting(safeStorage(), c.key))];
+            setRoutings(combos); setRoutingKey(r.key);
+          }
+        }
+        const list = teesForRouting(opts, r);
+        setSelectedFull(full); setTees(list); setLoadState2("idle");
+        if (list.length) {
+          const keep = keepName ? list.find(o => teeNameOf(o) === keepName) : null;
+          pickTee((keep || defaultTee(list, full, history)).key, list, full, c, r);
+        }
       })
-      .catch(() => { setSelectedFull(null); setTees([]); setLoadState2("error"); });
+      .catch(() => { if (my === seq.current) { setSelectedFull(null); setTees([]); setLoadState2("error"); } });
   };
-  const pickTee = (key, optsArg, fullArg) => {
-    const opts = optsArg || tees, full = fullArg || selectedFull;
+  const pickClub = (group) => {
+    setPicking(false);
+    setCourse(null); setTees([]); setTeeKey(""); setSelectedFull(null); setRoutings([]); setRoutingKey("");
+    const last = loadLastRouting(safeStorage(), group.key);
+    // sticky: the id this club's map was first cached under, even if a later search misses that routing
+    const c = { ...group, clubApiId: last && last.clubApiId != null ? last.clubApiId : group.clubApiId };
+    setClub(c);
+    if (group.entries.length > 1) {
+      const base = group.entries.map(e => ({ key: `e:${e.id}`, id: e.id, label: routingLabel(e), nines: routingNines(e) }));
+      const allNines = clubNinesOf(base);
+      const routes = base.map(r => ({ ...r, club: allNines }));
+      setRoutings(routes);
+      showRouting(c, routes, routes[defaultRoutingIndex(routes, last)], null);
+    } else {
+      showRouting(c, [], null, null);
+    }
+  };
+  const pickRouting = (key) => {
+    const r = routings.find(x => x.key === key);
+    if (!r || !club || key === routingKey) return;
+    const cur = tees.find(o => o.key === teeKey);
+    showRouting(club, routings, r, cur ? teeNameOf(cur) : (course && course.tee));
+  };
+  const pickTee = (key, optsArg, fullArg, clubArg, routeArg) => {
+    const opts = optsArg || tees, full = fullArg || selectedFull, c = clubArg || club;
+    const route = routeArg !== undefined ? routeArg : routings.find(x => x.key === routingKey) || null;
     setTeeKey(key);
     const opt = opts.find(o => o.key === key);
-    setCourse(opt && full ? buildCourse(full, opt) : null);
+    setCourse(opt && full ? buildCourse(full, opt, c ? { clubApiId: c.clubApiId, route } : null) : null);
+  };
+  /* Start: remember this club's routing (and the key its map is cached under) for next time. */
+  const start = () => {
+    const route = routings.find(x => x.key === routingKey);
+    if (course && club && route && course.routing) {
+      saveLastRouting(safeStorage(), club.key, { id: route.combo ? null : route.id, label: route.label, clubApiId: club.clubApiId });
+    }
+    onStart();
   };
 
   /* differential is read-only now (behaviour decision §5): last five rounds, no override */
@@ -613,14 +720,18 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
   useEffect(() => { if (auto) setDiff(auto.diff); }, [auto, setDiff]);
   const g = course ? computeGhost(course, diff) : null;
 
-  const courseName = course ? course.name : selectedFull ? (selectedFull.club_name || selectedFull.course_name) : null;
+  const courseName = course ? course.name : selectedFull ? (selectedFull.club_name || selectedFull.course_name) : club ? club.club_name : null;
+  /* the NINES row: the club's routings, or — restored from a saved round — the one it was on */
+  const nineRow = routings.length > 1 ? routings
+    : !club && course && course.routing ? [{ key: "saved", label: course.routing }] : null;
+  const shownRoutingKey = routings.length > 1 ? routingKey : "saved";
   const parText = course ? course.par : null;
   const yards = course ? course.holes.reduce((a, h) => a + (h.yards || 0), 0) : null;
 
   return (
     <div style={{ height: "100dvh", maxWidth: 460, margin: "0 auto", boxSizing: "border-box", display: "flex", flexDirection: "column",
       padding: "max(env(safe-area-inset-top), 30px) 20px max(env(safe-area-inset-bottom), 18px)", background: T.paper }}>
-      {picking && <CoursePicker onPick={pickCourse} onClose={() => setPicking(false)} />}
+      {picking && <CoursePicker onPick={pickClub} onClose={() => setPicking(false)} />}
 
       {/* the card: double-rule frame, sections evenly spaced between ink rules */}
       <div style={{ flexGrow: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "space-between",
@@ -649,7 +760,7 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
         <div style={{ display: "grid", gridTemplateColumns: "66px 1fr", alignItems: "center", height: 74, borderBottom: rule }}>
           <span style={caps(11)}>Tee</span>
           {loadState2 === "loading" ? <span style={{ fontFamily: F.label, fontSize: 11, color: T.muted }}>Loading course…</span>
-          : loadState2 === "error" ? <button onClick={() => pendingId && pickCourse(pendingId)} style={{ fontFamily: F.label, fontSize: 11, color: T.double, background: "none", border: "none", textAlign: "left", padding: 0 }}>Couldn't load — tap to retry.</button>
+          : loadState2 === "error" ? <button onClick={() => retry.current && retry.current()} style={{ fontFamily: F.label, fontSize: 11, color: T.double, background: "none", border: "none", textAlign: "left", padding: 0 }}>Couldn't load — tap to retry.</button>
           : tees.length === 0 && selectedFull ? <span style={{ fontFamily: F.label, fontSize: 11, color: T.muted }}>No 18-hole tees for this course.</span>
           : tees.length === 0 && course ? (
             /* restored from a saved round: the tee list was never fetched, so show
@@ -745,7 +856,7 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
 
         {/* start */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <button onClick={onStart} disabled={!course} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+          <button onClick={start} disabled={!course} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
             height: 52, padding: "0 30px", background: course ? T.ink : "transparent", border: `2px solid ${course ? T.ink : T.muted}`,
             borderRadius: 26, boxShadow: course ? `inset 0 0 0 1.5px ${T.yellow}` : "none",
             color: course ? T.paper : T.muted, ...caps(13, 700, "0.22em") }}>

@@ -432,6 +432,122 @@ export function nineMapPromptNeeded(geometry, storage, courseId) {
   return needsNineMap(geometry) && !loadNineMap(storage, courseId);
 }
 
+/* ---------- (f2) the nine map from the chosen routing (v22.7) ----------
+   Setup now knows which two nines are being played (the routing). A routing here is
+   { play: [a, b], club: [a, b, c], ordered } — the two nines in play order, the club's nines, and
+   whether `club` is in OSM-number order (true only for a 27-hole API tee cut into holes 1–9 /
+   10–18 / 19–27). A string "Village / School" is read as { play: ["Village", "School"] }.
+   Nines in a saved map are always labelled "1" / "2" / "3" (D24); the names travel as
+   `_nines: { name: label }` beside `_play`, so a later round on another routing of the same club
+   finds its own `_play` without asking again. */
+
+function normRouting(routing) {
+  if (typeof routing === "string") {
+    const play = routing.split("/").map((s) => s.trim()).filter(Boolean);
+    return play.length === 2 ? { play, club: play, ordered: false } : null;
+  }
+  const play = Array.isArray(routing?.play) ? routing.play.map((s) => String(s).trim()) : null;
+  if (!play || play.length !== 2 || !play[0] || !play[1] || play[0] === play[1]) return null;
+  const club = Array.isArray(routing.club) && routing.club.length ? routing.club.map((s) => String(s).trim()) : play;
+  return { play, club: club.includes(play[0]) && club.includes(play[1]) ? club : play, ordered: !!routing.ordered };
+}
+const NINE_LABELS = ["1", "2", "3"];
+const isLabel = (s) => NINE_LABELS.includes(String(s));
+const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const hasWord = (text, w) => new RegExp(`(^|[^\\p{L}])${escRe(w.toLowerCase())}($|[^\\p{L}])`, "u").test(String(text).toLowerCase());
+
+/* Hole-within-nine for a candidate: from a ref 1–27, else the first 1–9 in its name. */
+function holeInNine(c) {
+  const r = Number(c.ref);
+  if (Number.isInteger(r) && r >= 1 && r <= 27) return ((r - 1) % 9) + 1;
+  const m = String(c.name || "").match(/(?:^|\D)([1-9])(?:\D|$)/);
+  return m ? Number(m[1]) : null;
+}
+
+/* Every hole 1–9 of each nine in `labels` present exactly once. */
+function ninesComplete(map, labels) {
+  return labels.every((lab) => {
+    const hs = Object.values(map).filter((v) => v && v.nine === lab).map((v) => v.hole);
+    return hs.length === 9 && new Set(hs).size === 9 && hs.every((h) => h >= 1 && h <= 9);
+  });
+}
+
+/**
+ * The nine map for this geometry + routing, when it can be read off confidently; else null.
+ * - Named: OSM hole names carrying the nine words ("Village 3", "School - 7") → those nines.
+ * - Numbered: OSM refs 1–27, each once → nines 1 / 2 / 3; the played pair is known when the
+ *   routing's nines are themselves "1"/"2"/"3", or `ordered` says which name is which number.
+ * Anything else (refs 1–9 three times, word nines on a 1–27 map, gaps) → null: the screen asks.
+ */
+export function nineMapFromRouting(geometry, routing) {
+  const r = normRouting(routing);
+  const cands = nineMapCandidates(geometry);
+  if (!r || !cands.length) return null;
+
+  // (a) named nines — the words are in the OSM hole names
+  const words = r.club.filter((w) => !isLabel(w));
+  if (words.length >= 2) {
+    const labelOf = Object.fromEntries(r.club.map((w, i) => [w, NINE_LABELS[i]]));
+    const named = {};
+    for (const c of cands) {
+      if (!c.name) continue;
+      const hits = r.club.filter((w) => !isLabel(w) && hasWord(c.name, w));
+      const h = holeInNine(c);
+      if (hits.length === 1 && h != null && labelOf[hits[0]]) named[c.key] = { nine: labelOf[hits[0]], hole: h };
+    }
+    const play = r.play.map((w) => labelOf[w]);
+    if (play.every(Boolean) && ninesComplete(named, play)) return { ...named, _play: play, _nines: labelOf };
+  }
+
+  // (b) numbered 1–27, each ref once
+  const refs = cands.map((c) => Number(c.ref));
+  const unique = refs.every((n) => Number.isInteger(n) && n >= 1 && n <= 27) && new Set(refs).size === refs.length;
+  if (!unique) return null;
+  const numbered = {};
+  for (const c of cands) { const n = Number(c.ref); numbered[c.key] = { nine: NINE_LABELS[Math.ceil(n / 9) - 1], hole: ((n - 1) % 9) + 1 }; }
+  let play = null, names = null;
+  if (r.play.every(isLabel)) play = r.play.map(String);
+  else if (r.ordered && r.club.length === 3) {
+    names = Object.fromEntries(r.club.map((w, i) => [w, NINE_LABELS[i]]));
+    play = r.play.map((w) => names[w]);
+  }
+  if (!play || !play.every(Boolean) || !ninesComplete(numbered, play)) return null;
+  return { ...numbered, _play: play, ...(names ? { _nines: names } : {}) };
+}
+
+/** `_play` for this routing from a saved map's `_nines` (or numeric nine names); null when unknown. */
+export function playFromRouting(map, routing) {
+  const r = normRouting(routing);
+  if (!r || !map) return null;
+  const names = map._nines && typeof map._nines === "object" ? map._nines : null;
+  if (names && names[r.play[0]] && names[r.play[1]] && names[r.play[0]] !== names[r.play[1]]) return [names[r.play[0]], names[r.play[1]]];
+  if (r.play.every(isLabel)) return r.play.map(String);
+  return null;
+}
+
+/**
+ * `_nines` from what Brett picked on the mapping screen: the routing's two nines are the two he
+ * chose; with three club nines, the third gets the remaining label. null when it can't be said.
+ */
+export function ninesAssociation(play, routing) {
+  const r = normRouting(routing);
+  if (!r || !Array.isArray(play) || play.length !== 2 || play[0] === play[1] || r.play.every(isLabel)) return null;
+  const out = { [r.play[0]]: String(play[0]), [r.play[1]]: String(play[1]) };
+  const rest = r.club.filter((w) => !(w in out));
+  const free = NINE_LABELS.filter((l) => !Object.values(out).includes(l));
+  if (rest.length === 1 && free.length === 1) out[rest[0]] = free[0];
+  return out;
+}
+
+/** A first guess for the mapping screen's front/back when nothing is confident. */
+export function guessPlay(routing) {
+  const r = normRouting(routing);
+  if (!r) return ["1", "2"];
+  if (r.play.every(isLabel)) return r.play.map(String);
+  const i = r.club.indexOf(r.play[0]), j = r.club.indexOf(r.play[1]);
+  return i >= 0 && j >= 0 && i < 3 && j < 3 && i !== j ? [NINE_LABELS[i], NINE_LABELS[j]] : ["1", "2"];
+}
+
 /** The OSM hole key for {nine, hole}, or null. */
 export function holeKeyFor(map, nine, hole) {
   for (const [k, v] of Object.entries(map || {})) if (v && v.nine === nine && Number(v.hole) === Number(hole)) return k;
