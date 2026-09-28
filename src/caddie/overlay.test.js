@@ -13,12 +13,15 @@ import {
   K80, thetaDeg, ellipseScreen, supportPoints, pointInEllipse, ellipsePolygon, ellipseBbox, bboxYds,
   ellipseFromEntry, withEllipses, ellipseInFrame, fitBounds, cameraPoints, cameraFor, linearProjector,
   zoomForPxPerYd, cameraKey, mapModeFor, NOTICE_NO_SATELLITE, overlayModel, fallbackMapModel, tagsOf, pxPerYdAt,
+  NOTICE_NO_SATELLITE_MARKED, NOTICE_MARK_GREEN, markCamera, pinViewCamera, pinViewKey, pinMarkerHit, visibleRegion,
 } from "./overlay.js";
 import { ellipseSampler, ELL80_K, recommend } from "./engine.js";
 import { loadProfile, resolveEntry } from "./profile.js";
 import { makeSamples } from "./random.js";
 import { pointInRing } from "./course.js";
-import { buildHole, distances } from "./geo.js";
+import { buildHole, distances, holeFrame } from "./geo.js";
+import { markedGreenHole } from "./greens.js";
+import { destination, YARDS_PER_METER as YPM } from "../geometry.js";
 import { parseOverpass } from "../geometry.js";
 import { openPar5, waterLeftPar4, bunkeredPar3 } from "../fixtures/synthetic-holes.js";
 
@@ -325,4 +328,97 @@ test("fallback map model: flat polygons with ink outlines in §4.3 order", () =>
   assert.ok(m.every((n) => n.tag === "path" && n.attrs.stroke === "#1E6B3A" && n.attrs.strokeWidth === 1));
   assert.ok(m.some((n) => n.attrs.fill === "#DCEBDC"), "green in fillWon");
   assert.deepEqual(fallbackMapModel({ hole: null, project }), []);
+});
+
+/* ---------- v22.11: marked-green mode and the pin view ---------- */
+
+test("mapModeFor, no geometry: no GPS → paper as before; GPS + unmarked → the mark view; GPS + marked → satellite / drawn", () => {
+  const nm = "No course map for hole 7. Enter yards for a club.";
+  // unchanged without a fix
+  assert.deepEqual(mapModeFor({ hasHole: false, holeNo: 7, probeOk: true, greenMarked: true }), { mode: "none", notice: nm });
+  // a fix, no green yet: satellite north-up on the ball, and the notice asking for the tap
+  assert.deepEqual(mapModeFor({ hasHole: false, holeNo: 7, hasGps: true, probeOk: true }), { mode: "mark", notice: NOTICE_MARK_GREEN });
+  assert.deepEqual(mapModeFor({ hasHole: false, holeNo: 7, hasGps: true, tilesCached: true, online: false }), { mode: "mark", notice: NOTICE_MARK_GREEN }, "cached tiles work offline");
+  assert.equal(mapModeFor({ hasHole: false, holeNo: 7, hasGps: true }).mode, "checking");
+  // …but with no satellite there is nothing to tap a green on: paper and Enter yards, as before
+  for (const x of [{ online: false }, { probeOk: false }, { libFailed: true, tilesCached: true }]) {
+    assert.deepEqual(mapModeFor({ hasHole: false, holeNo: 7, hasGps: true, ...x }), { mode: "none", notice: nm }, JSON.stringify(x));
+  }
+  // marked: the synthetic hole on satellite, or drawn on paper from the mark (never "from course data")
+  assert.deepEqual(mapModeFor({ hasHole: false, hasGps: true, greenMarked: true, probeOk: true }), { mode: "satellite", notice: null });
+  assert.deepEqual(mapModeFor({ hasHole: false, hasGps: true, greenMarked: true, online: false }), { mode: "fallback", notice: NOTICE_NO_SATELLITE_MARKED });
+  assert.equal(mapModeFor({ hasHole: false, hasGps: true, greenMarked: true }).mode, "checking");
+  assert.equal(NOTICE_MARK_GREEN, "No course map. Satellite on GPS — tap the green to mark it.");
+  // a mapped hole ignores all of it
+  assert.equal(mapModeFor({ hasHole: true, hasGps: true, greenMarked: false, probeOk: true }).mode, "satellite");
+});
+
+test("markCamera: north-up, the ball centred in the visible region, the region 300 yds tall", () => {
+  const vp = { width: 375, height: 812 }, insets = { top: 96, right: 106, bottom: 128, left: 0 };
+  const m = markCamera(vp, insets);
+  const r = visibleRegion(vp, insets);
+  assert.equal(m.bearingDeg, 0);
+  near(r.height / m.pxPerYd, 300, 1e-9, "300 yds tall");
+  // with the viewport centre at ball + centerOffset, the ball lands on the region's centre
+  const lin = linearProjector({ center: m.centerOffset, pxPerYd: m.pxPerYd }, vp);
+  const b = lin.project({ x: 0, y: 0 });
+  near(b.x, r.cx, 1e-9, "ball x at the region centre"); near(b.y, r.cy, 1e-9, "ball y at the region centre");
+  near(markCamera(vp, insets, { spanYds: 150 }).pxPerYd, 2 * m.pxPerYd, 1e-9, "span is a parameter");
+});
+
+test("pin view camera: the green + 15 yds fills the visible region, hole-up; refit once per hole", () => {
+  const hole = buildHole(hampton, "2", { par: 3, yards: 143 });
+  const vp = { width: 375, height: 812 }, insets = { top: 96, right: 106, bottom: 128, left: 0 };
+  const cam = pinViewCamera(hole, vp, insets);
+  const r = visibleRegion(vp, insets);
+  const g = fitBounds(hole.green.ring);
+  const bw = g.maxX - g.minX + 30, bh = g.maxY - g.minY + 30;
+  near(cam.pxPerYd, Math.min(r.width / bw, r.height / bh), 1e-9, "fits the padded box");
+  const lin = linearProjector(cam, vp);
+  const c = lin.project({ x: (g.minX + g.maxX) / 2, y: (g.minY + g.maxY) / 2 });
+  near(c.x, r.cx, 1e-6, "green box centred (x)"); near(c.y, r.cy, 1e-6, "green box centred (y)");
+  for (const [x, y] of hole.green.ring) {
+    const q = lin.project({ x, y });
+    assert.ok(q.x >= r.L + 15 * cam.pxPerYd - 1e-6 && q.x <= r.R - 15 * cam.pxPerYd + 1e-6, "15 yds clear either side (x)");
+    assert.ok(q.y >= r.T - 1e-6 && q.y <= r.B + 1e-6, "inside the region (y)");
+  }
+  assert.ok(cam.pxPerYd > 2.5, `close in: ${cam.pxPerYd.toFixed(2)} px/yd`);
+  // the synthetic green of a marked hole: 28 × 24 + 15 each side = 54 wide → width-limited
+  const B = { lat: 39.95, lon: -85.98 };
+  const mh = markedGreenHole({ ball: B, green: destination(B, 90, 150 / YPM) });
+  near(pinViewCamera(mh, vp, insets).pxPerYd, r.width / 54, 0.02, "synthetic green fit");
+  assert.equal(pinViewCamera({ green: null }, vp, insets), null);
+  // key: per hole + viewport, never the pin
+  assert.equal(pinViewKey({ hole, viewport: vp, insets }), pinViewKey({ hole, viewport: vp, insets }));
+  assert.notEqual(pinViewKey({ hole, viewport: vp, insets }), cameraKey({ hole, ball: null, options: null, viewport: vp, insets }));
+});
+
+test("pin view marker: shapes only (T37), dashed ring while dragging, hit test round the cup and the flag", () => {
+  const hole = buildHole(hampton, "2", { par: 3, yards: 143 });
+  const vp = { width: 375, height: 812 };
+  const lin = linearProjector(pinViewCamera(hole, vp, { top: 96, right: 106, bottom: 128 }), vp);
+  const pin = hole.green.center;
+  for (const dragging of [false, true]) {
+    for (const palette of ["satellite", "paper"]) {
+      const m = overlayModel({ project: lin.project, viewport: vp, hole, ball: { x: 0, y: 0 }, pin, pinMarker: true, pinDragging: dragging, palette });
+      const tags = tagsOf(m);
+      assert.ok(!tags.includes("text"), "no text on the map");
+      const parts = JSON.stringify(m);
+      assert.ok(parts.includes('"pin-marker"') && !parts.includes('"data-part":"pin"'), "the marker replaces the small flag");
+      assert.equal(parts.includes('"pin-drag"'), dragging);
+    }
+  }
+  const px = lin.project(pin);
+  assert.ok(pinMarkerHit(px, { x: px.x + 3, y: px.y + 2 }), "on the cup");
+  assert.ok(pinMarkerHit(px, { x: px.x + 10, y: px.y - 24 }), "on the flag");
+  assert.ok(!pinMarkerHit(px, { x: px.x - 40, y: px.y + 30 }), "clear of it");
+});
+
+test("fallback drawn map of a marked green: the green only, never the engine's corridor", () => {
+  const B = { lat: 39.95, lon: -85.98 };
+  const mh = markedGreenHole({ ball: B, green: destination(B, 90, 200 / YPM) });
+  assert.equal(mh.fairways.length, 1, "the engine has a corridor");
+  const lin = linearProjector(cameraFor(fitBounds(cameraPoints({ hole: mh, ball: { x: 0, y: 0 } })), { width: 375, height: 812 }), { width: 375, height: 812 });
+  const drawn = fallbackMapModel({ hole: mh, project: lin.project });
+  assert.equal(drawn.length, 1, "one polygon: the green");
 });

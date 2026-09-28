@@ -25,8 +25,10 @@ import { DEFAULT_CONFIG, mergeConfig } from "./caddie/config.js";
 import {
   COPY, GPS_TIMEOUT_MS, initialCaddie, caddieReducer, caddieHoleFor, serializeCaddie, restoreCaddie, pinSetting, pinPointFor,
   pinFromMapTap, pickerModel, syntheticHole, clubBrainContext, mapInput, caddieView, defaultNineMap, geometryKeyFor, scorecardOrder, detectedHoleNo,
-  hasUnloggedShot, clubShort, ellipsesFor, withinRoundCtx, learningOverlays, aggressionModel,
+  hasUnloggedShot, clubShort, ellipsesFor, withinRoundCtx, learningOverlays, aggressionModel, pinFromDrag,
 } from "./caddie/caddieState.js";
+/* v22.11: marked-green mode — the caddie on a hole OpenStreetMap does not have. */
+import { loadGreens, saveGreen, greenFor, greenSlot, markedGreenHole, markedGreenContext, anchorFrame, toSyntheticFrame, markedEndLie } from "./caddie/greens.js";
 import PROFILE_JSON from "./profile.json";
 
 const React = window.React;
@@ -60,7 +62,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.10 · Sep 29";
+const BUILD = "v22.11 · Sep 29";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -261,7 +263,7 @@ const courseMapLine = (m) => !m || m.phase === "none" ? null
   : m.phase === "ready" ? "Course map ready"
   : m.phase === "loading" ? `Course map · loading ${m.done} of ${m.total || 18}`
   : m.phase === "network-error" ? "Course map · could not reach the map server · tap to retry"
-  : m.phase === "no-holes" ? "Course map · OpenStreetMap has no holes for this course · caddie will use yards"
+  : m.phase === "no-holes" ? "No course map. Satellite on GPS — mark each green on the tee."
   : m.phase === "partial" ? `Course map · ${m.done} of ${m.total || 18} holes mapped · tap to retry`
   : "Course map unavailable · caddie will use yards";
 const courseMapRetryable = (m) => !!m && (m.phase === "network-error" || m.phase === "partial");
@@ -1590,14 +1592,32 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     try { return k != null && hh ? buildHole(geometry, k, { par: hh.par, yards: hh.yards }) : null; } catch (e) { return null; }
   };
   const key = geometryKeyFor(geometry, nineMap, n);
-  const built = useMemo(() => buildFor(n), [geometry, nineMap, n, h.par, h.yards]);
+  const mapped = useMemo(() => buildFor(n), [geometry, nineMap, n, h.par, h.yards]);
+  /* v22.11 marked-green mode: no geometry for this hole → the satellite on GPS, and once Brett has
+     tapped the green, a synthetic hole from the ball to it (src/caddie/greens.js). */
+  const noGeo = !mapped;
+  const slotFor = (m) => greenSlot(course, m, { apiId: courseId, clubId: clubIdOf(course) });
+  const slot = slotFor(n);
+  const [greens, setGreens] = useState(() => loadGreens(safeStorage()));
+  const marked = noGeo ? greenFor(greens, slot.courseId, slot.holeKey) : null;
+  const greenInUse = marked && !cs.remark ? marked : null;
+  const ballLat = cs.ball?.lat, ballLng = cs.ball?.lng;
+  const synthetic = useMemo(() => (noGeo && greenInUse && Number.isFinite(ballLat)
+    ? markedGreenHole({ ball: { lat: ballLat, lon: ballLng }, green: greenInUse, holeNo: n, par: h.par }) : null),
+    [noGeo, greenInUse?.lat, greenInUse?.lon, ballLat, ballLng, n, h.par]);
+  const built = mapped || synthetic;
   const Fr = useMemo(() => frameOf(built), [built]);
+  // where an unmapped hole's ballXY and previous-shot lines are kept (the synthetic frame moves with the ball)
+  const courseLL = useMemo(() => (noGeo ? courseAnchor(course) : null), [noGeo, course]);
+  const anchorSrc = noGeo ? (courseLL || (Number.isFinite(ballLat) ? { lat: ballLat, lon: ballLng } : null)) : null;
+  const anchorF = useMemo(() => anchorFrame(anchorSrc), [anchorSrc && anchorSrc.lat.toFixed(2), anchorSrc && anchorSrc.lon.toFixed(2)]);
   const [overrides, setOverrides] = useState(() => loadLieOverrides(safeStorage()));
   const [picker, setPicker] = useState(null);           // chip key
   const [windDir, setWindDir] = useState(null);
   const [yardsOpen, setYardsOpen] = useState(false);
 
-  const ballXY = cs.ballXY || (cs.ball && Fr ? Fr.toFrame({ lat: cs.ball.lat, lon: cs.ball.lng }) : null);
+  const ballXY = noGeo ? (cs.ball && Fr ? Fr.toFrame({ lat: cs.ball.lat, lon: cs.ball.lng }) : null)
+    : cs.ballXY || (cs.ball && Fr ? Fr.toFrame({ lat: cs.ball.lat, lon: cs.ball.lng }) : null);
   const pinSet = pinSetting(cs);
 
   /* the engine: assembleShotContext → §5.5 within-round nudges → recommend → ellipses (≈ 20–45 ms, inside the 500 ms budget) */
@@ -1623,9 +1643,12 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
       if (cs.phase !== "ready" || !built || !cs.ball) return null;
       const round = { hole: n, par: h.par, shotNo: cs.shotNo, courseId, trigger: cs.trigger || "tee", pins: { [n]: pinSet }, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride };
       const wx = weather && (Number.isFinite(weather.speedMph) || Number.isFinite(weather.tempF)) ? weather : null;
-      const common = { hole: built, geometry, fix: { lat: cs.ball.lat, lng: cs.ball.lng, accuracyM: cs.ball.accuracyM }, weather: wx, elevation: geometry?.elevation || null, overrides, config };
-      const ctx = nudged(assembleShotContext({ ...common, round, chips: cs.chips }));
-      const base = assembleShotContext({ ...common, round: { ...round, windOverride: null, conditionsOverride: null }, chips: {} });
+      const common = { hole: built, geometry: built.synthetic ? null : geometry, fix: { lat: cs.ball.lat, lng: cs.ball.lng, accuracyM: cs.ball.accuracyM }, weather: wx,
+        elevation: built.synthetic ? null : geometry?.elevation || null, overrides, config };
+      // a marked green: the same assembly, its ±10-yd pin presets, and no lie inference (greens.js)
+      const assemble = built.synthetic ? markedGreenContext : assembleShotContext;
+      const ctx = nudged(assemble({ ...common, round, chips: cs.chips }));
+      const base = assemble({ ...common, round: { ...round, windOverride: null, conditionsOverride: null }, chips: {} });
       const res = recommend(ctx, built, profile);
       const options = res && res.safe ? ellipsesFor(res, lieOf(ctx), { lieQuality: ctx.lieQuality, config }) : null;
       const pinPt = base.meta.distances?.pinPoint || built.green.center;
@@ -1641,8 +1664,22 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   // The saved snapshot (§9.8) is the ShotContext only: §5.5 nudges are recomputed, never stored.
   if (contextRef) contextRef.current = engine?.ctx ? (({ adjust, nudges, flags, ...rest }) => rest)(engine.ctx) : null;
 
+  /* map mode (§4.3, §8; v22.11 marked green) */
+  const sat = useSatellite(mapped ? geometry : null, mapped ? key : null,
+    { at: noGeo && Number.isFinite(ballLat) ? { lat: ballLat, lon: ballLng } : null, greenMarked: !!greenInUse, holeNo: n });
+  // an unmapped hole can use the bridge unless there is a fix and the satellite is out of reach
+  const markable = noGeo && !(Number.isFinite(ballLat) && sat.mode === "none");
+
+  /* pin view (v22.11 B): the green, the draggable marker, the yards to it */
+  const pinView = !!cs.pinView && !!built;
+  const [dragPin, setDragPin] = useState(null);
+  const pinXY = useMemo(() => (built ? pinPointFor(built, (cs.phase === "ready" && ballXY) || built.tee, pinSet) : null), [built, cs.phase, ballXY?.x, ballXY?.y, pinSet]);
+  const pinFrom = (cs.phase === "ready" && ballXY) || built?.tee || null;
+  const pinYds = pinView && pinFrom && (dragPin || pinXY) ? Math.hypot((dragPin || pinXY).x - pinFrom.x, (dragPin || pinXY).y - pinFrom.y) : null;
+
   const v = caddieView({ state: cs, par: h.par, profileOk: !!profile, mapOk: !!built, res: engine?.res || null, options: engine?.options || null,
-    inferred: engine?.inferred || null, onGreen: !!engine?.onGreen, ballXY: cs.phase === "yards" ? null : ballXY, green: engine?.green || null, config });
+    inferred: engine?.inferred || null, onGreen: !!engine?.onGreen, ballXY: cs.phase === "yards" ? null : ballXY, green: engine?.green || null, config,
+    markable, greenMarked: !!marked, synthetic: !!built?.synthetic, pinYds: pinView ? pinYds : null });
 
   /* ---------- S4: shot log (SPEC-caddie §4, UI addendum §3.4/§9.4–9.5) ---------- */
   // Routing (§4.1): on the green → nothing to capture here (routeShot itself would say "putt");
@@ -1712,7 +1749,12 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   // stands in for the missing GPS end point, since the round has already left that ball behind.
   useEffect(() => {
     if (!cs.openShot || cs.openShot.hole === n) return;
-    const prevHole = buildFor(cs.openShot.hole);
+    let prevHole = buildFor(cs.openShot.hole);
+    if (!prevHole) {
+      // v22.11: an unmapped hole with a marked green — rebuild the shot's synthetic hole from its start
+      const ps = slotFor(cs.openShot.hole), g = greenFor(greens, ps.courseId, ps.holeKey), st = cs.openShot.start;
+      prevHole = g && Number.isFinite(st?.lat) ? markedGreenHole({ ball: { lat: st.lat, lon: st.lng }, green: g, holeNo: cs.openShot.hole }) : null;
+    }
     const prevFr = frameOf(prevHole);
     const endLL = prevFr ? prevFr.toLatLng(prevHole.green.center) : null;
     const closed = prevHole && endLL
@@ -1723,16 +1765,17 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   }, [cs.openShot, n]);
 
   /* map */
-  const pinXY = useMemo(() => (built ? pinPointFor(built, (cs.phase === "ready" && ballXY) || built.tee, pinSet) : null), [built, cs.phase, ballXY?.x, ballXY?.y, pinSet]);
-  const mi = mapInput({ state: cs, view: v.view, ballXY, accuracyM: cs.ball?.accuracyM ?? null, options: engine?.options || null, sameShot: v.sameShot, pin: pinXY, previousShots: cs.shots[n] || [] });
+  const prevShots = noGeo ? (built ? toSyntheticFrame(cs.shots[n] || [], anchorF, Fr) : []) : cs.shots[n] || [];
+  const mi = mapInput({ state: cs, view: v.view, ballXY, accuracyM: cs.ball?.accuracyM ?? null, options: engine?.options || null, sameShot: v.sameShot, pin: pinXY, previousShots: prevShots });
   // §8: Locating, No GPS fix, Location off and Yards entered keep the last camera (no ball drawn).
   const lastFit = React.useRef({ hole: null, ball: null, options: null });
   if (v.view === "ready" || v.view === "sameshot") lastFit.current = { hole: n, ball: mi.fitBall, options: mi.fitOptions };
   else if (v.view === "pretee" || v.view === "green") lastFit.current = { hole: n, ball: mi.fitBall, options: null };
   const keepCam = ["locating", "nofix", "locationoff", "yards"].includes(v.view) && lastFit.current.hole === n;
   const fitBall = keepCam ? lastFit.current.ball : mi.fitBall, fitOptions = keepCam ? lastFit.current.options : mi.fitOptions;
-  const sat = useSatellite(built ? geometry : null, built ? key : null);
   const notice = v.notice || (built ? sat.notice : null);
+  const markAt = noGeo && !built && v.view === "markgreen" && cs.ball ? { lat: cs.ball.lat, lon: cs.ball.lng } : null;
+  const markGreen = (q) => { setGreens(saveGreen(safeStorage(), slot.courseId, slot.holeKey, q)); dispatch({ type: "greenMarked" }); };
   const barH = 78 + safe.bottom;
   const insets = useMemo(() => ({ top: safe.top + 49, right: CADDIE_RAIL_W, bottom: barH + 16, left: 0 }), [safe.top, barH]);
 
@@ -1759,13 +1802,25 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
       if (done) return; done = true; clearTimeout(guard);
       const fix = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracyM: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null };
       let holeNo = null, hole = built;
-      if (trigger === "tee" && geometry) {
+      if (trigger === "tee" && geometry && key != null) {       // v22.11: no hole detection from an unmapped hole (§2 rule only)
         const order = scorecardOrder(geometry, nineMap);
         const r = detectHole(geometry, fix, key, { order: order.filter((k) => k != null) });
         const m = r.advanced ? detectedHoleNo(order, r.hole, n) : null;
         if (m && course.holes[m - 1]) { holeNo = m; hole = buildFor(m); }
       }
       const Fh = frameOf(hole);
+      if (noGeo) {
+        // v22.11: ballXY and the previous-shot lines go in the anchor frame; the shot being closed
+        // out was aimed in the last ball's synthetic frame (`hole`), so its end is measured there.
+        const aF = anchorF || anchorFrame({ lat: fix.lat, lon: fix.lng });
+        if (cs.openShot && Fh) {
+          const endFrame = Fh.toFrame({ lat: fix.lat, lon: fix.lng });
+          saveShotHere(closeOutShot(cs.openShot, { endGps: fix, endLie: markedEndLie(hole, endFrame), endAccuracyM: fix.accuracyM, endFrame }, config));
+          dispatch({ type: "logClosed" });
+        }
+        dispatch({ type: "fix", fix, point: aF ? aF.toFrame({ lat: fix.lat, lon: fix.lng }) : null, hole: null });
+        return;
+      }
       const point = Fh ? Fh.toFrame({ lat: fix.lat, lon: fix.lng }) : null;
       // §4.5 — this fix is what the last long shot (if any) was waiting on: fill in its end
       // position and the miss math, then let it go.
@@ -1784,7 +1839,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
 
   /* chips: every change recomputes; a lie correction is also stored for §5.6 (§9.4) */
   const applyChip = (k, value) => {
-    if (k === "lie" && value != null && cs.ball && engine?.inferred?.lieType && value !== engine.inferred.lieType) {
+    if (k === "lie" && value != null && cs.ball && !built?.synthetic && engine?.inferred?.lieType && value !== engine.inferred.lieType) {
       const e = recordLieOverride(safeStorage(), { courseId, hole: n, gps: { lat: cs.ball.lat, lng: cs.ball.lng, accuracyM: cs.ball.accuracyM }, inferred: engine.inferred.lieType, corrected: value });
       setOverrides((o) => [...o, e]);
     }
@@ -1821,9 +1876,31 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     <div data-screen="caddie" style={{ position: "fixed", inset: 0, overflow: "hidden", background: T.paper, color: T.ink, fontFamily: F.label, userSelect: "none", WebkitUserSelect: "none" }}>
       <style dangerouslySetInnerHTML={{ __html: CADDIE_CSS }} />
       <MapLayer hole={built} geometry={geometry} ball={mi.ball} accuracyM={mi.accuracyM} pin={mi.pin} options={mi.options} active={mi.active} sameShot={mi.sameShot}
-        previousShots={mi.previousShots} fitBall={fitBall} fitOptions={fitOptions} insets={insets} fallback={!built || sat.mode === "fallback"}
+        previousShots={mi.previousShots} fitBall={fitBall} fitOptions={fitOptions} insets={insets} fallback={sat.mode === "fallback" || (!built && !markAt)}
         onPinTap={(p) => { const q = pinFromMapTap(built, p); if (q) dispatch({ type: "pin", value: q }); }}
-        onMapTap={() => { if (cs.exp) dispatch({ type: "exp", exp: false }); }} onSatelliteFail={sat.markFailed} />
+        onMapTap={() => { if (cs.exp) dispatch({ type: "exp", exp: false }); }} onSatelliteFail={sat.markFailed}
+        markAt={markAt} onMarkGreen={markGreen} onRemark={() => dispatch({ type: "remark", on: true })}
+        pinView={pinView} onPinDrag={setDragPin} onPinDrop={(p) => { const q = pinFromDrag(built, p); if (q) dispatch({ type: "pin", value: q }); }} />
+
+      {/* v22.11 B: the pin button — paper disc, ink flag; bottom-left of the map region, clear of the attribution */}
+      {built && ["pretee", "ready", "sameshot", "green"].includes(v.view) && (
+        <div style={{ position: "absolute", left: 14, bottom: barH + 26, display: "flex", alignItems: "center", gap: 8, zIndex: 15 }}>
+          <button data-part="pin-button" onClick={() => dispatch({ type: "pinView", on: !pinView })} aria-pressed={pinView ? "true" : "false"}
+            aria-label={pinView ? "Back to the shot" : "Move the pin"}
+            style={{ width: 38, height: 38, borderRadius: 19, border: rule, background: pinView ? T.ink : T.paper, display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: pinView ? `inset 0 0 0 1.5px ${T.yellow}` : "0 1px 3px rgba(20,28,16,.35)" }}>
+            <svg width="13" height="17" viewBox="0 0 14 18" fill="none" stroke={pinView ? T.paper : T.ink} strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+              <path d="M3 17 V2" /><path d="M3 2 L13 6 L3 10 Z" fill={pinView ? T.yellow : T.ink} stroke={pinView ? T.yellow : T.ink} />
+            </svg>
+          </button>
+          {pinView && (
+            <button data-part="pin-done" onClick={() => dispatch({ type: "pinView", on: false })}
+              style={{ height: 32, padding: "0 11px", display: "flex", alignItems: "center", background: T.paper, border: rule, borderRadius: 0, color: T.ink, fontFamily: F.label, fontSize: 12 }}>
+              {COPY.done}
+            </button>
+          )}
+        </div>
+      )}
 
       <button onClick={onCard} aria-label="Back to the scorecard" style={{ position: "absolute", left: 14, top: safe.top + 9, height: 32, padding: "0 11px",
         display: "flex", alignItems: "center", background: T.paper, border: rule, borderRadius: 0, color: T.ink, fontFamily: F.label, fontSize: 12, zIndex: 15, whiteSpace: "nowrap" }}>
@@ -1941,6 +2018,10 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
             <div style={{ marginTop: 8 }}>
               {d.reasons.map((t, i) => <div key={i} className={compact ? "lc-clamp1" : undefined} style={{ fontSize: 11, lineHeight: 1.45, color: T.ink }}>{t}</div>)}
             </div>
+          )}
+          {/* v22.11: on a marked green, say once that there is nothing on the map to price but distance */}
+          {d.mapNote && (
+            <div data-part="map-note" className={compact ? "lc-clamp1" : undefined} style={{ marginTop: 8, paddingTop: 7, borderTop: hairline, fontSize: 11, lineHeight: 1.45, color: T.ink }}>{d.mapNote}</div>
           )}
           {/* 6. nudge (§3.3 item 6, spec §5.5): one line per nudge, then per contact flag; nothing when none */}
           {d.today.length > 0 && (

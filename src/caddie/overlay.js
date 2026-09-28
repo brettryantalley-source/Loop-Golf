@@ -290,20 +290,88 @@ export function cameraKey({ hole, ball, options, viewport, insets }) {
 /* ---------- §4.3 / §8 which map ---------- */
 
 export const NOTICE_NO_SATELLITE = "No satellite here. Map drawn from course data.";
+export const NOTICE_NO_SATELLITE_MARKED = "No satellite here. Map drawn from the marked green.";
+export const NOTICE_MARK_GREEN = "No course map. Satellite on GPS — tap the green to mark it.";
 export const noticeNoCourseMap = (holeNo) => `No course map for hole ${holeNo}. Enter yards for a club.`;
 
 /**
  * T39. { hasHole, libFailed, tilesCached, online, probeOk } → { mode, notice }.
- * mode: "none" (no geometry: paper, §8 No course map) | "satellite" | "fallback" | "checking".
+ * mode: "none" (no geometry: paper, §8 No course map) | "satellite" | "fallback" | "checking"
+ *       | "mark" (v22.11: no geometry, a GPS fix, no marked green — the satellite north-up on the ball).
  * Satellite needs MapLibre and tiles that are cached or fetchable; otherwise the drawn map.
+ *
+ * v22.11 marked-green mode, when the hole has no geometry (hasHole false):
+ *   no GPS fix                         → "none", the old notice (unchanged: paper + Enter yards)
+ *   GPS, green not marked, satellite   → "mark" + NOTICE_MARK_GREEN
+ *   GPS, green not marked, no satellite→ "none", the old notice (nothing to tap a green on)
+ *   GPS, green marked                  → "satellite" / "fallback" / "checking" over the synthetic
+ *                                        hole; the drawn map says it is drawn from the marked green
+ * Here tilesCached / probeOk describe the tiles at the ball, not a hole's.
  */
-export function mapModeFor({ hasHole, holeNo = null, libFailed = false, tilesCached = false, online = true, probeOk = null }) {
-  if (!hasHole) return { mode: "none", notice: holeNo != null ? noticeNoCourseMap(holeNo) : null };
+export function mapModeFor({ hasHole, holeNo = null, libFailed = false, tilesCached = false, online = true, probeOk = null, hasGps = false, greenMarked = false }) {
+  if (!hasHole) {
+    const none = { mode: "none", notice: holeNo != null ? noticeNoCourseMap(holeNo) : null };
+    if (!hasGps) return none;
+    const sat = libFailed ? false : tilesCached ? true : (!online || probeOk === false) ? false : probeOk === true ? true : null;
+    if (!greenMarked) return sat === true ? { mode: "mark", notice: NOTICE_MARK_GREEN } : sat === false ? none : { mode: "checking", notice: null };
+    return sat === true ? { mode: "satellite", notice: null } : sat === false ? { mode: "fallback", notice: NOTICE_NO_SATELLITE_MARKED } : { mode: "checking", notice: null };
+  }
   if (libFailed) return { mode: "fallback", notice: NOTICE_NO_SATELLITE };
   if (tilesCached) return { mode: "satellite", notice: null };
   if (!online || probeOk === false) return { mode: "fallback", notice: NOTICE_NO_SATELLITE };
   if (probeOk === true) return { mode: "satellite", notice: null };
   return { mode: "checking", notice: null };
+}
+
+/* ---------- v22.11 cameras: the mark view and the pin view ---------- */
+
+/** The visible map region (§3.1) of a viewport: { L, R, T, B, cx, cy, width, height } in screen px. */
+export function visibleRegion({ width, height }, insets = {}) {
+  const L = insets.left || 0, R = width - (insets.right || 0), Tp = insets.top || 0, B = height - (insets.bottom || 0);
+  return { L, R, T: Tp, B, cx: (L + R) / 2, cy: (Tp + B) / 2, width: Math.max(1, R - L), height: Math.max(1, B - Tp) };
+}
+
+/**
+ * Before a green is marked (v22.11 A.1): north-up, the ball centred in the visible region, the
+ * region `spanYds` (300) tall. Returns { centerOffset: {x, y} yards east / north of the ball that
+ * belongs at the viewport centre, pxPerYd, bearingDeg: 0 } — the caller turns the offset into
+ * lat/lon through a north-up frame on the ball (geo.js holeFrame({ origin: ball, bearingDeg: 0 })).
+ */
+export function markCamera(viewport, insets = {}, { spanYds = 300 } = {}) {
+  const r = visibleRegion(viewport, insets);
+  const px = r.height / spanYds;
+  return { centerOffset: { x: (viewport.width / 2 - r.cx) / px, y: (r.cy - viewport.height / 2) / px }, pxPerYd: px, bearingDeg: 0 };
+}
+
+/**
+ * The pin view (v22.11 B.1): the green polygon padded by `padYds` (15) on every side, fitted into
+ * the visible region, hole-up (the frame's axes are the screen's, as for cameraFor). The pin (a
+ * custom one can sit on the edge) is inside the box by construction; it is added anyway.
+ * → cameraFor's { center, pxPerYd }, or null without a green.
+ */
+export function pinViewCamera(hole, viewport, insets = {}, { padYds = 15, pin = null, maxPxPerYd = 12 } = {}) {
+  const ring = hole?.green?.ring;
+  if (!ring || ring.length < 3) return null;
+  const b = fitBounds([...ring.map(asXY), pin && asXY(pin)]);
+  if (!b) return null;
+  const padded = { minX: b.minX - padYds, minY: b.minY - padYds, maxX: b.maxX + padYds, maxY: b.maxY + padYds };
+  return cameraFor(padded, viewport, insets, { padding: 0, maxPxPerYd });
+}
+
+/** The pin view's refit key: once per hole and viewport; the pin moving inside it never refits. */
+export const pinViewKey = ({ hole, viewport, insets }) => `pin|${cameraKey({ hole, ball: null, options: null, viewport, insets })}`;
+
+/** Hit radius (px) of the pin marker in the pin view — a fingertip, around the cup and the flag. */
+export const PIN_MARKER_HIT_PX = 28;
+/**
+ * Is a press at screen point `pt` on the pin marker drawn at `pinPx`? The flag flies up and right
+ * of the cup, so the target is the cup and the flag cloth: the nearer of the two within the radius.
+ */
+export function pinMarkerHit(pinPx, pt, radius = PIN_MARKER_HIT_PX) {
+  if (!pinPx || !pt) return false;
+  const cup = Math.hypot(pt.x - pinPx.x, pt.y - pinPx.y);
+  const flag = Math.hypot(pt.x - (pinPx.x + 7), pt.y - (pinPx.y - 22));
+  return Math.min(cup, flag) <= radius;
 }
 
 /* ---------- §4.2 the overlay render model ---------- */
@@ -377,13 +445,27 @@ export function overlayModel(input) {
   const {
     project, viewport = { width: 375, height: 812 }, hole = null, ball = null, accuracyM = null, pin = null,
     active = null, other = null, previousShots = [], palette = "satellite", idPrefix = "ovl", redrawKey = "", recomputing = false,
+    pinMarker = false, pinDragging = false,
   } = input;
   const P = PALETTES[palette] || PALETTES.satellite;
   const hatchId = `${idPrefix}-hatch`, clipId = `${idPrefix}-trouble`;
   const out = [];
 
+  // 1a. v22.11 pin view: the draggable hole + flag marker, bigger than the §4.2 flag — a cup
+  //     r 4 (black, 1.5 px pole-colour ring), a 26 px pole, a 14×10 yellow flag; a dashed ring
+  //     round the cup while it is being dragged. Still shapes only (T37).
+  if (pin && pinMarker) {
+    const p = project(pin);
+    const g = [];
+    if (pinDragging) g.push(el("circle", { "data-part": "pin-drag", cx: f1(p.x), cy: f1(p.y), r: 14, fill: "none", stroke: P.pole, strokeWidth: 1.4, strokeDasharray: "3 3" }));
+    if (P.halo) g.push(el("line", { x1: f1(p.x), y1: f1(p.y), x2: f1(p.x), y2: f1(p.y - 26), stroke: P.halo, strokeWidth: 4, strokeLinecap: "round" }));
+    g.push(el("line", { x1: f1(p.x), y1: f1(p.y), x2: f1(p.x), y2: f1(p.y - 26), stroke: P.pole, strokeWidth: 2, strokeLinecap: "round" }));
+    g.push(el("path", { d: `M${f1(p.x)} ${f1(p.y - 26)} L${f1(p.x + 14)} ${f1(p.y - 21)} L${f1(p.x)} ${f1(p.y - 16)} Z`, fill: YELLOW, stroke: BLACK, strokeWidth: 0.8, strokeLinejoin: "round" }));
+    g.push(el("circle", { cx: f1(p.x), cy: f1(p.y), r: 4, fill: BLACK, stroke: P.pole, strokeWidth: 1.5 }));
+    out.push(el("g", { "data-part": "pin-marker" }, g));
+  }
   // 1. pin flag: hole dot r 1.9 black; pole 17 px 1.5 paper; flag 10×7 yellow, 0.6 black edge
-  if (pin) {
+  if (pin && !pinMarker) {
     const p = project(pin);
     out.push(el("g", { "data-part": "pin" }, [
       el("line", { x1: f1(p.x), y1: f1(p.y), x2: f1(p.x), y2: f1(p.y - 17), stroke: P.pole, strokeWidth: 1.5 }),
@@ -498,6 +580,12 @@ const FB = { fillWon: "#DCEBDC", fillHalf: "#E6E4DF", hair: "#A9C7B4", muted: "#
  */
 export function fallbackMapModel({ hole, project }) {
   if (!hole) return [];
+  // v22.11: a marked green's synthetic hole has no real fairway to draw — only the green Brett
+  // marked. Painting the 40-yd engine corridor would pass it off as course data.
+  if (hole.synthetic) return [(() => {
+    const pts = (hole.green?.ring || []).map((q) => project(Array.isArray(q) ? { x: q[0], y: q[1] } : q));
+    return pts.length >= 3 ? el("path", { d: pathD(pts), fill: FB.fillWon, stroke: INK, strokeWidth: 1, strokeLinejoin: "round" }) : null;
+  })()].filter(Boolean);
   const poly = (ring, fill, extra = {}) => {
     const pts = (ring || []).map((q) => project(Array.isArray(q) ? { x: q[0], y: q[1] } : q));
     return pts.length >= 3 ? el("path", { d: pathD(pts), fill, stroke: INK, strokeWidth: 1, strokeLinejoin: "round", ...extra }) : null;

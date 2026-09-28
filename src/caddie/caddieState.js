@@ -15,9 +15,10 @@
  */
 
 import { dist, rect, ellipse } from "./course.js";
-import { distances, pinFromTap, frameOf, holeKeyFor } from "./geo.js";
+import { distances, pinFromTap, frameOf, holeKeyFor, clampToGreen } from "./geo.js";
 import { parseLieChip } from "./context.js";
-import { bboxYds, withEllipses } from "./overlay.js";
+import { bboxYds, withEllipses, NOTICE_MARK_GREEN } from "./overlay.js";
+import { markedPinPoint, NOTE_NO_HAZARDS } from "./greens.js";
 import { DEFAULT_CONFIG } from "./config.js";
 import { withinRound, applyShotLog, aggressionScorecard } from "./learning.js";
 
@@ -50,6 +51,9 @@ export const COPY = Object.freeze({
   aimClubOnly: "Club only",
   aimNoMap: "No course map",
   aimNoProfile: "No profile",
+  aimMark: "Tap the green",
+  pinYds: (n) => `${n} yds to the pin`,
+  done: "Done",
   useInferred: (v) => `Use inferred · ${v}`,
   pinNote: "Or tap the green on the map.",
   yardsTitle: "Yards to pin",
@@ -60,6 +64,11 @@ export const NOTICES = Object.freeze({
   locationoff: "Location is off for Loop. Turn it on in Settings, then tap Try again.",
   noprofile: "Profile didn't load. Reconnect and tap Try again.",
   nomap: (n) => `No course map for hole ${n}. Enter yards for a club.`,
+  /* v22.11 marked-green mode (no OSM geometry for the hole) */
+  markPreTee: (n) => `No course map for hole ${n}. Tap I'm on the tee for satellite.`,
+  markedPreTee: (n) => `Hole ${n}: green marked. Tap I'm on the tee for satellite.`,
+  mark: NOTICE_MARK_GREEN,
+  noHazards: NOTE_NO_HAZARDS,
 });
 
 /* ---------- 1. state ---------- */
@@ -83,6 +92,8 @@ export function initialCaddie(hole = 1) {
     openShot: null,      // S4: the last logged (quick/full/skipped) ShotRecord awaiting §4.5 closeout
     putts: {},           // per hole: number of putts logged this hole (putt capture, Sep 28 spec)
     lastPuttFt: null,    // the last putt distance used THIS HOLE — the stepper's starting point; resets on a new hole
+    pinView: false,      // v22.11: the map zoomed to the green with the draggable pin (transient, not persisted)
+    remark: false,       // v22.11: marked-green mode is waiting for a re-tap of the green (transient, not persisted)
   };
 }
 
@@ -101,7 +112,7 @@ function newHole(s, n) {
   return {
     ...s, hole: n, shotNo: 1, phase: "pretee", prevPhase: null, trigger: null,
     ball: null, ballXY: null, yards: null, opt: "safe", exp: false, chips: {}, pins, logCard: null,
-    shots: { ...s.shots, [n]: [] }, context: null, lastPuttFt: null,
+    shots: { ...s.shots, [n]: [] }, context: null, lastPuttFt: null, pinView: false, remark: false,
   };
 }
 
@@ -109,7 +120,7 @@ function newHole(s, n) {
  *  or previous-shot prompt for the shot just left behind should already be resolved by this point
  *  (the "ball" tap is intercepted while one is pending — see `hasUnloggedShot`); clearing `logCard`
  *  here is defensive. */
-const newBall = (s) => ({ ...s, opt: "safe", exp: false, chips: {}, logCard: null });
+const newBall = (s) => ({ ...s, opt: "safe", exp: false, chips: {}, logCard: null, pinView: false, remark: false });
 
 const PIN_PRESETS = ["front", "middle", "back"];
 const isXY = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.y);
@@ -121,7 +132,7 @@ export function caddieReducer(s, a) {
     case "ball":
     case "retry": {
       const trigger = a.type === "retry" ? (s.trigger || (s.ball || s.yards != null ? "ball" : "tee")) : a.type;
-      return { ...s, phase: "locating", prevPhase: s.phase === "locating" ? s.prevPhase : s.phase, trigger };
+      return { ...s, phase: "locating", prevPhase: s.phase === "locating" ? s.prevPhase : s.phase, trigger, pinView: false };
     }
     case "fix": {
       // a.fix = { lat, lng, accuracyM }; a.point = {x,y} in the (possibly new) hole's frame; a.hole = detected hole
@@ -210,6 +221,19 @@ export function caddieReducer(s, a) {
     /* puttDismiss: Skip, or the scrim — closes the card, writes nothing. */
     case "puttDismiss":
       return s.logCard === "putt" ? { ...s, logCard: null } : s;
+    /* ---------- v22.11 ---------- */
+    /* pinView: the flag button / Done. Opening it collapses the rail (the camera leaves the shot). */
+    case "pinView":
+      return a.on ? { ...s, pinView: true, exp: false, remark: false } : (s.pinView ? { ...s, pinView: false } : s);
+    /* remark: a long-press on a marked green re-opens the mark view; greenMarked closes it. */
+    case "remark":
+      return { ...s, remark: !!a.on, pinView: false };
+    case "greenMarked": {
+      // a custom pin belonged to the old mark; the new green starts at Middle
+      const pins = { ...s.pins };
+      if (pins[s.hole] && typeof pins[s.hole] === "object") delete pins[s.hole];
+      return { ...s, remark: false, pins };
+    }
     case "restore":
       return restoreCaddie(a.state) || s;
     default:
@@ -295,6 +319,11 @@ export function restoreCaddie(raw) {
 /** The pin point {x,y} for a setting from `from` (the ball, or the tee pre-shot). null without a hole. */
 export function pinPointFor(hole, from, setting = "middle") {
   if (!hole?.green?.ring) return null;
+  // v22.11: a marked green's presets are ±10 yds along ball → green (greens.js), not thirds
+  if (hole.synthetic) {
+    const q = markedPinPoint(hole, setting || "middle", from || hole.tee);
+    return q && typeof setting === "object" ? clampToGreen(hole, q) : q;
+  }
   const d = distances(hole, from || hole.tee || { x: 0, y: 0 }, setting || "middle");
   return d ? d.pinPoint : null;
 }
@@ -307,6 +336,20 @@ export function pinPointFor(hole, from, setting = "middle") {
 export function pinFromMapTap(hole, p) {
   const q = pinFromTap(hole, p);
   if (!q) return null;
+  const F = frameOf(hole);
+  if (!F) return { x: q.x, y: q.y };
+  const g = F.toLatLng(q);
+  return { lat: g.lat, lng: g.lon };
+}
+
+/**
+ * v22.11 B.2 — the pin view's drag released at frame point p → the custom pin to store, clamped
+ * inside the green (geo.js clampToGreen, the same clamp the tap path uses — a drag may end
+ * anywhere, so there is no 3-yd gate). {lat,lng} when the hole has a frame, else {x,y}.
+ */
+export function pinFromDrag(hole, p) {
+  if (!hole?.green?.ring || !isXY(p)) return null;
+  const q = clampToGreen(hole, p);
   const F = frameOf(hole);
   if (!F) return { x: q.x, y: q.y };
   const g = F.toLatLng(q);
@@ -651,12 +694,20 @@ export function mapInput({ state, view, ballXY = null, accuracyM = null, options
 export function caddieView({
   state, par = null, profileOk = true, mapOk = true, res = null, options = null, inferred = null, onGreen = false,
   ballXY = null, green = null, config = DEFAULT_CONFIG,
+  markable = false, greenMarked = false, synthetic = false, pinYds = null,
 }) {
   const s = state;
   const holeNo = s.hole;
   let view;
+  // v22.11 marked-green mode: `markable` = this hole has no geometry but the satellite-on-GPS
+  // bridge can run (the caller says no when the satellite cannot be had). Pre-tee and the GPS
+  // errors keep their own views; a fix with no marked green is `markgreen`. Once a green is
+  // marked the caller hands over its synthetic hole, so mapOk is true and every state is normal.
   if (!profileOk) view = "noprofile";
   else if (s.phase === "locating") view = "locating";
+  else if (!mapOk && s.phase !== "yards" && markable) {
+    view = s.phase === "nofix" || s.phase === "locationoff" ? s.phase : s.phase === "ready" ? "markgreen" : "pretee";
+  }
   else if (!mapOk && s.phase !== "yards") view = "nomap";
   else if (s.phase === "nofix" || s.phase === "locationoff") view = s.phase;
   else if (s.phase === "yards") view = "yards";
@@ -671,7 +722,7 @@ export function caddieView({
 
   const AIM = {
     noprofile: COPY.aimNoProfile, nomap: COPY.aimNoMap, pretee: COPY.aimPreTee, locating: COPY.aimLocating,
-    green: COPY.aimGreen, nofix: COPY.aimNoFix, locationoff: COPY.aimLocOff, yards: COPY.aimClubOnly,
+    green: COPY.aimGreen, nofix: COPY.aimNoFix, locationoff: COPY.aimLocOff, yards: COPY.aimClubOnly, markgreen: COPY.aimMark,
   };
   const origin = view === "yards" ? { x: 0, y: 0 } : ballXY;
   const toTarget = active?.target && origin ? String(Math.round(dist(origin, active.target))) : active ? String(active.meanYds ?? DASH) : DASH;
@@ -726,13 +777,16 @@ export function caddieView({
     dispersion: active ? dispersionLine(active) : null,
     reasons,
     today,
+    mapNote: synthetic && (hasRec || view === "green" || view === "pretee") ? NOTICES.noHazards : null,   // v22.11: said once, in the details
   };
 
   /* bar (§3.4, §8). Log shot stays hidden until S4. */
   let primary, secondary = null;
   if (view === "noprofile") primary = { label: COPY.retry, action: "profile" };
   else if (view === "locating") primary = { label: COPY.locating, action: null, disabled: true };
-  else if (view === "nomap" || (view === "yards" && !mapOk)) primary = { label: COPY.yards, action: "yards" };
+  else if (view === "nomap" || (view === "yards" && !mapOk && !markable)) primary = { label: COPY.yards, action: "yards" };
+  else if (view === "markgreen") { primary = { label: COPY.ball, action: "ball" }; secondary = { label: COPY.yards, action: "yards" }; }
+  else if (view === "pretee" && markable && !mapOk) { primary = { label: COPY.tee, action: "tee" }; secondary = { label: COPY.yards, action: "yards" }; }
   else if (view === "nofix" || view === "locationoff") { primary = { label: COPY.retry, action: "retry" }; secondary = { label: COPY.yards, action: "yards" }; }
   else if (view === "pretee") primary = { label: COPY.tee, action: "tee" };
   else if (view === "green") { primary = { label: COPY.score(holeNo), action: "score" }; secondary = { label: COPY.logPutt, action: "logputt" }; }
@@ -742,9 +796,13 @@ export function caddieView({
     : view === "nomap" ? NOTICES.nomap(holeNo)
     : view === "nofix" ? NOTICES.nofix
     : view === "locationoff" ? NOTICES.locationoff
+    : view === "markgreen" ? NOTICES.mark
+    : view === "pretee" && markable && !mapOk ? (greenMarked ? NOTICES.markedPreTee(holeNo) : NOTICES.markPreTee(holeNo))
     : null;
+  // v22.11 B.2: in the pin view the notice tag reads the yards to the pin (live while dragging)
+  const pinNotice = s.pinView && Number.isFinite(pinYds) ? COPY.pinYds(Math.round(pinYds)) : null;
 
-  return { view, rail, details, bar: { primary, secondary }, notice, sameShot };
+  return { view, rail, details, bar: { primary, secondary }, notice: pinNotice || notice, sameShot };
 }
 
 /* ---------- 3g. 27-hole courses (engine §6.4) ---------- */

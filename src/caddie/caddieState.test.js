@@ -14,8 +14,11 @@ import {
   COPY, NOTICES, initialCaddie, caddieReducer, caddieHoleFor, serializeCaddie, restoreCaddie, pinSetting, pinPointFor, pinFromMapTap,
   greenPosition, aimShort, clubShort, chipList, pickerModel, windText, windChipText, elevText, dispersionLine, syntheticHole, clubBrainContext,
   overlayPair, mapInput, caddieView, defaultNineMap, geometryKeyFor, scorecardOrder, detectedHoleNo, hasUnloggedShot,
-  withinRoundCtx, todayLines, ellipsesFor, roundIndexFromHistory, learningOverlays, aggressionView, aggressionModel,
+  withinRoundCtx, todayLines, ellipsesFor, roundIndexFromHistory, learningOverlays, aggressionView, aggressionModel, pinFromDrag,
 } from "./caddieState.js";
+import { markedGreenHole } from "./greens.js";
+import { frameOf } from "./geo.js";
+import { destination, YARDS_PER_METER } from "../geometry.js";
 import { greenDistances, pointInRing, ringDistance } from "./course.js";
 import { recommend } from "./engine.js";
 import { loadProfile, resolveEntry } from "./profile.js";
@@ -767,4 +770,90 @@ test("S5 aggression scorecard model: per round and season counts, paid / cost te
   assert.equal(aggressionModel([], history).season, null);
   assert.equal(aggressionView({ safe: { n: 2 }, aggressive: { n: 0 }, own: { n: 0 }, text: null }).text, null, "counts without a priced aggressive shot → counts only");
   assert.equal(aggressionView({ safe: { n: 0 }, aggressive: { n: 0 }, own: { n: 0 }, text: null }), null);
+});
+
+/* ---------- v22.11: marked-green mode and the draggable pin ---------- */
+
+test("marked-green views: pre-tee offers the tee and yards; a fix with no green asks for the tap; GPS errors keep their own views", () => {
+  const S = initialCaddie(7);
+  const bar = (v) => [v.bar.primary.label, v.bar.secondary?.label ?? null];
+  const pre = caddieView({ state: S, par: 4, mapOk: false, markable: true });
+  assert.equal(pre.view, "pretee"); assert.deepEqual(bar(pre), ["I'm on the tee", "Enter yards"]);
+  assert.equal(pre.notice, "No course map for hole 7. Tap I'm on the tee for satellite.");
+  assert.equal(caddieView({ state: S, par: 4, mapOk: false, markable: true, greenMarked: true }).notice, "Hole 7: green marked. Tap I'm on the tee for satellite.");
+  const fixed = run(S, { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
+  const mark = caddieView({ state: fixed, par: 4, mapOk: false, markable: true });
+  assert.equal(mark.view, "markgreen"); assert.equal(mark.rail.aim, "Tap the green"); assert.equal(mark.rail.club, "—"); assert.equal(mark.rail.toggle, null);
+  assert.deepEqual(bar(mark), ["I'm at my ball", "Enter yards"]);
+  assert.equal(mark.notice, "No course map. Satellite on GPS — tap the green to mark it.");
+  const nofix = caddieView({ state: run(S, { type: "tee" }, { type: "fixError", code: 3 }), par: 4, mapOk: false, markable: true });
+  assert.equal(nofix.view, "nofix"); assert.deepEqual(bar(nofix), ["Try again", "Enter yards"]);
+  // not markable (no satellite for the fix): exactly the old No course map state
+  const old = caddieView({ state: fixed, par: 4, mapOk: false, markable: false });
+  assert.equal(old.view, "nomap"); assert.deepEqual(bar(old), ["Enter yards", null]); assert.equal(old.notice, "No course map for hole 7. Enter yards for a club.");
+  // Enter yards on an unmapped hole: club-brain as today; the bar can go back to GPS
+  const yv = caddieView({ state: run(S, { type: "yards", yards: 150 }), par: 4, mapOk: false, markable: true, res: fakeRes() });
+  assert.equal(yv.view, "yards"); assert.deepEqual(bar(yv), ["I'm at my ball", "Log shot"]);
+  assert.equal(caddieView({ state: run(S, { type: "yards", yards: 150 }), par: 4, mapOk: false, res: fakeRes() }).bar.primary.label, "Enter yards", "unchanged when not markable");
+  // once marked the synthetic hole makes it an ordinary Ready screen, with the no-hazards line in details
+  const ready = caddieView({ state: fixed, par: 4, mapOk: true, markable: true, synthetic: true, res: fakeRes(), ballXY: { x: 0, y: 0 } });
+  assert.equal(ready.view, "ready"); assert.equal(ready.notice, null);
+  assert.equal(ready.details.mapNote, "No hazards on this map — the caddie prices distance only.");
+  assert.equal(caddieView({ state: fixed, par: 4, res: fakeRes(), ballXY: { x: 0, y: 0 } }).details.mapNote, null, "mapped holes say nothing");
+  for (const v of [pre, mark, nofix, ready]) for (const t of [v.notice, v.rail.aim, v.details.mapNote].filter(Boolean)) assert.ok(!t.includes("!"), t);
+});
+
+test("marked-green reducer: remark re-opens the mark view, greenMarked closes it and drops a custom pin; neither persists", () => {
+  let s = run(initialCaddie(7), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } }, { type: "pin", value: { lat: 39.95, lng: -85.98 } });
+  s = caddieReducer(s, { type: "remark", on: true });
+  assert.equal(s.remark, true);
+  s = caddieReducer(s, { type: "greenMarked" });
+  assert.equal(s.remark, false); assert.equal(pinSetting(s), "middle", "the old custom pin belonged to the old mark");
+  const back = caddieReducer(caddieReducer(s, { type: "pin", value: "back" }), { type: "greenMarked" });
+  assert.equal(pinSetting(back), "back", "a preset survives a re-mark");
+  const r = restoreCaddie(JSON.parse(JSON.stringify(serializeCaddie({ ...s, remark: true, pinView: true }))));
+  assert.equal(r.remark, false); assert.equal(r.pinView, false);
+  // a new ball clears it
+  const moved = run({ ...s, remark: true }, { type: "ball" }, { type: "fix", fix: fix(), point: { x: 0, y: 50 } });
+  assert.equal(moved.remark, false);
+});
+
+test("pin view: flag button toggles it, the rail collapses, a new ball / hole / locate leaves it", () => {
+  let s = run(initialCaddie(3), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } }, { type: "exp", exp: true });
+  s = caddieReducer(s, { type: "pinView", on: true });
+  assert.equal(s.pinView, true); assert.equal(s.exp, false, "rail collapses");
+  assert.equal(caddieReducer(s, { type: "pinView", on: false }).pinView, false);
+  assert.equal(caddieReducer(s, { type: "ball" }).pinView, false, "locating leaves the pin view");
+  assert.equal(caddieReducer(s, { type: "hole", hole: 4 }).pinView, false);
+  const off = caddieReducer(initialCaddie(3), { type: "pinView", on: false });
+  assert.deepEqual(off, initialCaddie(3), "closing a closed pin view is a no-op");
+  // the notice reads the yards to the pin, live
+  const v = caddieView({ state: s, par: 4, res: fakeRes(), ballXY: { x: 0, y: 0 }, pinYds: 143.4 });
+  assert.equal(v.notice, "143 yds to the pin");
+  assert.equal(caddieView({ state: { ...s, pinView: false }, par: 4, res: fakeRes(), ballXY: { x: 0, y: 0 }, pinYds: 143 }).notice, null);
+});
+
+test("drag → custom pin: released anywhere, clamped inside the green, stored as lat/lng, held for the hole", () => {
+  const hole = bunkeredPar3;
+  const inside = { x: hole.green.center.x + 2, y: hole.green.center.y + 3 };
+  assert.deepEqual(pinFromDrag(hole, inside), { x: inside.x, y: inside.y }, "a frameless hole stores the frame point");
+  const q = pinFromDrag(hole, { x: hole.green.center.x + 60, y: hole.green.center.y });
+  assert.ok(pointInRing(q, hole.green.ring), "a release off the green is clamped onto it — no 3-yd gate");
+  assert.equal(pinFromDrag(hole, null), null);
+  // on a marked green (lat/lon-anchored), the value is {lat,lng} and comes back through pinPointFor
+  const B = { lat: 39.9502, lon: -85.9817 };
+  const mh = markedGreenHole({ ball: B, green: destination(B, 60, 150 / YARDS_PER_METER), holeNo: 7 });
+  const c = mh.green.center;
+  const v = pinFromDrag(mh, { x: 40, y: c.y + 20 });
+  assert.ok(Number.isFinite(v.lat) && Number.isFinite(v.lng));
+  let s = run(initialCaddie(7), { type: "tee" }, { type: "fix", fix: fix(B.lat, B.lon), point: { x: 0, y: 0 } }, { type: "pinView", on: true }, { type: "pin", value: v });
+  assert.equal(chipList({ pin: pinSetting(s) }).find((k) => k.key === "pin").value, "Custom");
+  const drawn = pinPointFor(mh, mh.tee, pinSetting(s));
+  assert.ok(pointInRing(drawn, mh.green.ring), "the drawn pin is on the green");
+  const back = frameOf(mh).toFrame({ lat: v.lat, lon: v.lng });
+  assert.ok(Math.hypot(back.x - drawn.x, back.y - drawn.y) < 0.05, "lat/lng round-trips");
+  // the pin holds across the next ball on the hole, and a preset from the chip replaces it
+  s = run(s, { type: "ball" }, { type: "fix", fix: fix(), point: { x: 0, y: 80 } });
+  assert.deepEqual(pinSetting(s), { lat: v.lat, lng: v.lng });
+  assert.equal(pinSetting(caddieReducer(s, { type: "chip", key: "pin", value: "front" })), "front");
 });
