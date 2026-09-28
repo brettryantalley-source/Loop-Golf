@@ -55,8 +55,11 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 - The Pinyon Script wordmark is outline paths inside `theme.jsx`, not a font.
 - Anything "written" carries `filter: url(#pencil)`; a chosen-but-uncommitted score carries the
   `#soft` disc. Both filters are mounted once by `<PencilDefs />` at the app root.
-- Setup, the mid-round screen and the result screen are paper. **History is not redesigned yet** —
-  it keeps the dark palette and is wrapped in `<DarkShell>`. Remove the wrapper when it is redone.
+- **Every screen is paper.** At v21.3 History was the last one on the dark palette; the `C` table,
+  `NUM`, `SANS`, `tnum`, `lbl` and `DarkShell` are all gone. `src/theme.jsx` is the only source of
+  colour and type. Do not reintroduce a dark mode — it is paper.
+- History is a ledger: one ruled row per round, the result read off a 4px edge mark rather than a
+  full row wash. Six tinted bands stop looking like paper; an edge mark still scans.
 - `PencilMark` puts the chooser's shapes (rings for under par, boxes for over) round a score on the
   finished card, so the scorecard and the chooser speak the same language.
 - On the finished card only the `par` row is pre-printed type. Your own scores AND your own totals

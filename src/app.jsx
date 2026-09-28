@@ -34,22 +34,13 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v21.2 · Sep 27";
+const BUILD = "v21.3 · Sep 28";
 
-/* palette — Shot Pattern dark */
-const C = {
-  bg: "#000000", card: "#161719", card2: "#212327", ink: "#FFFFFF", sub: "#8A8F98",
-  line: "#2A2D31", green: "#57C77F", greenDim: "rgba(87,199,127,0.15)",
-  slate: "#9AA7B4", slateDim: "rgba(154,167,180,0.15)", red: "#FF5B52",
-  redDim: "rgba(255,91,82,0.16)", tie: "#34373D",
-};
-const NUM = "-apple-system,ui-sans-serif,'SF Pro Display',system-ui,sans-serif";
-const SANS = "-apple-system,ui-sans-serif,'SF Pro Text',system-ui,sans-serif";
-const tnum = { fontVariantNumeric: "tabular-nums" };
+/* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
+   palette is gone: at v21.3 History was the last screen still using it. */
 const RESET = `*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 button{font-family:inherit;cursor:pointer;border:none;padding:0;background:none}
 html,body{margin:0;background:#F4F0E4}
-.dialscroll::-webkit-scrollbar{display:none}
 div::-webkit-scrollbar{display:none}`;
 
 /* ---------- live course source (golfcourseapi.com) ---------- */
@@ -318,13 +309,6 @@ function deriveStats(history) {
 }
 
 
-const lbl = { color: C.sub, fontSize: 11, fontWeight: 800, letterSpacing: 1 };
-
-/* History is not redesigned yet. It keeps the old dark palette, so it needs its
-   own shell now that the app root is paper. */
-function DarkShell({ children }) {
-  return <div style={{ minHeight: "100dvh", background: C.bg, color: C.ink, fontFamily: SANS }}>{children}</div>;
-}
 
 /* ---------- setup (paper scorecard, v21) ---------- */
 /* Pencil polyline of the last five differentials. Most recent point is yellow —
@@ -1401,128 +1385,171 @@ function parseBackup(text) {
     Array.isArray(r.holeScores) && Array.isArray(r.ghostHoleScores));
 }
 
-/* ---------- history + delete ---------- */
+/* ---------- history (paper ledger, v21.3) ---------- */
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const fmtDate = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : `${MONTHS[d.getMonth()]} ${d.getDate()}`; };
-const resColor = (r) => r === "W" ? C.green : r === "L" ? C.red : C.slate;
+const RES_FILL_LETTER = { W: T.fillWon, L: T.fillLost, T: T.fillHalf };
+const RES_EDGE = { W: T.ink, L: T.double, T: T.muted };
+const RES_LONG = { W: "won", L: "lost", T: "halved" };
 
 function History({ history, stats, cloud, onDelete, onImport, onBack }) {
   const [confirmId, setConfirmId] = useState(null);
   const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
   const fileRef = React.useRef(null);
-  const rounds = [...history].reverse(); // most recent first
+  const rounds = [...history].reverse();                  // most recent first
+
   const doExport = async () => {
     if (!history.length) { setMsg("Nothing to export yet."); return; }
     const r = await exportRounds(history);
     if (r) setMsg(`${r} ${history.length} round${history.length === 1 ? "" : "s"}.`);
   };
-  /* cloud status, rendered from the hook's state */
-  const cu = (cloud && cloud.user) || null;
-  const cstatus = (cloud && cloud.status) || "off";
-  const signedIn = !!cu;
-  const [busy, setBusy] = useState(false);
-  const doSignIn = async () => {
-    setBusy(true); setMsg("");
-    try { await cloudSignIn(); }
-    catch (e) { setMsg("Couldn't sign in — " + ((e && e.code) || "try again")); }
-    finally { setBusy(false); }
-  };
-  const syncDot =
-    cstatus === "synced" ? C.green :
-    cstatus === "syncing" ? C.slate :
-    cstatus === "error" ? C.red : C.line;
-  const syncTitle =
-    !signedIn ? "Not backed up" :
-    cstatus === "synced" ? "Backed up" :
-    cstatus === "syncing" ? "Syncing…" :
-    cstatus === "error" ? "Sync problem" : "Connecting…";
-  const syncNote =
-    !signedIn ? "Sign in once. Rounds then save themselves — and survive a wipe." :
-    cstatus === "error" ? "Saved on this phone. Will retry when you're back online." :
-    cstatus === "syncing" ? `${history.length} round${history.length === 1 ? "" : "s"} · ${cu.email || "signed in"}` :
-    `${history.length} round${history.length === 1 ? "" : "s"} · ${cu.email || "signed in"}`;
-
   const doImport = (e) => {
     const f = e.target.files && e.target.files[0];
-    e.target.value = "";                       // let the same file be picked again
+    e.target.value = "";                                   // let the same file be picked again
     if (!f) return;
     const fr = new FileReader();
     fr.onload = () => {
-      const rounds = parseBackup(String(fr.result));
-      if (!rounds) { setMsg("That doesn't look like a Loop Golf backup."); return; }
-      if (!rounds.length) { setMsg("No usable rounds in that file."); return; }
-      const { added, skipped } = onImport(rounds);
+      const parsed = parseBackup(String(fr.result));
+      if (!parsed) { setMsg("That doesn't look like a Loop backup."); return; }
+      if (!parsed.length) { setMsg("No usable rounds in that file."); return; }
+      const { added, skipped } = onImport(parsed);
       setMsg(added ? `Added ${added} round${added === 1 ? "" : "s"}${skipped ? `, ${skipped} already here` : ""}.`
                    : "Already up to date — nothing new to add.");
     };
     fr.onerror = () => setMsg("Couldn't read that file.");
     fr.readAsText(f);
   };
+
+  const cu = (cloud && cloud.user) || null;
+  const cstatus = (cloud && cloud.status) || "off";
+  const signedIn = !!cu;
+  const doSignIn = async () => {
+    setBusy(true); setMsg("");
+    try { await cloudSignIn(); }
+    catch (e) { setMsg("Couldn't sign in — " + ((e && e.code) || "try again")); }
+    finally { setBusy(false); }
+  };
+  const syncDot = cstatus === "synced" ? T.ink : cstatus === "syncing" ? T.muted : cstatus === "error" ? T.double : T.hair;
+  const syncTitle = !signedIn ? "Not backed up" : cstatus === "synced" ? "Backed up"
+    : cstatus === "syncing" ? "Syncing…" : cstatus === "error" ? "Sync problem" : "Connecting…";
+  const syncNote = !signedIn ? "Sign in once. Rounds then save themselves — and survive a wipe."
+    : cstatus === "error" ? "Saved on this phone. Will retry when you're back online."
+    : `${history.length} round${history.length === 1 ? "" : "s"} · ${cu.email || "signed in"}`;
+
+  const outlinePill = { height: 44, border: rule, borderRadius: 22, background: "transparent", color: T.ink, ...caps(11, 700, "0.16em") };
+
   return (
-    <div style={{ maxWidth: 460, margin: "0 auto", padding: "calc(env(safe-area-inset-top) + 14px) 18px 40px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-        <button onClick={onBack} style={{ width: 44, height: 44, borderRadius: 13, background: C.card2, color: C.ink, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><ChevronLeft size={22} /></button>
-        <div>
-          <h1 style={{ color: C.ink, fontSize: 24, fontWeight: 800, letterSpacing: -0.3, margin: 0 }}>Round history</h1>
-          <div style={{ color: C.sub, fontSize: 12, ...tnum }}>{stats.recordText} · {stats.streakText} · {stats.marginStr}</div>
+    <div style={{ minHeight: "100dvh", maxWidth: 460, margin: "0 auto", boxSizing: "border-box", background: T.paper,
+      padding: "max(env(safe-area-inset-top), 26px) 20px max(env(safe-area-inset-bottom), 28px)" }}>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 10, borderBottom: rule }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", padding: "6px 0", color: T.ink, ...caps(11) }}>‹ Back</button>
+        <span style={caps(11)}>Round history</span>
+      </div>
+
+      {/* the record these rounds add up to */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 0", borderBottom: rule }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <span style={caps(10)}>Record vs. the ghost</span>
+          <span style={{ fontFamily: F.label, fontSize: 11 }}>
+            {stats.n ? `streak ${stats.streakText} · avg ${stats.marginStr}` : "no rounds yet"}
+          </span>
         </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+          {[["Won", stats.w], ["Lost", stats.l], ["Halved", stats.t]].map(([k, v]) => (
+            <div key={k} style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, overflow: "hidden" }}>
+              <span style={{ fontFamily: F.label, fontSize: 11 }}>{k}</span>
+              <TallyMarks n={v} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* the ledger */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "12px 0 4px" }}>
+        <span style={caps(10)}>Rounds</span>
+        <span style={{ fontFamily: F.label, fontSize: 11, color: T.muted }}>newest first</span>
       </div>
 
       {rounds.length === 0 ? (
-        <div style={{ textAlign: "center", color: C.sub, fontSize: 14, padding: "48px 0" }}>No rounds logged yet.</div>
-      ) : rounds.map(r => {
-        const confirming = confirmId === r.id;
-        const margin = r.yourPoints - r.ghostPoints;
-        const rd = recordDifferential(r); // this round's differential — feeds the last-5
-        return (
-          <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "12px 14px", marginBottom: 8 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 9, background: C.card2, color: resColor(r.result), display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 15, flexShrink: 0 }}>{r.result}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: C.ink, fontWeight: 700, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.course}<span style={{ color: C.sub, fontWeight: 600 }}> · {r.tee}</span></div>
-              <div style={{ color: C.sub, fontSize: 11, ...tnum }}>{fmtDate(r.date)} · {fmtPts(r.yourPoints)}–{fmtPts(r.ghostPoints)} · {margin >= 0 ? "+" : ""}{margin.toFixed(1)}{rd != null ? ` · diff ${rd.toFixed(1)}` : ""}</div>
-            </div>
-            {confirming ? (
-              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                <button onClick={() => setConfirmId(null)} style={{ height: 34, padding: "0 12px", borderRadius: 9, background: C.card2, color: C.ink, border: `1px solid ${C.line}`, fontWeight: 800, fontSize: 12 }}>Cancel</button>
-                <button onClick={() => { onDelete(r.id); setConfirmId(null); }} style={{ height: 34, padding: "0 12px", borderRadius: 9, background: C.red, color: "#fff", fontWeight: 800, fontSize: 12 }}>Delete</button>
+        <div style={{ fontFamily: F.label, fontSize: 12, color: T.muted, padding: "26px 0", textAlign: "center", borderTop: rule, borderBottom: rule }}>
+          No rounds logged yet.
+        </div>
+      ) : (
+        <div style={{ borderTop: rule }}>
+          {rounds.map(r => {
+            const confirming = confirmId === r.id;
+            const margin = r.yourPoints - r.ghostPoints;
+            const rd = recordDifferential(r);              // this round's differential — feeds the last-5
+            return (
+              /* the result reads off an edge mark, not a full wash — a ledger of six
+                 tinted bands stops looking like paper */
+              <div key={r.id} style={{ borderBottom: rule, borderLeft: `4px solid ${RES_EDGE[r.result] || T.hair}`,
+                background: confirming ? RES_FILL_LETTER[r.result] || "transparent" : "transparent", padding: "8px 8px 7px" }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                  <span style={{ ...writtenWord(21), lineHeight: "21px", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {r.course}
+                  </span>
+                  <span style={{ ...written(18), whiteSpace: "nowrap" }}>{fmtPts(r.yourPoints)}–{fmtPts(r.ghostPoints)}</span>
+                  {!confirming && (
+                    <button onClick={() => setConfirmId(r.id)} aria-label={`Delete the round at ${r.course}`}
+                      style={{ background: "none", border: "none", padding: "0 0 0 4px", color: T.muted, fontSize: 15, lineHeight: "15px" }}>✕</button>
+                  )}
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 1, fontFamily: F.label, fontSize: 11, color: T.ink }}>
+                  <span style={{ ...writtenWord(15) }}>{RES_LONG[r.result] || "—"}</span>
+                  <span style={{ color: T.muted }}>·</span>
+                  <span>{fmtDate(r.date)}</span>
+                  <span style={{ color: T.muted }}>·</span>
+                  <span>{r.tee}</span>
+                  <span style={{ flex: 1 }} />
+                  <span style={{ color: T.muted }}>
+                    {margin >= 0 ? "+" : ""}{margin.toFixed(1)}{rd != null ? ` · diff ${rd.toFixed(1)}` : ""}
+                  </span>
+                </div>
+                {confirming && (
+                  <div style={{ display: "flex", gap: 8, paddingTop: 8 }}>
+                    <button onClick={() => setConfirmId(null)} style={{ flex: 1, height: 36, border: `1px solid ${T.muted}`, borderRadius: 18, background: "transparent", color: T.muted, ...caps(10, 700, "0.16em") }}>Keep</button>
+                    <button onClick={() => { onDelete(r.id); setConfirmId(null); }} style={{ flex: 1, height: 36, border: `1px solid ${T.double}`, borderRadius: 18, background: "transparent", color: T.double, ...caps(10, 700, "0.16em") }}>Delete</button>
+                  </div>
+                )}
               </div>
-            ) : (
-              <button onClick={() => setConfirmId(r.id)} style={{ width: 34, height: 34, borderRadius: 9, background: C.card2, color: C.sub, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Trash size={16} /></button>
-            )}
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      )}
 
-      {/* cloud sync — the durable copy; export/import below is the manual fallback */}
-      <div style={{ marginTop: 22, paddingTop: 18, borderTop: `1px solid ${C.line}` }}>
-        <div style={{ ...lbl, marginBottom: 8 }}>CLOUD BACKUP</div>
-        <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "12px 14px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 8, height: 8, borderRadius: 4, background: syncDot, flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: C.ink, fontWeight: 700, fontSize: 13 }}>{syncTitle}</div>
-              <div style={{ color: C.sub, fontSize: 11, marginTop: 2, lineHeight: 1.4, overflowWrap: "anywhere" }}>{syncNote}</div>
-            </div>
-            {signedIn ? (
-              <button onClick={cloudSignOut} style={{ color: C.sub, fontSize: 11, fontWeight: 800, letterSpacing: 0.5, background: "none", flexShrink: 0 }}>SIGN OUT</button>
-            ) : (
-              <button onClick={doSignIn} disabled={busy} style={{ height: 34, padding: "0 14px", borderRadius: 9, background: C.green, color: "#07140C", fontWeight: 800, fontSize: 12, flexShrink: 0, opacity: busy ? 0.6 : 1 }}>
-                {busy ? "…" : "Turn on"}
-              </button>
-            )}
+      {/* cloud backup — the durable copy */}
+      <div style={{ padding: "16px 0 10px", borderBottom: rule }}>
+        <div style={caps(10)}>Cloud backup</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 8 }}>
+          <span style={{ width: 8, height: 8, borderRadius: 4, background: syncDot, flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: F.label, fontSize: 13, fontWeight: 700, color: T.ink }}>{syncTitle}</div>
+            <div style={{ fontFamily: F.label, fontSize: 11, color: T.muted, marginTop: 1, lineHeight: 1.4, overflowWrap: "anywhere" }}>{syncNote}</div>
           </div>
+          {signedIn ? (
+            <button onClick={cloudSignOut} style={{ background: "none", border: "none", color: T.muted, flexShrink: 0, ...caps(10, 700, "0.14em") }}>Sign out</button>
+          ) : (
+            <button onClick={doSignIn} disabled={busy} style={{ height: 38, padding: "0 18px", border: `2px solid ${T.ink}`, borderRadius: 19,
+              background: T.ink, color: T.paper, boxShadow: `inset 0 0 0 1.5px ${T.yellow}`, flexShrink: 0, opacity: busy ? 0.6 : 1, ...caps(11, 700, "0.16em") }}>
+              {busy ? "…" : "Turn on"}
+            </button>
+          )}
         </div>
       </div>
 
-      <div style={{ marginTop: 18 }}>
-        <div style={{ ...lbl, marginBottom: 8 }}>MANUAL BACKUP</div>
+      {/* manual backup — the fallback you hold yourself */}
+      <div style={{ paddingTop: 14 }}>
+        <div style={{ ...caps(10), marginBottom: 8 }}>Manual backup</div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={doExport} style={{ flex: 1, height: 46, borderRadius: 13, background: C.card, color: C.ink, border: `1px solid ${C.line}`, fontWeight: 800, fontSize: 14 }}>Export rounds</button>
-          <button onClick={() => fileRef.current && fileRef.current.click()} style={{ flex: 1, height: 46, borderRadius: 13, background: C.card, color: C.ink, border: `1px solid ${C.line}`, fontWeight: 800, fontSize: 14 }}>Import</button>
+          <button onClick={doExport} style={{ ...outlinePill, flex: 1 }}>Export rounds</button>
+          <button onClick={() => fileRef.current && fileRef.current.click()} style={{ ...outlinePill, flex: 1 }}>Import</button>
         </div>
         <input ref={fileRef} type="file" accept="application/json,.json" onChange={doImport} style={{ display: "none" }} />
-        <div style={{ color: msg ? C.ink : C.sub, fontSize: 11, marginTop: 8, lineHeight: 1.45 }}>
-          {msg || "A file copy you control. Export saves to Files/iCloud; import merges a backup back in without touching rounds you already have."}
+        <div style={{ fontFamily: F.label, fontSize: 11, color: msg ? T.ink : T.muted, marginTop: 8, lineHeight: 1.45 }}>
+          {msg || "A file copy you control. Export saves to Files or iCloud; import merges a backup back in without touching rounds you already have."}
         </div>
       </div>
     </div>
@@ -1640,7 +1667,7 @@ function App() {
       {screen === "setup" && <Setup course={course} setCourse={setCourse} diff={diff} setDiff={setDiff} stats={stats} history={history} onStart={start} onHistory={() => setScreen("history")} />}
       {screen === "play" && course && ghost && <Play course={course} ghost={ghost} scores={scores} setScores={setScores} hole={hole} setHole={setHole} onFinish={finalize} onExit={exitRound} />}
       {screen === "summary" && course && ghost && <Summary course={course} ghost={ghost} scores={scores} history={history} onEditScore={editScore} onReset={reset} />}
-      {screen === "history" && <DarkShell><History history={history} stats={stats} cloud={cloud} onDelete={deleteRound} onImport={importRounds} onBack={() => setScreen("setup")} /></DarkShell>}
+      {screen === "history" && <History history={history} stats={stats} cloud={cloud} onDelete={deleteRound} onImport={importRounds} onBack={() => setScreen("setup")} />}
     </div>
   );
 }
