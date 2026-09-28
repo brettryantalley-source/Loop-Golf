@@ -1,0 +1,18 @@
+# Caddie build — decisions made overnight (Sep 28–29) for Brett to review
+
+Each line is a call I made so the build could keep moving. Flip any of them; nothing here is
+load-bearing beyond the line it names. Newest at the bottom.
+
+| # | Decision | Why | Where to change it |
+|---|---|---|---|
+| D1 | The expected-strokes baseline is Broadie's **PGA TOUR** table (Every Shot Counts, 2014), not a scratch table. Shot Pattern's SG is measured vs scratch, so absolute `Avg` reads ~0.2 low; rankings are unaffected. `BASELINE_SCRATCH_OFFSET` (default 0) exists for a flat correction. | No published scratch table was reachable (every golf-stats site is blocked by this container's egress proxy). | `src/caddie/baseline.js`, `src/caddie/config.js` |
+| D2 | The baseline table was transcribed without live verification. | Egress blocked. | Verify against the book before S3 ships; `src/caddie/baseline.js` |
+| D3 | `E()` adds Brett's putting deficit per hole (−puttingSgPer18 / 18) to off-green states, so they are priced with the same putter that prices on-green states (`Eputt` is personal). | Otherwise every off-green landing is ~0.15 strokes too optimistic relative to a green landing and the engine under-values hitting greens. | `PUTT_DEFICIT_IN_E` in `src/caddie/config.js` |
+| D4 | Rough / sand / recovery entries with no measured distance use the fairway median scaled by `LIE_DIST_ADJ` (rough −6%, sand −12%, recovery −30%) and widened by `LIE_SD_MULT`. | Shot Pattern reports no distances from rough. The spec asks for tunables, not invented profile numbers, so these live in config and the profile stays null. | `src/caddie/config.js` |
+| D5 | Longitudinal σ for approach clubs is `DIST_SD_PCT` × carry (long 7%, mid 6%, short 5%, wedge 5%) when the entry has no IQR. Tee clubs use their 25th–75th range (σ = IQR / 1.349). | Shot Pattern gives an IQR for tee clubs only. | `src/caddie/config.js`; superseded per entry by `ell80` |
+| D6 | Wedges: SW and LW medians (95 / 85) are stored as **finesse** entries; their full entries are null placeholders. GW 119 is a full entry flagged `blended`, with a null finesse placeholder. PW and longer are full. | Brett's note: inside 120 he plays finesse wedges and does not hit the 54° full. Shot Pattern does not split swing types. | `docs/PROFILE-v2.md`, `scripts/build-profile.mjs` |
+| D7 | Big-miss lateral magnitude for tee clubs = max(40, 95% width / 2). Approach clubs carry no big-miss mixture (their `bigMissPct` is a proximity miss, not a lateral one). | Shot Pattern defines a big miss as > 35 yds offline; half the 95% width is where the tail sits. | `docs/PROFILE-v2.md` |
+| D8 | The Sep 19 `ell80` ellipses (PW, 9i, 2Hy, 4Hy) go into the profile from `data/extracted/2026-09-19-ell80.json`, transcribed from the UI addendum §5.4. They apply to every lie of that club (addendum §5.2) until per-lie screens exist. | Addendum says the ellipse is the dispersion core where it exists. | `data/extracted/2026-09-19-ell80.json` |
+| D9 | The parked v1 caddie (`src/caddie.js`, `src/caddie.test.js`, profile v1) is deleted, not kept. | HANDOFF-NEXT: "S1 replaces both." Nothing imported them. | git history has them |
+| D10 | Work lands on the branch `claude/bold-pascal-2s136s` with a draft PR; nothing touches `main`. Merging the PR is the "go". | CLAUDE.md's wait-for-go rule vs. Brett's "work through the night." | — |
+| D11 | Overpass and Open-Meteo are unreachable from this container, so S2 is built against the Hampton fixture with the fetch layer injectable; the Ironwood coverage check and the API field/CORS verification are deferred to the first on-device run. | Egress blocked. | `docs/HANDOFF-NEXT.md` open items |

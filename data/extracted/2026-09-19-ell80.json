@@ -1,0 +1,17 @@
+{
+  "batch": "2026-09-19",
+  "source": "Shot Pattern club dispersion screens, measured by the Golf project chat; transcribed from docs/SPEC-caddie-UI.md §5.4 (UI Addendum v1, 2026-09-27).",
+  "method": "Ellipse fitted to the solid 80% outline, scaled by the Width × Depth labels (PW and 9-iron checked isotropic within 1.1%), offset measured from the target cross.",
+  "frame": "Shot Pattern club plot: +x right, +y short. wYds is the full axis at tiltDeg clockwise from +x; hYds the perpendicular axis. dx, dy = ellipse centre relative to the target cross.",
+  "resolvedFilters": { "roundType": "Casual", "window": "Last 5", "lies": "all", "coverage": 0.8 },
+  "filterSource": "seen",
+  "entries": [
+    { "club": "PW",  "wYds": 16.7, "hYds": 23.7,  "tiltDeg": 39.9,  "dxYds": -0.2, "dyYds": 1.1, "bboxWYds": 20, "bboxDYds": 21,  "confidence": "high" },
+    { "club": "9i",  "wYds": 25.1, "hYds": 45.3,  "tiltDeg": 113.0, "dxYds": 4.1,  "dyYds": -0.1, "bboxWYds": 43, "bboxDYds": 29, "confidence": "high" },
+    { "club": "2Hy", "wYds": 57.1, "hYds": 117.9, "tiltDeg": 21.1,  "dxYds": -1.0, "dyYds": 0.2, "bboxWYds": 68, "bboxDYds": 112, "confidence": "low",
+      "note": "screen scrolled, top of ellipse estimated; mixes tee (248) and fairway (224)" },
+    { "club": "4Hy", "wYds": 60.1, "hYds": 80.6,  "tiltDeg": 129.1, "dxYds": 2.9,  "dyYds": 0.1, "bboxWYds": 73, "bboxDYds": 69,  "confidence": "low",
+      "note": "screen scrolled, top estimated" }
+  ],
+  "pending": ["Dr", "2i", "5i", "6i", "7i", "8i", "GW", "SW", "LW", "finesse entries"]
+}

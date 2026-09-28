@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loop · U-Caddie reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Bitter:wght@400;500;700&family=Old+Standard+TT:wght@400;700&family=Reenie+Beanie&display=swap" rel="stylesheet">
+<style>
+:root{
+  --pg:#E7E3D6; --pgInk:#1E6B3A; --pgText:#3F3F3F; --pgRule:#C9C3B2;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --pg:#1C1C1B; --pgInk:#A9C7B4; --pgText:#D9D6CC; --pgRule:#3A3A38; } }
+:root[data-theme="dark"]{ --pg:#1C1C1B; --pgInk:#A9C7B4; --pgText:#D9D6CC; --pgRule:#3A3A38; }
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--pg);color:var(--pgText);font-family:Bitter,Rockwell,Georgia,serif}
+button{font-family:inherit;cursor:pointer;border:none;padding:0;background:none;color:inherit;text-align:inherit}
+button:focus-visible{outline:2px solid #F2C94C;outline-offset:1px}
+.page{max-width:1240px;margin:0 auto;padding:24px 0 56px}
+.intro{padding:0 20px;max-width:620px}
+.intro h1{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--pgInk);margin:0 0 8px}
+.intro p{font-size:13px;line-height:1.5;margin:0 0 6px}
+.row{display:flex;flex-wrap:wrap;justify-content:center;gap:44px 28px;margin-top:26px}
+.treat{width:375px;max-width:100%}
+.treat h2{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--pgInk);margin:0 0 4px;padding:0 6px}
+.treat p{font-size:12.5px;line-height:1.45;margin:0 0 12px;padding:0 6px;min-height:54px}
+.scroller{overflow-x:auto;max-width:100%}
+
+/* ---------- phone render (paper tokens are fixed; there is no dark mode) ---------- */
+.phone{position:relative;width:375px;height:812px;overflow:hidden;background:#4E6A37;outline:1px solid var(--pgRule);
+  font-family:Bitter,Rockwell,Georgia,serif;color:#1E6B3A;user-select:none;-webkit-user-select:none}
+.phone svg.map,.phone svg.ovl{position:absolute;left:0;top:0;width:375px;height:812px;display:block}
+.phone svg.ovl{pointer-events:none}
+.ovl .cur{animation:redraw .22s ease-out}
+@keyframes redraw{from{opacity:.15}to{opacity:1}}
+.sb{position:absolute;left:0;top:0;width:375px;height:47px;z-index:40;pointer-events:none}
+.sb .t{position:absolute;left:38px;top:16px;font:600 16px/1 -apple-system,system-ui,sans-serif;color:#fff}
+.sb .i{position:absolute;left:125px;top:11px;width:125px;height:36px;border-radius:18px;background:#000}
+.sb.ink .t{color:#1F1F1F}
+.paper{background:#F4F0E4}
+.num{font-family:'Old Standard TT',Georgia,serif;font-weight:700}
+.k{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#1E6B3A;line-height:1}
+.pw{font-family:'Reenie Beanie',cursive !important;color:#3F3F3F !important;filter:url(#pencil);font-weight:400 !important}
+
+/* buttons — existing primary + outlined pill */
+.btns{display:flex;gap:10px}
+.bp{flex:1.45;display:flex;align-items:center;justify-content:center;gap:10px;height:52px;border:2px solid #1E6B3A;border-radius:26px;
+  background:#1E6B3A;box-shadow:inset 0 0 0 1.5px #F2C94C;color:#F4F0E4;font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase}
+.bp:active{background:#154D2A;border-color:#154D2A}
+.bo{flex:1;display:flex;align-items:center;justify-content:center;height:52px;border:2px solid #1E6B3A;border-radius:26px;
+  color:#1E6B3A;font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase}
+
+/* SAFE / AGGRESSIVE */
+.tg{display:flex;gap:8px}
+.tg button{flex:1;height:42px;border:2px solid #1E6B3A;border-radius:21px;color:#1E6B3A;text-align:center;
+  font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.tg button.on{background:#1E6B3A;color:#F4F0E4;box-shadow:inset 0 0 0 1.5px #F2C94C}
+.tg.v{flex-direction:column;width:88px}
+.tg.v button{flex:none;height:44px;font-size:10px;letter-spacing:.08em;border-radius:22px}
+.same{height:42px;display:flex;align-items:center;justify-content:center;border-top:1px solid #1E6B3A;border-bottom:1px solid #1E6B3A;
+  font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.samev{width:88px;padding:10px 0;border-top:1px solid #1E6B3A;border-bottom:1px solid #1E6B3A;text-align:center;
+  font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;line-height:1.5}
+
+/* printed stat strip (rating / slope / yards pattern) */
+.strip{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #1E6B3A;padding:2px 0 8px}
+.strip .sc{display:flex;flex-direction:column;align-items:center;gap:5px;border-right:1px solid #A9C7B4}
+.strip .sc:last-child{border-right:none}
+.strip .v{font-size:20px;color:#1E6B3A;line-height:1}
+.strip.s2{grid-template-columns:1fr 1fr;row-gap:10px}
+.strip.s2 .sc:nth-child(2n){border-right:none}
+
+/* assumption chips — ruled cells; inferred = printed, corrected by Brett = pencil */
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#A9C7B4;border:1px solid #1E6B3A;margin-top:10px}
+.chips.two{grid-template-columns:1fr 1fr}
+.chip{position:relative;background:#F4F0E4;height:50px;padding:7px 9px 6px;display:flex;flex-direction:column;justify-content:space-between;text-align:left}
+.chip .v{font-size:14px;color:#1E6B3A;line-height:1;white-space:nowrap}
+.chip .v.pw{font-size:29px;line-height:.62}
+.chip .c{position:absolute;right:8px;top:7px;width:5px;height:5px;border-right:1.3px solid #7FA58C;border-bottom:1.3px solid #7FA58C;transform:rotate(45deg)}
+.chip.live{background:#F4F0E4}
+.chip:active{background:#E6E4DF}
+
+/* option stats (rows) */
+.stats{margin-top:10px;border-top:1px solid #1E6B3A}
+.stats .sh,.stats .sr{display:grid;grid-template-columns:1.55fr 1fr 1fr 1fr;align-items:center}
+.stats .sh{height:22px;border-bottom:1px solid #A9C7B4}
+.stats .sh span{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;text-align:right;padding-right:6px}
+.stats .sr{width:100%;height:44px;border-bottom:1px solid #1E6B3A}
+.stats .sr > span{text-align:right;padding-right:6px;font-size:19px;color:#1E6B3A}
+.stats .sr small{font-size:11px;margin-left:3px;color:#1E6B3A}
+.stats .sl{height:100%;display:flex !important;flex-direction:column;justify-content:center;align-items:flex-start;padding-left:8px;text-align:left !important}
+.stats .sl b{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#1E6B3A}
+.stats .sl i{font-style:normal;font-size:12px;color:#1E6B3A;margin-top:3px}
+.stats .sr.on .sl{background:#F2C94C}
+.stats.narrow .sh,.stats.narrow .sr{grid-template-columns:1.5fr 1fr 1fr 1fr}
+.stats.narrow .sr > span{font-size:16px;padding-right:3px}
+.stats.narrow .sh span{font-size:8px;letter-spacing:.08em;padding-right:3px}
+.stats.narrow .sl b{font-size:9px;letter-spacing:.06em}
+.whys{margin-top:8px}
+.whys div{font-size:11px;line-height:1.45;color:#1E6B3A}
+.ndg{margin-top:8px;padding-top:7px;border-top:1px solid #A9C7B4;font-size:12px;line-height:1.35;color:#1F1F1F;display:flex;gap:8px;align-items:baseline}
+.ndg .k{flex:none;color:#1E6B3A}
+
+/* map tags (printed card stock) */
+.tag{position:absolute;top:56px;height:32px;padding:0 11px;display:flex;align-items:center;gap:6px;background:#F4F0E4;border:1px solid #1E6B3A;
+  font-size:12px;color:#1E6B3A;z-index:15;white-space:nowrap}
+.tag .num{font-size:15px}
+.tag.tl{left:14px}.tag.tr{right:14px}
+
+/* grab — a short double rule */
+.grab{display:flex;align-items:center;justify-content:center;flex:none;width:100%;height:24px}
+.grab span{display:block;width:38px;height:4px;border-top:1px solid #1E6B3A;border-bottom:1px solid #1E6B3A}
+
+/* ---------- A · bottom sheet ---------- */
+.t1sheet{position:absolute;left:0;right:0;bottom:0;height:258px;border-top:4px double #1E6B3A;display:flex;flex-direction:column;z-index:20;
+  transition:height .28s cubic-bezier(.2,.8,.2,1)}
+.t1sheet.exp{height:640px}
+.t1sheet .more{flex:1;min-height:0;overflow:hidden;padding:2px 18px 0;opacity:0;transition:opacity .18s}
+.t1sheet.exp .more{opacity:1}
+.t1sheet .base{flex:none;padding:0 18px 42px}
+.clubrow{display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px}
+.clubrow .cb{display:flex;flex-direction:column;gap:5px}
+.clubrow .cb.r{align-items:flex-end}
+.clubrow .big{font-size:31px;line-height:.9;color:#1F1F1F}
+.clubrow .big.ink{color:#1E6B3A}
+.aim{font-size:14px;font-weight:500;color:#1E6B3A;margin:7px 0 13px;line-height:1.2}
+
+/* ---------- B · top card ---------- */
+.t2card{position:absolute;left:0;right:0;top:0;height:192px;padding-top:50px;border-bottom:4px double #1E6B3A;display:flex;flex-direction:column;z-index:20;
+  transition:height .28s cubic-bezier(.2,.8,.2,1)}
+.t2card.exp{height:618px}
+.t2card .hdr{flex:none;padding:0 18px}
+.t2card .ha{display:flex;align-items:flex-end;gap:8px}
+.t2card .back{font-size:22px;line-height:1;color:#1E6B3A;padding:0 4px 6px 0;height:40px;display:flex;align-items:flex-end}
+.t2card .hn{font-size:44px;line-height:.85;color:#1F1F1F}
+.t2card .hp{font-size:11px;line-height:1.35;color:#1E6B3A;padding-bottom:1px}
+.t2card .hp b{font-family:'Old Standard TT',Georgia,serif;font-size:12px}
+.t2card .spc{flex:1}
+.t2card .cl{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.t2card .cl .num{font-size:28px;line-height:.85;color:#1F1F1F}
+.t2card .cl .num.ink{color:#1E6B3A}
+.t2card .aim{margin:10px 0 3px}
+.t2card .why1{font-size:11px;line-height:1.4;color:#1E6B3A}
+.t2card .more{flex:1;min-height:0;overflow:hidden;padding:10px 18px 0;opacity:0;transition:opacity .18s}
+.t2card.exp .more{opacity:1}
+.t2bar{position:absolute;left:0;right:0;bottom:0;border-top:4px double #1E6B3A;padding:12px 18px 42px;display:flex;flex-direction:column;gap:10px;z-index:20}
+.cmp{display:grid;margin-top:10px;border:1px solid #1E6B3A}
+.cmp.c2{grid-template-columns:66px 1fr 1fr}
+.cmp.c1{grid-template-columns:66px 1fr}
+.cmp > *{border-bottom:1px solid #A9C7B4;border-right:1px solid #A9C7B4;padding:0 8px;min-height:30px;display:flex;align-items:center}
+.cmp > :nth-last-child(-n+3){border-bottom:none}
+.cmp.c1 > :nth-last-child(-n+2){border-bottom:none}
+.cmp .ch{height:32px;justify-content:center;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#1E6B3A;border-bottom:1px solid #1E6B3A}
+.cmp .ch.on{background:#F2C94C}
+.cmp .rk{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.cmp .rv{font-size:12px;color:#1E6B3A}
+.cmp .rv b{font-size:17px}
+.cmp .rv small{font-size:11px;margin-left:4px}
+.cmp .rv .w{font-size:10.5px;line-height:1.35;padding:5px 0}
+
+/* ---------- C · side rail ---------- */
+.t3rail{position:absolute;right:0;top:0;bottom:112px;width:106px;border-left:4px double #1E6B3A;display:flex;flex-direction:row-reverse;overflow:hidden;z-index:20;
+  transition:width .28s cubic-bezier(.2,.8,.2,1)}
+.t3rail.exp{width:356px}
+.t3rail .col{flex:none;width:102px;padding:54px 7px 0;display:flex;flex-direction:column;align-items:center;text-align:center}
+.t3rail .col .hn{font-size:42px;line-height:.9;color:#1F1F1F;margin-top:6px}
+.t3rail .col .hp{font-size:11px;color:#1E6B3A;margin-top:6px}
+.t3rail .col .hp b{font-family:'Old Standard TT',Georgia,serif;font-size:12px}
+.t3rail .col hr{width:88px;border:none;border-top:1px solid #A9C7B4;margin:14px 0}
+.t3rail .col .v{font-size:23px;line-height:.9;color:#1F1F1F;margin:6px 0 14px}
+.t3rail .col .v.ink{color:#1E6B3A;font-size:26px}
+.t3rail .col .aimS{font-size:12.5px;font-weight:500;line-height:1.25;color:#1E6B3A;margin-top:-4px}
+.t3rail .col .mt{margin-top:auto;width:100%;height:48px;border-top:1px solid #1E6B3A;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;text-align:center;color:#1E6B3A}
+.t3rail .det{flex:none;width:250px;padding:54px 12px 0 14px;border-right:1px solid #A9C7B4;opacity:0;transition:opacity .18s}
+.t3rail.exp .det{opacity:1}
+.t3bar{position:absolute;left:0;right:0;bottom:0;height:112px;border-top:4px double #1E6B3A;padding:12px 18px 0;z-index:21}
+
+.dsp{margin-top:9px;padding-top:7px;border-top:1px solid #A9C7B4;display:flex;flex-direction:column;gap:4px}
+.dsp .dv{font-size:12px;color:#1E6B3A}.dsp .dv b{font-size:16px;color:#1F1F1F}
+.dsp .ds{font-size:10px;color:#1E6B3A}
+.row .treat{width:375px}
+@media (prefers-reduced-motion: reduce){ .t1sheet,.t2card,.t3rail,.more,.det{transition:none !important} .ovl .cur{animation:none} }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="pencil" x="-10%" y="-10%" width="120%" height="120%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" seed="4" result="grain"/>
+    <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1.3 0 0 0 0.2" result="grainA"/>
+    <feComposite in="SourceGraphic" in2="grainA" operator="in" result="tex"/>
+    <feTurbulence type="turbulence" baseFrequency="0.04" numOctaves="1" seed="9" result="wob"/>
+    <feDisplacementMap in="tex" in2="wob" scale="0.8" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2"/></filter>
+  <!-- satellite stand-in textures -->
+  <filter id="mottleL" x="0" y="0" width="1" height="1"><feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="3" seed="2"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 .43  0 0 0 0 .51  0 0 0 0 .28  1.9 0 0 0 -0.85"/></filter>
+  <filter id="mottleD" x="0" y="0" width="1" height="1"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="8"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 .22  0 0 0 0 .31  0 0 0 0 .17  1.7 0 0 0 -0.85"/></filter>
+  <filter id="grain" x="0" y="0" width="1" height="1"><feTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="2" seed="5"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1.7 0 0 0 -0.78"/></filter>
+  <pattern id="mow" width="24" height="24" patternUnits="userSpaceOnUse" patternTransform="rotate(-4)">
+    <rect width="24" height="12" fill="#6D984B"/><rect y="12" width="24" height="12" fill="#76A152"/></pattern>
+  <pattern id="grn" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
+    <rect width="9" height="4.5" fill="#86B55C"/><rect y="4.5" width="9" height="4.5" fill="#8EBC63"/></pattern>
+  <pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect width="5" height="5" fill="rgba(163,53,43,.28)"/><line x1="0" y1="0" x2="0" y2="5" stroke="#F1DAD6" stroke-width="1.8"/></pattern>
+</defs></svg>
+
+<div class="page">
+  <div class="intro">
+    <h1>Loop · U-Caddie · pixel reference</h1>
+    <p>Reference for Loop-Caddie-UI-Addendum-v1. Sizes, colours, type, overlay drawing, and ellipse math are the build values.</p>
+    <p>Reference-only: the drawn map (the app uses MapTiler satellite), Google Fonts (the app uses the bundled woff2), static Avg and Birdie numbers, and chips that cycle on tap (the app opens a picker, addendum §7).</p>
+  </div>
+  <div class="row">
+    <section class="treat">
+      <div class="scroller"><div class="phone" id="p3"></div></div>
+    </section>
+  </div>
+</div>
+<script>
+(function(){
+/* ---------- Shot Pattern 80% coverage ellipses (measured from the Sep 19 club screens) ----------
+   w,h = full axis lengths (yds); ang = axis tilt (deg, clockwise, screen frame: +x right, +y short);
+   dx,dy = ellipse centre vs Shot Pattern's target cross (yds); W,D = Shot Pattern's Width x Depth labels. */
+const SP = {
+  'PW':       { w:16.7, h:23.7,  ang:39.9,  dx:-0.2, dy:1.1,  W:20, D:21,  src:'Shot Pattern · 80% · Sep 19' },
+  '9-iron':   { w:25.1, h:45.3,  ang:113.0, dx:4.1,  dy:-0.1, W:43, D:29,  src:'Shot Pattern · 80% · Sep 19' },
+  '2-hybrid': { w:57.1, h:117.9, ang:21.1,  dx:-1.0, dy:0.2,  W:68, D:112, src:'Shot Pattern · 80% · Sep 19' },
+  '4-hybrid': { w:60.1, h:80.6,  ang:129.1, dx:2.9,  dy:0.1,  W:73, D:69,  src:'Shot Pattern · 80% · Sep 19' },
+};
+const K80 = Math.sqrt(-2*Math.log(0.2));   // 80% contour of a 2-D normal = 1.794 sigma
+
+/* ---------- engine output (avg + birdie illustrative; trouble computed live) ---------- */
+const NUDGE_ROUGH = 'Short twice from rough (H3, H6) · +½ club';
+const REC = {
+  'Fairway|Standard': { plays:7,  same:false, nudge:null, mod:{k:1,    dy:0},
+    safe:{ club:'PW',       leave:100, avg:'4.8', delta:'',     birdie:6,  why:'PW: 136 median · leaves finesse 54° from 100' },
+    aggr:{ club:'2-hybrid',            avg:'5.1', delta:'+0.3', birdie:12, why:'2-hybrid: 224 from fairway, 6 shots' } },
+  'Fairway|Bad':      { plays:12, same:false, nudge:null, mod:{k:1.15, dy:5},
+    safe:{ club:'PW',       leave:105, avg:'4.9', delta:'',     birdie:5,  why:'Bad lie: +15% spread, 5 yds short' },
+    aggr:{ club:'2-hybrid',            avg:'5.3', delta:'+0.4', birdie:9,  why:'2-hybrid, bad lie: +15% spread, 5 yds short' } },
+  'Rough|Standard':   { plays:14, same:false, nudge:NUDGE_ROUGH, mod:{k:1, dy:4},
+    safe:{ club:'9-iron',   leave:100, avg:'4.9', delta:'',     birdie:5,  why:'Rough: short bias, one more club · 9-iron 152' },
+    aggr:{ club:'4-hybrid',            avg:'5.4', delta:'+0.5', birdie:7,  why:'4-hybrid: 232 median, 73-yd width' } },
+  'Rough|Bad':        { plays:19, same:true,  nudge:NUDGE_ROUGH, mod:{k:1.15, dy:9},
+    both:{ club:'9-iron',   leave:105, avg:'5.2', delta:'',     birdie:4,  why:'Going at the green adds under 1% birdie' } }
+};
+const PIN_PRESET = { Front:[-8,230], Middle:[-6,239], Back:[-3,247] };
+const GREEN = { c:[-6,238], r:[13,12.5] };
+const keyOf = st => st.lie + '|' + st.qual;
+
+/* ---------- hole geometry, world yards (x lateral, y toward green; ball = 0,0) ---------- */
+const FW_L = [[-21,-240],[-20,-140],[-19,-60],[-19,0],[-18,40],[-17,80],[-19,115],[-22,150],[-24,175],[-25,195],[-22,212],[-16,222]];
+const FW_R = [[18,-240],[19,-140],[18,-60],[18,0],[19,40],[20,80],[19,115],[16,150],[8,175],[-2,196],[-6,210],[-9,219]];
+const FAIRWAY = FW_L.concat(FW_R.slice().reverse());
+const WATER = [[-2,176],[-1,192],[-4,206],[-3,218],[7,228],[23,229],[36,217],[39,197],[32,180],[19,171],[6,171]];
+const BUNKERS = [ {c:[-26,236], r:[5,9]}, {c:[-24,150], r:[6,4]}, {c:[21,40], r:[5,3.5]}, {c:[9,254], r:[6,3]} ];
+const PATH = [[34,-240],[35,-100],[33,0],[34,90],[38,150],[52,172],[57,205],[50,242],[32,262],[14,270]];
+function rng(seed){ let a = seed >>> 0; return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const TREES = (function(){ const r = rng(11), out = [];
+  for (let i=0;i<130;i++) out.push([-36 - Math.pow(r(),.7)*95, -240 + r()*580, 3 + r()*3.4]);
+  for (let i=0;i<110;i++) out.push([47 + Math.pow(r(),.7)*85, -240 + r()*580, 3 + r()*3.4]);
+  for (let i=0;i<40;i++)  out.push([-52 + r()*100, 263 + r()*80, 3 + r()*3]);
+  return out; })();
+
+const f1 = n => n.toFixed(1);
+const F = { s:2.0, cx:136, by:648 };
+const P = (x,y) => [F.cx + x*F.s, F.by - y*F.s];
+const mid = (a,b) => [(a[0]+b[0])/2,(a[1]+b[1])/2];
+function smoothClosed(pts){ const q = pts.map(p=>P(p[0],p[1])), n = q.length; let m = mid(q[n-1],q[0]), d = `M${f1(m[0])} ${f1(m[1])}`;
+  for (let i=0;i<n;i++){ const m2 = mid(q[i],q[(i+1)%n]); d += ` Q${f1(q[i][0])} ${f1(q[i][1])} ${f1(m2[0])} ${f1(m2[1])}`; } return d + 'Z'; }
+function smoothOpen(pts){ const q = pts.map(p=>P(p[0],p[1])), n = q.length; let d = `M${f1(q[0][0])} ${f1(q[0][1])}`;
+  for (let i=1;i<n-1;i++){ const m2 = mid(q[i],q[i+1]); d += ` Q${f1(q[i][0])} ${f1(q[i][1])} ${f1(m2[0])} ${f1(m2[1])}`; }
+  return d + ` L${f1(q[n-1][0])} ${f1(q[n-1][1])}`; }
+function inPoly(poly,[x,y]){ let c = false; for (let i=0,j=poly.length-1;i<poly.length;j=i++){ const [xi,yi]=poly[i],[xj,yj]=poly[j];
+  if (((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) c = !c; } return c; }
+const inEll = (b,[x,y],k=1) => ((x-b.c[0])/(b.r[0]*k))**2 + ((y-b.c[1])/(b.r[1]*k))**2 <= 1;
+const inTree = ([x,y]) => TREES.some(([tx,ty,tr]) => (x-tx)*(x-tx) + (y-ty)*(y-ty) < tr*tr);
+const isTrouble = p => inPoly(WATER,p) || BUNKERS.some(b=>inEll(b,p)) || inTree(p);
+
+/* ---------- resolve an option against the current pin ---------- */
+function dispOf(club, mod){ const d = SP[club]; return { w:d.w*mod.k, h:d.h*mod.k, ang:d.ang, dx:d.dx, dy:d.dy + mod.dy, src:d.src, scaled:mod.k !== 1 }; }
+function bboxOf(d){ const a = d.w/2, b = d.h/2, t = d.ang*Math.PI/180;
+  return [2*Math.sqrt((a*Math.cos(t))**2 + (b*Math.sin(t))**2), 2*Math.sqrt((a*Math.sin(t))**2 + (b*Math.cos(t))**2)]; }
+function greenPos(t){ const v = t[1] < 234 ? 'front' : t[1] > 243 ? 'back' : 'middle', h = t[0] < -9 ? 'left' : t[0] > -2 ? 'right' : '';
+  return h ? (v === 'middle' ? h === 'left' ? 'left side' : 'right side' : `${v}-${h}`) : v === 'middle' ? 'center' : v; }
+function clampGreen([x,y], k){ const dx = (x-GREEN.c[0])/GREEN.r[0], dy = (y-GREEN.c[1])/GREEN.r[1], r = Math.hypot(dx,dy);
+  return r <= k ? [x,y] : [GREEN.c[0] + dx/r*k*GREEN.r[0], GREEN.c[1] + dy/r*k*GREEN.r[1]]; }
+function resolve(rec, which, pin){
+  const o = rec[which], disp = dispOf(o.club, rec.mod);
+  let tgt, aim, aimShort, layup;
+  if (o.leave){ tgt = [0, pin[1] - o.leave]; aim = `Leave ${o.leave}, fairway center`; aimShort = `Leave ${o.leave}`; layup = true; }
+  else { tgt = clampGreen([pin[0] - 4, pin[1] - 9], .8); const g = greenPos(tgt); aim = `Green, ${g}`; aimShort = g.charAt(0).toUpperCase() + g.slice(1); layup = false; }
+  const out = Object.assign({}, o, { tgt, aim, aimShort, layup, disp, to: Math.round(tgt[1]) });
+  out.trouble = troubleOf(out); return out;
+}
+function localToWorld(tgt, qx, qy){ const th = Math.atan2(tgt[0], tgt[1]), c = Math.cos(th), s = Math.sin(th);
+  const ox = qx*c - qy*s, oy = qx*s + qy*c; return [tgt[0] + ox, tgt[1] - oy]; }
+function troubleOf(o){ const d = o.disp, r = rng(7), N = 1400, a = d.ang*Math.PI/180, u = [Math.cos(a),Math.sin(a)], v = [-Math.sin(a),Math.cos(a)];
+  const sa = d.w/2/K80, sb = d.h/2/K80; let bad = 0;
+  for (let i=0;i<N;i++){ const u1 = 1 - r(), u2 = r(), u3 = 1 - r(), u4 = r();
+    const z1 = Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2), z2 = Math.sqrt(-2*Math.log(u3))*Math.cos(2*Math.PI*u4);
+    const qx = d.dx + z1*sa*u[0] + z2*sb*v[0], qy = d.dy + z1*sa*u[1] + z2*sb*v[1];
+    if (isTrouble(localToWorld(o.tgt, qx, qy))) bad++; }
+  return Math.round(bad/N*100); }
+
+/* ---------- terrain (stand-in for satellite) ---------- */
+function terrain(){
+  const s = F.s;
+  let g = `<rect width="375" height="812" fill="#4E6A37"/><rect width="375" height="812" filter="url(#mottleL)"/><rect width="375" height="812" filter="url(#mottleD)"/>`;
+  g += `<path d="${smoothOpen(PATH)}" fill="none" stroke="#BDB59A" stroke-width="3.6" opacity=".85"/>`;
+  const fw = smoothClosed(FAIRWAY);
+  g += `<path d="${fw}" fill="#587842" stroke="#587842" stroke-width="${f1(6*s)}" stroke-linejoin="round"/><path d="${fw}" fill="url(#mow)"/>`;
+  const G = P(GREEN.c[0],GREEN.c[1]);
+  g += `<ellipse cx="${f1(G[0])}" cy="${f1(G[1])}" rx="${f1(16*s)}" ry="${f1(15.5*s)}" fill="#6E9A4B"/>`;
+  g += `<ellipse cx="${f1(G[0])}" cy="${f1(G[1])}" rx="${f1(GREEN.r[0]*s)}" ry="${f1(GREEN.r[1]*s)}" fill="url(#grn)"/>`;
+  BUNKERS.forEach(b=>{ const c = P(b.c[0],b.c[1]);
+    g += `<ellipse cx="${f1(c[0])}" cy="${f1(c[1])}" rx="${f1(b.r[0]*s)}" ry="${f1(b.r[1]*s)}" fill="#D6C89E" stroke="#B19F74" stroke-width="1"/>`;
+    g += `<ellipse cx="${f1(c[0]-b.r[0]*s*.12)}" cy="${f1(c[1]-b.r[1]*s*.1)}" rx="${f1(b.r[0]*s*.68)}" ry="${f1(b.r[1]*s*.6)}" fill="#E3D8B4" opacity=".75"/>`; });
+  const wp = smoothClosed(WATER);
+  g += `<path d="${wp}" fill="#2C4747" stroke="#42604A" stroke-width="3.5"/><path d="${wp}" fill="none" stroke="#3A5856" stroke-width="10" opacity=".35"/>`;
+  TREES.forEach(([x,y,r])=>{ const p = P(x,y), rr = r*s;
+    g += `<circle cx="${f1(p[0]+rr*.3)}" cy="${f1(p[1]+rr*.3)}" r="${f1(rr)}" fill="#20321B" opacity=".8"/><circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="${f1(rr)}" fill="#2E4727"/><circle cx="${f1(p[0]-rr*.25)}" cy="${f1(p[1]-rr*.3)}" r="${f1(rr*.55)}" fill="#3D5A31"/>`; });
+  g += `<rect width="375" height="812" filter="url(#grain)" opacity=".32"/>`;
+  return g;
+}
+
+/* ---------- overlay: corridor + Shot Pattern ellipse ---------- */
+const PAPER = '#F4F0E4', YEL = '#F2C94C';
+const line = (a,b,w,extra='') => `<line x1="${f1(a[0])}" y1="${f1(a[1])}" x2="${f1(b[0])}" y2="${f1(b[1])}" stroke="rgba(20,28,16,.45)" stroke-width="${w+2.4}" stroke-linecap="round"/>` +
+  `<line x1="${f1(a[0])}" y1="${f1(a[1])}" x2="${f1(b[0])}" y2="${f1(b[1])}" stroke="${PAPER}" stroke-width="${w}" stroke-linecap="round" ${extra}/>`;
+const ring = (p,r) => `<circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="${r}" fill="none" stroke="rgba(20,28,16,.5)" stroke-width="5.2"/><circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="${r}" fill="none" stroke="${YEL}" stroke-width="2.6"/><circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="2.4" fill="${YEL}"/>`;
+const ballM = p => `<circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="7.5" fill="rgba(20,28,16,.35)"/><circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="6" fill="${PAPER}" stroke="#1F1F1F" stroke-width="1.6"/>`;
+const pinM = p => `<circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="1.9" fill="#1F1F1F"/><line x1="${f1(p[0])}" y1="${f1(p[1])}" x2="${f1(p[0])}" y2="${f1(p[1]-17)}" stroke="${PAPER}" stroke-width="1.5"/><path d="M${f1(p[0])} ${f1(p[1]-17)} L${f1(p[0]+10)} ${f1(p[1]-13.5)} L${f1(p[0])} ${f1(p[1]-10)} Z" fill="${YEL}" stroke="#1F1F1F" stroke-width=".6"/>`;
+const prevTrack = () => { const a = P(7,-230), c = P(5,-110), b = P(0,0);
+  return `<path d="M${f1(a[0])} ${f1(a[1])} Q${f1(c[0])} ${f1(c[1])} ${f1(b[0])} ${f1(b[1])}" fill="none" stroke="${PAPER}" stroke-width="1.8" stroke-dasharray="2.5 6" stroke-linecap="round" opacity=".8" filter="url(#pencil)"/>`; };
+function ellScreen(o){
+  const th = Math.atan2(o.tgt[0], o.tgt[1]), c = Math.cos(th), s = Math.sin(th), d = o.disp, T = P(o.tgt[0],o.tgt[1]);
+  const C = [T[0] + (d.dx*c - d.dy*s)*F.s, T[1] + (d.dx*s + d.dy*c)*F.s];
+  const rot = d.ang + th*180/Math.PI, al = rot*Math.PI/180, A = d.w/2*F.s, B = d.h/2*F.s;
+  const u = [Math.cos(al),Math.sin(al)], v = [-Math.sin(al),Math.cos(al)];
+  const support = n => { const nu = n[0]*u[0]+n[1]*u[1], nv = n[0]*v[0]+n[1]*v[1], h = Math.sqrt(A*A*nu*nu + B*B*nv*nv);
+    return [C[0] + (A*A*nu*u[0] + B*B*nv*v[0])/h, C[1] + (A*A*nu*u[1] + B*B*nv*v[1])/h]; };
+  const n = [c, s];
+  return { T, C, A, B, rot, L: support([-n[0],-n[1]]), R: support(n) };
+}
+function overlay(a, o, pin){
+  const B = P(0,0), PIN = P(pin[0],pin[1]), e = ellScreen(a);
+  const ellAttrs = `cx="${f1(e.C[0])}" cy="${f1(e.C[1])}" rx="${f1(e.A)}" ry="${f1(e.B)}" transform="rotate(${f1(e.rot)} ${f1(e.C[0])} ${f1(e.C[1])})"`;
+  const clip = `<clipPath id="tr-c"><path d="${smoothClosed(WATER)}"/>${BUNKERS.map(b=>{ const c = P(b.c[0],b.c[1]);
+    return `<ellipse cx="${f1(c[0])}" cy="${f1(c[1])}" rx="${f1(b.r[0]*F.s)}" ry="${f1(b.r[1]*F.s)}"/>`; }).join('')}${TREES.map(([x,y,r])=>{ const p = P(x,y);
+    return `<circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="${f1(r*F.s)}"/>`; }).join('')}</clipPath>`;
+  let g = `<defs>${clip}</defs>` + pinM(PIN) + `<g class="cur">` + prevTrack();
+  if (o){ const OT = P(o.tgt[0],o.tgt[1]);
+    g += `<line x1="${f1(B[0])}" y1="${f1(B[1])}" x2="${f1(OT[0])}" y2="${f1(OT[1])}" stroke="${PAPER}" stroke-width="1.8" stroke-dasharray=".5 6.5" stroke-linecap="round" opacity=".75"/>` +
+         `<circle cx="${f1(OT[0])}" cy="${f1(OT[1])}" r="6" fill="none" stroke="${PAPER}" stroke-width="1.5" opacity=".75"/>`; }
+  g += `<path d="M${f1(B[0])} ${f1(B[1])} L${f1(e.L[0])} ${f1(e.L[1])} L${f1(e.R[0])} ${f1(e.R[1])} Z" fill="rgba(244,240,228,.12)"/>`;
+  g += line(B, e.L, 1.3, 'opacity=".95"') + line(B, e.R, 1.3, 'opacity=".95"');
+  if (a.layup) g += line(e.T, PIN, 1.4, 'stroke-dasharray="5 6" opacity=".92"');
+  g += `<ellipse ${ellAttrs} fill="rgba(244,240,228,.14)" stroke="${PAPER}" stroke-width="1.6"/>`;
+  g += `<ellipse ${ellAttrs} fill="url(#hatch)" clip-path="url(#tr-c)"/>`;
+  g += ring(e.T, 8) + `</g>` + ballM(B);
+  return g;
+}
+
+/* ---------- panel pieces ---------- */
+const FLAG = `<svg width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="#F4F0E4" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 17 V2"/><path d="M3 2 L13 6 L3 10 Z" fill="#F2C94C" stroke="#F2C94C"/></svg>`;
+const BTNS = `<div class="btns"><button class="bp">${FLAG}I'm at my ball</button><button class="bo">Log shot</button></div>`;
+function toggleV(st,rec){
+  if (rec.same) return `<div class="samev">Same shot<br>both ways</div>`;
+  return `<div class="tg v"><button data-act="opt" data-v="safe" class="${st.opt==='safe'?'on':''}">Safe</button><button data-act="opt" data-v="aggr" class="${st.opt==='aggr'?'on':''}">Aggressive</button></div>`;
+}
+function strip(rec,pin){
+  const c = (k,v) => `<div class="sc"><span class="k">${k}</span><span class="num v">${v}</span></div>`;
+  return `<div class="strip s2">${c('Front',226)}${c('Pin',Math.round(pin[1]))}${c('Back',251)}${c('Plays',Math.round(pin[1]) + rec.plays)}</div>`;
+}
+function chips(st){
+  const c = (k,v,act,edited) => `<button class="chip" data-act="${act}"><span class="k">${k}</span><span class="v${edited?' pw':''}">${v}</span><i class="c"></i></button>`;
+  return `<div class="chips two">` + c('Lie',st.lie,'lie',st.lie!=='Fairway') + c('Quality',st.qual,'qual',st.qual!=='Standard') +
+    c('Wind','8 into-left','x') + c('Elevation','+4 yds','x') + c('Pin',st.pinMode,'pin',st.pinMode!=='Middle') + c('Conditions','Normal','x') + `</div>`;
+}
+function stats(st,rec,opts){
+  const rows = rec.same ? [['Both','both',opts.both]] : [['Safe','safe',opts.safe],['Aggressive','aggr',opts.aggr]];
+  return `<div class="stats narrow"><div class="sh"><span></span><span>Avg</span><span>Birdie</span><span>Trouble</span></div>` +
+    rows.map(([n,v,o]) => `<button class="sr ${(rec.same || st.opt===v)?'on':''}" data-act="opt" data-v="${v}"><span class="sl"><b>${n}</b><i>${o.club}</i></span>` +
+      `<span class="num">${o.avg}${o.delta?`<small>${o.delta}</small>`:''}</span><span class="num">${o.birdie}%</span><span class="num">${o.trouble}%</span></button>`).join('') + `</div>`;
+}
+function dispLine(a){ const [W,D] = bboxOf(a.disp);
+  return `<div class="dsp"><span class="k">Dispersion</span><span class="dv"><b class="num">${a.club} ${Math.round(W)} × ${Math.round(D)}</b> yds</span>` +
+    `<span class="ds">${a.disp.src}${a.disp.scaled ? ' · +15% bad lie' : ''}</span></div>`; }
+const whys = (rec,opts) => `<div class="whys">${(rec.same?[opts.both]:[opts.safe,opts.aggr]).map(o=>`<div>${o.why}</div>`).join('')}</div>`;
+const nudge = rec => rec.nudge ? `<div class="ndg"><span class="k">Today</span><span>${rec.nudge}</span></div>` : '';
+
+/* ---------- C · side rail ---------- */
+function render(el, st){
+  const rec = REC[keyOf(st)], pin = st.pin;
+  const opts = rec.same ? { both: resolve(rec,'both',pin) } : { safe: resolve(rec,'safe',pin), aggr: resolve(rec,'aggr',pin) };
+  const a = rec.same ? opts.both : opts[st.opt], o = rec.same ? null : opts[st.opt === 'safe' ? 'aggr' : 'safe'];
+  if (!el.dataset.init){ el.dataset.init = 1;
+    el.innerHTML = `<svg class="map" viewBox="0 0 375 812">${terrain()}</svg><svg class="ovl" viewBox="0 0 375 812"></svg>
+      <div class="sb"><span class="t">8:16</span><span class="i"></span></div>
+      <button class="tag tl">‹&nbsp;Card</button>
+      <div class="t3rail paper"><div class="col"></div><div class="det"></div></div>
+      <div class="t3bar paper">${BTNS}</div>`;
+    const map = el.querySelector('svg.map');
+    map.addEventListener('click', e => { const r = map.getBoundingClientRect();
+      const sx = (e.clientX - r.left) * 375 / r.width, sy = (e.clientY - r.top) * 812 / r.height;
+      const w = [(sx - F.cx)/F.s, (F.by - sy)/F.s];
+      if (!inEll({c:GREEN.c, r:[16,15.5]}, w)) return;
+      st.pin = clampGreen(w, .92); st.pinMode = 'Custom'; render(el, st); });
+  }
+  el.querySelector('.ovl').innerHTML = overlay(a, o, pin);
+  const rl = el.querySelector('.t3rail'); rl.classList.toggle('exp', st.exp); el.querySelector('.sb').classList.toggle('ink', st.exp);
+  rl.querySelector('.col').innerHTML = `<span class="k">Hole</span><span class="num hn">7</span><span class="hp">par <b>5</b> · shot <b>2</b></span><hr>` +
+    toggleV(st,rec) + `<hr><span class="k">Club</span><span class="num v">${a.club}</span><span class="k">To target</span><span class="num v ink">${a.to}</span>` +
+    `<span class="aimS">${a.aimShort}</span><button class="mt" data-act="expand">${st.exp ? 'Close ›' : '‹ Details'}</button>`;
+  rl.querySelector('.det').innerHTML = strip(rec,pin) + chips(st) + stats(st,rec,opts) + dispLine(a) + whys(rec,opts) + nudge(rec);
+}
+const el = document.getElementById('p3');
+const st = { opt:'safe', lie:'Fairway', qual:'Standard', exp:false, pinMode:'Middle', pin:PIN_PRESET.Middle.slice() };
+const ORDER = ['Middle','Back','Front'];
+el.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b || !el.contains(b)) return;
+  const act = b.dataset.act;
+  if (act === 'opt'){ if (REC[keyOf(st)].same) return; st.opt = b.dataset.v; }
+  else if (act === 'lie') st.lie = st.lie === 'Fairway' ? 'Rough' : 'Fairway';
+  else if (act === 'qual') st.qual = st.qual === 'Standard' ? 'Bad' : 'Standard';
+  else if (act === 'pin'){ const i = ORDER.indexOf(st.pinMode); st.pinMode = ORDER[(i + 1) % 3]; st.pin = PIN_PRESET[st.pinMode].slice(); }
+  else if (act === 'expand') st.exp = !st.exp;
+  else return;
+  render(el, st);
+});
+render(el, st);
+window.__loop = { el, st, render, REC, SP };
+})();
+</script>
+</body>
+</html>
