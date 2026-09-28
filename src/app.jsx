@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut as fbSignOut } from "firebase/auth";
 import { initializeFirestore, persistentLocalCache, persistentSingleTabManager, collection, doc, setDoc, getDocs } from "firebase/firestore";
-import { T, F, caps, printed, written, writtenWord, rule, hairline, doubleRule, PencilDefs, Logo, teeTintFor, PencilRing } from "./theme.jsx";
+import { T, F, caps, printed, written, writtenWord, rule, hairline, doubleRule, PencilDefs, Logo, teeTintFor, PencilRing, GhostGlyph } from "./theme.jsx";
 /* v22.8: Brett's last five scorecards (differential floor + History ledger rows). */
 import { SEED_ROUNDS, historyRows } from "./seedRounds.js";
 /* Caddie (S3a, v22): the map layer. The profile is bundled, never fetched (addendum §11.1). */
@@ -60,7 +60,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.8 · Sep 29";
+const BUILD = "v22.9 · Sep 29";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -935,79 +935,79 @@ const RES_WORD = { win: "won", loss: "lost", tie: "halved" };
 /* Who a finished nine/total belongs to, in the footer's voice. */
 const sideWord = (res) => res === "win" ? "you" : res === "loss" ? "ghost" : res === "tie" ? "halved" : "open";
 
-/* The five options, relative to par. The last one is a ceiling the long-press
-   can raise: the USGA cap is par + 2 + strokes received, so on a stroked hole
-   par+2 is below your legal maximum and has to be reachable. */
-function choicesFor(par, ceiling) {
-  return [
-    { v: par - 2, kind: "eagle",  rings: 2, color: T.ink },
-    { v: par - 1, kind: "birdie", rings: 1, color: T.ink },
-    { v: par,     kind: "par",    rings: 0, color: T.black },
-    { v: par + 1, kind: "bogey",  boxes: 1, color: T.bogey },
-    { v: ceiling, kind: "double", boxes: 2, color: T.double, ceiling: true },
-  ];
+/* v22.9 — the chooser is a strip of every score from 1 to min(15, par + 10), five in view,
+   snapping to a centred cell. It replaces the five fixed options and the long-press past
+   par+2: the USGA cap is par + 2 + strokes received, so on a stroked hole par+2 is below
+   your legal maximum, and the strip simply runs past it. A score already on the card that
+   lies above the range (an old long-press 15 on a par 3) stretches the strip to reach it. */
+const SCORE_MAX = 15;
+function scoreOptions(par, keep) {
+  const top = Math.max(Math.min(SCORE_MAX, par + 10), Number.isFinite(keep) ? keep : 0);
+  return Array.from({ length: top }, (_, k) => k + 1);
 }
 
-/* A number written in pencil, with the shapes a scorecard puts round it.
-   One tap makes it pending (the soft graphite disc); a second commits. */
-function ScoreChoice({ c, par, pending, onTap, onHold }) {
-  const held = React.useRef(false);
-  const timers = React.useRef([]);
-  const stop = () => { timers.current.forEach(clearTimeout); timers.current.forEach(clearInterval); timers.current = []; };
-  useEffect(() => stop, []);
-  const start = () => {
-    if (!c.ceiling) return;
-    const t = setTimeout(() => {
-      held.current = true; onHold();
-      const iv = setInterval(onHold, 400); timers.current.push(iv);
-    }, 450);
-    timers.current.push(t);
-  };
-  const end = () => stop();
-  const click = () => { if (held.current) { held.current = false; return; } onTap(c.v); };
-  const label = c.ceiling && c.v === par + 2 ? `${c.v}+` : `${c.v}`;
+/* A number written in pencil, with the shapes a scorecard puts round it (PencilMark's
+   shapes, at chooser size). One tap makes it pending (the soft graphite disc); a second
+   commits. No pointer handlers: the strip scrolls natively, so a swipe never taps. */
+function ScoreChoice({ v, par, pending, onTap }) {
+  const d = v - par;
+  const col = markColor(d);
   const S = 52;
   return (
-    <button onClick={click} onPointerDown={start} onPointerUp={end} onPointerLeave={end} onPointerCancel={end}
-      onContextMenu={(e) => e.preventDefault()}
-      aria-label={`${c.kind}, ${label}${c.ceiling ? ", hold to go higher" : ""}${pending ? ", tap again to confirm" : ""}`}
-      style={{ position: "relative", width: S, height: S, border: "none", background: "transparent",
-        fontFamily: F.handNum, fontSize: 25, color: c.color, filter: "url(#pencil)", touchAction: "none", userSelect: "none" }}>
+    <button onClick={() => onTap(v)} data-score={v}
+      aria-label={`${scoreName(v, par)}, ${v}${pending ? ", tap again to confirm" : ""}`}
+      style={{ position: "relative", flexShrink: 0, width: S, height: S, padding: 0, border: "none", background: "transparent",
+        fontFamily: F.handNum, fontSize: 25, color: col, filter: "url(#pencil)", userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent" }}>
       {pending && <span style={{ position: "absolute", left: 6, top: 6, width: S - 12, height: S - 12, borderRadius: (S - 12) / 2, background: T.shade, filter: "url(#soft)" }} />}
-      {c.rings > 0 && (
-        <svg style={{ position: "absolute", left: 0, top: 0, width: S, height: S }} viewBox="0 0 52 52" fill="none" stroke={c.color} strokeWidth="1.4" aria-hidden="true">
-          <ellipse cx="26" cy="26" rx="22" ry="21" transform="rotate(-8 26 26)" strokeDasharray="132 5" />
-          {c.rings > 1 && <ellipse cx="26" cy="26" rx="17" ry="16.5" transform="rotate(12 26 26)" strokeDasharray="102 4" />}
-        </svg>
-      )}
-      {c.boxes > 0 && (
-        <svg style={{ position: "absolute", left: 0, top: 0, width: S, height: S }} viewBox="0 0 52 52" fill="none" stroke={c.color} strokeWidth="1.4" aria-hidden="true">
-          {c.boxes > 1
-            ? <><rect x="4" y="4" width="44" height="44" rx="1.5" transform="rotate(-1.5 26 26)" strokeDasharray="170 5" />
-                <rect x="9.5" y="9.5" width="33" height="33" rx="1.5" transform="rotate(2 26 26)" strokeDasharray="128 4" /></>
-            : <rect x="6" y="6" width="40" height="40" rx="1.5" transform="rotate(1.5 26 26)" strokeDasharray="155 5" />}
-        </svg>
-      )}
-      <span style={{ position: "relative" }}>{label}</span>
+      <MarkShapes d={d} size={S} color={col} sw={1.4} font={25} digits={String(v).length} />
+      <span style={{ position: "relative" }}>{v}</span>
     </button>
   );
 }
 
+/* The strip itself. Five cells of 20% each, with two cells' worth of blank at either end so
+   1 and the top score can both reach the centre; the scroll offset of a centred score is
+   therefore (score - 1) cells. Positioned on entering a hole — on the written score, else
+   the pending one, else par — and left alone after that; nothing about it is persisted. */
+function ScoreStrip({ hole, par, focus, pend, onTap }) {
+  const ref = React.useRef(null);
+  const opts = scoreOptions(par, focus);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (el) el.scrollLeft = (focus - 1) * (el.clientWidth / 5);
+  }, [hole, par]);   // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div ref={ref} className="lc-strip" data-part="chooser" role="group" aria-label={`Score for hole ${hole + 1}`}
+      style={{ display: "flex", width: "100%", overflowX: "auto", overflowY: "hidden", scrollSnapType: "x mandatory",
+        WebkitOverflowScrolling: "touch", overscrollBehaviorX: "contain", touchAction: "pan-x", scrollbarWidth: "none" }}>
+      <div aria-hidden="true" style={{ flex: "0 0 40%" }} />
+      {opts.map((v) => (
+        <div key={v} style={{ flex: "0 0 20%", display: "flex", justifyContent: "center", scrollSnapAlign: "center" }}>
+          <ScoreChoice v={v} par={par} pending={pend === v} onTap={onTap} />
+        </div>
+      ))}
+      <div aria-hidden="true" style={{ flex: "0 0 40%" }} />
+    </div>
+  );
+}
+const STRIP_CSS = `.lc-strip::-webkit-scrollbar{display:none}`;
+
 /* One nine as a ruled strip: hole numbers, your line, the ghost's line.
-   Cells carry the hole's result as a fill; the hole you are on is yellow. */
-function Strip({ start, scores, ghost, hole, onJump }) {
+   Cells carry the hole's result as a fill; the hole you are on is yellow. Your scores carry
+   the finished card's rings and boxes (v22.9), so the two cards speak the same language. */
+function Strip({ start, scores, ghost, pars, hole, onJump }) {
   const idx = [...Array(9)].map((_, k) => start + k);
   const rows = [
     { key: "", h: 22, get: (i) => String(i + 1), style: { ...printed(12), color: T.ink }, under: T.ink },
-    { key: "you", h: 30, get: (i) => scores[i] ?? "", style: written(17), under: T.hair },
-    { key: "gh.", h: 30, get: (i) => ghost.holes[i], style: written(17, T.ghost), under: T.ink },
+    { key: "you", h: 30, get: (i) => scores[i] != null ? <PencilMark score={scores[i]} par={pars[i]} size={27} font={16} /> : "", style: written(17), under: T.hair },
+    { key: "gh.", label: <GhostGlyph size={12} />, h: 30, get: (i) => ghost.holes[i], style: written(17, T.ghost), under: T.ink },
   ];
   return (
     <div style={{ display: "grid", gridTemplateColumns: "34px repeat(9, minmax(0, 1fr))", borderTop: rule, borderLeft: rule }}>
       {rows.map((r) => (
         <React.Fragment key={r.key}>
           <div style={{ display: "flex", alignItems: "center", height: r.h, paddingLeft: 4, borderRight: rule,
-            borderBottom: `1px solid ${r.under}`, fontFamily: F.label, fontSize: 10 }}>{r.key}</div>
+            borderBottom: `1px solid ${r.under}`, fontFamily: F.label, fontSize: 10 }}>{r.label || r.key}</div>
           {idx.map((i, k) => {
             const res = i === hole ? "now" : holeRes(scores[i], ghost.holes[i]);
             return (
@@ -1025,23 +1025,36 @@ function Strip({ start, scores, ghost, hole, onJump }) {
   );
 }
 
+/* One side of the Out / In / Total line (v22.9): the label, your strokes in pencil, the ghost
+   glyph and its strokes in print. Blank until a hole on that side is written. */
+function SideTotal({ label, t }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", color: t ? T.ink : T.muted }}>
+      <span style={caps(10, 400, "0.14em")}>{label}</span>
+      {t ? <>
+        <span style={{ ...written(23), lineHeight: "22px" }}>{t.you}</span>
+        <GhostGlyph size={12} style={{ marginLeft: 3 }} />
+        <span style={{ ...printed(20), color: T.ink, lineHeight: "22px" }}>{t.gh}</span>
+      </> : <span style={{ ...writtenWord(17, T.muted), lineHeight: "22px" }}>open</span>}
+    </div>
+  );
+}
+
 function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExit, onCaddie }) {
   const [confirmExit, setConfirmExit] = useState(false);
   const [pending, setPending] = useState(null);          // { hole, v } — chosen, not written
-  const [ceiling, setCeiling] = useState(null);          // raised par+2, this hole only
   const m = useMemo(() => evalMatch(scores, ghost.holes), [scores, ghost]);
   const h = course.holes[hole];
   const par = h.par;
-  const cap = ceiling != null && ceiling > par + 2 ? ceiling : par + 2;
   const pend = pending && pending.hole === hole ? pending.v : null;
 
-  useEffect(() => { setPending(null); setCeiling(null); }, [hole]);
+  useEffect(() => { setPending(null); }, [hole]);
 
   /* Write the number down. No navigation — the callers decide where to go. */
   const write = (v) => {
     const after = [...scores]; after[hole] = Math.max(1, v);
     setScores(after);
-    setPending(null); setCeiling(null);
+    setPending(null);
     return after;
   };
 
@@ -1067,11 +1080,6 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
   const tap = (v) => { if (pend === v) commit(v); else setPending({ hole, v }); };
   /* Leaving for the caddie is navigation too: a pending score is written, never dropped. */
   const goCaddie = () => { if (pend != null) write(pend); if (onCaddie) onCaddie(); };
-  const raise = () => setCeiling((c) => {
-    const next = Math.min((c != null && c > par + 2 ? c : par + 2) + 1, 15);
-    setPending({ hole, v: next });
-    return next;
-  });
 
   const seg = Math.floor(hole / 3);
   const segHoles = [seg * 3, seg * 3 + 1, seg * 3 + 2];
@@ -1091,6 +1099,10 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
   };
   const front = segLine(0, 2), back = segLine(3, 5);
   const frontPlayed = scores.slice(0, 9).some(s => s != null);
+  const pars = course.holes.map((x) => x.par);
+  /* Out / In / Total: your strokes in pencil, the ghost's in print, like for like — the
+     ghost's figure counts only the holes you have written, so the two can be compared. */
+  const sideTotals = (a, b) => scores.slice(a, b).some((s) => s != null) ? { you: played(a, b), gh: ghPlayed(a, b) } : null;
 
   return (
     <div style={{ height: "100dvh", maxWidth: 460, margin: "0 auto", boxSizing: "border-box", display: "flex", flexDirection: "column",
@@ -1137,7 +1149,7 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
             </button>
           );
         })}
-        <div style={{ display: "flex", alignItems: "center", height: 42, paddingLeft: 6, borderRight: rule, borderBottom: hairline, ...caps(10, 700, "0.12em") }}>Ghost</div>
+        <div style={{ display: "flex", alignItems: "center", height: 42, paddingLeft: 6, borderRight: rule, borderBottom: hairline, ...caps(10, 700, "0.12em") }}><GhostGlyph size={14} /></div>
         {segHoles.map((i, k) => (
           <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 42,
             borderRight: `1px solid ${k === 2 ? T.ink : T.hair}`, borderBottom: hairline, ...written(21, T.ghost) }}>{ghost.holes[i]}</div>
@@ -1145,14 +1157,13 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
         <div style={{ display: "flex", alignItems: "center", height: 42, paddingLeft: 6, borderRight: rule, borderBottom: rule, ...caps(10, 700, "0.12em") }}>You</div>
         {segHoles.map((i, k) => {
           const showPend = i === hole && pend != null && scores[i] == null;
-          const val = scores[i] != null ? scores[i] : showPend ? pend : "";
-          const col = showPend ? (pend > course.holes[i].par + 1 ? T.double : pend > course.holes[i].par ? T.bogey : T.pencil) : T.pencil;
+          const val = scores[i] != null ? scores[i] : showPend ? pend : null;
           return (
             <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 42,
               borderRight: `1px solid ${k === 2 ? T.ink : T.hair}`, borderBottom: rule }}>
-              <span style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30 }}>
-                {showPend && <span style={{ position: "absolute", left: 2, top: 2, width: 26, height: 26, borderRadius: 13, background: T.shade, filter: "url(#soft)" }} />}
-                <span style={{ position: "relative", ...written(21, col) }}>{val}</span>
+              <span style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36 }}>
+                {showPend && <span style={{ position: "absolute", left: 5, top: 5, width: 26, height: 26, borderRadius: 13, background: T.shade, filter: "url(#soft)" }} />}
+                {val != null && <PencilMark score={val} par={course.holes[i].par} size={36} font={21} />}
               </span>
             </div>
           );
@@ -1179,10 +1190,9 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
           </div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", paddingTop: 6 }}>
-          {choicesFor(par, cap).map((c) => (
-            <ScoreChoice key={c.kind} c={c} par={par} pending={pend === c.v} onTap={tap} onHold={raise} />
-          ))}
+        <div style={{ width: "100%", paddingTop: 6 }}>
+          <style dangerouslySetInnerHTML={{ __html: STRIP_CSS }} />
+          <ScoreStrip hole={hole} par={par} focus={scores[hole] ?? pend ?? par} pend={pend} onTap={tap} />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", width: "100%", paddingTop: 4 }}>
@@ -1222,7 +1232,7 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
               {frontPlayed && <>{(front.parts || front.open) ? " · " : ""}you <span style={printed(12)}>{played(0, 9)}</span>, ghost <span style={printed(12)}>{ghPlayed(0, 9)}</span></>}
             </span>
           </div>
-          <Strip start={0} scores={scores} ghost={ghost} hole={hole} onJump={goHole} />
+          <Strip start={0} scores={scores} ghost={ghost} pars={pars} hole={hole} onJump={goHole} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
@@ -1232,12 +1242,12 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
               {back.open && <span style={{ color: T.muted }}>{back.open} open</span>}
             </span>
           </div>
-          <Strip start={9} scores={scores} ghost={ghost} hole={hole} onJump={goHole} />
+          <Strip start={9} scores={scores} ghost={ghost} pars={pars} hole={hole} onJump={goHole} />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", paddingTop: 2, ...caps(10, 400, "0.14em") }}>
-          <div>Out <span style={{ ...writtenWord(17), letterSpacing: 0, textTransform: "none" }}>{sideWord(m.front.res)}</span></div>
-          <div style={{ textAlign: "center", color: m.back.res === "live" ? T.muted : T.ink }}>In <span style={{ ...writtenWord(17), letterSpacing: 0, textTransform: "none" }}>{sideWord(m.back.res)}</span></div>
-          <div style={{ textAlign: "right" }}>Total <span style={{ ...writtenWord(17), letterSpacing: 0, textTransform: "none" }}>{sideWord(m.total.res)}</span></div>
+        <div data-part="totals" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 2 }}>
+          <SideTotal label="Out" t={sideTotals(0, 9)} />
+          <SideTotal label="In" t={sideTotals(9, 18)} />
+          <SideTotal label="Total" t={sideTotals(0, 18)} />
         </div>
       </div>
     </div>
@@ -1886,7 +1896,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
               <button key={c.key} className="lc-chip" data-chip={c.key} onClick={() => { setWindDir(null); setPicker(c.key); }} aria-label={`${c.label}: ${c.value}`}
                 style={{ position: "relative", background: T.paper, height: 50, padding: "7px 9px 6px", display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "flex-start", textAlign: "left", minWidth: 0 }}>
                 <span style={k9}>{c.label}</span>
-                <span style={{ ...(c.edited ? { ...writtenWord(c.value.length > 8 ? 24 : 29), lineHeight: 0.62 } : { fontSize: c.value.length > 11 ? 12.5 : 14, color: T.ink, lineHeight: 1 }),
+                <span style={{ ...(c.edited ? { ...writtenWord(c.value.length > 8 ? 24 : 29), lineHeight: 0.62 } : { fontSize: c.value.length > 11 ? 12.5 : 14, color: T.black, lineHeight: 1 }),
                   whiteSpace: "nowrap", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {c.value}{c.unsure && <span style={{ ...printed(14), color: T.bogey }}> ?</span>}
                 </span>
@@ -2012,31 +2022,55 @@ function LeaveSheet({ hole, onStay, onLeave }) {
 }
 
 /* ---------- the finished card (paper, v21.2) ---------- */
-/* A score written on a scorecard, with the shapes the chooser uses: two rings for
-   an eagle, one for a birdie, nothing for par, one box for a bogey, two for worse. */
-function PencilMark({ score, par, size = 22 }) {
+/* The scorecard's shape language, one shape per stroke off par (v22.9): a ring for each
+   stroke under, a box for each stroke over, nothing for par — so a 1 on a par 4 has three
+   rings and a 7 has three boxes. Near-clean ellipses and squares, alternating slight tilts, a
+   small pen-lift gap in each. The outer shape is the same size whatever the count; extra ones
+   nest inside it, closing up (and thinning) as they go so the numeral in the middle stays
+   clear — at size 22 and 52 the first two land where the v21 ring/box pair did. */
+const markColor = (d) => d < 0 ? T.ink : d === 0 ? T.black : d === 1 ? T.bogey : T.double;
+const RING_TILT = [-8, 12, -4, 9, -11, 5, -6, 10, -3, 7];
+const BOX_TILT = [-1.5, 2, -1, 1.5, -2, 1, -0.8, 1.8, -1.2, 0.6];
+function MarkShapes({ d, size: S, color, sw = 1.1, font = 15, digits = 1 }) {
+  const n = Math.abs(d);
+  if (!n) return null;
+  const ring = d < 0, c = S / 2;
+  const outer = !ring && n === 1 ? S * 0.386 : S * 0.43;                 // half-size of the outer shape
+  const inner = Math.max(S * 0.2, font * (digits > 1 ? 0.55 : 0.36));   // keep clear of the numeral
+  const base = 3 + (S - 22) * 0.07;
+  const step = n > 1 ? Math.min(base, (outer - inner) / (n - 1)) : 0;
+  const w = n > 1 ? Math.min(sw, Math.max(0.45, step * 0.5)) : sw;
+  const gap = 3 + (S - 22) * 0.05;
+  const shapes = [];
+  for (let k = 0; k < n; k++) {
+    const r = outer - k * step;
+    if (ring) {
+      const rx = r, ry = r - S * 0.02;
+      const per = 2 * Math.PI * Math.sqrt((rx * rx + ry * ry) / 2);
+      shapes.push(<ellipse key={k} cx={c} cy={c} rx={rx.toFixed(2)} ry={ry.toFixed(2)} transform={`rotate(${RING_TILT[k % 10]} ${c} ${c})`} strokeDasharray={`${(per - gap).toFixed(1)} ${gap.toFixed(1)}`} />);
+    } else {
+      const tilt = n === 1 ? 1.5 : BOX_TILT[k % 10];
+      shapes.push(<rect key={k} x={(c - r).toFixed(2)} y={(c - r).toFixed(2)} width={(2 * r).toFixed(2)} height={(2 * r).toFixed(2)} rx={S > 40 ? 1.5 : 0}
+        transform={`rotate(${tilt} ${c} ${c})`} strokeDasharray={`${(8 * r - gap).toFixed(1)} ${gap.toFixed(1)}`} />);
+    }
+  }
+  return (
+    <svg style={{ position: "absolute", left: 0, top: 0, width: S, height: S }} viewBox={`0 0 ${S} ${S}`} fill="none" stroke={color} strokeWidth={w.toFixed(2)}
+      aria-hidden="true" data-mark={ring ? "rings" : "boxes"} data-count={n}>
+      {shapes}
+    </svg>
+  );
+}
+
+/* A score written on a scorecard, with the shapes the chooser uses. */
+function PencilMark({ score, par, size = 22, font = 15 }) {
   if (score == null) return <span style={{ ...written(14, T.muted) }}>·</span>;
   const d = score - par;
-  const rings = d <= -2 ? 2 : d === -1 ? 1 : 0;
-  const boxes = d === 1 ? 1 : d >= 2 ? 2 : 0;
-  const col = d < 0 ? T.ink : d === 0 ? T.black : d === 1 ? T.bogey : T.double;
+  const col = markColor(d);
   return (
     <span style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: size, height: size }}>
-      {rings > 0 && (
-        <svg style={{ position: "absolute", left: 0, top: 0, width: size, height: size }} viewBox="0 0 22 22" fill="none" stroke={col} strokeWidth="1.1" aria-hidden="true">
-          <ellipse cx="11" cy="11" rx="9.5" ry="9" transform="rotate(-8 11 11)" strokeDasharray="56 3" />
-          {rings > 1 && <ellipse cx="11" cy="11" rx="6.5" ry="6" transform="rotate(12 11 11)" strokeDasharray="38 3" />}
-        </svg>
-      )}
-      {boxes > 0 && (
-        <svg style={{ position: "absolute", left: 0, top: 0, width: size, height: size }} viewBox="0 0 22 22" fill="none" stroke={col} strokeWidth="1.1" aria-hidden="true">
-          {boxes > 1
-            ? <><rect x="1.5" y="1.5" width="19" height="19" transform="rotate(-1.5 11 11)" strokeDasharray="74 3" />
-                <rect x="4.5" y="4.5" width="13" height="13" transform="rotate(2 11 11)" strokeDasharray="50 3" /></>
-            : <rect x="2.5" y="2.5" width="17" height="17" transform="rotate(1.5 11 11)" strokeDasharray="66 3" />}
-        </svg>
-      )}
-      <span style={{ position: "relative", ...written(15, col) }}>{score}</span>
+      <MarkShapes d={d} size={size} color={col} font={font} digits={String(score).length} />
+      <span style={{ position: "relative", ...written(font, col) }}>{score}</span>
     </span>
   );
 }

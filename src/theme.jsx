@@ -146,3 +146,20 @@ export function Logo({ width = 180 }) {
     </svg>
   );
 }
+
+/* ---- ghost glyph (v22.9) ------------------------------------------------ *
+   The mid-round card's row label for the ghost: a plain cartoon ghost in one
+   ink line — round head, wavy hem, two dot eyes, no fill. On-screen label only;
+   nothing named `ghost` in the code changes. The stroke does not scale, so it
+   is 1.3px at any size.                                                     */
+export function GhostGlyph({ size = 13, color = T.ink, strokeWidth = 1.3, style }) {
+  return (
+    <svg width={size * 12 / 14} height={size} viewBox="0 0 12 14" fill="none" role="img" aria-label="Ghost"
+      style={{ display: "inline-block", verticalAlign: "middle", flexShrink: 0, overflow: "visible", ...style }}>
+      <path d="M1 12.6 V6 A5 5 0 0 1 11 6 V12.6 q-0.83 -1.5 -1.67 0 q-0.83 1.5 -1.67 0 q-0.83 -1.5 -1.67 0 q-0.83 1.5 -1.67 0 q-0.83 -1.5 -1.67 0 q-0.83 1.5 -1.67 0 Z"
+        stroke={color} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <circle cx="4.2" cy="6.2" r="0.95" fill={color} />
+      <circle cx="7.8" cy="6.2" r="0.95" fill={color} />
+    </svg>
+  );
+}

@@ -51,7 +51,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 3. On any deploy that ships user-facing changes, bump BOTH version markers together and keep the numbers in sync:
    - the cache name in `sw.js` (e.g. `loop-golf-v4` -> `-v5`). REQUIRED — without it, Brett's installed PWA keeps serving the old cached bundle.
    - the on-screen build tag: `const BUILD = "vN · <date>"` near the top of `src/app.jsx` (just after the icon definitions). Keep the existing `"vN · <date>"` format (e.g. `"v5 · Aug 2"`) and match `vN` to the new cache version.
-   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.2 on branch `claude/bold-pascal-2s136s`** (draft PR #5, unshipped) / **v21.4 on `main`**. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
+   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.9 on branch `claude/bold-pascal-2s136s`** (unshipped) / **v22.5 on `main`**. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
 4. Show Brett a diff.
 5. WAIT for his explicit "go" before git commit / git push. Never push without approval.
 6. Pages redeploys the same URL automatically (~1 min); Brett fully closes and reopens the app to load the new service worker.
@@ -96,18 +96,20 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
   are pencil, because on a real card you write both.
 
 ## Scoring the round (v21)
-- Five options per hole, computed from par: par−2, par−1, par, par+1, and a ceiling starting at
-  par+2. Nothing is pre-selected.
+- The chooser is a snapping strip (v22.9): five cells visible, centred on par (or on the written
+  score), scrollable from 1 up to par+10 (capped at 15). Shapes count strokes — one ring per stroke
+  under par, one box per stroke over — and the finished card draws the same, so a 7 on a par 4 is
+  three boxes everywhere. Nothing is pre-selected.
 - **Two ways to confirm.** First tap sets a pending score (shaded disc, mirrored into the You box
   and the segment card). Then EITHER tap the same number again, OR leave the hole — `Hole N+1`,
   `Hole N-1`, or tapping a cell in the Out/In strips all write the pending score first. Tapping a
   different number moves the pending score; the last one tapped is what gets written.
 - Navigation must never discard a pending score. Losing a real one is silent; a wrong one is one
   tap to fix.
-- **Long-press the red box to go past par+2.** The USGA cap used by the differential is
-  par + 2 + strokes received, so on a stroked hole par+2 is BELOW the legal maximum. Without this
-  the recorded gross would run low and the differential would drift, making the ghost harder every
-  round. First step at 450 ms, then one every 400 ms, capped at 15.
+- **Scroll the strip to go past par+2** (the v21 long-press is gone). The USGA cap used by the
+  differential is par + 2 + strokes received, so on a stroked hole par+2 is BELOW the legal
+  maximum; the strip reaches the legal maximum on every hole. A stored score above the range (an
+  old long-press 15 on a par 3) stretches the strip to include it.
 - Scores are stored as absolute stroke counts, so history, the differential and the cloud schema
   are unchanged.
 - Writing hole 18 when nothing else is blank finishes the round. Otherwise the app jumps to the
