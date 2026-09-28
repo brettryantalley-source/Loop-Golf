@@ -21,23 +21,28 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 - `src/theme.jsx` — the design system (v21): colour and type tokens, the pencil filters, the Loop wordmark. Every screen reads its values from here.
 - `loop-design/` — the design SOURCE: `SPEC.md`, the two approved reference screens (standalone HTML + 2x PNGs), the pencil filter and the logo. `theme.jsx` implements it; this is what it implements.
 - `fonts/` — bundled woff2, COMMITTED and cached by the service worker. Never fetch a font at runtime.
-- `src/geometry.js`, `src/holeMap.jsx`, `src/fixtures/`, `vendor/` — PARKED at v21. Nothing imports them and they are not bundled, but their tests still run. See "Parked, not deleted".
-- `src/caddie/` — the caddie engine (S1/S2/S4/S5 logic, in progress overnight Sep 28–29; see "Caddie (v22 build)" below). Pure modules, no DOM/storage/network except where noted; storage and fetch are injected. One line each:
+- `src/holeMap.jsx`, `src/fixtures/` — PARKED. Nothing imports them and they are not bundled, but their tests still run. See "Parked, not deleted".
+- `vendor/` (MapLibre GL) — LIVE again as of v22: lazy-loaded from disk the first time the caddie screen opens, served same-origin, cached by the service worker.
+- `src/caddie/` — the caddie engine, shot log, learning loop and caddie screen (S1–S5, complete on branch `claude/bold-pascal-2s136s`, draft PR #5, unshipped; see "Caddie (v22 build)" below). Pure logic modules have no DOM/storage/network except where noted; storage and fetch are injected. One line each:
   - `config.js` — every tunable the engine reads (`DEFAULT_CONFIG`), merged at runtime over `bogeyman-matches:config:v1`.
   - `baseline.js` — the published expected-strokes baseline (Broadie, cited in the file) the engine prices candidates against.
   - `course.js` — a hole in a local yard frame (x lateral, y tee→green); lie classification, distances, fat side, corridor.
-  - `profile.js` — loads `src/profile.json`, resolves an entry with fallback + provenance, the E()/Eputt()/B() expected-value functions.
+  - `profile.js` — loads `src/profile.json`, resolves an entry with fallback + provenance + learning overlays (`loadProfile(json, config, { overlays })`, `mergeOverlay`), the E()/Eputt()/B() expected-value functions.
   - `engine.js` — `recommend(ctx, hole, P)`: candidates → dispersion simulation → SAFE/AGGRESSIVE → reasons. The caddie's own decision function; not `computeGhost`/`evalMatch` and not subject to that freeze, but still not casually touched — see the spec before editing.
   - `reasons.js` — one-line reason strings built only from resolved profile fields, never free text.
   - `geo.js` — OSM geometry → the hole frame, lie inference, distances, hole detection, the 27-hole nine map, the coverage check.
   - `sensors.js` — Open-Meteo weather/elevation, injected fetch, never throws (falls back to last good value, marked stale).
   - `context.js` — assembles the engine's `ctx` (`ShotContext`) from round state, hole, GPS, weather, overrides.
   - `shotlog.js` — the post-shot capture log (`bogeyman-matches:shots:v1`, `:lieOverrides:v1`).
-  - `learning.js` — the learning loop: within-round nudges, between-round shrinkage/recency, shot-log overlays, lie-override takeover.
+  - `learning.js` — the learning loop: within-round nudges, between-round shrinkage/recency, shot-log overlays, lie-override takeover, the aggression scorecard.
   - `random.js` — the seeded sampler behind the dispersion simulation.
+  - `caddieState.js` — the caddie screen's pure reducer + view model (round-level state, chips, pin, toggle, §8 states, aim short form); `src/app.jsx`'s `CaddieScreen` renders it and nothing else.
+  - `mapLayer.jsx` — the map: MapLibre over MapTiler satellite, hole-up camera, or the flat drawn fallback (§4.3) with no tiles. DOM + MapLibre glue only.
+  - `overlay.js` — pure geometry/render model for the map overlay (camera, ellipse projection, fallback map, map-state selection); no DOM.
+  - `profile.test.js` — tests for `profile.js`'s overlay/fallback resolution chain.
 - `src/profile.json` — v2, BUILT (never hand-edited) by `scripts/build-profile.mjs` from `data/extracted/`; contract is `docs/PROFILE-v2.md`.
 - `scripts/build-profile.mjs` — builds `src/profile.json` from `data/extracted/*`; `--check` exits non-zero if the committed file differs from a fresh build. Run via `npm run build:profile`.
-- `docs/SPEC-caddie.md`, `docs/SPEC-caddie-UI.md` — the locked caddie spec and its UI addendum. `docs/PROFILE-v2.md` — the profile schema/build contract. `docs/DECISIONS-caddie.md` — calls made overnight that override the spec where they disagree; read before touching the caddie.
+- `docs/SPEC-caddie.md`, `docs/SPEC-caddie-UI.md` — the locked caddie spec and its UI addendum. `docs/PROFILE-v2.md` — the profile schema/build contract. `docs/DECISIONS-caddie.md` — calls made overnight that override the spec where they disagree; read before touching the caddie. `docs/FIELD-TEST-v22.md` — the on-course checklist for the caddie's first real round.
 - `package.json` — build deps (the Firebase SDK, MapLibre for `vendor/`) and `npm test` (node's test runner, globbing `src/**/*.test.js` so `src/caddie/*.test.js` runs too), plus `npm run build:profile`. React still ships as an inlined UMD file. `node_modules/` is gitignored; run `npm install` in a fresh clone before `./build.sh`.
 
 ## How to ship a change (deploy loop)
@@ -46,7 +51,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 3. On any deploy that ships user-facing changes, bump BOTH version markers together and keep the numbers in sync:
    - the cache name in `sw.js` (e.g. `loop-golf-v4` -> `-v5`). REQUIRED — without it, Brett's installed PWA keeps serving the old cached bundle.
    - the on-screen build tag: `const BUILD = "vN · <date>"` near the top of `src/app.jsx` (just after the icon definitions). Keep the existing `"vN · <date>"` format (e.g. `"v5 · Aug 2"`) and match `vN` to the new cache version.
-   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at v4. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
+   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.2 on branch `claude/bold-pascal-2s136s`** (draft PR #5, unshipped) / **v21.4 on `main`**. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
 4. Show Brett a diff.
 5. WAIT for his explicit "go" before git commit / git push. Never push without approval.
 6. Pages redeploys the same URL automatically (~1 min); Brett fully closes and reopens the app to load the new service worker.
@@ -108,19 +113,21 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 - Writing hole 18 when nothing else is blank finishes the round. Otherwise the app jumps to the
   next blank hole.
 
-## Parked, not deleted (v21, updated overnight Sep 28–29)
-- The Caddie, the Hole View, GPS and the Overpass hole geometry are removed from the UI per the
-  26 Sep behaviour decisions. `src/holeMap.jsx`, `src/fixtures/` and `vendor/maplibre-gl.*` STAY on
-  disk, still unimported, and their tests still run under `npm test`. `src/geometry.js` also
-  stays, but is no longer purely parked: the caddie build (S2) extended it for schema-2 fairway/
-  tee/rough/trees/boundary geometry, and `src/caddie/geo.js` now imports it. Nothing bundles it
-  into `index.html` yet — that's the S3 UI work.
+## Parked, not deleted (updated for the v22 caddie build, Sep 28–29)
+- `src/holeMap.jsx` and `src/fixtures/` STAY on disk, PARKED — nothing imports them, and their
+  tests still run under `npm test`. `src/holeMap.jsx` is superseded by `src/caddie/mapLayer.jsx`,
+  which is the map that's actually live in the caddie screen; don't confuse the two.
+- `vendor/maplibre-gl.*` and the satellite tile cache `bogeyman-tiles-v1` are **LIVE again**, not
+  parked: the caddie build (v22) lazy-loads MapLibre from `vendor/` the first time the caddie
+  screen opens (both files are back in the `sw.js` shell), and tile prefetch writes into
+  `bogeyman-tiles-v1` on Setup (D19). This reverses the v21 note that they were parked.
+- `src/geometry.js` is not parked either: the caddie build (S2) extended it for schema-2 fairway/
+  tee/rough/trees/boundary geometry, and `src/caddie/geo.js` and `src/caddie/mapLayer.jsx` import
+  it directly.
 - The parked v1 caddie is GONE: `src/caddie.js` and `src/caddie.test.js` were deleted overnight
-  (decision D9, docs/DECISIONS-caddie.md) — S1's `src/caddie/` replaces both, per the plan in the
-  prior handoff. `src/profile.json` is no longer the v1 parked file either; it is now v2, built by
-  `scripts/build-profile.mjs` (see "Caddie (v22 build)" below).
-- The satellite tile cache `bogeyman-tiles-v1` is deliberately kept by `sw.js` rather than deleted,
-  so the feature can return without a ~9 MB re-download. Nothing reads it today.
+  (decision D9, docs/DECISIONS-caddie.md) — `src/caddie/` replaces both. `src/profile.json` is no
+  longer the v1 parked file either; it is now v2, built by `scripts/build-profile.mjs` (see
+  "Caddie (v22 build)" below).
 
 ## Course data format
 Entries in the COURSES array use `mk(pars, strokeIndex)`:
@@ -166,25 +173,42 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
 - Handoffs live in `docs/`; `docs/README.md` says which is current. A thread that finishes a phase writes or updates its handoff, and the next thread starts by reading it.
 - Every thread starts with: `git status` (must be clean), `git log --oneline -3`, `npm test`. Every thread ends with its work committed and the push command handed to Brett.
 - `computeGhost` / `evalMatch` byte-identical check before every commit, as before.
-- `npm test` runs 105 tests as of the overnight Sep 28–29 caddie logic work (T1–T32 across S1/S2/S4/
-  S5); it globs `src/**/*.test.js`, so a later agent adding files under `src/caddie/` picks up new
-  tests automatically. If a thread after this one sees a different count, an app-side agent has
-  added or removed tests since — read `docs/HANDOFF-NEXT.md` for what's current, don't assume this
-  number is stale.
+- `npm test` runs 160 tests as of the completed Sep 28–29 caddie build (T1–T42 across S1–S5, named
+  as in `docs/SPEC-caddie.md` §9 and `docs/SPEC-caddie-UI.md` §12, plus units); it globs
+  `src/**/*.test.js`, so a later agent adding files under `src/caddie/` picks up new tests
+  automatically. If a thread after this one sees a different count, an app-side agent has added or
+  removed tests since — read `docs/HANDOFF-NEXT.md` for what's current, don't assume this number is
+  stale.
 
 ## Caddie (v22 build)
-- The caddie engine, shot log and learning loop are being rebuilt as pure modules under
-  `src/caddie/` for the next user-facing ship, v22. Nothing in the UI uses them yet — that's S3
-  (caddie screen), S4 UI and S5 wiring, in progress by other agents. Read `docs/HANDOFF-NEXT.md`
-  first for what's done vs. in flight.
-- Spec: `docs/SPEC-caddie.md` (locked) + `docs/SPEC-caddie-UI.md` (the UI addendum). Decisions made
-  along the way that override the spec live in `docs/DECISIONS-caddie.md` — read it, don't copy it
-  into other docs.
+- The caddie engine, shot log, learning loop and caddie screen are COMPLETE (S1–S5) on branch
+  `claude/bold-pascal-2s136s`, draft PR #5 — **unshipped**, `main` is still v21.4. Three versions
+  ride in this one PR: v22 (map layer + caddie screen), v22.1 (shot-log UI), v22.2 (learning loop +
+  aggression scorecard, the tag Brett will see once he ships). Read `docs/HANDOFF-NEXT.md` first.
+- `Start round` opens the **CaddieScreen** directly at hole 1, pre-tee; `‹ Card` goes to the
+  scorecard, whose hole-nav row gains a `Caddie` control. The caddie needs GPS (permission prompt
+  on the first `I'm on the tee`), the course's OSM geometry (fetched on Setup when a course is
+  chosen, cached `bogeyman-matches:geo:v1:{apiId}`) and satellite tiles (prefetched on Setup into
+  `bogeyman-tiles-v1`); missing geometry means `Enter yards` only, missing tiles means a map drawn
+  from course data on paper. `Enter yards` = club-brain mode (profile only) whenever there's no
+  course map or no GPS fix.
+- Storage added by this build, all still in the `bogeyman-matches:*` namespace: shots
+  `bogeyman-matches:shots:v1`, lie overrides `bogeyman-matches:lieOverrides:v1`, per-course nine
+  map `bogeyman-matches:nineMap:v1:{courseId}`, config overrides `bogeyman-matches:config:v1`
+  (merged over `DEFAULT_CONFIG`), caddie round state inside `bogeyman-matches:v1` under `caddie`.
+  Shot-log export/import lives on History.
+- Spec: `docs/SPEC-caddie.md` (locked) + `docs/SPEC-caddie-UI.md` (the UI addendum, §8 states / §13
+  flags). Decisions made along the way that override the spec live in `docs/DECISIONS-caddie.md`
+  (D1–D31) — read it, don't copy it into other docs.
+- Refresh workflow (spec §5.8): after a round, export the shot log or a Shot Pattern export →
+  hand it to the Golf project chat → it lands under `data/extracted/` → `npm run build:profile`
+  regenerates `src/profile.json`.
 - `src/profile.json` is v2 and GENERATED. Never hand-edit it: edit `data/extracted/` or
   `scripts/build-profile.mjs` and rebuild with `npm run build:profile`. Contract: `docs/PROFILE-v2.md`.
 - Same hard rules apply here as everywhere else in this file: show a diff, wait for Brett's "go",
   never touch `computeGhost`/`evalMatch`. This work lands on a branch with a draft PR; merging it
   is a separate "go" from the deploy-loop one above.
+- On-course checklist for Brett's first round: `docs/FIELD-TEST-v22.md`.
 
 ## Model guidance
 - Mechanical, pre-specified work (adding a verified course, changing a constant): Sonnet or Haiku.
