@@ -21,7 +21,7 @@ import { recommend } from "./engine.js";
 import { loadProfile, resolveEntry } from "./profile.js";
 import { withEllipses, overlayModel, linearProjector } from "./overlay.js";
 import { bunkeredPar3, openPar5, waterLeftPar4 } from "../fixtures/synthetic-holes.js";
-import { routeShot, quickLog, detailLog, skipShot, closeOutShot, missCauseSample, newShotRecord } from "./shotlog.js";
+import { routeShot, quickLog, detailLog, skipShot, closeOutShot, missCauseSample, newShotRecord, newPuttRecord, quickMade } from "./shotlog.js";
 import { applyShotLog } from "./learning.js";
 import { DEFAULT_CONFIG } from "./config.js";
 
@@ -237,7 +237,7 @@ test("§8: every state's rail aim, bar labels and notice", () => {
     locating:    ["Locating", ["Locating", null, true], null],
     ready:       ["Center", ["I'm at my ball", "Log shot", false], null],
     sameshot:    ["Center", ["I'm at my ball", "Log shot", false], null],
-    green:       ["On the green", ["Score hole 7", null, false], null],
+    green:       ["On the green", ["Score hole 7", "Log putt", false], null],
     nofix:       ["No GPS fix", ["Try again", "Enter yards", false], "No GPS fix. Step into the open and tap Try again."],
     locationoff: ["Location off", ["Try again", "Enter yards", false], "Location is off for Loop. Turn it on in Settings, then tap Try again."],
     yards:       ["Club only", ["I'm at my ball", "Log shot", false], null],
@@ -549,6 +549,82 @@ test("persist / restore round-trips the pending Log-shot sheet and the openShot 
   // garbage in storage never crashes the restore
   const junk = restoreCaddie({ v: 1, hole: 1, shotNo: 1, phase: "pretee", logCard: "nonsense", openShot: { no: "id" } });
   assert.equal(junk.logCard, null); assert.equal(junk.openShot, null);
+});
+
+/* ---------- putt capture (Sep 28 spec) ---------- */
+
+test("On the green shows Score hole N + Log putt and nothing else", () => {
+  const ready = run(initialCaddie(7), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
+  const v = caddieView({ state: ready, par: 5, res: null, onGreen: true, ballXY: { x: 0, y: 170 } });
+  assert.equal(v.view, "green");
+  assert.equal(v.bar.primary.label, "Score hole 7");
+  assert.equal(v.bar.secondary.label, "Log putt");
+  assert.equal(v.bar.secondary.action, "logputt");
+  assert.equal(Object.keys(v.bar).length, 2, "primary and secondary, nothing else");
+});
+
+test("puttOpen / puttSave / puttDismiss: a per-hole putt count and the last distance used this hole", () => {
+  let s = initialCaddie(5);
+  s = caddieReducer(s, { type: "puttOpen" });
+  assert.equal(s.logCard, "putt");
+
+  const rec1 = newPuttRecord({ roundId: "r1", hole: 5, shotNo: 1, distanceFt: 18, made: false, speed: 1, breakRead: 0, line: -1 });
+  s = caddieReducer(s, { type: "puttSave", record: rec1 });
+  assert.equal(s.logCard, null, "the card closes once saved");
+  assert.equal(s.putts[5], 1);
+  assert.equal(s.lastPuttFt, 18);
+
+  // a second putt on the same hole: the card reopens, shotNo is the caller's job (putts[hole]+1)
+  s = caddieReducer(s, { type: "puttOpen" });
+  assert.equal(s.logCard, "putt");
+  const rec2 = quickMade({ roundId: "r1", hole: 5, shotNo: 2, distanceFt: 3 });
+  s = caddieReducer(s, { type: "puttSave", record: rec2 });
+  assert.equal(s.putts[5], 2);
+  assert.equal(s.lastPuttFt, 3, "quickMade's distance updates the stepper's next default too");
+
+  // a new hole resets "the last value used this hole", but the finished hole's count is not lost
+  s = caddieReducer(s, { type: "hole", hole: 6 });
+  assert.equal(s.lastPuttFt, null);
+  assert.equal(s.putts[5], 2);
+
+  // puttDismiss (Skip, or the scrim) closes the card and writes nothing
+  s = caddieReducer(s, { type: "puttOpen" });
+  s = caddieReducer(s, { type: "puttDismiss" });
+  assert.equal(s.logCard, null);
+  assert.equal(s.putts[6] ?? 0, 0, "Skip never counts as a putt");
+  assert.equal(s.lastPuttFt, null, "Skip never moves the stepper's default either");
+});
+
+test("puttSave with no record is a no-op; puttDismiss on a different open card is a no-op", () => {
+  let s = caddieReducer(initialCaddie(1), { type: "puttSave" });
+  assert.equal(s.logCard, null); assert.deepEqual(s.putts, {});
+  const withLogSheet = caddieReducer(initialCaddie(1), { type: "logOpen" });
+  assert.equal(caddieReducer(withLogSheet, { type: "puttDismiss" }).logCard, "log", "puttDismiss only closes the putt card");
+});
+
+test("persist / restore round-trips the per-hole putt count and the last distance used", () => {
+  let s = caddieReducer(initialCaddie(3), {
+    type: "puttSave",
+    record: newPuttRecord({ hole: 3, shotNo: 1, distanceFt: 22, made: false, speed: 0, breakRead: 1, line: 0 }),
+  });
+  const back = restoreCaddie(JSON.parse(JSON.stringify(serializeCaddie(s))));
+  assert.equal(back.putts[3], 1);
+  assert.equal(back.lastPuttFt, 22);
+
+  // a card left open also survives a reload
+  const mid = caddieReducer(s, { type: "puttOpen" });
+  const backMid = restoreCaddie(JSON.parse(JSON.stringify(serializeCaddie(mid))));
+  assert.equal(backMid.logCard, "putt");
+
+  // garbage in storage never crashes the restore
+  const junk = restoreCaddie({ v: 1, hole: 1, shotNo: 1, phase: "pretee", putts: { 1: "nope", 2: -3, 3: 2 }, lastPuttFt: "wat" });
+  assert.deepEqual(junk.putts, { 3: 2 });
+  assert.equal(junk.lastPuttFt, null);
+});
+
+test("putt capture copy has no exclamation points and no ghost/match words", () => {
+  assert.ok(!COPY.logPutt.includes("!"));
+  assert.ok(!/ghost|match|segment/i.test(COPY.logPutt));
 });
 
 /* ---------- S5: the learning loop on the caddie screen (spec §5.2–§5.7, addendum §3.3 item 6, §5.6) ---------- */

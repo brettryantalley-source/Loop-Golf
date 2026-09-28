@@ -38,6 +38,7 @@ export const COPY = Object.freeze({
   ball: "I'm at my ball",
   logShot: "Log shot",
   score: (n) => `Score hole ${n}`,
+  logPutt: "Log putt",
   retry: "Try again",
   yards: "Enter yards",
   locating: "Locating",
@@ -78,8 +79,10 @@ export function initialCaddie(hole = 1) {
     conditionsOverride: null,
     shots: {},           // per hole: [{ from:{x,y}, to:{x,y} }]  (MapLayer previousShots)
     context: null,       // the last assembled ShotContext (snapshot for S4's shot record)
-    logCard: null,       // S4: "log" (Log shot sheet open) | "prev" (blocking previous-shot prompt) | null
+    logCard: null,       // S4: "log" (Log shot sheet open) | "prev" (blocking previous-shot prompt) | "putt" (putt card open) | null
     openShot: null,      // S4: the last logged (quick/full/skipped) ShotRecord awaiting §4.5 closeout
+    putts: {},           // per hole: number of putts logged this hole (putt capture, Sep 28 spec)
+    lastPuttFt: null,    // the last putt distance used THIS HOLE — the stepper's starting point; resets on a new hole
   };
 }
 
@@ -98,7 +101,7 @@ function newHole(s, n) {
   return {
     ...s, hole: n, shotNo: 1, phase: "pretee", prevPhase: null, trigger: null,
     ball: null, ballXY: null, yards: null, opt: "safe", exp: false, chips: {}, pins, logCard: null,
-    shots: { ...s.shots, [n]: [] }, context: null,
+    shots: { ...s.shots, [n]: [] }, context: null, lastPuttFt: null,
   };
 }
 
@@ -189,6 +192,24 @@ export function caddieReducer(s, a) {
        the slot so a new long shot can occupy it. */
     case "logClosed":
       return { ...s, openShot: null };
+    /* ---------- putt capture (Sep 28 spec) ---------- */
+    /* puttOpen: the outlined "Log putt" pill on the green, or reopening the card for a second putt. */
+    case "puttOpen":
+      return { ...s, logCard: "putt" };
+    /* puttSave: a.record is already built (newPuttRecord / quickMade) and already written to
+       storage by the caller. Increments that hole's putt count and remembers the distance for the
+       stepper's next starting point. */
+    case "puttSave": {
+      if (!a.record) return s;
+      const hole = Number.isInteger(a.record.hole) ? a.record.hole : s.hole;
+      const putts = { ...s.putts, [hole]: (s.putts[hole] || 0) + 1 };
+      const ft = a.record.putt?.distanceFt;
+      const lastPuttFt = Number.isFinite(ft) ? ft : s.lastPuttFt;
+      return { ...s, logCard: null, putts, lastPuttFt };
+    }
+    /* puttDismiss: Skip, or the scrim — closes the card, writes nothing. */
+    case "puttDismiss":
+      return s.logCard === "putt" ? { ...s, logCard: null } : s;
     case "restore":
       return restoreCaddie(a.state) || s;
     default:
@@ -227,8 +248,8 @@ export function hasUnloggedShot(s, kind) {
 /** What goes into the round state's `caddie` key. `context` = the ShotContext on screen (a snapshot). */
 export function serializeCaddie(s, context = s?.context ?? null) {
   if (!s) return null;
-  const { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, shots, logCard, openShot } = s;
-  return { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, shots, context, logCard, openShot };
+  const { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, shots, logCard, openShot, putts, lastPuttFt } = s;
+  return { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, shots, context, logCard, openShot, putts, lastPuttFt };
 }
 
 /**
@@ -260,9 +281,12 @@ export function restoreCaddie(raw) {
   s.shots = {};
   for (const [k, list] of Object.entries(raw.shots || {})) if (Array.isArray(list)) s.shots[k] = list.filter((x) => isXY(x?.from) && isXY(x?.to));
   s.context = raw.context && typeof raw.context === "object" ? raw.context : null;
-  s.logCard = raw.logCard === "log" || raw.logCard === "prev" ? raw.logCard : null;
+  s.logCard = raw.logCard === "log" || raw.logCard === "prev" || raw.logCard === "putt" ? raw.logCard : null;
   s.openShot = raw.openShot && typeof raw.openShot === "object" && typeof raw.openShot.id === "string"
     && Number.isInteger(raw.openShot.hole) && Number.isInteger(raw.openShot.shotNo) ? raw.openShot : null;
+  s.putts = {};
+  for (const [k, v] of Object.entries(raw.putts || {})) if (Number.isInteger(v) && v >= 0) s.putts[k] = v;
+  s.lastPuttFt = Number.isFinite(raw.lastPuttFt) && raw.lastPuttFt > 0 ? raw.lastPuttFt : null;
   return s;
 }
 
@@ -699,7 +723,7 @@ export function caddieView({
   else if (view === "nomap" || (view === "yards" && !mapOk)) primary = { label: COPY.yards, action: "yards" };
   else if (view === "nofix" || view === "locationoff") { primary = { label: COPY.retry, action: "retry" }; secondary = { label: COPY.yards, action: "yards" }; }
   else if (view === "pretee") primary = { label: COPY.tee, action: "tee" };
-  else if (view === "green") primary = { label: COPY.score(holeNo), action: "score" };
+  else if (view === "green") { primary = { label: COPY.score(holeNo), action: "score" }; secondary = { label: COPY.logPutt, action: "logputt" }; }
   else { primary = { label: COPY.ball, action: "ball" }; secondary = { label: COPY.logShot, action: "logshot" }; }
 
   const notice = view === "noprofile" ? NOTICES.noprofile
