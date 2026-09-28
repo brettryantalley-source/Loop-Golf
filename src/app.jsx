@@ -4,7 +4,7 @@ import { initializeFirestore, persistentLocalCache, persistentSingleTabManager, 
 import { T, F, caps, printed, written, writtenWord, rule, hairline, doubleRule, PencilDefs, Logo, teeTint } from "./theme.jsx";
 /* Caddie (S3a, v22): the map layer. The profile is bundled, never fetched (addendum §11.1). */
 import { fetchGeometry } from "./geometry.js";
-import { buildHole, frameOf, detectHole, needsNineMap, nineMapCandidates, saveNineMap, loadNineMap, loadGeometryCache, saveGeometryCache } from "./caddie/geo.js";
+import { buildHole, frameOf, detectHole, needsNineMap, nineMapCandidates, saveNineMap, loadNineMap, loadGeometryCache, saveGeometryCache, inferLie, ll } from "./caddie/geo.js";
 import { loadProfile, resolveEntry } from "./caddie/profile.js";
 import { withEllipses } from "./caddie/overlay.js";
 import { MapLayer, useSatellite, prefetchTiles, TILE_PREFETCH_ENABLED } from "./caddie/mapLayer.jsx";
@@ -12,11 +12,16 @@ import { MapLayer, useSatellite, prefetchTiles, TILE_PREFETCH_ENABLED } from "./
 import { assembleShotContext, frameBearing } from "./caddie/context.js";
 import { recommend, windEffect } from "./caddie/engine.js";
 import { fetchWeather, weatherRefreshDue } from "./caddie/sensors.js";
-import { loadLieOverrides, recordLieOverride } from "./caddie/shotlog.js";
+import {
+  loadLieOverrides, recordLieOverride, routeShot, newShotRecord, quickLog, detailLog, skipShot, closeOutShot,
+  saveShot, loadShots, allShots, exportShots, importShots,
+} from "./caddie/shotlog.js";
+import { fetchElevationSamples, elevationSamplePoints } from "./caddie/sensors.js";
 import { DEFAULT_CONFIG, mergeConfig } from "./caddie/config.js";
 import {
   COPY, GPS_TIMEOUT_MS, initialCaddie, caddieReducer, caddieHoleFor, serializeCaddie, restoreCaddie, pinSetting, pinPointFor,
   pinFromMapTap, pickerModel, syntheticHole, clubBrainContext, mapInput, caddieView, defaultNineMap, geometryKeyFor, scorecardOrder, detectedHoleNo,
+  hasUnloggedShot, clubShort,
 } from "./caddie/caddieState.js";
 import PROFILE_JSON from "./profile.json";
 
@@ -51,7 +56,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22 · Sep 28";
+const BUILD = "v22.1 · Sep 29";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -164,7 +169,20 @@ function useCourseMap(course) {
         setSt({ phase: "loading", done: 0, total: 18 });
         try {
           const parsed = await fetchGeometry(anchor.lat, anchor.lon);
-          saveGeometryCache(safeStorage(), apiId, parsed);
+          // §6.5 / D23: sample elevation once per course at geometry-fetch time, cached alongside
+          // it. Best-effort and silent — offline (or Open-Meteo unreachable) leaves elevation
+          // absent and the caddie's elevationDeltaYds falls back to 0 (context.js), never throws.
+          let elevation = null;
+          if (typeof fetch !== "undefined") {
+            try {
+              const pts = elevationSamplePoints(parsed);
+              if (pts.length) {
+                const res = await fetchElevationSamples(pts, fetch);
+                if (res && res.samples && res.samples.some((s) => s.elevM != null)) elevation = res.samples;
+              }
+            } catch (e2) { /* silent — elevation is a nice-to-have */ }
+          }
+          saveGeometryCache(safeStorage(), apiId, parsed, elevation);
           g = loadGeometryCache(safeStorage(), apiId) || parsed;
         } catch (e) {
           if (live) { setGeometry(null); setSt({ phase: "unavailable", done: 0, total: 0 }); }
@@ -1175,6 +1193,79 @@ function YardsSheet({ initial, onUse, onClose }) {
   );
 }
 
+/* ---------- shot log (S4): the long card + the collapsed previous-shot prompt (spec §4.2–§4.4) ---------- */
+const capWord = (s) => (s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : s);
+const CONTACT_OPTS = [[-2, "−2 super fat"], [-1, "−1 chunky"], [0, "0 pure"], [1, "+1 thin"], [2, "+2 v. thin"]];
+const CURVE_OPTS = [[-2, "−2 big draw"], [-1, "−1 draw"], [0, "0 straight"], [1, "+1 fade"], [2, "+2 big fade"]];
+const LINE_OPTS = [["safe", "Safe"], ["aggressive", "Aggressive"], ["own", "Own call"]];
+const SHOTTYPE_OPTS = [["full", "Full"], ["finesse", "Finesse"], ["recovery", "Recovery"]];
+const wordOpts = (words) => words.map((w) => [w, capWord(w)]);
+
+const SegPill = ({ label, current, onClick }) => (
+  <button onClick={onClick} aria-pressed={current ? "true" : "false"}
+    style={{ ...(current ? primaryPill : outlinedPill), height: 36, borderRadius: 18, padding: "0 11px", fontSize: 11, letterSpacing: "0.04em", flex: "none", minWidth: 0 }}>
+    {label}
+  </button>
+);
+const SegField = ({ title, children }) => (
+  <div style={{ marginBottom: 14 }}>
+    <div style={{ ...caps(9), marginBottom: 7 }}>{title}</div>
+    {children}
+  </div>
+);
+const SegGrid = ({ options, value, onChange, cols = 3 }) => (
+  <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
+    {options.map(([val, label]) => <SegPill key={String(val)} label={label} current={val === value} onClick={() => onChange(val)} />)}
+  </div>
+);
+
+/**
+ * The long card (§4.2). `collapsed` shows only the three previous-shot pills (§4.4 step 2, not
+ * dismissible — `blocking` is always true alongside it); otherwise the full segmented form, a
+ * "Good shot ✓" quick pill up top and Save/Skip at the bottom, two columns where the field allows.
+ */
+function LongCardSheet({ record, collapsed, blocking, clubOrder, onQuick, onSave, onSkip, onDetail, onClose }) {
+  const [draft, setDraft] = useState(record);
+  useEffect(() => { setDraft(record); }, [record.id]);
+  const set = (k, val) => setDraft((d) => ({ ...d, [k]: val }));
+  return (
+    <div data-part="sheet" data-log={collapsed ? "prev" : "full"} onClick={blocking ? undefined : onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(31,31,31,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 65 }}>
+      <div role="dialog" aria-label="Log shot" onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "88vh", overflowY: "auto",
+        background: T.paper, borderTop: `4px double ${T.ink}`, padding: "20px 22px calc(env(safe-area-inset-bottom) + 20px)" }}>
+        <div style={{ ...caps(12), marginBottom: 14 }}>{collapsed ? "Log the last shot" : COPY.logShot}</div>
+        {collapsed ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <button onClick={onQuick} className="lc-primary" style={{ ...primaryPill, height: 52, width: "100%" }}><FlagGlyph />Good shot ✓</button>
+            <button onClick={onDetail} style={{ ...outlinedPill, height: 48, width: "100%" }}>Detail</button>
+            <button onClick={onSkip} style={{ ...outlinedPill, height: 48, width: "100%" }}>Skip</button>
+          </div>
+        ) : (
+          <>
+            <button onClick={onQuick} className="lc-primary" style={{ ...primaryPill, height: 52, width: "100%", marginBottom: 16 }}><FlagGlyph />Good shot ✓</button>
+            <SegField title="Club">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {clubOrder.map((id) => <SegPill key={id} label={clubShort(id)} current={id === draft.club} onClick={() => set("club", id)} />)}
+              </div>
+            </SegField>
+            <SegField title="Line played"><SegGrid cols={3} options={LINE_OPTS} value={draft.linePlayed} onChange={(val) => set("linePlayed", val)} /></SegField>
+            <SegField title="Shot type"><SegGrid cols={3} options={SHOTTYPE_OPTS} value={draft.shotType} onChange={(val) => set("shotType", val)} /></SegField>
+            <SegField title="Contact"><SegGrid cols={5} options={CONTACT_OPTS} value={draft.contact} onChange={(val) => set("contact", val)} /></SegField>
+            <SegField title="Strike"><SegGrid cols={3} options={wordOpts(["heel", "center", "toe"])} value={draft.strike} onChange={(val) => set("strike", val)} /></SegField>
+            <SegField title="Intended shape"><SegGrid cols={3} options={wordOpts(["draw", "straight", "fade"])} value={draft.intendedShape} onChange={(val) => set("intendedShape", val)} /></SegField>
+            <SegField title="Start line"><SegGrid cols={3} options={wordOpts(["left", "on", "right"])} value={draft.startLine} onChange={(val) => set("startLine", val)} /></SegField>
+            <SegField title="Curve"><SegGrid cols={5} options={CURVE_OPTS} value={draft.curve} onChange={(val) => set("curve", val)} /></SegField>
+            <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+              <button onClick={() => onSave(draft)} className="lc-primary" style={{ ...primaryPill, flex: 1.4, height: 52 }}><FlagGlyph />Save</button>
+              <button onClick={onSkip} style={{ ...outlinedPill, flex: 1, height: 52 }}>Skip</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* 27-hole clubs (engine §6.4): a one-time paper list pairing each OSM hole with {nine, hole}. */
 function NineMapScreen({ geometry, courseId, onSaved, onCard }) {
   const cands = useMemo(() => [...nineMapCandidates(geometry)].sort((a, b) => (Number(a.ref) || 99) - (Number(b.ref) || 99) || String(a.key).localeCompare(String(b.key))), [geometry]);
@@ -1229,7 +1320,7 @@ function Caddie(props) {
   return <CaddieScreen {...props} nineMap={needs ? nineMap : null} />;
 }
 
-function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWeather, onCard, onScore, onRetryProfile, contextRef, nineMap }) {
+function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWeather, onCard, onScore, onRetryProfile, contextRef, nineMap, roundId }) {
   const safe = useSafeArea();
   const vh = useViewportHeight();
   const compact = vh < 740;                             // 375×667: one-row distances, one-line reasons (§3.5)
@@ -1288,6 +1379,84 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   const v = caddieView({ state: cs, par: h.par, profileOk: !!profile, mapOk: !!built, res: engine?.res || null, options: engine?.options || null,
     inferred: engine?.inferred || null, onGreen: !!engine?.onGreen, ballXY: cs.phase === "yards" ? null : ballXY, green: engine?.green || null, config });
 
+  /* ---------- S4: shot log (SPEC-caddie §4, UI addendum §3.4/§9.4–9.5) ---------- */
+  // Routing (§4.1): on the green → nothing to capture here (routeShot itself would say "putt");
+  // no live recommendation (locating, no fix, no profile, ...) → null, so Log shot / the prompt
+  // never fire against stale data.
+  const shotKind = engine?.onGreen ? "putt"
+    : engine?.res?.context ? routeShot({ distanceToPinYds: engine.res.context.distances.pin, lieType: engine.res.context.lieType })
+    : null;
+  const unloggedPending = hasUnloggedShot(cs, shotKind);
+  // §9.4/§9.5 — everything the shot record needs to default from, snapshotted at the moment Brett
+  // acts (Log shot / I'm at my ball), not eagerly at arrival: the toggle, chips and pin may still
+  // change while he's standing over the ball. `club` (optional) overrides the toggle's club, e.g.
+  // when the detail card's own Club segmented control is edited.
+  const buildDraftShot = (club) => {
+    const res = engine?.res;
+    if (!res || !res.safe) return null;
+    const startGps = cs.phase === "yards" ? null : cs.ball;
+    const startFrame = cs.phase === "yards" ? { x: 0, y: 0 } : ballXY;
+    const toggled = v.sameShot ? res.safe : (res[cs.opt] || res.safe);
+    const chipsInEffect = { chips: cs.chips, pin: pinSet, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride };
+    return newShotRecord({
+      roundId: roundId ?? null, courseId, nine: n <= 9 ? "front" : "back", hole: n, shotNo: cs.shotNo,
+      start: {
+        lat: startGps?.lat ?? null, lng: startGps?.lng ?? null, accuracyM: startGps?.accuracyM ?? null,
+        distanceToPinYds: res.context.distances.pin, playsLikeYds: res.context.playsLike, frame: startFrame,
+      },
+      lie: { inferred: engine.inferred?.lieType ?? null, confidence: res.context.lieConfidence, confirmed: res.context.lieType, quality: res.context.lieQuality },
+      conditions: res.context.conditions,
+      wind: res.context.wind,
+      recommendation: { ...res, chipsInEffect },
+      club: club ?? toggled.club,
+      history: allShots(safeStorage()),
+    });
+  };
+  // { record, collapsed, blocking } | null — local, not persisted (only the underlying data is,
+  // via cs.logCard/cs.openShot — §9.8). collapsed = the 3-pill previous-shot prompt (§4.4 step 2);
+  // blocking = true for that prompt, which has no scrim-dismiss ("one tap and the caddie appears").
+  const [logSheet, setLogSheet] = useState(null);
+  const openLogSheet = (opts) => {
+    const record = buildDraftShot();
+    if (!record) return;
+    setLogSheet({ record, ...opts });
+    dispatch({ type: "logOpen", card: opts.blocking ? "prev" : "log" });
+  };
+  // `build` turns the sheet's current record into the final one (quickLog / detailLog / skipShot);
+  // `blocking` sheets resolve straight into the real "I'm at my ball" locate (§4.4: "One tap and
+  // the caddie appears").
+  const commitLog = (build) => {
+    if (!logSheet) return;
+    const record = build(logSheet.record);
+    saveShot(safeStorage(), record);
+    dispatch({ type: record.logged === "skipped" ? "logSkip" : "logSave", record });
+    const wasBlocking = logSheet.blocking;
+    setLogSheet(null);
+    if (wasBlocking) locate("ball");
+  };
+  const cancelLogSheet = () => { setLogSheet(null); dispatch({ type: "logDismiss" }); };
+  // Reopen a restored logCard (e.g. after a reload mid-hole, §9.8) once the engine has recomputed.
+  useEffect(() => {
+    if (logSheet || !cs.logCard) return;
+    const record = buildDraftShot();
+    if (record) setLogSheet({ record, collapsed: cs.logCard === "prev", blocking: cs.logCard === "prev" });
+    else dispatch({ type: "logDismiss" });
+  }, [cs.logCard, !!engine?.res]);
+  // §4.5 — the hole moved on (score entered, possibly while the caddie screen wasn't even open)
+  // without a fresh fix to close the last long shot out. Best effort: the hole's green centre
+  // stands in for the missing GPS end point, since the round has already left that ball behind.
+  useEffect(() => {
+    if (!cs.openShot || cs.openShot.hole === n) return;
+    const prevHole = buildFor(cs.openShot.hole);
+    const prevFr = frameOf(prevHole);
+    const endLL = prevFr ? prevFr.toLatLng(prevHole.green.center) : null;
+    const closed = prevHole && endLL
+      ? closeOutShot(cs.openShot, { endGps: { lat: endLL.lat, lng: endLL.lon }, endLie: "green", endAccuracyM: null, endFrame: prevHole.green.center }, config)
+      : cs.openShot;
+    saveShot(safeStorage(), closed);
+    dispatch({ type: "logClosed" });
+  }, [cs.openShot, n]);
+
   /* map */
   const pinXY = useMemo(() => (built ? pinPointFor(built, (cs.phase === "ready" && ballXY) || built.tee, pinSet) : null), [built, cs.phase, ballXY?.x, ballXY?.y, pinSet]);
   const mi = mapInput({ state: cs, view: v.view, ballXY, accuracyM: cs.ball?.accuracyM ?? null, options: engine?.options || null, sameShot: v.sameShot, pin: pinXY, previousShots: cs.shots[n] || [] });
@@ -1332,7 +1501,16 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
         if (m && course.holes[m - 1]) { holeNo = m; hole = buildFor(m); }
       }
       const Fh = frameOf(hole);
-      dispatch({ type: "fix", fix, point: Fh ? Fh.toFrame({ lat: fix.lat, lon: fix.lng }) : null, hole: holeNo });
+      const point = Fh ? Fh.toFrame({ lat: fix.lat, lon: fix.lng }) : null;
+      // §4.5 — this fix is what the last long shot (if any) was waiting on: fill in its end
+      // position and the miss math, then let it go.
+      if (cs.openShot && point) {
+        const endLie = inferLie(hole, geometry, ll(fix) || point, { accuracyM: fix.accuracyM, overrides, courseId }).lieType;
+        const closed = closeOutShot(cs.openShot, { endGps: fix, endLie, endAccuracyM: fix.accuracyM, endFrame: point }, config);
+        saveShot(safeStorage(), closed);
+        dispatch({ type: "logClosed" });
+      }
+      dispatch({ type: "fix", fix, point, hole: holeNo });
     }, (err) => {
       if (done) return; done = true; clearTimeout(guard);
       dispatch({ type: "fixError", code: err && err.code });
@@ -1357,8 +1535,12 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   const pickerM = picker ? pickerModel(picker, { chip: v.details.chips.find((c) => c.key === picker), current: chipCurrent(picker) }) : null;
 
   const act = (a) => {
+    // §4.4 step 2 — "I'm at my ball" on an unlogged long shot shows its card collapsed first;
+    // resolving it (commitLog, blocking: true) is what actually calls locate("ball").
+    if (a === "ball" && unloggedPending) { openLogSheet({ collapsed: true, blocking: true }); return; }
     if (a === "tee" || a === "ball" || a === "retry") locate(a);
     else if (a === "yards") setYardsOpen(true);
+    else if (a === "logshot") openLogSheet({ collapsed: false, blocking: false });
     else if (a === "score") onScore(n);
     else if (a === "profile") onRetryProfile();
   };
@@ -1503,7 +1685,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
         </div>
       </div>
 
-      {/* bar (§3.4). Log shot stays hidden until S4, so the primary spans the bar. */}
+      {/* bar (§3.4). Log shot (S4) shrinks the primary to flex 1.45 whenever it's shown. */}
       <div data-part="bar" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: barH, background: T.paper, borderTop: `4px double ${T.ink}`,
         padding: `12px 18px ${safe.bottom + 10}px`, display: "flex", gap: 10, zIndex: 21 }}>
         <button onClick={() => v.bar.primary.action && act(v.bar.primary.action)} disabled={!!v.bar.primary.disabled} className={v.bar.primary.disabled ? undefined : "lc-primary"}
@@ -1520,6 +1702,14 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
           onPick={(val) => applyChip(picker, val)} onInferred={() => applyChip(picker, null)} />
       )}
       {yardsOpen && <YardsSheet initial={yardsInitial} onClose={() => setYardsOpen(false)} onUse={(y) => { setYardsOpen(false); dispatch({ type: "yards", yards: y }); }} />}
+      {logSheet && (
+        <LongCardSheet record={logSheet.record} collapsed={logSheet.collapsed} blocking={logSheet.blocking} clubOrder={profile?.clubOrder || []}
+          onQuick={() => commitLog((r) => quickLog(r))}
+          onSave={(fields) => commitLog((r) => detailLog(r, fields))}
+          onSkip={() => commitLog((r) => skipShot(r))}
+          onDetail={() => setLogSheet((s) => ({ ...s, collapsed: false }))}
+          onClose={cancelLogSheet} />
+      )}
     </div>
   );
 }
@@ -1908,13 +2098,12 @@ function backupPayload(history) {
 }
 const backupName = () => `loop-golf-rounds-${new Date().toISOString().slice(0, 10)}.json`;
 /* On an installed iPhone PWA the share sheet ("Save to Files") is the reliable way out;
-   <a download> is the desktop/browser fallback. */
-async function exportRounds(history) {
-  const text = backupPayload(history), name = backupName();
+   <a download> is the desktop/browser fallback. Shared by the round backup and (§8) the shot log. */
+async function shareOrDownload(text, name, shareTitle) {
   try {
     const file = new File([text], name, { type: "application/json" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: "Loop Golf rounds" });
+      await navigator.share({ files: [file], title: shareTitle });
       return "Saved";
     }
   } catch (e) {
@@ -1926,8 +2115,18 @@ async function exportRounds(history) {
     a.href = url; a.download = name; document.body.appendChild(a); a.click();
     document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 1000);
     return "Downloaded";
-  } catch (e) { return "Export failed"; }
+  } catch (e) {
+    // Clipboard fallback (spec §8: "share sheet / download, clipboard fallback").
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); return "Copied"; }
+    } catch (e2) { /* fall through */ }
+    return "Export failed";
+  }
 }
+async function exportRounds(history) { return shareOrDownload(backupPayload(history), backupName(), "Loop Golf rounds"); }
+/* §8 — shot log export/import, same share/download/clipboard path as round backups. */
+const shotLogName = () => `loop-shots-${new Date().toISOString().slice(0, 10)}.json`;
+async function exportShotLog() { return shareOrDownload(exportShots(safeStorage()), shotLogName(), "Loop shot log"); }
 /* Accepts a wrapped backup or a bare array; keeps only records the app can actually read
    (same shape loadHistory enforces). Returns null when the file isn't a backup at all. */
 function parseBackup(text) {
@@ -1951,6 +2150,7 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const fileRef = React.useRef(null);
+  const shotFileRef = React.useRef(null);
   const rounds = [...history].reverse();                  // most recent first
 
   const doExport = async () => {
@@ -1970,6 +2170,27 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
       const { added, skipped } = onImport(parsed);
       setMsg(added ? `Added ${added} round${added === 1 ? "" : "s"}${skipped ? `, ${skipped} already here` : ""}.`
                    : "Already up to date — nothing new to add.");
+    };
+    fr.onerror = () => setMsg("Couldn't read that file.");
+    fr.readAsText(f);
+  };
+  /* §8 — shot log export/import: same pattern, exportShots/importShots (shotlog.js) do the work. */
+  const doExportShots = async () => {
+    const total = allShots(safeStorage()).length;
+    if (!total) { setMsg("No shots logged yet."); return; }
+    const r = await exportShotLog();
+    if (r) setMsg(`${r} ${total} shot${total === 1 ? "" : "s"}.`);
+  };
+  const doImportShots = (e) => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    const fr = new FileReader();
+    fr.onload = () => {
+      let result;
+      try { result = importShots(safeStorage(), String(fr.result)); }
+      catch (e2) { setMsg("That doesn't look like a Loop shot log."); return; }
+      setMsg(`Imported ${result.added} shot${result.added === 1 ? "" : "s"}${result.updated ? ` · ${result.updated} updated` : ""}.`);
     };
     fr.onerror = () => setMsg("Couldn't read that file.");
     fr.readAsText(f);
@@ -2102,6 +2323,11 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
           <button onClick={() => fileRef.current && fileRef.current.click()} style={{ ...outlinePill, flex: 1 }}>Import</button>
         </div>
         <input ref={fileRef} type="file" accept="application/json,.json" onChange={doImport} style={{ display: "none" }} />
+        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+          <button onClick={doExportShots} style={{ ...outlinePill, flex: 1 }}>Export shot log</button>
+          <button onClick={() => shotFileRef.current && shotFileRef.current.click()} style={{ ...outlinePill, flex: 1 }}>Import shot log</button>
+        </div>
+        <input ref={shotFileRef} type="file" accept="application/json,.json" onChange={doImportShots} style={{ display: "none" }} />
         <div style={{ fontFamily: F.label, fontSize: 11, color: msg ? T.ink : T.muted, marginTop: 8, lineHeight: 1.45 }}>
           {msg || "A file copy you control. Export saves to Files or iCloud; import merges a backup back in without touching rounds you already have."}
         </div>
@@ -2196,8 +2422,10 @@ function App() {
   useEffect(() => { saveTombs(tombs); }, [tombs]);
   const ghost = useMemo(() => course ? computeGhost(course, diff) : null, [course, diff]);
   const stats = useMemo(() => deriveStats(history), [history]);
-  // Start round → the caddie, hole 1, pre-tee (addendum §2).
-  const start = () => { if (!course) return; setScores(Array(18).fill(null)); setHole(0); setRoundId(null); dispatchCaddie({ type: "reset", state: initialCaddie(1) }); setScreen("caddie"); };
+  // Start round → the caddie, hole 1, pre-tee (addendum §2). The round gets its id now (not at
+  // finalize) so shots logged mid-round carry the same roundId the finished history record ends
+  // up with — S4 §4.6.
+  const start = () => { if (!course) return; setScores(Array(18).fill(null)); setHole(0); setRoundId(newId()); dispatchCaddie({ type: "reset", state: initialCaddie(1) }); setScreen("caddie"); };
   // Exit an unfinished round without saving it: clear scores and return to the menu.
   const exitRound = () => { setScores(Array(18).fill(null)); setHole(0); setRoundId(null); dispatchCaddie({ type: "reset", state: null }); setScreen("setup"); };
   // Scorecard → caddie. A round resumed from before v22 has no caddie yet: start one on the caddie hole.
@@ -2206,7 +2434,7 @@ function App() {
   const openCard = (n) => { setHole(Math.max(0, Math.min(17, (n || (caddie ? caddie.hole : hole + 1)) - 1))); setScreen("play"); };
   // Finalize: persist the finished round, then a soft (editable) transition to summary.
   const finalize = (finalScores) => {
-    const rec = buildRecord({ id: newId(), date: nowISO() }, course, diff, finalScores, ghost);
+    const rec = buildRecord({ id: roundId || newId(), date: nowISO() }, course, diff, finalScores, ghost);
     setHistory(h => [...h, rec]);
     setRoundId(rec.id);
     dispatchCaddie({ type: "reset", state: null });
@@ -2240,7 +2468,7 @@ function App() {
       {screen === "setup" && <Setup course={course} setCourse={setCourse} diff={diff} setDiff={setDiff} stats={stats} history={history} onStart={start} onHistory={() => setScreen("history")} courseMap={courseMap} />}
       {screen === "play" && course && ghost && <Play course={course} ghost={ghost} scores={scores} setScores={setScores} hole={hole} setHole={setHole} onFinish={finalize} onExit={exitRound} onCaddie={openCaddie} />}
       {screen === "caddie" && course && caddie && <Caddie course={course} geometry={courseMap.geometry} profile={profile} cs={caddie} dispatch={dispatchCaddie}
-        weather={weather} setWeather={setWeather} contextRef={caddieCtx} onCard={() => openCard()} onScore={(n) => openCard(n)} onRetryProfile={() => setProfile(loadCaddieProfile())} />}
+        weather={weather} setWeather={setWeather} contextRef={caddieCtx} roundId={roundId} onCard={() => openCard()} onScore={(n) => openCard(n)} onRetryProfile={() => setProfile(loadCaddieProfile())} />}
       {screen === "summary" && course && ghost && <Summary course={course} ghost={ghost} scores={scores} history={history} onEditScore={editScore} onReset={reset} />}
       {screen === "history" && <History history={history} stats={stats} cloud={cloud} onDelete={deleteRound} onImport={importRounds} onBack={() => setScreen("setup")} />}
     </div>

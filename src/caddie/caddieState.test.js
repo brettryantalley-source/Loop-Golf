@@ -13,13 +13,14 @@ import { dirname, join } from "node:path";
 import {
   COPY, NOTICES, initialCaddie, caddieReducer, caddieHoleFor, serializeCaddie, restoreCaddie, pinSetting, pinPointFor, pinFromMapTap,
   greenPosition, aimShort, clubShort, chipList, pickerModel, windText, windChipText, elevText, dispersionLine, syntheticHole, clubBrainContext,
-  overlayPair, mapInput, caddieView, defaultNineMap, geometryKeyFor, scorecardOrder, detectedHoleNo,
+  overlayPair, mapInput, caddieView, defaultNineMap, geometryKeyFor, scorecardOrder, detectedHoleNo, hasUnloggedShot,
 } from "./caddieState.js";
 import { greenDistances, pointInRing, ringDistance } from "./course.js";
 import { recommend } from "./engine.js";
 import { loadProfile, resolveEntry } from "./profile.js";
 import { withEllipses, overlayModel, linearProjector } from "./overlay.js";
 import { bunkeredPar3, openPar5, waterLeftPar4 } from "../fixtures/synthetic-holes.js";
+import { routeShot, quickLog, detailLog, skipShot, closeOutShot, missCauseSample } from "./shotlog.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const P = loadProfile(JSON.parse(readFileSync(join(here, "../profile.json"), "utf8")));
@@ -231,12 +232,12 @@ test("§8: every state's rail aim, bar labels and notice", () => {
   const table = {
     pretee:      ["Tap I'm on the tee", ["I'm on the tee", null, false], null],
     locating:    ["Locating", ["Locating", null, true], null],
-    ready:       ["Center", ["I'm at my ball", null, false], null],
-    sameshot:    ["Center", ["I'm at my ball", null, false], null],
+    ready:       ["Center", ["I'm at my ball", "Log shot", false], null],
+    sameshot:    ["Center", ["I'm at my ball", "Log shot", false], null],
     green:       ["On the green", ["Score hole 7", null, false], null],
     nofix:       ["No GPS fix", ["Try again", "Enter yards", false], "No GPS fix. Step into the open and tap Try again."],
     locationoff: ["Location off", ["Try again", "Enter yards", false], "Location is off for Loop. Turn it on in Settings, then tap Try again."],
-    yards:       ["Club only", ["I'm at my ball", null, false], null],
+    yards:       ["Club only", ["I'm at my ball", "Log shot", false], null],
     nomap:       ["No course map", ["Enter yards", null, false], "No course map for hole 7. Enter yards for a club."],
     noprofile:   ["No profile", ["Try again", null, false], "Profile didn't load. Reconnect and tap Try again."],
   };
@@ -429,4 +430,120 @@ test("27 holes: a default mapping from refs, then scorecard hole → geometry ke
   // 18-hole course: key n
   const g18 = { holes: { 1: {}, 2: {} } };
   assert.equal(geometryKeyFor(g18, null, 2), "2"); assert.equal(geometryKeyFor(g18, null, 3), null);
+});
+
+/* ---------- S4: shot log capture flow (SPEC-caddie §4, UI addendum §3.4/§9.4-9.5) ---------- */
+
+/** A minimal ShotRecord builder standing in for `buildDraftShot` in app.jsx: uses shotlog.js's
+ *  own `quickLog`/`detailLog`/`skipShot` against a fakeRes()-shaped recommendation, hole/shotNo
+ *  taken from the caddie state so `hasUnloggedShot` can match it up. */
+function draftFor(s, { hole = s.hole, shotNo = s.shotNo, res = fakeRes(), startFrame = { x: 0, y: 0 }, targetFrame } = {}) {
+  return {
+    roundId: "r1", courseId: "c1", hole, shotNo,
+    start: { lat: 1, lng: 2, accuracyM: 4, distanceToPinYds: res.context.distances.pin, playsLikeYds: res.context.playsLike, frame: startFrame },
+    recommendation: res,
+    ...(targetFrame ? { target: { frame: targetFrame, label: "green, center" } } : {}),
+  };
+}
+
+test("T16 (UI-level): routeShot classifies the ball the caddie is standing over; hasUnloggedShot only fires for a long, unlogged one", () => {
+  const s = run(initialCaddie(5), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
+  assert.equal(routeShot({ distanceToPinYds: 238, lieType: "fairway" }), "long");
+  assert.equal(routeShot({ distanceToPinYds: 40, lieType: "rough" }), "shortGame");
+  assert.equal(routeShot({ distanceToPinYds: 12, lieType: "green" }), "putt");
+  // long and nothing logged yet for this (hole, shotNo) → the "I'm at my ball" tap must prompt
+  assert.equal(hasUnloggedShot(s, "long"), true);
+  // shortGame / putt never gate the tap, logged or not
+  assert.equal(hasUnloggedShot(s, "shortGame"), false);
+  assert.equal(hasUnloggedShot(s, "putt"), false);
+  assert.equal(hasUnloggedShot(s, null), false, "no live recommendation to log against");
+});
+
+test("T17 (quick path via the reducer): Good shot writes the §4.3 defaults and the caddie tracks it as openShot", () => {
+  let s = run(initialCaddie(7), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
+  assert.equal(hasUnloggedShot(s, "long"), true);
+  s = caddieReducer(s, { type: "logOpen" });
+  assert.equal(s.logCard, "log");
+  const record = quickLog(draftFor(s));
+  s = caddieReducer(s, { type: "logSave", record });
+  assert.equal(s.logCard, null, "the sheet closes once saved");
+  assert.equal(s.openShot.logged, "quick");
+  assert.equal(s.openShot.contact, 0); assert.equal(s.openShot.strike, "center"); assert.equal(s.openShot.startLine, "on");
+  assert.equal(s.openShot.curve, 0, "matches the default (straight) intended shape");
+  assert.equal(s.openShot.club, "PW", "the toggled (SAFE) option's club");
+  // logged for this exact (hole, shotNo) → the prompt would not fire again
+  assert.equal(hasUnloggedShot(s, "long"), false);
+});
+
+test("previous-shot prompt: appears while a long shot sits unlogged, clears on Good shot / Detail+Save / Skip", () => {
+  const base = run(initialCaddie(4), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
+  assert.equal(hasUnloggedShot(base, "long"), true);
+
+  // Good shot ✓ from the collapsed prompt
+  let s = caddieReducer(base, { type: "logOpen", card: "prev" });
+  assert.equal(s.logCard, "prev");
+  s = caddieReducer(s, { type: "logSave", record: quickLog(draftFor(s)) });
+  assert.equal(s.logCard, null); assert.equal(hasUnloggedShot(s, "long"), false);
+
+  // Detail → Save from the collapsed prompt: still resolves through logSave
+  let s2 = caddieReducer(base, { type: "logOpen", card: "prev" });
+  const detailed = detailLog(draftFor(s2), { contact: -1, strike: "toe" });
+  s2 = caddieReducer(s2, { type: "logSave", record: detailed });
+  assert.equal(s2.openShot.logged, "full"); assert.equal(s2.openShot.contact, -1);
+  assert.equal(hasUnloggedShot(s2, "long"), false);
+
+  // Skip
+  let s3 = caddieReducer(base, { type: "logOpen", card: "prev" });
+  s3 = caddieReducer(s3, { type: "logSkip", record: skipShot(draftFor(s3)) });
+  assert.equal(s3.openShot.logged, "skipped"); assert.equal(hasUnloggedShot(s3, "long"), false);
+
+  // logDismiss only closes the optional (non-blocking) Log-shot sheet, never the prompt's data
+  const opened = caddieReducer(base, { type: "logOpen" });
+  assert.equal(caddieReducer(opened, { type: "logDismiss" }).logCard, null);
+  assert.equal(caddieReducer(opened, { type: "logDismiss" }).openShot, null, "dismissing without saving leaves nothing logged");
+});
+
+test("T18: the record closed out by the next fix carries end + derived (§4.5)", () => {
+  let s = run(initialCaddie(7), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
+  const record = quickLog(draftFor(s, { targetFrame: { x: 0, y: 238 } }));
+  s = caddieReducer(s, { type: "logSave", record });
+  assert.equal(s.openShot.id, record.id);
+
+  // the next "I'm at my ball" fix is what app.jsx uses to closeOutShot() the pending openShot
+  s = caddieReducer(s, { type: "ball" }, );
+  s = caddieReducer(s, { type: "fix", fix: fix(34.301, -84.061, 5), point: { x: 3, y: 232 } });
+  const closed = closeOutShot(s.openShot ?? record, { endGps: { lat: 34.301, lng: -84.061 }, endLie: "fairway", endAccuracyM: 5, endFrame: { x: 3, y: 232 } });
+  assert.equal(closed.derived.distanceMissYds, -6); assert.equal(closed.derived.lateralMissYds, 3); assert.equal(closed.derived.onTarget, true);
+  s = caddieReducer(s, { type: "logClosed" });
+  assert.equal(s.openShot, null, "the slot frees up once the caller has saved the closed-out record");
+});
+
+test("T19: a skipped shot still gets closed out with its GPS result, and missCauseSample excludes it", () => {
+  let s = run(initialCaddie(9), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
+  const skipped = skipShot(draftFor(s, { targetFrame: { x: 0, y: 200 } }));
+  s = caddieReducer(s, { type: "logSkip", record: skipped });
+  assert.equal(s.openShot.logged, "skipped");
+  const closed = closeOutShot(s.openShot, { endGps: { lat: 9, lng: 9 }, endLie: "rough", endFrame: { x: 5, y: 190 } });
+  assert.equal(closed.end.lat, 9, "GPS result retained even though skipped");
+  const quick = quickLog(draftFor(s, { shotNo: s.shotNo + 1 }));
+  assert.deepEqual(missCauseSample([closed, quick]).map((r) => r.id), [quick.id]);
+});
+
+test("persist / restore round-trips the pending Log-shot sheet and the openShot awaiting closeout", () => {
+  let s = run(initialCaddie(11), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
+  const record = quickLog(draftFor(s));
+  s = caddieReducer(s, { type: "logOpen", card: "prev" });
+  s = caddieReducer(s, { type: "logSave", record });
+  const back = restoreCaddie(JSON.parse(JSON.stringify(serializeCaddie(s))));
+  assert.equal(back.logCard, null, "the sheet itself was already resolved before saving");
+  assert.deepEqual(back.openShot, record);
+
+  // a sheet left open (never resolved) also survives a reload
+  const mid = caddieReducer(s, { type: "logOpen" });
+  const backMid = restoreCaddie(JSON.parse(JSON.stringify(serializeCaddie(mid))));
+  assert.equal(backMid.logCard, "log");
+
+  // garbage in storage never crashes the restore
+  const junk = restoreCaddie({ v: 1, hole: 1, shotNo: 1, phase: "pretee", logCard: "nonsense", openShot: { no: "id" } });
+  assert.equal(junk.logCard, null); assert.equal(junk.openShot, null);
 });

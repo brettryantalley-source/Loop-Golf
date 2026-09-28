@@ -77,6 +77,8 @@ export function initialCaddie(hole = 1) {
     conditionsOverride: null,
     shots: {},           // per hole: [{ from:{x,y}, to:{x,y} }]  (MapLayer previousShots)
     context: null,       // the last assembled ShotContext (snapshot for S4's shot record)
+    logCard: null,       // S4: "log" (Log shot sheet open) | "prev" (blocking previous-shot prompt) | null
+    openShot: null,      // S4: the last logged (quick/full/skipped) ShotRecord awaiting §4.5 closeout
   };
 }
 
@@ -86,18 +88,24 @@ export function caddieHoleFor(scores) {
   return i < 0 ? null : i + 1;
 }
 
-/** Moving to a new hole: pre-tee, shot 1, pin back to Middle, no previous shots (§6, §9.3, §9.10). */
+/** Moving to a new hole: pre-tee, shot 1, pin back to Middle, no previous shots (§6, §9.3, §9.10).
+ *  `openShot` (§4.4/§4.5 hole-completion closeout) carries over on purpose — the caller closes it
+ *  out (or auto-resolves it) against the completing hole before the next render; any open sheet is
+ *  dismissed since it referred to a hole that's now behind us. */
 function newHole(s, n) {
   const pins = { ...s.pins }; delete pins[n];
   return {
     ...s, hole: n, shotNo: 1, phase: "pretee", prevPhase: null, trigger: null,
-    ball: null, ballXY: null, yards: null, opt: "safe", exp: false, chips: {}, pins,
+    ball: null, ballXY: null, yards: null, opt: "safe", exp: false, chips: {}, pins, logCard: null,
     shots: { ...s.shots, [n]: [] }, context: null,
   };
 }
 
-/** A new ball position: SAFE, rail collapsed, per-ball chips cleared (§9.1–9.3). */
-const newBall = (s) => ({ ...s, opt: "safe", exp: false, chips: {} });
+/** A new ball position: SAFE, rail collapsed, per-ball chips cleared (§9.1–9.3). Any Log-shot sheet
+ *  or previous-shot prompt for the shot just left behind should already be resolved by this point
+ *  (the "ball" tap is intercepted while one is pending — see `hasUnloggedShot`); clearing `logCard`
+ *  here is defensive. */
+const newBall = (s) => ({ ...s, opt: "safe", exp: false, chips: {}, logCard: null });
 
 const PIN_PRESETS = ["front", "middle", "back"];
 const isXY = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.y);
@@ -160,6 +168,26 @@ export function caddieReducer(s, a) {
       return Number.isInteger(a.hole) && a.hole >= 1 && a.hole <= 18 ? newHole(s, a.hole) : s;
     case "context":
       return { ...s, context: a.context ?? null };
+    /* ---------- S4: shot-log capture flow (§4.2–§4.5) ---------- */
+    /* logOpen: show a sheet. a.card = "prev" for the blocking previous-shot prompt (§4.4 step 2);
+       anything else (including undefined) opens the optional Log-shot card for the current ball. */
+    case "logOpen":
+      return { ...s, logCard: a.card === "prev" ? "prev" : "log" };
+    /* logDismiss: close the optional Log-shot sheet without writing anything. The previous-shot
+       prompt is not dismissible this way — it always resolves through logSave/logSkip (§4.4: "One
+       tap and the caddie appears"). */
+    case "logDismiss":
+      return s.logCard === "log" ? { ...s, logCard: null } : s;
+    /* logSave / logSkip: a.record is a full ShotRecord already built by the caller (quickLog,
+       detailLog or skipShot from shotlog.js) and already written to storage. It becomes the
+       `openShot` awaiting §4.5 closeout on the next fix or hole completion. */
+    case "logSave":
+    case "logSkip":
+      return a.record ? { ...s, logCard: null, openShot: a.record } : s;
+    /* logClosed: the caller has computed closeOutShot(openShot, ...) and saved the result — clear
+       the slot so a new long shot can occupy it. */
+    case "logClosed":
+      return { ...s, openShot: null };
     case "restore":
       return restoreCaddie(a.state) || s;
     default:
@@ -180,13 +208,26 @@ function setPin(s, v) {
 /** The pin setting in effect on the caddie's hole (§6: Middle unless Brett moved it). */
 export const pinSetting = (s, hole = s.hole) => s.pins?.[hole] ?? "middle";
 
+/**
+ * S4 §4.4 — whether the CURRENT ball position is a long shot Brett hasn't logged yet, i.e. the
+ * "I'm at my ball" tap must show the collapsed previous-shot prompt instead of locating.
+ * `kind` is shotlog.js `routeShot()`'s classification for the ball in effect right now
+ * ("long" | "shortGame" | "putt"), or null when there's no live recommendation to log against.
+ * A shot is logged once `openShot` names this exact (hole, shotNo).
+ */
+export function hasUnloggedShot(s, kind) {
+  if (kind !== "long") return false;
+  const o = s.openShot;
+  return !(o && o.hole === s.hole && o.shotNo === s.shotNo);
+}
+
 /* ---------- persistence (§9.8, §11.1, T42) ---------- */
 
 /** What goes into the round state's `caddie` key. `context` = the ShotContext on screen (a snapshot). */
 export function serializeCaddie(s, context = s?.context ?? null) {
   if (!s) return null;
-  const { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, shots } = s;
-  return { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, shots, context };
+  const { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, shots, logCard, openShot } = s;
+  return { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, shots, context, logCard, openShot };
 }
 
 /**
@@ -218,6 +259,9 @@ export function restoreCaddie(raw) {
   s.shots = {};
   for (const [k, list] of Object.entries(raw.shots || {})) if (Array.isArray(list)) s.shots[k] = list.filter((x) => isXY(x?.from) && isXY(x?.to));
   s.context = raw.context && typeof raw.context === "object" ? raw.context : null;
+  s.logCard = raw.logCard === "log" || raw.logCard === "prev" ? raw.logCard : null;
+  s.openShot = raw.openShot && typeof raw.openShot === "object" && typeof raw.openShot.id === "string"
+    && Number.isInteger(raw.openShot.hole) && Number.isInteger(raw.openShot.shotNo) ? raw.openShot : null;
   return s;
 }
 
@@ -567,7 +611,7 @@ export function caddieView({
   else if (view === "nofix" || view === "locationoff") { primary = { label: COPY.retry, action: "retry" }; secondary = { label: COPY.yards, action: "yards" }; }
   else if (view === "pretee") primary = { label: COPY.tee, action: "tee" };
   else if (view === "green") primary = { label: COPY.score(holeNo), action: "score" };
-  else primary = { label: COPY.ball, action: "ball" };
+  else { primary = { label: COPY.ball, action: "ball" }; secondary = { label: COPY.logShot, action: "logshot" }; }
 
   const notice = view === "noprofile" ? NOTICES.noprofile
     : view === "nomap" ? NOTICES.nomap(holeNo)
