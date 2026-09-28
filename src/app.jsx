@@ -1216,9 +1216,9 @@ const LINE_OPTS = [["safe", "Safe"], ["aggressive", "Aggressive"], ["own", "Own 
 const SHOTTYPE_OPTS = [["full", "Full"], ["finesse", "Finesse"], ["recovery", "Recovery"]];
 const wordOpts = (words) => words.map((w) => [w, capWord(w)]);
 
-const SegPill = ({ label, current, onClick }) => (
+const SegPill = ({ label, current, onClick, fontSize = 11 }) => (
   <button onClick={onClick} aria-pressed={current ? "true" : "false"}
-    style={{ ...(current ? primaryPill : outlinedPill), height: 36, borderRadius: 18, padding: "0 11px", fontSize: 11, letterSpacing: "0.04em", flex: "none", minWidth: 0 }}>
+    style={{ ...(current ? primaryPill : outlinedPill), height: 36, borderRadius: 18, padding: "0 11px", fontSize, lineHeight: 1.15, letterSpacing: "0.04em", flex: "none", minWidth: 0, textAlign: "center" }}>
     {label}
   </button>
 );
@@ -1228,9 +1228,9 @@ const SegField = ({ title, children }) => (
     {children}
   </div>
 );
-const SegGrid = ({ options, value, onChange, cols = 3 }) => (
+const SegGrid = ({ options, value, onChange, cols = 3, fontSize }) => (
   <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
-    {options.map(([val, label]) => <SegPill key={String(val)} label={label} current={val === value} onClick={() => onChange(val)} />)}
+    {options.map(([val, label]) => <SegPill key={String(val)} label={label} current={val === value} onClick={() => onChange(val)} fontSize={fontSize} />)}
   </div>
 );
 
@@ -1304,7 +1304,7 @@ function PuttSheet({ initialFt, onMade, onSave, onSkip }) {
         <button onClick={() => onMade(ft)} className="lc-primary" style={{ ...primaryPill, width: "100%", height: 52, marginBottom: 16 }}><FlagGlyph />Made ✓</button>
         {PUTT_AXES.map((axis) => (
           <SegField key={axis.key} title={axis.label}>
-            <SegGrid cols={5} options={axis.options.map((label, i) => [i - 2, label])} value={axes[axis.key]} onChange={(v) => setAxis(axis.key, v)} />
+            <SegGrid cols={5} options={axis.short.map((label, i) => [i - 2, label])} value={axes[axis.key]} onChange={(v) => setAxis(axis.key, v)} fontSize={10} />
           </SegField>
         ))}
         <div style={{ display: "flex", gap: 10, marginTop: 6 }}>

@@ -168,12 +168,17 @@ export function skipShot(record) {
  * snapshot, no start/target frame — just where it started (feet) and, on a miss, three −2..2 axes
  * (speed, break, line) that the reasons/learning layers can read the same way they read `contact`,
  * `strike` etc. on a full swing. `PUTT_AXES` is the one source for both the axis order and Brett's
- * exact five-cell copy, so caddieState.js / app.jsx never restate it.
+ * exact five-cell copy, so caddieState.js / app.jsx never restate it. `short` is a display-only
+ * alias per option (the pill on a 375-wide card clips/wraps to three lines on the full copy) —
+ * `options` stays the copy of record, and is what tests and any future export/reason text read.
  */
 export const PUTT_AXES = Object.freeze([
-  { key: "speed", label: "Speed", options: ["Very short", "Short", "Good", "Long", "Very long"] },
-  { key: "breakRead", label: "Break", options: ["Big under-read", "Under-read", "Good", "Over-read", "Way over-read"] },
-  { key: "line", label: "Line", options: ["Big pull", "Pull", "Good", "Push", "Big push"] },
+  { key: "speed", label: "Speed", options: ["Very short", "Short", "Good", "Long", "Very long"],
+    short: ["V. short", "Short", "Good", "Long", "V. long"] },
+  { key: "breakRead", label: "Break", options: ["Big under-read", "Under-read", "Good", "Over-read", "Way over-read"],
+    short: ["Big under", "Under", "Good", "Over", "Way over"] },
+  { key: "line", label: "Line", options: ["Big pull", "Pull", "Good", "Push", "Big push"],
+    short: ["Big pull", "Pull", "Good", "Push", "Big push"] },
 ]);
 
 /** Interpretation: an axis value is CLAMPED into −2..2 (rounded first), never thrown on — a slider
