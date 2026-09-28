@@ -55,7 +55,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.2 · Sep 29";
+const BUILD = "v22.3 · Sep 29";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -324,11 +324,13 @@ function recordDifferential(r) {
    the window; once five newer rounds exist these stop counting on their own. Gross only
    (no hole detail came across), so no net-double cap is applied to them. */
 const SEED_ROUNDS = [
-  { date: "2026-09-05", course: "Beachwood Golf Club",              tee: "Blue",  rating: 71.6, slope: 127, gross: 86 },
-  { date: "2026-08-15", course: "Chicopee Woods · School/Village",  tee: "Gold",  rating: 73.6, slope: 137, gross: 81 },
-  { date: "2026-08-09", course: "RiverPines Golf Course",           tee: "Black", rating: 71.1, slope: 132, gross: 80 },
-  { date: "2026-08-03", course: "Chicopee Woods · Village/Mill",    tee: "Gold",  rating: 72.7, slope: 133, gross: 78 },
-  { date: "2026-07-26", course: "Sugar Creek Golf Course",          tee: "Blue",  rating: 70.1, slope: 125, gross: 81 },
+  // Brett's official last five (GHIN, Sep 29). Gross is the ADJUSTED gross the differential was
+  // computed from — Hampton's card was 82, capped to 81 by net double bogey (official diff 6.8).
+  { date: "2026-09-20", course: "Hampton Golf Village",             tee: "Championship", rating: 72.7, slope: 137, gross: 81 },
+  { date: "2026-09-12", course: "Lake Arrowhead Yacht & CC",        tee: "Blue Fox",     rating: 73.3, slope: 133, gross: 79 },
+  { date: "2026-09-05", course: "Beachwood Golf Club",              tee: "Blue",         rating: 71.6, slope: 127, gross: 86 },
+  { date: "2026-08-15", course: "Chicopee Woods · School/Village",  tee: "Gold",         rating: 73.6, slope: 137, gross: 81 },
+  { date: "2026-08-09", course: "RiverPines Golf Course",           tee: "Black",        rating: 71.1, slope: 132, gross: 80 },
 ];
 
 /* {diff, asOf, count, total, seeded} over the DIFF_WINDOW most recent rounds — played
@@ -342,6 +344,10 @@ function computeAutoDiff(history) {
     const d = new Date(s.date + "T12:00:00");           // noon: no TZ drift across the date line
     if (!isNaN(d.getTime()) && s.slope > 0) recs.push({ d, v: scoreDifferential(s.gross, s.rating, s.slope), seed: true });
   });
+  // A seed and a round logged in Loop on the same calendar day are the same round: keep the seed
+  // (the official differential) so the round is never counted twice.
+  const seedDays = new Set(recs.filter(x => x.seed).map(x => x.d.toDateString()));
+  for (let i = recs.length - 1; i >= 0; i--) if (!recs[i].seed && seedDays.has(recs[i].d.toDateString())) recs.splice(i, 1);
   if (!recs.length) return null;
   recs.sort((a, b) => b.d - a.d);
   const last = recs.slice(0, DIFF_WINDOW);
