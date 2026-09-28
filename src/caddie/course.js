@@ -52,13 +52,23 @@ export function pointInRing(p, ring) {
 }
 
 /** Point-in-polygon with the §6.2 priority: green → sand → water → tee → fairway → trees → rough → OB. */
+/** Inside the hazard's outer ring and not inside one of its inner rings (a clearing in a wood). */
+function inHazard(p, h) {
+  if (!pointInRing(p, h.ring)) return false;
+  for (const r of h.inner || []) if (pointInRing(p, r)) return false;
+  return true;
+}
+
 export function classify(hole, p) {
   if (pointInRing(p, hole.green.ring)) return "green";
-  for (const h of hole.hazards || []) if (h.type === "sand" && pointInRing(p, h.ring)) return "sand";
-  for (const h of hole.hazards || []) if (h.type === "water" && pointInRing(p, h.ring)) return "water";
+  for (const h of hole.hazards || []) if (h.type === "sand" && inHazard(p, h)) return "sand";
+  for (const h of hole.hazards || []) if (h.type === "water" && inHazard(p, h)) return "water";
   for (const r of hole.tees || []) if (pointInRing(p, r)) return "tee";
   for (const r of hole.fairways || []) if (pointInRing(p, r)) return "fairway";
-  for (const h of hole.hazards || []) if (h.type === "trees" && pointInRing(p, h.ring)) return "trees";
+  // A neighbouring hole's fairway or green is a fairway lie, not rough (geo.js buildHole fills `nearby`).
+  for (const r of hole.nearby?.fairways || []) if (pointInRing(p, r)) return "fairway";
+  for (const r of hole.nearby?.greens || []) if (pointInRing(p, r)) return "fairway";
+  for (const h of hole.hazards || []) if (h.type === "trees" && inHazard(p, h)) return "trees";
   if (hole.boundary && !pointInRing(p, hole.boundary)) return "ob";
   return "rough";
 }
@@ -94,7 +104,9 @@ export function greenDistances(hole, ball, pinPos = "middle") {
   const hits = rayRingHits(ball, c, hole.green.ring);
   const front = hits.length ? hits[0] : Math.max(0, center - 12);
   const back = hits.length ? hits[hits.length - 1] : center + 12;
-  const pin = pinPos === "front" ? front + (back - front) / 3 : pinPos === "back" ? front + (2 * (back - front)) / 3 : center;
+  // pinPos: 'front' | 'middle' | 'back' (thirds along the ball → center line) or a custom {x, y} point (UI addendum §6).
+  const pin = isPoint(pinPos) ? dist(ball, pinPos)
+    : pinPos === "front" ? front + (back - front) / 3 : pinPos === "back" ? front + (2 * (back - front)) / 3 : center;
   return { front: round1(front), center: round1(center), back: round1(back), pin: round1(pin), depth: round1(back - front) };
 }
 
@@ -105,8 +117,11 @@ export function pointAlong(from, to, d) {
   return { x: from.x + ((to.x - from.x) / len) * d, y: from.y + ((to.y - from.y) / len) * d };
 }
 
-/** Pin position as a point, for a pinPos. */
+const isPoint = (v) => v && typeof v === "object" && typeof v.x === "number" && typeof v.y === "number";
+
+/** Pin position as a point, for a pinPos. A custom {x, y} pin is returned as given. */
 export function pinPoint(hole, ball, pinPos = "middle") {
+  if (isPoint(pinPos)) return { x: pinPos.x, y: pinPos.y };
   const g = greenDistances(hole, ball, pinPos);
   return pointAlong(ball, hole.green.center, g.pin);
 }

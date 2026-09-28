@@ -11,7 +11,7 @@ import { dirname, join } from "node:path";
 import { DEFAULT_CONFIG, mergeConfig } from "./config.js";
 import { baselineE, baselinePutts } from "./baseline.js";
 import { makeSamples } from "./random.js";
-import { classify, greenDistances, fatSide, corridorAt, waterEntry, ringDistance, rect, ellipse } from "./course.js";
+import { classify, greenDistances, pinPoint, fatSide, corridorAt, waterEntry, ringDistance, rect, ellipse } from "./course.js";
 import { loadProfile, resolveEntry, E, Eputt, B, B2, bucketFor, candidateEntries, _internal } from "./profile.js";
 import { recommend, generateCandidates, simulateCandidate, normalizeContext, displayLines, windEffect, ellipseSampler, ELL80_K } from "./engine.js";
 import { TEMPLATES } from "./reasons.js";
@@ -78,6 +78,21 @@ test("course: classification priority and OB", () => {
   assert.equal(classify(h, { x: 150, y: 100 }), "ob");
   assert.equal(classify(openPar5, { x: 0, y: 300 }), "fairway");
   assert.equal(classify(openPar5, { x: 500, y: 300 }), "rough", "no boundary → never OB");
+});
+
+test("course: a custom {x,y} pin is honoured by greenDistances, pinPoint and the engine's label", () => {
+  const pin = { x: 5, y: 180 };
+  const g = greenDistances(bunkeredPar3, { x: 0, y: 0 }, pin);
+  assert.ok(Math.abs(g.pin - Math.hypot(5, 180)) < 0.1);
+  assert.deepEqual(pinPoint(bunkeredPar3, { x: 0, y: 0 }, pin), pin);
+  const r = recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee", pinPos: pin }, bunkeredPar3, P);
+  assert.equal(r.context.pinPos, "custom");
+  assert.doesNotMatch(strip(r), /object Object/);
+  const c = { ...bunkeredPar3, hazards: [{ type: "trees", ring: rect(-60, 60, -20, 120), inner: [rect(-50, 80, -30, 100)] }] };
+  assert.equal(classify(c, { x: -55, y: 70 }), "trees");
+  assert.equal(classify(c, { x: -40, y: 90 }), "rough", "a clearing inside the wood is not trees");
+  const n = { ...openPar5, nearby: { fairways: [rect(40, 200, 80, 300)], greens: [] } };
+  assert.equal(classify(n, { x: 60, y: 250 }), "fairway", "the next hole's fairway is a fairway lie");
 });
 
 test("course: green distances front < center < back, pin thirds, fat side away from the bunker", () => {

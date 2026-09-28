@@ -123,7 +123,7 @@ export function generateCandidates(ctx, hole, P) {
   for (const e of entries) {
     if (reach.get(e) !== "reaches") continue;
     const targets = [
-      { p: pin, label: `green, ${ctx.pinPos === "middle" ? "center" : ctx.pinPos + " pin"}` },
+      { p: pin, label: `green, ${ctx.pinPos === "middle" ? "center" : typeof ctx.pinPos === "string" ? ctx.pinPos + " pin" : "custom pin"}` },
       { p: center, label: "green, center" },
       { p: fat, label: "green, fat side" },
     ];
@@ -338,7 +338,7 @@ export function recommend(rawCtx, hole, P) {
     distances: { front: Math.round(g.front), center: Math.round(g.center), back: Math.round(g.back), pin: Math.round(g.pin) },
     playsLike: Math.round(headline.yds),
     lieType: ctx.lieType, lieQuality: ctx.lieQuality, lieConfidence: ctx.lieConfidence,
-    conditions: ctx.conditions, pinPos: ctx.pinPos,
+    conditions: ctx.conditions, pinPos: typeof ctx.pinPos === "string" ? ctx.pinPos : "custom",
     wind: ctx.wind ? { speedMph: ctx.wind.speedMph, relative: headline.wind.relative } : null,
     elevationDeltaYds: ctx.elevationDeltaYds,
   };
