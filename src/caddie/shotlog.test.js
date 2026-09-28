@@ -11,6 +11,7 @@ import {
   routeShot, newShotRecord, quickLog, detailLog, skipShot, closeOutShot,
   migrateShot, loadShots, saveShot, allShots, exportShots, importShots,
   missCauseSample, recordLieOverride, loadLieOverrides,
+  PUTT_AXES, newPuttRecord, quickMade,
 } from "./shotlog.js";
 
 /** In-memory localStorage-shaped stub. */
@@ -279,6 +280,69 @@ test("lie-override store: records and reloads corrections in order", () => {
 test("lie-override store: getItem/setItem failures degrade to empty rather than throwing", () => {
   const brokenStorage = { getItem: () => { throw new Error("boom"); }, setItem: () => {} };
   assert.deepEqual(loadLieOverrides(brokenStorage), []);
+});
+
+/* ---------- putt capture (Sep 28 spec) ---------- */
+
+test("PUTT_AXES: three axes in order, five-cell copy exactly as Brett wrote it", () => {
+  assert.deepEqual(PUTT_AXES.map((a) => a.key), ["speed", "breakRead", "line"]);
+  assert.deepEqual(PUTT_AXES.find((a) => a.key === "speed").options, ["Very short", "Short", "Good", "Long", "Very long"]);
+  assert.deepEqual(PUTT_AXES.find((a) => a.key === "breakRead").options, ["Big under-read", "Under-read", "Good", "Over-read", "Way over-read"]);
+  assert.deepEqual(PUTT_AXES.find((a) => a.key === "line").options, ["Big pull", "Pull", "Good", "Push", "Big push"]);
+});
+
+test("newPuttRecord: shape — schema 1, shotType putt, the three axes on a graded miss", () => {
+  const rec = newPuttRecord({ roundId: "r1", courseId: "c1", hole: 7, shotNo: 3, distanceFt: 12.4, made: false, speed: 1, breakRead: -1, line: 0 });
+  assert.equal(rec.schema, SHOT_SCHEMA);
+  assert.equal(rec.shotType, "putt");
+  assert.equal(rec.logged, "full");
+  assert.equal(rec.hole, 7);
+  assert.equal(rec.shotNo, 3);
+  assert.deepEqual(rec.putt, { distanceFt: 12, made: false, speed: 1, breakRead: -1, line: 0 });
+  assert.ok(rec.id);
+  assert.ok(rec.ts);
+});
+
+test("newPuttRecord: made forces all three axes to null regardless of input, and defaults logged to quick", () => {
+  const rec = newPuttRecord({ hole: 1, shotNo: 1, distanceFt: 2, made: true, speed: 2, breakRead: -1, line: 1 });
+  assert.deepEqual([rec.putt.speed, rec.putt.breakRead, rec.putt.line], [null, null, null]);
+  assert.equal(rec.putt.made, true);
+  assert.equal(rec.logged, "quick");
+});
+
+test("newPuttRecord: a missing axis defaults to 0 (Good), matching the card's pre-selected cell", () => {
+  const rec = newPuttRecord({ hole: 1, shotNo: 1, distanceFt: 10, made: false });
+  assert.deepEqual([rec.putt.speed, rec.putt.breakRead, rec.putt.line], [0, 0, 0]);
+});
+
+test("newPuttRecord: axis values are CLAMPED to -2..2, not thrown on (interpretation: clamp)", () => {
+  const rec = newPuttRecord({ hole: 1, shotNo: 1, distanceFt: 10, made: false, speed: 9, breakRead: -9, line: 2.6 });
+  assert.deepEqual([rec.putt.speed, rec.putt.breakRead, rec.putt.line], [2, -2, 2]);
+  assert.doesNotThrow(() => newPuttRecord({ hole: 1, shotNo: 1, made: false, speed: NaN }));
+});
+
+test("quickMade: the Made ✓ path — made true, axes null, logged quick, distance kept", () => {
+  const rec = quickMade({ roundId: "r1", hole: 4, shotNo: 2, distanceFt: 3 });
+  assert.equal(rec.putt.made, true);
+  assert.equal(rec.putt.distanceFt, 3);
+  assert.deepEqual([rec.putt.speed, rec.putt.breakRead, rec.putt.line], [null, null, null]);
+  assert.equal(rec.logged, "quick");
+});
+
+test("missCauseSample includes putt records — they are never logged as skipped (Skip writes nothing)", () => {
+  const made = quickMade({ hole: 1, shotNo: 1, distanceFt: 3 });
+  const missed = newPuttRecord({ hole: 1, shotNo: 2, distanceFt: 22, made: false, speed: 1, breakRead: 0, line: -1 });
+  assert.deepEqual(missCauseSample([made, missed]).map((r) => r.id), [made.id, missed.id]);
+});
+
+test("putt records round-trip through saveShot / loadShots / export-import like any other shot", () => {
+  const storage = makeStorage();
+  const rec = saveShot(storage, newPuttRecord({ roundId: "r1", hole: 6, shotNo: 1, distanceFt: 18, made: false, speed: -1, breakRead: 1, line: 0 }));
+  assert.deepEqual(loadShots(storage, "r1"), [rec]);
+  const json = exportShots(storage);
+  const fresh = makeStorage();
+  importShots(fresh, json);
+  assert.deepEqual(allShots(fresh), [rec]);
 });
 
 /* ---------- detailLog ---------- */

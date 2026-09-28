@@ -163,6 +163,60 @@ export function skipShot(record) {
   return newShotRecord({ ...record, logged: "skipped" });
 }
 
+/* ---------- putt capture (Sep 28 spec, filling engine spec §4.1's "separate future spec") ----------
+ * A putt record is a lighter sibling of the long/short-game ShotRecord: no club, no recommendation
+ * snapshot, no start/target frame — just where it started (feet) and, on a miss, three −2..2 axes
+ * (speed, break, line) that the reasons/learning layers can read the same way they read `contact`,
+ * `strike` etc. on a full swing. `PUTT_AXES` is the one source for both the axis order and Brett's
+ * exact five-cell copy, so caddieState.js / app.jsx never restate it.
+ */
+export const PUTT_AXES = Object.freeze([
+  { key: "speed", label: "Speed", options: ["Very short", "Short", "Good", "Long", "Very long"] },
+  { key: "breakRead", label: "Break", options: ["Big under-read", "Under-read", "Good", "Over-read", "Way over-read"] },
+  { key: "line", label: "Line", options: ["Big pull", "Pull", "Good", "Push", "Big push"] },
+]);
+
+/** Interpretation: an axis value is CLAMPED into −2..2 (rounded first), never thrown on — a slider
+ *  can only ever emit an in-range integer, so this only guards a corrupt or hand-edited record. A
+ *  missing/non-finite value defaults to 0 ("Good"), matching the card's pre-selected default. */
+function clampAxis(v) {
+  if (!Number.isFinite(v)) return 0;
+  return Math.max(-2, Math.min(2, Math.round(v)));
+}
+
+/**
+ * Builds one putt record. `made` forces all three axes to null (nothing to grade on a holed putt)
+ * and, unless `logged` is given explicitly, defaults `logged` to "quick" for a made putt and "full"
+ * for a graded miss — the two paths the card actually offers (`Made ✓` vs. the sliders + `Save`).
+ */
+export function newPuttRecord(input = {}) {
+  const made = !!input.made;
+  const speed = made ? null : clampAxis(input.speed);
+  const breakRead = made ? null : clampAxis(input.breakRead);
+  const line = made ? null : clampAxis(input.line);
+  return {
+    id: input.id ?? genId(),
+    schema: SHOT_SCHEMA,
+    roundId: input.roundId ?? null,
+    courseId: input.courseId ?? null,
+    hole: input.hole ?? null,
+    shotNo: input.shotNo ?? null,
+    ts: input.ts ?? nowIso(),
+    gps: input.gps ?? null,
+    shotType: "putt",
+    logged: input.logged ?? (made ? "quick" : "full"),
+    putt: {
+      distanceFt: Number.isFinite(input.distanceFt) ? Math.round(input.distanceFt) : null,
+      made, speed, breakRead, line,
+    },
+  };
+}
+
+/** `Made ✓` — the quick path: holed out, no axes to grade, `logged: "quick"`. */
+export function quickMade(record) {
+  return newPuttRecord({ ...record, made: true, logged: "quick" });
+}
+
 /* ---------- §4.5 auto-derived fields ---------- */
 
 /** Rotate a unit direction vector 90° so +x of the result is "to the right of travel". */

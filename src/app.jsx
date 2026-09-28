@@ -13,7 +13,7 @@ import { recommend, windEffect } from "./caddie/engine.js";
 import { fetchWeather, weatherRefreshDue } from "./caddie/sensors.js";
 import {
   loadLieOverrides, recordLieOverride, routeShot, newShotRecord, quickLog, detailLog, skipShot, closeOutShot,
-  saveShot, loadShots, allShots, exportShots, importShots,
+  saveShot, loadShots, allShots, exportShots, importShots, newPuttRecord, quickMade, PUTT_AXES,
 } from "./caddie/shotlog.js";
 import { fetchElevationSamples, elevationSamplePoints } from "./caddie/sensors.js";
 import { DEFAULT_CONFIG, mergeConfig } from "./caddie/config.js";
@@ -55,7 +55,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.4 · Sep 29";
+const BUILD = "v22.5 · Sep 29";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -1281,6 +1281,41 @@ function LongCardSheet({ record, collapsed, blocking, clubOrder, onQuick, onSave
   );
 }
 
+/**
+ * Putt capture (Sep 28 spec, addendum §3.4 / §8 "On the green"). `Made ✓` is the quick path
+ * (writes nothing but the distance); `Save` grades the miss on the three §PUTT_AXES sliders,
+ * each a 5-cell SegGrid with 0 ("Good") pre-selected, same segmented-control look as the long card.
+ */
+function PuttSheet({ initialFt, onMade, onSave, onSkip }) {
+  const [ft, setFt] = useState(Math.max(1, Math.round(initialFt || 20)));
+  const [axes, setAxes] = useState({ speed: 0, breakRead: 0, line: 0 });
+  const step = (d) => setFt((v) => Math.min(200, Math.max(1, v + d)));
+  const setAxis = (k, val) => setAxes((a) => ({ ...a, [k]: val }));
+  return (
+    <div data-part="sheet" data-log="putt" onClick={onSkip} style={{ position: "fixed", inset: 0, background: "rgba(31,31,31,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 65 }}>
+      <div role="dialog" aria-label="Putt" onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "88vh", overflowY: "auto",
+        background: T.paper, borderTop: `4px double ${T.ink}`, padding: "20px 22px calc(env(safe-area-inset-bottom) + 20px)" }}>
+        <div style={{ ...caps(12), marginBottom: 10 }}>Putt</div>
+        <div style={{ ...caps(9), marginBottom: 4 }}>From</div>
+        <div data-part="putt-ft" style={{ ...written(44), textAlign: "center", lineHeight: "56px", margin: "2px 0 10px" }}>{ft}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 16 }}>
+          {[-10, -1, 1, 10].map((d) => <SheetPill key={d} label={d > 0 ? `+${d}` : `−${Math.abs(d)}`} current={false} onClick={() => step(d)} style={{ letterSpacing: 0 }} />)}
+        </div>
+        <button onClick={() => onMade(ft)} className="lc-primary" style={{ ...primaryPill, width: "100%", height: 52, marginBottom: 16 }}><FlagGlyph />Made ✓</button>
+        {PUTT_AXES.map((axis) => (
+          <SegField key={axis.key} title={axis.label}>
+            <SegGrid cols={5} options={axis.options.map((label, i) => [i - 2, label])} value={axes[axis.key]} onChange={(v) => setAxis(axis.key, v)} />
+          </SegField>
+        ))}
+        <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+          <button onClick={() => onSave({ distanceFt: ft, ...axes })} style={{ ...outlinedPill, flex: 1, height: 52 }}>Save</button>
+          <button onClick={onSkip} style={{ ...outlinedPill, flex: 1, height: 52 }}>Skip</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* 27-hole clubs (engine §6.4): a one-time paper list pairing each OSM hole with {nine, hole}. */
 function NineMapScreen({ geometry, courseId, onSaved, onCard }) {
   const cands = useMemo(() => [...nineMapCandidates(geometry)].sort((a, b) => (Number(a.ref) || 99) - (Number(b.ref) || 99) || String(a.key).localeCompare(String(b.key))), [geometry]);
@@ -1563,6 +1598,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     if (a === "tee" || a === "ball" || a === "retry") locate(a);
     else if (a === "yards") setYardsOpen(true);
     else if (a === "logshot") openLogSheet({ collapsed: false, blocking: false });
+    else if (a === "logputt") dispatch({ type: "puttOpen" });
     else if (a === "score") onScore(n);
     else if (a === "profile") onRetryProfile();
   };
@@ -1735,6 +1771,22 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
           onSkip={() => commitLog((r) => skipShot(r))}
           onDetail={() => setLogSheet((s) => ({ ...s, collapsed: false }))}
           onClose={cancelLogSheet} />
+      )}
+      {cs.logCard === "putt" && (
+        <PuttSheet initialFt={cs.lastPuttFt ?? 20}
+          onMade={(distanceFt) => {
+            const record = quickMade({ roundId, courseId, hole: n, shotNo: (cs.putts[n] || 0) + 1, distanceFt,
+              gps: cs.ball ? { lat: cs.ball.lat, lng: cs.ball.lng, accuracyM: cs.ball.accuracyM } : null });
+            saveShotHere(record);
+            dispatch({ type: "puttSave", record });
+          }}
+          onSave={({ distanceFt, speed, breakRead, line }) => {
+            const record = newPuttRecord({ roundId, courseId, hole: n, shotNo: (cs.putts[n] || 0) + 1, distanceFt, made: false, speed, breakRead, line,
+              gps: cs.ball ? { lat: cs.ball.lat, lng: cs.ball.lng, accuracyM: cs.ball.accuracyM } : null });
+            saveShotHere(record);
+            dispatch({ type: "puttSave", record });
+          }}
+          onSkip={() => dispatch({ type: "puttDismiss" })} />
       )}
     </div>
   );
