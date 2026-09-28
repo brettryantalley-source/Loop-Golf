@@ -1,14 +1,18 @@
 /* Loop — network-first service worker (latest when online, cached fallback offline).
-   The Hole View is parked (v21), so no new satellite tiles are cached. The existing
-   tile store is deliberately KEPT, not deleted, so the feature can come back without
-   a re-download; nothing reads it today. */
-const CACHE = 'loop-golf-v21-4';
+   v22: the caddie's map is back, so the satellite tile store is read again — cache-first,
+   filled by the Setup prefetch and while playing. Its name stays bogeyman-tiles-v1 (the
+   Sep 28 storage-key decision), so tiles saved by v19 carry over. MapLibre is served
+   same-origin from vendor/ and is in the shell so the map starts with no signal. */
+const CACHE = 'loop-golf-v22';
 const TILES = 'bogeyman-tiles-v1';          // survives app-version bumps; only its own name is kept below
 const SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
   './icon-512.png',
+  // MapLibre GL 5.24 (v22 caddie map) — loaded on first use of the caddie screen.
+  './vendor/maplibre-gl.js',
+  './vendor/maplibre-gl.css',
   // Bundled fonts (v21) — the paper design renders wrong without them offline.
   './fonts/bitter-latin-400-normal.woff2',
   './fonts/bitter-latin-500-normal.woff2',

@@ -171,6 +171,8 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
     total: fields.totalMedianYds,
     roll,
     distSd: distSd * sdMult,
+    lateralSd: carry * Math.tan((lateralSdDeg * Math.PI) / 180) * sdMult,   // yards, lie-widened like distSd
+    lieSdMult: sdMult,
     lateralSdDeg,
     biasDist: fields.biasDistYds ?? 0,
     biasLat: fields.biasLatYds ?? 0,

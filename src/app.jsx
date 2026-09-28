@@ -2,6 +2,13 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut as fbSignOut } from "firebase/auth";
 import { initializeFirestore, persistentLocalCache, persistentSingleTabManager, collection, doc, setDoc, getDocs } from "firebase/firestore";
 import { T, F, caps, printed, written, writtenWord, rule, hairline, doubleRule, PencilDefs, Logo, teeTint } from "./theme.jsx";
+/* Caddie (S3a, v22): the map layer. The profile is bundled, never fetched (addendum §11.1). */
+import { fetchGeometry } from "./geometry.js";
+import { buildHole, distances, loadGeometryCache, saveGeometryCache } from "./caddie/geo.js";
+import { loadProfile } from "./caddie/profile.js";
+import { noticeNoCourseMap } from "./caddie/overlay.js";
+import { MapLayer, useSatellite, prefetchTiles, TILE_PREFETCH_ENABLED } from "./caddie/mapLayer.jsx";
+import PROFILE_JSON from "./profile.json";
 
 const React = window.React;
 const { useState, useMemo, useEffect } = React;
@@ -34,7 +41,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v21.4 · Sep 28";
+const BUILD = "v22 · Sep 28";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -113,6 +120,69 @@ function validCourse(c) {
     c.holes.every(h => h && typeof h.par === "number" && typeof h.si === "number") &&
     typeof c.rating === "number" && typeof c.slope === "number" && typeof c.par === "number";
 }
+
+/* ---------- course map (v22, caddie S3a) ----------
+   OSM geometry via Overpass when a course is chosen (the v18.5 pattern: fetch once with signal,
+   cache per course under bogeyman-matches:geo:v1:{apiId}), then the satellite tiles for every
+   hole (addendum §11.2). Setup shows one status line; the caddie reads the cached geometry. */
+const apiIdOf = (course) => course?.apiId ?? (course?.id != null ? String(course.id).split(":")[0] : null);
+function courseAnchor(course) {
+  if (!course) return null;
+  if (typeof course.lat === "number" && typeof course.lon === "number") return { lat: course.lat, lon: course.lon };
+  try {
+    const full = JSON.parse(localStorage.getItem(courseCacheKey(apiIdOf(course))) || "null");
+    const loc = full && full.location;
+    if (loc && typeof loc.latitude === "number" && typeof loc.longitude === "number") return { lat: loc.latitude, lon: loc.longitude };
+  } catch (e) { /* ignore */ }
+  return null;
+}
+const safeStorage = () => { try { return window.localStorage; } catch (e) { return null; } };
+/* { geometry, phase: none | loading | ready | unavailable, done, total } */
+function useCourseMap(course) {
+  const apiId = apiIdOf(course);
+  const [geometry, setGeometry] = useState(() => (apiId != null ? loadGeometryCache(safeStorage(), apiId) : null));
+  const [st, setSt] = useState({ phase: "none", done: 0, total: 0 });
+  useEffect(() => {
+    if (apiId == null) { setGeometry(null); setSt({ phase: "none", done: 0, total: 0 }); return undefined; }
+    let live = true;
+    let g = loadGeometryCache(safeStorage(), apiId);
+    setGeometry(g);                                   // never show the previous course's holes
+    (async () => {
+      if (!g) {
+        const anchor = courseAnchor(course);
+        if (!anchor) { setGeometry(null); setSt({ phase: "unavailable", done: 0, total: 0 }); return; }
+        setSt({ phase: "loading", done: 0, total: 18 });
+        try {
+          const parsed = await fetchGeometry(anchor.lat, anchor.lon);
+          saveGeometryCache(safeStorage(), apiId, parsed);
+          g = loadGeometryCache(safeStorage(), apiId) || parsed;
+        } catch (e) {
+          if (live) { setGeometry(null); setSt({ phase: "unavailable", done: 0, total: 0 }); }
+          return;
+        }
+      }
+      if (!live) return;
+      setGeometry(g);
+      const holes = Object.keys(g.holes || {}).length;
+      if (!holes) { setSt({ phase: "unavailable", done: 0, total: 0 }); return; }
+      if (!TILE_PREFETCH_ENABLED || typeof caches === "undefined") { setSt({ phase: "ready", done: holes, total: holes }); return; }
+      setSt({ phase: "loading", done: 0, total: holes });
+      await prefetchTiles(g, { isLive: () => live, onProgress: (p) => setSt({ phase: "loading", done: p.holesDone, total: p.holes }) }).catch(() => null);
+      // Tiles that did not come down are not an error: the caddie draws the map from the geometry (§4.3).
+      if (live) setSt({ phase: "ready", done: holes, total: holes });
+    })();
+    return () => { live = false; };
+  }, [apiId]);
+  return { geometry: apiId != null ? geometry : null, ...st };
+}
+/* Addendum §10.1 copy. */
+const courseMapLine = (m) => !m || m.phase === "none" ? null
+  : m.phase === "ready" ? "Course map ready"
+  : m.phase === "loading" ? `Course map · loading ${m.done} of ${m.total || 18}`
+  : "Course map unavailable · caddie will use yards";
+
+/* Profile v2 — bundled with the app. null only if the file is malformed (§8 No profile, S3b). */
+const CADDIE_PROFILE = (() => { try { return loadProfile(PROFILE_JSON); } catch (e) { return null; } })();
 
 /* ---------- home-state filter (results have state; the API also returns location.latitude/longitude since v1.1 — used by the Hole View, not here) ---------- */
 const HOME_STATE_KEY = "bogeyman-matches:home-state";
@@ -480,7 +550,7 @@ function defaultTee(opts, full, history) {
   return byYards[Math.floor((byYards.length - 1) / 2)];
 }
 
-function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHistory }) {
+function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHistory, courseMap }) {
   const [picking, setPicking] = useState(false);
   const [selectedFull, setSelectedFull] = useState(null);
   const [tees, setTees] = useState([]);
@@ -657,6 +727,10 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
             background: "none", border: "none", color: T.ink, ...caps(11, 500, "0.14em") }}>
             Round history <span style={{ ...printed(13), letterSpacing: 0 }}>· {stats.n}</span>
           </button>
+          {/* course-map prefetch (addendum §11.2) — one line, Bitter 11 ink */}
+          {course && courseMapLine(courseMap) && (
+            <span data-testid="course-map-status" style={{ fontFamily: F.label, fontSize: 11, color: T.ink, lineHeight: "14px", marginTop: -4 }}>{courseMapLine(courseMap)}</span>
+          )}
         </div>
       </div>
     </div>
@@ -761,7 +835,7 @@ function Strip({ start, scores, ghost, hole, onJump }) {
   );
 }
 
-function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExit }) {
+function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExit, onCaddie }) {
   const [confirmExit, setConfirmExit] = useState(false);
   const [pending, setPending] = useState(null);          // { hole, v } — chosen, not written
   const [ceiling, setCeiling] = useState(null);          // raised par+2, this hole only
@@ -801,6 +875,8 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
     if (hole < 17) setHole(hole + 1);
   };
   const tap = (v) => { if (pend === v) commit(v); else setPending({ hole, v }); };
+  /* Leaving for the caddie is navigation too: a pending score is written, never dropped. */
+  const goCaddie = () => { if (pend != null) write(pend); if (onCaddie) onCaddie(); };
   const raise = () => setCeiling((c) => {
     const next = Math.min((c != null && c > par + 2 ? c : par + 2) + 1, 15);
     setPending({ hole, v: next });
@@ -919,18 +995,26 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
           ))}
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", paddingTop: 4 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", width: "100%", paddingTop: 4 }}>
           <button onClick={() => goHole(hole - 1)} disabled={hole === 0}
             aria-label={pend != null ? `Confirm ${pend} and go back to hole ${hole}` : `Go back to hole ${hole}`}
             style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 12px", background: "none", border: "none",
-              color: hole === 0 ? T.muted : T.ink, ...caps(11, 700, "0.14em") }}>
+              justifySelf: "start", color: hole === 0 ? T.muted : T.ink, ...caps(11, 700, "0.14em") }}>
             <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 7 H2" /><path d="M7 2 L2 7 L7 12" /></svg>
             Hole <span style={{ ...printed(13), letterSpacing: 0 }}>{hole}</span>
+          </button>
+          {/* addendum §2: the way to the caddie, centred between the hole links */}
+          <button onClick={goCaddie} aria-label={`Caddie for hole ${hole + 1}`}
+            style={{ display: "flex", alignItems: "center", gap: 7, height: 40, padding: "0 10px", background: "none", border: "none", color: T.ink, ...caps(11, 700) }}>
+            <svg width="12" height="15" viewBox="0 0 14 18" fill="none" stroke={T.ink} strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+              <path d="M3 17 V2" /><path d="M3 2 L13 6 L3 10 Z" fill={T.ink} stroke={T.ink} />
+            </svg>
+            Caddie
           </button>
           <button onClick={() => goHole(hole + 1)} disabled={hole === 17}
             aria-label={pend != null ? `Confirm ${pend} and go on to hole ${hole + 2}` : `Go on to hole ${hole + 2}`}
             style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 12px", background: "none", border: "none",
-              color: hole === 17 ? T.muted : T.ink, ...caps(11, 700, "0.14em") }}>
+              justifySelf: "end", color: hole === 17 ? T.muted : T.ink, ...caps(11, 700, "0.14em") }}>
             Hole <span style={{ ...printed(13), letterSpacing: 0 }}>{hole + 2}</span>
             <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1 7 H16" /><path d="M11 2 L16 7 L11 12" /></svg>
           </button>
@@ -965,6 +1049,80 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
           <div style={{ textAlign: "center", color: m.back.res === "live" ? T.muted : T.ink }}>In <span style={{ ...writtenWord(17), letterSpacing: 0, textTransform: "none" }}>{sideWord(m.back.res)}</span></div>
           <div style={{ textAlign: "right" }}>Total <span style={{ ...writtenWord(17), letterSpacing: 0, textTransform: "none" }}>{sideWord(m.total.res)}</span></div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- caddie (v22, S3a: the map layer) ----------
+   Full-bleed map of the hole with the ‹ Card tag, the notice tag and the attribution (addendum
+   §3.1). The rail and the bar are PLACEHOLDERS until S3b: an empty 106-wide paper rail and one
+   primary pill that does nothing yet. Gets the course's hole data and the geometry only — no ghost,
+   no match, no scores (engine rule 4, T41). */
+function useSafeArea() {
+  const [s, setS] = useState({ top: 0, bottom: 0 });
+  useEffect(() => {
+    const d = document.createElement("div");
+    d.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)";
+    document.body.appendChild(d);
+    const read = () => { const cs = getComputedStyle(d); setS({ top: parseFloat(cs.paddingTop) || 0, bottom: parseFloat(cs.paddingBottom) || 0 }); };
+    read();
+    window.addEventListener("resize", read);
+    return () => { window.removeEventListener("resize", read); d.remove(); };
+  }, []);
+  return s;
+}
+
+const CADDIE_RAIL_W = 106;
+function Caddie({ course, hole, geometry, profile, onCard }) {
+  const safe = useSafeArea();
+  const n = hole + 1;
+  const h = course.holes[hole];
+  // S3a plays the holes in scorecard order: OSM hole n = scorecard hole n (27-hole nine mapping: S3b).
+  const key = geometry && geometry.holes && geometry.holes[String(n)] ? String(n) : null;
+  const built = useMemo(() => {
+    try { return key != null ? buildHole(geometry, key, { par: h.par, yards: h.yards }) : null; } catch (e) { return null; }
+  }, [geometry, key, h.par, h.yards]);
+  // A tap on the green moves the flag. Held here for the session only; S3b stores it per hole (§6, §9.8).
+  const [pins, setPins] = useState({});
+  const pin = useMemo(() => (built ? pins[n] || distances(built, built.tee, "middle").pinPoint : null), [built, pins, n]);
+  const sat = useSatellite(built ? geometry : null, built ? key : null);
+  const notice = built ? sat.notice : noticeNoCourseMap(n);
+  const barH = 78 + safe.bottom;
+  const insets = useMemo(() => ({ top: safe.top + 49, right: CADDIE_RAIL_W, bottom: barH + 16, left: 0 }), [safe.top, barH]);
+  void profile;   // S3b: recommend(ctx, built, profile) → options for the map
+
+  return (
+    <div data-screen="caddie" style={{ position: "fixed", inset: 0, overflow: "hidden", background: T.paper, color: T.ink, fontFamily: F.label }}>
+      <MapLayer hole={built} geometry={geometry} ball={null} accuracyM={null} pin={pin} options={null} active="safe" sameShot={false}
+        previousShots={[]} insets={insets} fallback={!built || sat.mode === "fallback"}
+        onPinTap={(p) => setPins((s) => ({ ...s, [n]: p }))} onMapTap={() => {}} onSatelliteFail={sat.markFailed} />
+
+      <button onClick={onCard} aria-label="Back to the scorecard" style={{ position: "absolute", left: 14, top: safe.top + 9, height: 32, padding: "0 11px",
+        display: "flex", alignItems: "center", background: T.paper, border: rule, borderRadius: 0, color: T.ink, fontFamily: F.label, fontSize: 12, zIndex: 15, whiteSpace: "nowrap" }}>
+        ‹&nbsp;Card
+      </button>
+
+      {notice && (
+        <div role="status" style={{ position: "absolute", left: 14, right: 120, top: safe.top + 49, padding: "7px 11px", background: T.paper, border: rule,
+          color: T.ink, fontFamily: F.label, fontSize: 12, lineHeight: "16px", zIndex: 15, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          {notice}
+        </div>
+      )}
+
+      {/* rail — placeholder until S3b */}
+      <div data-part="rail" style={{ position: "absolute", right: 0, top: 0, bottom: barH, width: CADDIE_RAIL_W, background: T.paper, borderLeft: `4px double ${T.ink}`, zIndex: 20 }} />
+
+      {/* bar — one primary pill (Log shot stays hidden until S4); it does nothing until S3b */}
+      <div data-part="bar" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: barH, background: T.paper, borderTop: `4px double ${T.ink}`,
+        padding: `12px 18px ${safe.bottom + 10}px`, display: "flex", gap: 10, zIndex: 21 }}>
+        <button onClick={() => {}} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, height: 52, borderRadius: 26,
+          background: T.ink, border: `2px solid ${T.ink}`, boxShadow: `inset 0 0 0 1.5px ${T.yellow}`, color: T.paper, ...caps(12, 700, "0.18em") }}>
+          <svg width="14" height="18" viewBox="0 0 14 18" fill="none" stroke={T.paper} strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+            <path d="M3 17 V2" /><path d="M3 2 L13 6 L3 10 Z" fill={T.yellow} stroke={T.yellow} />
+          </svg>
+          I'm on the tee
+        </button>
       </div>
     </div>
   );
@@ -1624,6 +1782,7 @@ function App() {
   const [history, setHistory] = useState(loadHistory());
   const [tombs, setTombs] = useState(loadTombs());
   const cloud = useCloudSync(history, setHistory, tombs, setTombs);
+  const courseMap = useCourseMap(course);
   useEffect(() => { saveState({ screen, course, diff, scores, hole, roundId }); }, [screen, course, diff, scores, hole, roundId]);
   useEffect(() => { saveHistory(history); }, [history]);
   useEffect(() => { saveTombs(tombs); }, [tombs]);
@@ -1664,8 +1823,9 @@ function App() {
     <div style={{ minHeight: "100dvh", background: T.paper, color: T.ink, fontFamily: F.label }}>
       <style dangerouslySetInnerHTML={{ __html: RESET }} />
       <PencilDefs />
-      {screen === "setup" && <Setup course={course} setCourse={setCourse} diff={diff} setDiff={setDiff} stats={stats} history={history} onStart={start} onHistory={() => setScreen("history")} />}
-      {screen === "play" && course && ghost && <Play course={course} ghost={ghost} scores={scores} setScores={setScores} hole={hole} setHole={setHole} onFinish={finalize} onExit={exitRound} />}
+      {screen === "setup" && <Setup course={course} setCourse={setCourse} diff={diff} setDiff={setDiff} stats={stats} history={history} onStart={start} onHistory={() => setScreen("history")} courseMap={courseMap} />}
+      {screen === "play" && course && ghost && <Play course={course} ghost={ghost} scores={scores} setScores={setScores} hole={hole} setHole={setHole} onFinish={finalize} onExit={exitRound} onCaddie={() => setScreen("caddie")} />}
+      {screen === "caddie" && course && <Caddie course={course} hole={hole} geometry={courseMap.geometry} profile={CADDIE_PROFILE} onCard={() => setScreen("play")} />}
       {screen === "summary" && course && ghost && <Summary course={course} ghost={ghost} scores={scores} history={history} onEditScore={editScore} onReset={reset} />}
       {screen === "history" && <History history={history} stats={stats} cloud={cloud} onDelete={deleteRound} onImport={importRounds} onBack={() => setScreen("setup")} />}
     </div>

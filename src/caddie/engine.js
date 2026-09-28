@@ -235,7 +235,7 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
   const roll = lm.roll;
   // Dispersion core: the ell80 ellipse when measured (UI addendum §5.2), else σ-distance × σ-lateral.
   const ell = e.ell80 ? ellipseSampler(e.ell80, lm.sdMult) : null;
-  const sigmaLat = e.carry * Math.tan(e.lateralSdDeg * DEG) * lm.sdMult;
+  const sigmaLat = e.lateralSd * lm.sdMult;             // lie-widened in resolveEntry, quality-widened here
   const sigmaD = e.distSd * lm.sdMult;
   const k = ctx.par - 1 - ctx.shotNo;                     // birdie needs this many more after this shot
   let sumStrokes = 0, sumBirdie = 0, trouble = 0;
