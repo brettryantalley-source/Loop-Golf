@@ -1,7 +1,7 @@
 {
   "source": "shotpattern-shotlist",
   "schema": 1,
-  "complete": false,
+  "complete": true,
   "round": {
     "date": "2026-09-28",
     "course": "Ironwood Golf Club",
@@ -11,7 +11,7 @@
       "Ridge"
     ],
     "tee": null,
-    "note": "Transcribed Sep 30 from Shot Pattern's per-round screenshots (screens/). Holes 1–9 = Lakes, 10–18 = Ridge. Feet → yards at import (÷3). Approach 'target' = Shot Pattern's target; short game / putting 'hole' = the cup. Direction words are Shot Pattern's. Driving (14 tee shots on the par 4s/5s), Approach (1–18) and Short Game (list ends at 16) are complete; Putting is complete except holes 10–12 (by the scores: 2 putts each). yardsPerHoleSP / yardsSP are Shot Pattern's tee data (6,713), not the printed Blue card (6,497) in src/localCards.js.",
+    "note": "Transcribed Sep 30 from Shot Pattern's per-round screenshots (screens/). Holes 1–9 = Lakes, 10–18 = Ridge. Feet → yards at import (÷3). Approach 'target' = Shot Pattern's target; short game / putting 'hole' = the cup. Direction words are Shot Pattern's. Complete: 14 drives, 19 approaches, 10 short-game shots, 36 putts, 2 penalty strokes = 81. yardsPerHoleSP / yardsSP are Shot Pattern's tee data (6,713), not the printed Blue card (6,497) in src/localCards.js.",
     "shotPatternTitle": "Lakes & Ridge - Ironwood Golf Club",
     "score": 81,
     "toPar": 9,
@@ -557,6 +557,58 @@
       "result": "miss",
       "missNote": "short left of hole",
       "sg": -0.29
+    },
+    {
+      "hole": 9,
+      "startFt": 2.42,
+      "result": "make",
+      "sg": 0.02
+    },
+    {
+      "hole": 10,
+      "startFt": 6.75,
+      "result": "miss",
+      "missNote": "long right of hole",
+      "sg": -0.47
+    },
+    {
+      "hole": 10,
+      "startFt": 1.25,
+      "result": "make",
+      "sg": 0.0
+    },
+    {
+      "hole": 11,
+      "startFt": 16,
+      "result": "miss",
+      "missNote": "short right of hole",
+      "sg": -0.16
+    },
+    {
+      "hole": 11,
+      "startFt": 1.83,
+      "result": "make",
+      "sg": 0.02
+    },
+    {
+      "hole": 12,
+      "startFt": 18,
+      "result": "miss",
+      "missNote": "long right of hole",
+      "sg": -0.13
+    },
+    {
+      "hole": 12,
+      "startFt": 1.67,
+      "result": "make",
+      "sg": 0.02
+    },
+    {
+      "hole": 13,
+      "startFt": 17,
+      "result": "miss",
+      "missNote": "short left of hole",
+      "sg": -0.14
     },
     {
       "hole": 13,
