@@ -6,21 +6,22 @@
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 237 tests; must be green
+npm install && npm test    # 238 tests; must be green
 ```
 
 ## Where things stand (Sep 29, after the v22.11 build)
 
-Live at https://brettryantalley-source.github.io/Loop-Golf/ — **`main` is v22.11** (PR #8 merged
-Sep 29: marked-green mode + draggable pin; PR #7 v22.6–v22.10; PR #6 v22.3–v22.5; PR #5 the caddie).
-Branch **`claude/bold-pascal-2s136s`** carries **v22.12** — the Ironwood field-test fixes (D51–D55:
-Satellite check, Mark green here, Log shot everywhere, odd/even stroke index, Ironwood's card in
-`src/localCards.js`) — with its PR open.
+Live at https://brettryantalley-source.github.io/Loop-Golf/ — **`main` is v22.12** (PR #9 merged Sep 29:
+Ironwood field-test fixes D51–D55; PR #8 marked-green mode + pin; PR #7 v22.6–v22.10; PR #6
+v22.3–v22.5; PR #5 the caddie). Branch **`claude/bold-pascal-2s136s`** carries **v22.13** — tap-or-drag
+sliders on the shot and putt cards (D56–D57) — with its PR open. Queued next (Brett, Sep 30): one-tap
+outcome pills on the shot card, Intended shape / Start line under "More", auto-advance after Save,
+and a manual `On the green` control so putts can be logged with no map.
 Brett merges a PR from his phone (GitHub app or "merge" in the Claude app); Pages redeploys in
 about a minute; he fully closes and reopens Loop and reads the build tag top-right of Setup.
 
 Engine as of v22.10 follows `docs/CADDIE-BRAIN-INTEGRATION.md` (D43–D46; known gaps in D46).
-`npm test` is 237 tests. Decisions run D1–D55 in `docs/DECISIONS-caddie.md`.
+`npm test` is 238 tests. Decisions run D1–D57 in `docs/DECISIONS-caddie.md`.
 
 **Ironwood (Fishers, IN) is not traced in OpenStreetMap.** v22.11's marked-green mode is the
 bridge (satellite on GPS, tap the green, distance-only pricing). First round there (Sep 29, v22.11):

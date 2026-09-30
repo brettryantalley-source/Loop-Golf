@@ -65,7 +65,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.12 · Sep 29";
+const BUILD = "v22.13 · Sep 30";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -1423,7 +1423,9 @@ const CADDIE_CSS = `.lc-rail{transition:width .28s cubic-bezier(.2,.8,.2,1)}
 @media (prefers-reduced-motion: reduce){.lc-rail,.lc-det{transition:none !important}}
 .lc-primary:active{background:${T.inkDark} !important;border-color:${T.inkDark} !important}
 .lc-chip:active{background:${T.fillHalf} !important}
-.lc-clamp1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}`;
+.lc-clamp1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lc-scale:focus{outline:none}
+.lc-scale:focus-visible{outline:2px solid ${T.ink};outline-offset:-2px;border-radius:6px}`;
 
 const FlagGlyph = () => (
   <svg width="14" height="18" viewBox="0 0 14 18" fill="none" stroke={T.paper} strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
@@ -1504,13 +1506,13 @@ const wordOpts = (words) => words.map((w) => [w, capWord(w)]);
 
 const SegPill = ({ label, current, onClick, fontSize = 11 }) => (
   <button onClick={onClick} aria-pressed={current ? "true" : "false"}
-    style={{ ...(current ? primaryPill : outlinedPill), height: 36, borderRadius: 18, padding: "0 11px", fontSize, lineHeight: 1.15, letterSpacing: "0.04em", flex: "none", minWidth: 0, textAlign: "center" }}>
+    style={{ ...(current ? primaryPill : outlinedPill), height: 34, borderRadius: 17, padding: "0 11px", fontSize, lineHeight: 1.15, letterSpacing: "0.04em", flex: "none", minWidth: 0, textAlign: "center" }}>
     {label}
   </button>
 );
 const SegField = ({ title, children }) => (
-  <div style={{ marginBottom: 14 }}>
-    <div style={{ ...caps(9), marginBottom: 7 }}>{title}</div>
+  <div style={{ marginBottom: 8 }}>
+    <div style={{ ...caps(9), marginBottom: 4 }}>{title}</div>
     {children}
   </div>
 );
@@ -1519,6 +1521,75 @@ const SegGrid = ({ options, value, onChange, cols = 3, fontSize }) => (
     {options.map(([val, label]) => <SegPill key={String(val)} label={label} current={val === value} onClick={() => onChange(val)} fontSize={fontSize} />)}
   </div>
 );
+
+/**
+ * v22.13 — the sliding scale for every 3- or 5-point ORDINAL question (contact, strike, intended
+ * shape, start line, curve, and the three putt axes). `options` = [[value, label, full?], …] in order,
+ * left to right; the centre stop is the middle entry. Labels sit under the two ends and the centre;
+ * the CURRENT stop's full label (`full`, else `label`) is written in pencil to the right of the title.
+ * One pointer handler on the whole box: pointerdown snaps to the nearest stop at once (a tap is as
+ * fast as a pill), pointermove while captured snaps live (a drag is the bonus). No native range input.
+ * `title` is optional, but without it there is no read-back line.
+ */
+const SCALE_INSET = 14;   // the thumb's radius plus a hair, so the thumb at either end stays inside the box
+function ScaleSlider({ title, options, value, onChange, ariaLabel }) {
+  const n = options.length;
+  const found = options.findIndex(([v]) => v === value);
+  const idx = found >= 0 ? found : (n - 1) >> 1;
+  const boxRef = React.useRef(null);
+  const [drag, setDrag] = useState(false);
+  const at = (i) => `calc(${SCALE_INSET}px + (100% - ${2 * SCALE_INSET}px) * ${i / (n - 1)})`;
+  const stopFor = (clientX) => {
+    const r = boxRef.current.getBoundingClientRect();
+    const f = (clientX - r.left - SCALE_INSET) / Math.max(1, r.width - 2 * SCALE_INSET);
+    return Math.max(0, Math.min(n - 1, Math.round(f * (n - 1))));
+  };
+  const pick = (i) => { if (i !== idx) onChange(options[i][0]); };
+  const down = (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* no capture: the tap still works */ }
+    setDrag(true);
+    pick(stopFor(e.clientX));
+  };
+  const move = (e) => { if (drag) pick(stopFor(e.clientX)); };
+  const up = () => setDrag(false);
+  const key = (e) => {
+    const d = e.key === "ArrowLeft" || e.key === "ArrowDown" ? -1 : e.key === "ArrowRight" || e.key === "ArrowUp" ? 1 : 0;
+    if (d) { e.preventDefault(); pick(Math.max(0, Math.min(n - 1, idx + d))); }
+    else if (e.key === "Home") { e.preventDefault(); pick(0); }
+    else if (e.key === "End") { e.preventDefault(); pick(n - 1); }
+  };
+  const full = (o) => o[2] ?? o[1];
+  const lab = { position: "absolute", top: 29, whiteSpace: "nowrap", pointerEvents: "none", ...caps(9, 700, "0.08em"), color: T.muted };
+  return (
+    <div data-part="scale">
+      {title != null && (
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, minHeight: 16 }}>
+          <div style={caps(9)}>{title}</div>
+          <div data-part="scale-readout" style={{ ...written(15), lineHeight: "16px", whiteSpace: "nowrap", pointerEvents: "none" }}>{full(options[idx])}</div>
+        </div>
+      )}
+      <div ref={boxRef} className="lc-scale" role="slider" tabIndex={0} aria-label={ariaLabel || title}
+        aria-valuemin={0} aria-valuemax={n - 1} aria-valuenow={idx} aria-valuetext={String(full(options[idx]))}
+        onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onLostPointerCapture={up} onKeyDown={key}
+        style={{ position: "relative", height: 44, touchAction: "none", userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent", cursor: "pointer" }}>
+        <div style={{ position: "absolute", left: SCALE_INSET, right: SCALE_INSET, top: 14, borderTop: `1.5px solid ${T.ink}` }} />
+        {options.map((o, i) => {
+          const mid = i === (n - 1) / 2;
+          return <div key={String(o[0])} style={{ position: "absolute", left: at(i), top: mid ? 4 : 9, width: mid ? 2.5 : 1.5, height: mid ? 20 : 10, marginLeft: mid ? -1.25 : -0.75, background: T.ink }} />;
+        })}
+        {/* an opaque paper disc (so the tick under it never shows) with the pencil-filtered ring on top */}
+        <div data-part="scale-thumb" style={{ position: "absolute", left: at(idx), top: 1, width: 26, height: 26, marginLeft: -13, borderRadius: "50%",
+          background: T.paper, transition: drag ? "none" : "left 80ms ease-out" }}>
+          <div style={{ position: "absolute", inset: 0, boxSizing: "border-box", borderRadius: "50%", border: `4px solid ${T.ink}`, filter: "url(#pencil)" }} />
+        </div>
+        <div style={{ ...lab, left: 0 }}>{options[0][1]}</div>
+        <div style={{ ...lab, left: "50%", transform: "translateX(-50%)" }}>{options[(n - 1) >> 1][1]}</div>
+        <div style={{ ...lab, right: 0 }}>{options[n - 1][1]}</div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * The long card (§4.2). `collapsed` shows only the three previous-shot pills (§4.4 step 2, not
@@ -1536,9 +1607,9 @@ function LongCardSheet({ record, collapsed, blocking, clubOrder, onQuick, onSave
   return (
     <div data-part="sheet" data-log={collapsed ? "prev" : "full"} onClick={blocking ? undefined : onClose}
       style={{ position: "fixed", inset: 0, background: "rgba(31,31,31,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 65 }}>
-      <div role="dialog" aria-label="Log shot" onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "88vh", overflowY: "auto",
-        background: T.paper, borderTop: `4px double ${T.ink}`, padding: "20px 22px calc(env(safe-area-inset-bottom) + 20px)" }}>
-        <div style={{ ...caps(12), marginBottom: 14 }}>{collapsed ? "Log the last shot" : COPY.logShot}</div>
+      <div role="dialog" aria-label="Log shot" onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "92vh", overflowY: "auto",
+        background: T.paper, borderTop: `4px double ${T.ink}`, padding: "14px 22px calc(env(safe-area-inset-bottom) + 14px)" }}>
+        <div style={{ ...caps(12), marginBottom: collapsed ? 14 : 10 }}>{collapsed ? "Log the last shot" : COPY.logShot}</div>
         {collapsed ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <button onClick={onQuick} className="lc-primary" style={{ ...primaryPill, height: 52, width: "100%" }}><FlagGlyph />Good shot ✓</button>
@@ -1548,7 +1619,7 @@ function LongCardSheet({ record, collapsed, blocking, clubOrder, onQuick, onSave
         ) : (
           <>
             {bare && <div data-part="log-bare" style={{ fontFamily: F.label, fontSize: 12, lineHeight: 1.4, color: T.ink, margin: "-6px 0 12px" }}>No caddie call on this shot. Pick the club you hit.</div>}
-            <button onClick={() => onQuick(draft)} disabled={needClub} className={needClub ? undefined : "lc-primary"} style={{ ...primaryPill, height: 52, width: "100%", marginBottom: 16, ...off }}><FlagGlyph />Good shot ✓</button>
+            <button onClick={() => onQuick(draft)} disabled={needClub} className={needClub ? undefined : "lc-primary"} style={{ ...primaryPill, height: 44, width: "100%", marginBottom: 10, ...off }}><FlagGlyph />Good shot ✓</button>
             <SegField title="Club">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {clubOrder.map((id) => <SegPill key={id} label={clubShort(id)} current={id === draft.club} onClick={() => set("club", id)} />)}
@@ -1556,14 +1627,14 @@ function LongCardSheet({ record, collapsed, blocking, clubOrder, onQuick, onSave
             </SegField>
             {!bare && <SegField title="Line played"><SegGrid cols={3} options={LINE_OPTS} value={draft.linePlayed} onChange={(val) => set("linePlayed", val)} /></SegField>}
             <SegField title="Shot type"><SegGrid cols={3} options={SHOTTYPE_OPTS} value={draft.shotType} onChange={(val) => set("shotType", val)} /></SegField>
-            <SegField title="Contact"><SegGrid cols={5} options={CONTACT_OPTS} value={draft.contact} onChange={(val) => set("contact", val)} /></SegField>
-            <SegField title="Strike"><SegGrid cols={3} options={wordOpts(["heel", "center", "toe"])} value={draft.strike} onChange={(val) => set("strike", val)} /></SegField>
-            <SegField title="Intended shape"><SegGrid cols={3} options={wordOpts(["draw", "straight", "fade"])} value={draft.intendedShape} onChange={(val) => set("intendedShape", val)} /></SegField>
-            <SegField title="Start line"><SegGrid cols={3} options={wordOpts(["left", "on", "right"])} value={draft.startLine} onChange={(val) => set("startLine", val)} /></SegField>
-            <SegField title="Curve"><SegGrid cols={5} options={CURVE_OPTS} value={draft.curve} onChange={(val) => set("curve", val)} /></SegField>
-            <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
-              <button onClick={() => onSave(draft)} disabled={needClub} className={needClub ? undefined : "lc-primary"} style={{ ...primaryPill, flex: 1.4, height: 52, ...off }}><FlagGlyph />Save</button>
-              <button onClick={onSkip} style={{ ...outlinedPill, flex: 1, height: 52 }}>Skip</button>
+            <ScaleSlider title="Contact" options={CONTACT_OPTS} value={draft.contact} onChange={(val) => set("contact", val)} />
+            <ScaleSlider title="Strike" options={wordOpts(["heel", "center", "toe"])} value={draft.strike} onChange={(val) => set("strike", val)} />
+            <ScaleSlider title="Intended shape" options={wordOpts(["draw", "straight", "fade"])} value={draft.intendedShape} onChange={(val) => set("intendedShape", val)} />
+            <ScaleSlider title="Start line" options={wordOpts(["left", "on", "right"])} value={draft.startLine} onChange={(val) => set("startLine", val)} />
+            <ScaleSlider title="Curve" options={CURVE_OPTS} value={draft.curve} onChange={(val) => set("curve", val)} />
+            <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+              <button onClick={() => onSave(draft)} disabled={needClub} className={needClub ? undefined : "lc-primary"} style={{ ...primaryPill, flex: 1.4, height: 44, ...off }}><FlagGlyph />Save</button>
+              <button onClick={onSkip} style={{ ...outlinedPill, flex: 1, height: 44 }}>Skip</button>
             </div>
           </>
         )}
@@ -1575,7 +1646,8 @@ function LongCardSheet({ record, collapsed, blocking, clubOrder, onQuick, onSave
 /**
  * Putt capture (Sep 28 spec, addendum §3.4 / §8 "On the green"). `Made ✓` is the quick path
  * (writes nothing but the distance); `Save` grades the miss on the three §PUTT_AXES sliders,
- * each a 5-cell SegGrid with 0 ("Good") pre-selected, same segmented-control look as the long card.
+ * each a 5-stop ScaleSlider (v22.13) with 0 ("Good") at the centre; the ends and centre carry the
+ * `short` copy, the read-back line carries the full `options` copy.
  */
 function PuttSheet({ initialFt, onMade, onSave, onSkip }) {
   const [ft, setFt] = useState(Math.max(1, Math.round(initialFt || 20)));
@@ -1594,9 +1666,7 @@ function PuttSheet({ initialFt, onMade, onSave, onSkip }) {
         </div>
         <button onClick={() => onMade(ft)} className="lc-primary" style={{ ...primaryPill, width: "100%", height: 52, marginBottom: 16 }}><FlagGlyph />Made ✓</button>
         {PUTT_AXES.map((axis) => (
-          <SegField key={axis.key} title={axis.label}>
-            <SegGrid cols={5} options={axis.short.map((label, i) => [i - 2, label])} value={axes[axis.key]} onChange={(v) => setAxis(axis.key, v)} fontSize={10} />
-          </SegField>
+          <ScaleSlider key={axis.key} title={axis.label} options={axis.short.map((label, i) => [i - 2, label, axis.options[i]])} value={axes[axis.key]} onChange={(v) => setAxis(axis.key, v)} />
         ))}
         <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
           <button onClick={() => onSave({ distanceFt: ft, ...axes })} style={{ ...outlinedPill, flex: 1, height: 52 }}>Save</button>
@@ -1875,7 +1945,8 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   const cancelLogSheet = () => { setLogSheet(null); dispatch({ type: "logDismiss" }); };
   // Reopen a restored logCard (e.g. after a reload mid-hole, §9.8) once the engine has recomputed.
   useEffect(() => {
-    if (logSheet || !cs.logCard) return;
+    // v22.13: "putt" is the PuttSheet's own card — restoring it here opened a stray bare long card under it (v22.12)
+    if (logSheet || !cs.logCard || cs.logCard === "putt") return;
     const record = buildDraftShot() || (cs.logCard === "prev" ? null : buildBareShot());
     if (record) setLogSheet({ record, collapsed: cs.logCard === "prev", blocking: cs.logCard === "prev" });
     else dispatch({ type: "logDismiss" });
