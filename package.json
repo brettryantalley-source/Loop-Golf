@@ -6,7 +6,8 @@
   "description": "Loop Golf — build deps only. React ships as UMD; this is here for the Firebase SDK, which esbuild tree-shakes into index.html.",
   "scripts": {
     "test": "node --test \"src/**/*.test.js\"",
-    "build:profile": "node scripts/build-profile.mjs"
+    "build:profile": "node scripts/build-profile.mjs",
+    "import:shots": "node scripts/import-shotpattern.mjs"
   },
   "dependencies": {
     "firebase": "^12.4.0",

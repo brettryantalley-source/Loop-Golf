@@ -6,7 +6,7 @@
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 252 tests; must be green
+npm install && npm test    # 268 tests; must be green
 ```
 
 ## Where things stand (Sep 29, after the v22.11 build)
@@ -14,18 +14,17 @@ npm install && npm test    # 252 tests; must be green
 Live at https://brettryantalley-source.github.io/Loop-Golf/ — **`main` is v22.12** (PR #9 merged Sep 29:
 Ironwood field-test fixes D51–D55; PR #8 marked-green mode + pin; PR #7 v22.6–v22.10; PR #6
 v22.3–v22.5; PR #5 the caddie). `main` also has v22.13 (PR #10, sliders D56–D57). Branch **`claude/bold-pascal-2s136s`** carries
-**v22.14** (pencil-only score marks, D58) and **v22.15** (shot log v2, `docs/SPEC-shotlog-v2.md`,
-D59–D65) in PR #11. Queued after it: v22.16 aim warning (re-run the dispersion sim at Brett's target and
+**v22.14** (pencil-only score marks, D58), **v22.15** (shot log v2, `docs/SPEC-shotlog-v2.md`,
+D59–D65) and **v22.16** (Shot Pattern importer + history card fix, D66–D71; two rounds imported) in
+PR #11. Queued after it: v22.17 aim warning (re-run the dispersion sim at Brett's target and
 line; warn when trouble is 10+ points worse than the recommendation or his club bias leaves the green;
-n ≥ 10), v22.17 a Shot Pattern per-round Shot List importer (screenshots → JSON under
-`data/extracted/rounds/` → `source: shotpattern` records through the History import; the first round,
-Ironwood 2026-09-28, is partly transcribed in `data/extracted/rounds/2026-09-28-ironwood/shots.json`),
-and v22.18 the breadcrumb trail + stops (`SPEC-shotlog-v2.md` §10).
+n ≥ 10), and v22.18 the breadcrumb trail + stops (`SPEC-shotlog-v2.md` §10). To add a Shot Pattern round: transcribe its
+Shot Lists into `data/extracted/rounds/{date}-{course}/shots.json`, run `npm run import:shots`, rebuild.
 Brett merges a PR from his phone (GitHub app or "merge" in the Claude app); Pages redeploys in
 about a minute; he fully closes and reopens Loop and reads the build tag top-right of Setup.
 
 Engine as of v22.10 follows `docs/CADDIE-BRAIN-INTEGRATION.md` (D43–D46; known gaps in D46).
-`npm test` is 252 tests. Decisions run D1–D65 in `docs/DECISIONS-caddie.md`.
+`npm test` is 268 tests. Decisions run D1–D71 in `docs/DECISIONS-caddie.md`.
 
 **Ironwood (Fishers, IN) is not traced in OpenStreetMap.** v22.11's marked-green mode is the
 bridge (satellite on GPS, tap the green, distance-only pricing). First round there (Sep 29, v22.11):

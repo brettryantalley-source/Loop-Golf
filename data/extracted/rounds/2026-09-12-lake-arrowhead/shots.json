@@ -1,0 +1,845 @@
+{
+  "source": "shotpattern-shotlist",
+  "schema": 1,
+  "complete": true,
+  "round": {
+    "date": "2026-09-12",
+    "course": "The Highlands Course at Lake Arrowhead",
+    "loopCourse": "Lake Arrowhead Yacht & CC",
+    "location": "Waleska, GA",
+    "tee": "Blue Fox",
+    "ratingSlope": [
+      73.3,
+      133
+    ],
+    "score": 82,
+    "toPar": 10,
+    "mode": "Casual",
+    "sg": {
+      "total": -6.9,
+      "driving": -2.2,
+      "approach": -3.0,
+      "shortGame": -1.7,
+      "putting": -0.1,
+      "vs": "scratch"
+    },
+    "pars": [
+      5,
+      3,
+      4,
+      4,
+      5,
+      4,
+      3,
+      4,
+      4,
+      5,
+      4,
+      4,
+      3,
+      4,
+      4,
+      4,
+      3,
+      5
+    ],
+    "scores": [
+      3,
+      2,
+      4,
+      6,
+      6,
+      5,
+      4,
+      4,
+      7,
+      6,
+      4,
+      4,
+      3,
+      4,
+      5,
+      5,
+      3,
+      7
+    ],
+    "scoring": {
+      "par3Avg": 3.0,
+      "par4Avg": 4.8,
+      "par5Avg": 5.5,
+      "birdiesPlus": 2,
+      "pars": 7,
+      "bogeys": 6,
+      "doublesPlus": 3
+    },
+    "summary": {
+      "driving": {
+        "fairways": "6/14",
+        "inPlay": "10/14",
+        "gainingStrokes": "9/14",
+        "bigMisses": 3,
+        "penalties": 3
+      },
+      "approach": {
+        "gir": "9/18",
+        "inside8ft": 0,
+        "inside30ft": 8,
+        "bestProximityFt": 13
+      },
+      "aroundGreen": {
+        "upAndDowns": "3/9",
+        "sandSaves": "0/0",
+        "shortSided": "0/2",
+        "inside3ft": 2
+      },
+      "putting": {
+        "total": 31,
+        "distanceMadeFt": 78.3,
+        "threePutts": 1,
+        "buckets": {
+          "0-3": "14/15",
+          "4-6": "1/2",
+          "7-9": "0/1",
+          "10-15": "1/2",
+          "16-24": "2/6",
+          "25-40": "0/5",
+          "41+": "0/0"
+        }
+      }
+    },
+    "note": "Transcribed Sep 30 from a screen recording of Shot Pattern's round pages (frames read at 2 fps, not committed). pars/scores from the Loop seed card (src/seedRounds.js, card total 82). Feet → yards at import (÷3). Approach 'target' = Shot Pattern's target; short game / putting 'hole' = the cup. Hole 16: two tee shots (the first to a penalty). 15 drives + 20 approaches + 12 short-game + 31 putts + 4 penalty strokes = 82."
+  },
+  "units": {
+    "startDistance": "yards",
+    "toHole": "feet unless 'y' noted",
+    "miss": "feet unless 'y' noted"
+  },
+  "driving": [
+    {
+      "hole": 1,
+      "club": "Dr",
+      "yds": 309,
+      "endLie": "fairway",
+      "offlineYds": 0,
+      "side": "right",
+      "sg": 0.47
+    },
+    {
+      "hole": 3,
+      "club": "4Hy",
+      "yds": 211,
+      "endLie": "rough",
+      "offlineYds": 35,
+      "side": "left",
+      "sg": -0.13
+    },
+    {
+      "hole": 4,
+      "club": "2i",
+      "yds": 202,
+      "endLie": "rough",
+      "offlineYds": 27,
+      "side": "left",
+      "sg": -0.17
+    },
+    {
+      "hole": 5,
+      "club": null,
+      "yds": 292,
+      "endLie": "deep rough",
+      "offlineYds": 24,
+      "side": "left",
+      "sg": 0.15
+    },
+    {
+      "hole": 6,
+      "club": "2i",
+      "yds": 262,
+      "endLie": "fairway",
+      "offlineYds": 6,
+      "side": "right",
+      "sg": 0.21
+    },
+    {
+      "hole": 8,
+      "club": "9i",
+      "yds": 287,
+      "endLie": "rough",
+      "offlineYds": 24,
+      "side": "left",
+      "sg": 0.14,
+      "note": "club as recorded by Shot Pattern (9i, 287 yds) — probably mis-tagged"
+    },
+    {
+      "hole": 9,
+      "club": "4Hy",
+      "yds": 245,
+      "endLie": "recovery",
+      "offlineYds": 43,
+      "side": "left",
+      "sg": -0.78
+    },
+    {
+      "hole": 10,
+      "club": "Dr",
+      "yds": 282,
+      "endLie": "fairway",
+      "offlineYds": 3,
+      "side": "right",
+      "sg": 0.25
+    },
+    {
+      "hole": 11,
+      "club": "Dr",
+      "yds": 244,
+      "endLie": "fairway",
+      "offlineYds": 9,
+      "side": "right",
+      "sg": 0.11
+    },
+    {
+      "hole": 12,
+      "club": "Dr",
+      "yds": 286,
+      "endLie": "fairway",
+      "offlineYds": 13,
+      "side": "right",
+      "sg": 0.3
+    },
+    {
+      "hole": 14,
+      "club": "2i",
+      "yds": 256,
+      "endLie": "fairway",
+      "offlineYds": 18,
+      "side": "left",
+      "sg": 0.16
+    },
+    {
+      "hole": 15,
+      "club": "2i",
+      "yds": 261,
+      "endLie": "rough",
+      "offlineYds": 20,
+      "side": "right",
+      "sg": 0.03
+    },
+    {
+      "hole": 16,
+      "club": "Dr",
+      "yds": 242,
+      "endLie": "penalty",
+      "offlineYds": 40,
+      "side": "left",
+      "sg": -2.0,
+      "penalty": 1,
+      "note": "Shot Pattern shows '(+2)' on this shot; the card's 5 reconciles with one penalty stroke and a re-tee"
+    },
+    {
+      "hole": 16,
+      "club": "Dr",
+      "yds": 289,
+      "endLie": "rough",
+      "offlineYds": 29,
+      "side": "left",
+      "sg": 0.44
+    },
+    {
+      "hole": 18,
+      "club": "Dr",
+      "yds": 246,
+      "endLie": "penalty",
+      "offlineYds": 64,
+      "side": "left",
+      "sg": -1.34,
+      "penalty": 1
+    }
+  ],
+  "approach": [
+    {
+      "hole": 1,
+      "startYds": 144,
+      "startLie": "fairway",
+      "club": "9i",
+      "endLie": "green",
+      "toHoleFt": 20,
+      "missNote": "12' long left of target",
+      "missTotalFt": 12,
+      "missDist": "long",
+      "missLat": "left",
+      "sg": 0.22
+    },
+    {
+      "hole": 2,
+      "startYds": 135,
+      "startLie": "tee",
+      "club": "PW",
+      "endLie": "green",
+      "toHoleFt": 20,
+      "missNote": "23' short left of target",
+      "missTotalFt": 23,
+      "missDist": "short",
+      "missLat": "left",
+      "sg": 0.16
+    },
+    {
+      "hole": 3,
+      "startYds": 134,
+      "startLie": "rough",
+      "club": "9i",
+      "endLie": "green",
+      "toHoleFt": 24,
+      "missNote": "21' long left of target",
+      "missTotalFt": 21,
+      "missDist": "long",
+      "missLat": "left",
+      "sg": 0.24
+    },
+    {
+      "hole": 4,
+      "startYds": 153,
+      "startLie": "rough",
+      "club": "8i",
+      "endLie": "rough",
+      "toHoleFt": 45,
+      "missNote": "81' short left of target",
+      "missTotalFt": 81,
+      "missDist": "short",
+      "missLat": "left",
+      "sg": -0.17
+    },
+    {
+      "hole": 5,
+      "startYds": 217,
+      "startLie": "deep rough",
+      "club": "4Hy",
+      "endLie": "rough",
+      "toHoleYds": 44,
+      "missNote": "37y long right of target",
+      "missTotalYds": 37,
+      "missDist": "long",
+      "missLat": "right",
+      "sg": 0.09
+    },
+    {
+      "hole": 6,
+      "startYds": 161,
+      "startLie": "fairway",
+      "club": "9i",
+      "endLie": "green",
+      "toHoleFt": 29,
+      "missNote": "13' long left of target",
+      "missTotalFt": 13,
+      "missDist": "long",
+      "missLat": "left",
+      "sg": 0.19
+    },
+    {
+      "hole": 7,
+      "startYds": 202,
+      "startLie": "tee",
+      "club": "6i",
+      "endLie": "rough",
+      "toHoleFt": 75,
+      "missNote": "85' short right of target",
+      "missTotalFt": 85,
+      "missDist": "short",
+      "missLat": "right",
+      "sg": -0.32
+    },
+    {
+      "hole": 8,
+      "startYds": 154,
+      "startLie": "rough",
+      "club": "9i",
+      "endLie": "green",
+      "toHoleFt": 26,
+      "missNote": "24' short right of target",
+      "missTotalFt": 24,
+      "missDist": "short",
+      "missLat": "right",
+      "sg": 0.31
+    },
+    {
+      "hole": 9,
+      "startYds": 183,
+      "startLie": "recovery",
+      "club": null,
+      "endLie": "rough",
+      "toHoleYds": 133,
+      "missNote": "48' long left of target",
+      "missTotalFt": 48,
+      "missDist": "long",
+      "missLat": "left",
+      "sg": -0.03
+    },
+    {
+      "hole": 9,
+      "startYds": 133,
+      "startLie": "rough",
+      "club": null,
+      "endLie": "penalty",
+      "toHoleYds": 47,
+      "missNote": "49y short right of target",
+      "missTotalYds": 49,
+      "missDist": "short",
+      "missLat": "right",
+      "sg": -1.83,
+      "penalty": 1
+    },
+    {
+      "hole": 9,
+      "startYds": 100,
+      "startLie": "fairway",
+      "club": "GW",
+      "endLie": "rough",
+      "toHoleFt": 36,
+      "missNote": "35' short right of target",
+      "missTotalFt": 35,
+      "missDist": "short",
+      "missLat": "right",
+      "sg": -0.35
+    },
+    {
+      "hole": 10,
+      "startYds": 179,
+      "startLie": "fairway",
+      "club": "7i",
+      "endLie": "penalty",
+      "toHoleFt": 60,
+      "missNote": "65' short right of target",
+      "missTotalFt": 65,
+      "missDist": "short",
+      "missLat": "right",
+      "sg": -1.15,
+      "penalty": 1
+    },
+    {
+      "hole": 11,
+      "startYds": 119,
+      "startLie": "fairway",
+      "club": "GW",
+      "endLie": "green",
+      "toHoleFt": 26,
+      "missNote": "27' short left of target",
+      "missTotalFt": 27,
+      "missDist": "short",
+      "missLat": "left",
+      "sg": 0.09
+    },
+    {
+      "hole": 12,
+      "startYds": 165,
+      "startLie": "fairway",
+      "club": "8i",
+      "endLie": "green",
+      "toHoleFt": 31,
+      "missNote": "18' long left of target",
+      "missTotalFt": 18,
+      "missDist": "long",
+      "missLat": "left",
+      "sg": 0.2
+    },
+    {
+      "hole": 13,
+      "startYds": 183,
+      "startLie": "tee",
+      "club": "7i",
+      "endLie": "green",
+      "toHoleFt": 18,
+      "missNote": "25' short left of target",
+      "missTotalFt": 25,
+      "missDist": "short",
+      "missLat": "left",
+      "sg": 0.4
+    },
+    {
+      "hole": 14,
+      "startYds": 115,
+      "startLie": "fairway",
+      "club": "GW",
+      "endLie": "rough",
+      "toHoleFt": 32,
+      "missNote": "34' long left of target",
+      "missTotalFt": 34,
+      "missDist": "long",
+      "missLat": "left",
+      "sg": -0.28
+    },
+    {
+      "hole": 15,
+      "startYds": 165,
+      "startLie": "rough",
+      "club": "8i",
+      "endLie": "rough",
+      "toHoleFt": 56,
+      "missNote": "74' long left of target",
+      "missTotalFt": 74,
+      "missDist": "long",
+      "missLat": "left",
+      "sg": -0.2
+    },
+    {
+      "hole": 17,
+      "startYds": 139,
+      "startLie": "tee",
+      "club": "GW",
+      "endLie": "green",
+      "toHoleFt": 20,
+      "missNote": "19' short left of target",
+      "missTotalFt": 19,
+      "missDist": "short",
+      "missLat": "left",
+      "sg": 0.17
+    },
+    {
+      "hole": 18,
+      "startYds": 335,
+      "startLie": "rough",
+      "club": null,
+      "endLie": "rough",
+      "toHoleYds": 220,
+      "missNote": "39y short right of target",
+      "missTotalYds": 39,
+      "missDist": "short",
+      "missLat": "right",
+      "sg": -0.45
+    },
+    {
+      "hole": 18,
+      "startYds": 221,
+      "startLie": "rough",
+      "club": "5i",
+      "endLie": "rough",
+      "toHoleYds": 48,
+      "missNote": "40y short right of target",
+      "missTotalYds": 40,
+      "missDist": "short",
+      "missLat": "right",
+      "sg": -0.26
+    }
+  ],
+  "shortGame": [
+    {
+      "hole": 4,
+      "startYds": 15,
+      "startLie": "rough",
+      "club": "LW",
+      "endLie": "rough",
+      "toHoleFt": 34,
+      "missNote": "short right of hole",
+      "sg": -0.88
+    },
+    {
+      "hole": 4,
+      "startYds": 11,
+      "startLie": "rough",
+      "club": "LW",
+      "endLie": "rough",
+      "toHoleFt": 29,
+      "missNote": "short left of hole",
+      "sg": -0.96
+    },
+    {
+      "hole": 4,
+      "startYds": 10,
+      "startLie": "rough",
+      "club": "LW",
+      "endLie": "green",
+      "toHoleFt": 11,
+      "missNote": "long right of hole",
+      "sg": -0.41
+    },
+    {
+      "hole": 5,
+      "startYds": 44,
+      "startLie": "rough",
+      "club": "LW",
+      "endLie": "rough",
+      "toHoleFt": 79,
+      "missNote": "short right of hole",
+      "sg": -0.79
+    },
+    {
+      "hole": 5,
+      "startYds": 26,
+      "startLie": "rough",
+      "club": "LW",
+      "endLie": "green",
+      "toHoleFt": 19,
+      "missNote": "short left of hole",
+      "sg": -0.21
+    },
+    {
+      "hole": 7,
+      "startYds": 25,
+      "startLie": "rough",
+      "club": "LW",
+      "endLie": "green",
+      "toHoleFt": 13,
+      "missNote": "short left of hole",
+      "sg": -0.1
+    },
+    {
+      "hole": 9,
+      "startYds": 12,
+      "startLie": "rough",
+      "club": "LW",
+      "endLie": "green",
+      "toHoleFt": 4,
+      "missNote": "short right of hole",
+      "sg": 0.19
+    },
+    {
+      "hole": 10,
+      "startYds": 16,
+      "startLie": "rough",
+      "club": "LW",
+      "endLie": "green",
+      "toHoleFt": 3,
+      "missNote": "long right of hole",
+      "sg": 0.43
+    },
+    {
+      "hole": 14,
+      "startYds": 11,
+      "startLie": "rough",
+      "club": "LW",
+      "endLie": "green",
+      "toHoleFt": 2,
+      "missNote": "long right of hole",
+      "sg": 0.34
+    },
+    {
+      "hole": 15,
+      "startYds": 19,
+      "startLie": "rough",
+      "club": "LW",
+      "endLie": "green",
+      "toHoleFt": 7,
+      "missNote": "long left of hole",
+      "sg": 0.05
+    },
+    {
+      "hole": 16,
+      "startYds": 20,
+      "startLie": "rough",
+      "club": "LW",
+      "endLie": "green",
+      "toHoleFt": 2,
+      "missNote": "long left of hole",
+      "sg": 0.58
+    },
+    {
+      "hole": 18,
+      "startYds": 49,
+      "startLie": "rough",
+      "club": "LW",
+      "endLie": "green",
+      "toHoleFt": 21,
+      "missNote": "short left of hole",
+      "sg": 0.02
+    }
+  ],
+  "putting": [
+    {
+      "hole": 1,
+      "startFt": 20,
+      "result": "make",
+      "sg": 0.92
+    },
+    {
+      "hole": 2,
+      "startFt": 20,
+      "result": "make",
+      "sg": 0.92
+    },
+    {
+      "hole": 3,
+      "startFt": 25,
+      "result": "miss",
+      "missNote": "long right of hole",
+      "sg": -0.04
+    },
+    {
+      "hole": 3,
+      "startFt": 1.83,
+      "result": "make",
+      "sg": 0.02
+    },
+    {
+      "hole": 4,
+      "startFt": 11,
+      "result": "make",
+      "sg": 0.73
+    },
+    {
+      "hole": 5,
+      "startFt": 19,
+      "result": "miss",
+      "missNote": "long right of hole",
+      "sg": -0.17
+    },
+    {
+      "hole": 5,
+      "startFt": 2.5,
+      "result": "make",
+      "sg": 0.08
+    },
+    {
+      "hole": 6,
+      "startFt": 30,
+      "result": "miss",
+      "missNote": "short left of hole",
+      "sg": -0.3
+    },
+    {
+      "hole": 6,
+      "startFt": 5.17,
+      "result": "miss",
+      "missNote": "short right of hole",
+      "sg": -0.69
+    },
+    {
+      "hole": 6,
+      "startFt": 1.67,
+      "result": "make",
+      "sg": 0.02
+    },
+    {
+      "hole": 7,
+      "startFt": 13,
+      "result": "miss",
+      "missNote": "short left of hole",
+      "sg": -0.21
+    },
+    {
+      "hole": 7,
+      "startFt": 1.0,
+      "result": "make",
+      "sg": 0.0
+    },
+    {
+      "hole": 8,
+      "startFt": 27,
+      "result": "miss",
+      "missNote": "short left of hole",
+      "sg": 0.0
+    },
+    {
+      "hole": 8,
+      "startFt": 0.67,
+      "result": "make",
+      "sg": 0.0
+    },
+    {
+      "hole": 9,
+      "startFt": 4.25,
+      "result": "make",
+      "sg": 0.21
+    },
+    {
+      "hole": 10,
+      "startFt": 3.08,
+      "result": "miss",
+      "missNote": "short right of hole",
+      "sg": -0.92
+    },
+    {
+      "hole": 10,
+      "startFt": 0.83,
+      "result": "make",
+      "sg": 0.0
+    },
+    {
+      "hole": 11,
+      "startFt": 27,
+      "result": "miss",
+      "missNote": "short left of hole",
+      "sg": -0.02
+    },
+    {
+      "hole": 11,
+      "startFt": 1.67,
+      "result": "make",
+      "sg": 0.02
+    },
+    {
+      "hole": 12,
+      "startFt": 32,
+      "result": "miss",
+      "missNote": "long right of hole",
+      "sg": -0.03
+    },
+    {
+      "hole": 12,
+      "startFt": 2.58,
+      "result": "make",
+      "sg": 0.08
+    },
+    {
+      "hole": 13,
+      "startFt": 18,
+      "result": "miss",
+      "missNote": "short right of hole",
+      "sg": -0.13
+    },
+    {
+      "hole": 13,
+      "startFt": 1.67,
+      "result": "make",
+      "sg": 0.02
+    },
+    {
+      "hole": 14,
+      "startFt": 1.75,
+      "result": "make",
+      "sg": 0.02
+    },
+    {
+      "hole": 15,
+      "startFt": 7.33,
+      "result": "miss",
+      "missNote": "short right of hole",
+      "sg": -0.47
+    },
+    {
+      "hole": 15,
+      "startFt": 1.25,
+      "result": "make",
+      "sg": 0.0
+    },
+    {
+      "hole": 16,
+      "startFt": 2.0,
+      "result": "make",
+      "sg": 0.02
+    },
+    {
+      "hole": 17,
+      "startFt": 20,
+      "result": "miss",
+      "missNote": "short right of hole",
+      "sg": -0.08
+    },
+    {
+      "hole": 17,
+      "startFt": 0.75,
+      "result": "make",
+      "sg": 0.0
+    },
+    {
+      "hole": 18,
+      "startFt": 21,
+      "result": "miss",
+      "missNote": "short left of hole",
+      "sg": -0.09
+    },
+    {
+      "hole": 18,
+      "startFt": 2.33,
+      "result": "make",
+      "sg": 0.02
+    }
+  ]
+}

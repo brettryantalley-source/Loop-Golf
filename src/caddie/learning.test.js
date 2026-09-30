@@ -15,7 +15,7 @@ import { makeSamples } from "./random.js";
 import { bareShotRecord, closeOutShot, quickLog, detailLog, autoShotRecord, shotIntent } from "./shotlog.js";
 import {
   familyOf, withinRound, recencyWeight, shrink, priorFor, applyShotLog, entryWithOverlay,
-  lieOverrideAt, aggressionScorecard, clubGapYds, fitEll80, entryKey,
+  lieOverrideAt, aggressionScorecard, clubGapYds, fitEll80, entryKey, tendencies, missSignsOf,
 } from "./learning.js";
 
 const K = DEFAULT_CONFIG.SHRINK_K;
@@ -517,4 +517,70 @@ test("auto records: learned like quick ones when they have a derived result; ung
   assert.doesNotThrow(() => withinRound([none], DEFAULT_CONFIG, { P }));
   // §5.7 the line played is the derived one
   assert.equal(aggressionScorecard(short, { rA: Array(18).fill(4) }).safe.n, 3);
+});
+
+/* ---------- v22.16: Shot Pattern imports (scripts/import-shotpattern.mjs) ---------- */
+
+import fs from "node:fs";
+const SP = JSON.parse(fs.readFileSync(new URL("../shotpattern.json", import.meta.url), "utf8"));
+// the Ironwood 2026-09-28 round: the counts below are that round's, whatever else data/extracted/rounds holds
+const spRecs = (rid = "rSP") => SP.rounds.find((r) => r.key === "2026-09-28-ironwood").records.map((r) => ({ ...r, roundId: rid }));
+
+test("Shot Pattern records: null miss components never enter applyShotLog, withinRound or the aggression scorecard", () => {
+  const recs = spRecs();
+  assert.ok(recs.length > 0);
+  // every non-putt record has at least one null component
+  assert.ok(recs.filter((r) => r.shotType !== "putt").every((r) => r.derived.distanceMissYds === null));
+  // §5.2: no overlay, even with the round weighted as the most recent one
+  assert.deepEqual(applyShotLog(P, recs, { roundIndexById: { rSP: 1 } }, DEFAULT_CONFIG), {});
+  // the same round with Loop records added: the overlay is exactly the Loop-only one
+  const loop = [1, 2, 3].map((h) => shot({ round: "rSP", hole: h, club: "7i", dist: -12, lat: 4 }));
+  assert.deepEqual(applyShotLog(P, [...loop, ...recs], { roundIndexById: { rSP: 1 } }, DEFAULT_CONFIG),
+    applyShotLog(P, loop, { roundIndexById: { rSP: 1 } }, DEFAULT_CONFIG));
+  // §5.5: no nudge, no flag, no correction
+  const w = withinRound(recs, DEFAULT_CONFIG, { P, lie: "fairway" });
+  assert.deepEqual(w.adjust, { distYds: {}, aimYds: {} });
+  assert.equal(w.nudges.length, 0); assert.equal(w.flags.length, 0); assert.equal(w.corrections.length, 0);
+  // §5.7: never counted, even if a line were somehow on them
+  const sc = aggressionScorecard(recs.map((r) => ({ ...r, linePlayed: "own" })), { rSP: Array(18).fill(4) });
+  assert.equal(sc.own.n + sc.safe.n + sc.aggressive.n, 0);
+  assert.equal(aggressionScorecard(recs, { rSP: Array(18).fill(4) }).own.n, 0);
+});
+
+test("tendencies: signs from Shot Pattern words and drives, Loop yards, putts; big misses only where known", () => {
+  const t = tendencies(spRecs());
+  // Ironwood 2026-09-28 driving with the 2i: 3, 4, 6, 8, 11, 13, 18 → L L L L R L R(0 offline → neither)
+  const i2 = t["2i"];
+  assert.equal(i2.nLat, 7);
+  assert.equal(i2.leftPct, 71.4);           // 5 of 7 left
+  assert.equal(i2.rightPct, 14.3);          // 11 right; 18 was 0 yds offline
+  assert.equal(i2.nDist, 0); assert.equal(i2.shortPct, null);
+  assert.equal(i2.nBig, 7); assert.equal(i2.bigMissPct, 42.9);   // 47 (H6), 41 (H11), 31 (H13) > 20
+  // approach 8i: H2 short-right 57', H7 long-left 45', H13 long-left 41' — magnitudes 19, 15, 13.7 yds ≤ 20 → known not big
+  const i8 = t["8i"];
+  assert.equal(i8.n, 3); assert.equal(i8.leftPct, 66.7); assert.equal(i8.longPct, 66.7);
+  assert.equal(i8.nBig, 3); assert.equal(i8.bigMissPct, 0);
+  // 5i: H1 approach 21' (7 yds) + H9 70' (23.3 yds, lateral unknown → nBig excludes it) + H15 42' + the H12 tee shot 1 yd right
+  const i5 = t["5i"];
+  assert.equal(i5.n, 4); assert.equal(i5.nBig, 3); assert.equal(i5.bigMissPct, 0);
+  // recovery shots and Unknown Club rows are left out
+  assert.equal(t.null, undefined);
+  assert.ok(Object.values(t).every((x) => x.n > 0));
+  // putts: 36 putting rows + 2 putter chips; made putts read 0 / 0
+  assert.equal(t.Putter.n, 38);
+  assert.ok(t.Putter.shortPct > 0 && t.Putter.longPct > 0);
+
+  // Loop's own records by the yards; skipped ones never count
+  const own = [
+    shot({ hole: 1, club: "PW", dist: -5, lat: -25 }), shot({ hole: 2, club: "PW", dist: 3, lat: 2 }),
+    { ...shot({ hole: 3, club: "PW", dist: 9, lat: 30 }), logged: "skipped" },
+  ];
+  const pw = tendencies(own).PW;
+  assert.deepEqual({ n: pw.n, leftPct: pw.leftPct, rightPct: pw.rightPct, shortPct: pw.shortPct, longPct: pw.longPct, bigMissPct: pw.bigMissPct },
+    { n: 2, leftPct: 50, rightPct: 50, shortPct: 50, longPct: 50, bigMissPct: 50 });
+  // v22.15 derived names are read too
+  assert.deepEqual(missSignsOf({ club: "7i", derived: { distMissYds: -9, latMissYds: 21 } }), { lat: 1, dist: -1, big: true });
+  assert.deepEqual(missSignsOf({ club: "7i", derived: { missTotalYds: 30, missDistSign: 1, missLatSign: -1 } }), { lat: -1, dist: 1, big: null });
+  assert.deepEqual(tendencies([]), {});
+  assert.deepEqual(Object.keys(tendencies(spRecs(), { shotTypes: ["putt"] })), ["Putter"]);
 });

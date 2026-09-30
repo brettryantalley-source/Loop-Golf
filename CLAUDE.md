@@ -43,6 +43,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
   - `overlay.js` — pure geometry/render model for the map overlay (camera, ellipse projection, fallback map, map-state selection); no DOM.
   - `profile.test.js` — tests for `profile.js`'s overlay/fallback resolution chain.
 - `src/profile.json` — v2, BUILT (never hand-edited) by `scripts/build-profile.mjs` from `data/extracted/`; contract is `docs/PROFILE-v2.md`.
+- `src/shotpattern.json` — GENERATED (never hand-edited) by `scripts/import-shotpattern.mjs` (`npm run import:shots`, `--check`) from `data/extracted/rounds/*/shots.json`: Shot Pattern's per-round Shot Lists as Loop shot records, seeded into the shot log on the phone (v22.16, D66–D69). `src/historyFix.js` — rewrites a stored round from a local card and recomputes the ghost by calling the frozen engine (D70).
 - `scripts/build-profile.mjs` — builds `src/profile.json` from `data/extracted/*`; `--check` exits non-zero if the committed file differs from a fresh build. Run via `npm run build:profile`.
 - `docs/SPEC-caddie.md`, `docs/SPEC-caddie-UI.md` — the locked caddie spec and its UI addendum. `docs/PROFILE-v2.md` — the profile schema/build contract. `docs/DECISIONS-caddie.md` — calls made overnight that override the spec where they disagree; read before touching the caddie. `docs/FIELD-TEST-v22.md` — the on-course checklist for the caddie's first real round.
 - `package.json` — build deps (the Firebase SDK, MapLibre for `vendor/`) and `npm test` (node's test runner, globbing `src/**/*.test.js` so `src/caddie/*.test.js` runs too), plus `npm run build:profile`. React still ships as an inlined UMD file. `node_modules/` is gitignored; run `npm install` in a fresh clone before `./build.sh`.
@@ -53,7 +54,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 3. On any deploy that ships user-facing changes, bump BOTH version markers together and keep the numbers in sync:
    - the cache name in `sw.js` (e.g. `loop-golf-v4` -> `-v5`). REQUIRED — without it, Brett's installed PWA keeps serving the old cached bundle.
    - the on-screen build tag: `const BUILD = "vN · <date>"` near the top of `src/app.jsx` (just after the icon definitions). Keep the existing `"vN · <date>"` format (e.g. `"v5 · Aug 2"`) and match `vN` to the new cache version.
-   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.15 on branch `claude/bold-pascal-2s136s`** (PR #11 open) / **v22.13 on `main`**. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
+   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.16 on branch `claude/bold-pascal-2s136s`** (PR #11 open) / **v22.13 on `main`**. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
 4. Show Brett a diff.
 5. WAIT for his explicit "go" before git commit / git push. Never push without approval.
 6. Pages redeploys the same URL automatically (~1 min); Brett fully closes and reopens the app to load the new service worker.
@@ -179,7 +180,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
 - Handoffs live in `docs/`; `docs/README.md` says which is current. A thread that finishes a phase writes or updates its handoff, and the next thread starts by reading it.
 - Every thread starts with: `git status` (must be clean), `git log --oneline -3`, `npm test`. Every thread ends with its work committed and the push command handed to Brett.
 - `computeGhost` / `evalMatch` byte-identical check before every commit, as before.
-- `npm test` runs 252 tests as of v22.15 (160 at the end of the Sep 28–29 caddie build (T1–T42 across S1–S5, named
+- `npm test` runs 268 tests as of v22.16 (160 at the end of the Sep 28–29 caddie build (T1–T42 across S1–S5, named
   as in `docs/SPEC-caddie.md` §9 and `docs/SPEC-caddie-UI.md` §12, plus units); it globs
   `src/**/*.test.js`, so a later agent adding files under `src/caddie/` picks up new tests
   automatically. If a thread after this one sees a different count, an app-side agent has added or
@@ -191,9 +192,10 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   followed by v22.3–v22.5 (PR #6) and v22.6–v22.10 (PR #7: temperature, 27-hole picker, Setup
   fixes, seed cards, the snapping score strip, the caddie-brain engine integration). `main` is
   v22.13 (PR #8 marked-green mode + pin; PR #9 Ironwood fixes D51–D55; PR #10 sliders D56–D57).
-  v22.14 (pencil scorecard, D58) and v22.15 (shot log v2 — `docs/SPEC-shotlog-v2.md`, D59–D65:
-  test mode with fake GPS by tap, pre-shot intent on the map, GPS-derived results, the hole Review
-  sheet, Shots list, manual On the green) are on `claude/bold-pascal-2s136s` in PR #11. Read `docs/HANDOFF-NEXT.md` first.
+  v22.14 (pencil scorecard, D58), v22.15 (shot log v2 — `docs/SPEC-shotlog-v2.md`, D59–D65: test mode
+  with fake GPS by tap, pre-shot intent on the map, GPS-derived results, the hole Review sheet, Shots
+  list, manual On the green) and v22.16 (Shot Pattern importer + history card fix, D66–D71) are on
+  `claude/bold-pascal-2s136s` in PR #11. Read `docs/HANDOFF-NEXT.md` first.
 - `Start round` opens the **CaddieScreen** directly at hole 1, pre-tee; `‹ Card` goes to the
   scorecard, whose hole-nav row gains a `Caddie` control. The caddie needs GPS (permission prompt
   on the first `I'm on the tee`), the course's OSM geometry (fetched on Setup when a course is
@@ -213,10 +215,13 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   → `Fake my location`; every fix becomes a map tap through the real code path.
 - Spec: `docs/SPEC-caddie.md` (locked) + `docs/SPEC-caddie-UI.md` (the UI addendum, §8 states / §13
   flags). Decisions made along the way that override the spec live in `docs/DECISIONS-caddie.md`
-  (D1–D65) — read it, don't copy it into other docs.
+  (D1–D71) — read it, don't copy it into other docs.
 - Refresh workflow (spec §5.8): after a round, export the shot log or a Shot Pattern export →
   hand it to the Golf project chat → it lands under `data/extracted/` → `npm run build:profile`
-  regenerates `src/profile.json`.
+  regenerates `src/profile.json`. **Per-round shots (v22.16):** screenshots or a screen recording of
+  Shot Pattern's four Shot List tabs → transcribed to `data/extracted/rounds/{date}-{course}/shots.json`
+  (schema 1; the two existing files are the contract) → `npm run import:shots` → the records ride the
+  bundle and seed the phone's shot log under the matching History round.
 - `src/profile.json` is v2 and GENERATED. Never hand-edit it: edit `data/extracted/` or
   `scripts/build-profile.mjs` and rebuild with `npm run build:profile`. Contract: `docs/PROFILE-v2.md`.
 - Same hard rules apply here as everywhere else in this file: show a diff, wait for Brett's "go",

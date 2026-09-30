@@ -603,6 +603,93 @@ export function importShots(storage, json) {
   return { added, updated, unchanged, total: incoming.length };
 }
 
+/* ---------- v22.16 Shot Pattern imports (scripts/import-shotpattern.mjs → src/shotpattern.json) ---------- */
+
+export const SHOTPATTERN_SOURCE = "shotpattern";
+
+/* words that name the kind of place rather than the place: "Ironwood" ↔ "Ironwood Golf Club" */
+const COURSE_NOISE = new Set(["golf", "club", "course", "country", "cc", "gc", "the", "links", "and", "at", "of"]);
+function courseWords(name) {
+  return String(name || "").toLowerCase().replace(/&/g, " ").split(/[^a-z0-9]+/).filter((w) => w && !COURSE_NOISE.has(w));
+}
+
+/** Two course names name the same club when one's distinctive words are all in the other's. */
+export function sameCourse(a, b) {
+  const x = courseWords(a), y = courseWords(b);
+  if (!x.length || !y.length) return false;
+  const [small, big] = x.length <= y.length ? [x, y] : [y, x];
+  return small.every((w) => big.includes(w));
+}
+
+/* A history date (ISO, UTC) is the same day as `ymd` in the phone's own calendar or in UTC. */
+function sameDay(iso, ymd) {
+  if (!iso || !ymd) return false;
+  if (String(iso).slice(0, 10) === ymd) return true;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return false;
+  const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return local === ymd;
+}
+
+/**
+ * The finished Loop round a Shot Pattern round was: same date and a matching course name
+ * (sameCourse). Several on the day → the one whose total matches Shot Pattern's score, else the
+ * first. null when none.
+ */
+export function matchHistoryRound(round, history) {
+  if (!round) return null;
+  const hits = (history || []).filter((r) => r && r.id && !r.deleted && sameDay(r.date, round.date) && sameCourse(r.course, round.course));
+  if (!hits.length) return null;
+  return hits.find((r) => Number.isFinite(round.score) && r.yourTotal === round.score) || hits[0];
+}
+
+/** The roundId a Shot Pattern round's records file under: the matching Loop round's id, else `sp:{key}`. */
+export function spRoundIdFor(round, history) {
+  const hit = matchHistoryRound(round, history);
+  return hit ? hit.id : `sp:${round.key}`;
+}
+
+/**
+ * Merges the bundled Shot Pattern records into `bogeyman-matches:shots:v1` by id. Idempotent:
+ * a record whose id is already stored is never overwritten, and nothing is ever deleted. The one
+ * move it makes: a record still filed under its fallback `sp:{key}` (no Loop round matched when it
+ * was seeded — e.g. a fresh phone before the cloud history arrived) moves, content unchanged, to
+ * the Loop round that now matches. Writes storage only when something changed.
+ * → { added, moved, kept }.
+ */
+export function seedShotPatternRecords(storage, bundle, history = []) {
+  const res = { added: 0, moved: 0, kept: 0 };
+  if (!storage || !bundle || !Array.isArray(bundle.rounds)) return res;
+  const all = readShotsMap(storage);
+  const where = new Map();
+  for (const [rid, list] of Object.entries(all)) if (Array.isArray(list)) list.forEach((r) => { if (r && r.id) where.set(r.id, rid); });
+  for (const round of bundle.rounds) {
+    if (!round || !Array.isArray(round.records)) continue;
+    const rid = spRoundIdFor(round, history);
+    const fallback = `sp:${round.key}`;
+    for (const rec of round.records) {
+      if (!rec || !rec.id) continue;
+      const at = where.get(rec.id);
+      if (at == null) {
+        (all[rid] ||= []).push({ ...rec, roundId: rid });
+        where.set(rec.id, rid);
+        res.added++;
+      } else if (at === fallback && rid !== fallback) {
+        const list = all[at];
+        const i = list.findIndex((r) => r && r.id === rec.id);
+        const cur = list[i];
+        list.splice(i, 1);
+        if (!list.length) delete all[at];
+        (all[rid] ||= []).push({ ...cur, roundId: rid });
+        where.set(rec.id, rid);
+        res.moved++;
+      } else res.kept++;
+    }
+  }
+  if (res.added || res.moved) writeShotsMap(storage, all);
+  return res;
+}
+
 /* ---------- miss-cause aggregation ---------- */
 
 /** §4.4 / T19 — the filter every miss-cause aggregate must go through: skipped shots excluded. */
