@@ -11,7 +11,91 @@
       "Ridge"
     ],
     "tee": null,
-    "note": "Transcribed Sep 30 from Shot Pattern's per-round Shot List screenshots (screens/). Holes 1–9 = Lakes, 10–18 = Ridge. Feet → yards at import (÷3). 'target' = Shot Pattern's target; 'hole' = the cup. Direction words are Shot Pattern's: short/long along the line, left/right across it. Approach (1–18) and Short Game (1–16, the list ends at 16) are complete. Still missing: Driving (all) and Putting for holes 10–12."
+    "note": "Transcribed Sep 30 from Shot Pattern's per-round screenshots (screens/). Holes 1–9 = Lakes, 10–18 = Ridge. Feet → yards at import (÷3). Approach 'target' = Shot Pattern's target; short game / putting 'hole' = the cup. Direction words are Shot Pattern's. Driving (14 tee shots on the par 4s/5s), Approach (1–18) and Short Game (list ends at 16) are complete; Putting is complete except holes 10–12 (by the scores: 2 putts each). yardsPerHoleSP / yardsSP are Shot Pattern's tee data (6,713), not the printed Blue card (6,497) in src/localCards.js.",
+    "shotPatternTitle": "Lakes & Ridge - Ironwood Golf Club",
+    "score": 81,
+    "toPar": 9,
+    "out": 41,
+    "in": 40,
+    "ratingSlope": [
+      72.9,
+      138
+    ],
+    "yardsSP": 6713,
+    "mode": "Casual",
+    "sg": {
+      "total": -6.0,
+      "driving": -1.1,
+      "approach": -0.2,
+      "shortGame": -0.5,
+      "putting": -4.2,
+      "vs": "scratch"
+    },
+    "pars": [
+      4,
+      4,
+      4,
+      4,
+      5,
+      4,
+      3,
+      5,
+      3,
+      4,
+      4,
+      4,
+      4,
+      3,
+      5,
+      3,
+      5,
+      4
+    ],
+    "scores": [
+      4,
+      4,
+      4,
+      4,
+      4,
+      7,
+      4,
+      6,
+      4,
+      5,
+      4,
+      4,
+      5,
+      4,
+      5,
+      4,
+      5,
+      4
+    ],
+    "yardsPerHoleSP": [
+      438,
+      435,
+      378,
+      363,
+      493,
+      425,
+      174,
+      535,
+      236,
+      370,
+      353,
+      390,
+      414,
+      149,
+      515,
+      161,
+      531,
+      353
+    ],
+    "scoring": {
+      "par3Avg": 4.0,
+      "par4Avg": 4.5,
+      "par5Avg": 5.0
+    }
   },
   "units": {
     "startDistance": "yards",
@@ -553,5 +637,132 @@
       "sg": 0.33
     }
   ],
-  "driving": []
+  "driving": [
+    {
+      "hole": 1,
+      "club": "Dr",
+      "yds": 246,
+      "endLie": "deep rough",
+      "offlineYds": 59,
+      "side": "right",
+      "sg": -0.58
+    },
+    {
+      "hole": 2,
+      "club": "4Hy",
+      "yds": 220,
+      "endLie": "rough",
+      "offlineYds": 22,
+      "side": "right",
+      "sg": -0.04
+    },
+    {
+      "hole": 3,
+      "club": "2i",
+      "yds": 260,
+      "endLie": "fairway",
+      "offlineYds": 10,
+      "side": "left",
+      "sg": 0.13
+    },
+    {
+      "hole": 4,
+      "club": "2i",
+      "yds": 277,
+      "endLie": "fairway",
+      "offlineYds": 3,
+      "side": "left",
+      "sg": 0.24
+    },
+    {
+      "hole": 5,
+      "club": "Dr",
+      "yds": 282,
+      "endLie": "fairway",
+      "offlineYds": 28,
+      "side": "right",
+      "sg": 0.35
+    },
+    {
+      "hole": 6,
+      "club": "2i",
+      "yds": 264,
+      "endLie": "penalty",
+      "offlineYds": 47,
+      "side": "left",
+      "sg": -0.86
+    },
+    {
+      "hole": 8,
+      "club": "2i",
+      "yds": 195,
+      "endLie": "rough",
+      "offlineYds": 19,
+      "side": "left",
+      "sg": -0.19
+    },
+    {
+      "hole": 10,
+      "club": "2Hy",
+      "yds": 245,
+      "endLie": "recovery",
+      "offlineYds": 30,
+      "side": "left",
+      "sg": -0.86
+    },
+    {
+      "hole": 11,
+      "club": "2i",
+      "yds": 260,
+      "endLie": "rough",
+      "offlineYds": 41,
+      "side": "right",
+      "sg": 0.08
+    },
+    {
+      "hole": 12,
+      "club": "5i",
+      "yds": 198,
+      "endLie": "fairway",
+      "offlineYds": 1,
+      "side": "right",
+      "sg": -0.04
+    },
+    {
+      "hole": 13,
+      "club": "2i",
+      "yds": 245,
+      "endLie": "rough",
+      "offlineYds": 31,
+      "side": "left",
+      "sg": -0.03
+    },
+    {
+      "hole": 15,
+      "club": "Dr",
+      "yds": 298,
+      "endLie": "rough",
+      "offlineYds": 18,
+      "side": "right",
+      "sg": 0.38
+    },
+    {
+      "hole": 17,
+      "club": "Dr",
+      "yds": 287,
+      "endLie": "fairway",
+      "offlineYds": 9,
+      "side": "right",
+      "sg": 0.28
+    },
+    {
+      "hole": 18,
+      "club": "2i",
+      "yds": 231,
+      "endLie": "fairway",
+      "offlineYds": 0,
+      "side": "right",
+      "sg": 0.05
+    }
+  ]
 }
