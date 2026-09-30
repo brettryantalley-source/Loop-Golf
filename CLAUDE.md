@@ -220,7 +220,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   hand it to the Golf project chat → it lands under `data/extracted/` → `npm run build:profile`
   regenerates `src/profile.json`. **Per-round shots (v22.16):** screenshots or a screen recording of
   Shot Pattern's four Shot List tabs → transcribed to `data/extracted/rounds/{date}-{course}/shots.json`
-  (schema 1; the two existing files are the contract) → `npm run import:shots` → the records ride the
+  (schema 1; the five existing files are the contract) → `npm run import:shots` → the records ride the
   bundle and seed the phone's shot log under the matching History round.
 - `src/profile.json` is v2 and GENERATED. Never hand-edit it: edit `data/extracted/` or
   `scripts/build-profile.mjs` and rebuild with `npm run build:profile`. Contract: `docs/PROFILE-v2.md`.

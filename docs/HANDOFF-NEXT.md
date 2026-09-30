@@ -15,8 +15,9 @@ Live at https://brettryantalley-source.github.io/Loop-Golf/ — **`main` is v22.
 Ironwood field-test fixes D51–D55; PR #8 marked-green mode + pin; PR #7 v22.6–v22.10; PR #6
 v22.3–v22.5; PR #5 the caddie). `main` also has v22.13 (PR #10, sliders D56–D57). Branch **`claude/bold-pascal-2s136s`** carries
 **v22.14** (pencil-only score marks, D58), **v22.15** (shot log v2, `docs/SPEC-shotlog-v2.md`,
-D59–D65) and **v22.16** (Shot Pattern importer + history card fix, D66–D71; two rounds imported) in
-PR #11. Queued after it: v22.17 aim warning (re-run the dispersion sim at Brett's target and
+D59–D65) and **v22.16** (Shot Pattern importer + history card fix, D66–D71) in PR #11, with five
+Shot Pattern rounds imported (Ironwood 9/28, Hampton 9/20, Lake Arrowhead 9/12, Beachwood 9/2, Chicopee Woods 8/15:
+400 records in `src/shotpattern.json`; five of Brett's ten still to transcribe as recordings arrive). Queued after it: v22.17 aim warning (re-run the dispersion sim at Brett's target and
 line; warn when trouble is 10+ points worse than the recommendation or his club bias leaves the green;
 n ≥ 10), and v22.18 the breadcrumb trail + stops (`SPEC-shotlog-v2.md` §10). To add a Shot Pattern round: transcribe its
 Shot Lists into `data/extracted/rounds/{date}-{course}/shots.json`, run `npm run import:shots`, rebuild.
