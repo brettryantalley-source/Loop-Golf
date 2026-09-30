@@ -108,6 +108,18 @@ test("sameShot: default club and line come from the single (safe) option", () =>
   assert.equal(rec.linePlayed, "safe");
 });
 
+test("v22.13 every slider field opens at its centre stop (contact 0, strike center, intendedShape straight, startLine on, curve 0)", () => {
+  const rec = newShotRecord({ club: "7i", start: { frame: { x: 0, y: 0 } } });   // no history, nothing supplied
+  assert.equal(rec.contact, 0);
+  assert.equal(rec.strike, "center");
+  assert.equal(rec.intendedShape, "straight");
+  assert.equal(rec.startLine, "on");
+  assert.equal(rec.curve, 0);
+  // the same through the long card's path: a record built for the card carries the centre defaults too
+  const card = newShotRecord({ club: "7i", recommendation: fakeRecommendation(), history: [] });
+  assert.deepEqual([card.contact, card.strike, card.intendedShape, card.startLine, card.curve], [0, "center", "straight", "on", 0]);
+});
+
 test("intendedShape defaults to the most common prior shape for that club", () => {
   const history = [
     { club: "5i", intendedShape: "fade" },
