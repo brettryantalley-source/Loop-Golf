@@ -65,7 +65,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.13 · Sep 30";
+const BUILD = "v22.14 · Sep 30";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -1064,20 +1064,19 @@ function scoreOptions(par, keep) {
 }
 
 /* A number written in pencil, with the shapes a scorecard puts round it (PencilMark's
-   shapes, at chooser size). One tap makes it pending (the soft graphite disc); a second
-   commits. No pointer handlers: the strip scrolls natively, so a swipe never taps. */
+   shapes, at chooser size), all in pencil (v22.14). One tap makes it pending (a pencilled X
+   through the cell); a second commits. No pointer handlers: the strip scrolls natively, so a swipe never taps. */
 function ScoreChoice({ v, par, pending, onTap }) {
   const d = v - par;
-  const col = markColor(d);
   const S = 52;
   return (
     <button onClick={() => onTap(v)} data-score={v}
       aria-label={`${scoreName(v, par)}, ${v}${pending ? ", tap again to confirm" : ""}`}
       style={{ position: "relative", flexShrink: 0, width: S, height: S, padding: 0, border: "none", background: "transparent",
-        fontFamily: F.handNum, fontSize: 25, color: col, filter: "url(#pencil)", userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent" }}>
-      {pending && <span style={{ position: "absolute", left: 6, top: 6, width: S - 12, height: S - 12, borderRadius: (S - 12) / 2, background: T.shade, filter: "url(#soft)" }} />}
-      <MarkShapes d={d} size={S} color={col} sw={1.4} font={25} digits={String(v).length} />
+        fontFamily: F.handNum, fontSize: 25, color: T.pencil, filter: "url(#pencil)", userSelect: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent" }}>
+      <MarkShapes d={d} size={S} color={T.pencil} sw={1.4} font={25} digits={String(v).length} />
       <span style={{ position: "relative" }}>{v}</span>
+      {pending && <PencilX size={S} seed={v} filtered={false} />}
     </button>
   );
 }
@@ -1279,8 +1278,8 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
             <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 42,
               borderRight: `1px solid ${k === 2 ? T.ink : T.hair}`, borderBottom: rule }}>
               <span style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36 }}>
-                {showPend && <span style={{ position: "absolute", left: 5, top: 5, width: 26, height: 26, borderRadius: 13, background: T.shade, filter: "url(#soft)" }} />}
                 {val != null && <PencilMark score={val} par={course.holes[i].par} size={36} font={21} />}
+                {showPend && <PencilX size={36} seed={pend} />}
               </span>
             </div>
           );
@@ -1301,8 +1300,9 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
             <span style={caps(9, 400, "0.14em")}>You</span>
             <span style={{ width: 44, height: 44, border: rule, background: T.yellow, display: "flex", alignItems: "center", justifyContent: "center",
-              ...written(24, (scores[hole] ?? pend) > par + 1 ? T.double : (scores[hole] ?? pend) > par ? T.bogey : T.pencil) }}>
+              position: "relative", ...written(24) }}>
               {scores[hole] != null ? scores[hole] : pend != null ? pend : ""}
+              {pend != null && scores[hole] == null && <PencilX size={44} seed={pend} filtered={false} />}
             </span>
           </div>
         </div>
@@ -2358,10 +2358,11 @@ function LeaveSheet({ hole, onStay, onLeave }) {
    small pen-lift gap in each. The outer shape is the same size whatever the count; extra ones
    nest inside it, closing up (and thinning) as they go so the numeral in the middle stays
    clear — at size 22 and 52 the first two land where the v21 ring/box pair did. */
-const markColor = (d) => d < 0 ? T.ink : d === 0 ? T.black : d === 1 ? T.bogey : T.double;
+/* v22.14 — no result colouring on a score: every numeral, ring and box is pencil. The shapes
+   alone say under or over. (Win / loss colour lives on the match edge marks, not on scores.) */
 const RING_TILT = [-8, 12, -4, 9, -11, 5, -6, 10, -3, 7];
 const BOX_TILT = [-1.5, 2, -1, 1.5, -2, 1, -0.8, 1.8, -1.2, 0.6];
-function MarkShapes({ d, size: S, color, sw = 1.1, font = 15, digits = 1 }) {
+function MarkShapes({ d, size: S, color = T.pencil, sw = 1.1, font = 15, digits = 1 }) {
   const n = Math.abs(d);
   if (!n) return null;
   const ring = d < 0, c = S / 2;
@@ -2392,15 +2393,34 @@ function MarkShapes({ d, size: S, color, sw = 1.1, font = 15, digits = 1 }) {
   );
 }
 
+/* v22.14 — a pending score is crossed through in pencil: two slightly irregular strokes, the
+   second lifted and landing a little off the first, so it reads as a quick hand-drawn X and
+   the numeral underneath stays readable. `seed` nudges the strokes per score so a row of
+   them is not a row of clones. `filtered` is false where an ancestor already carries #pencil
+   (the chooser button, the You box) so the grain is not applied twice. Drawn in a 100-unit box. */
+const X_STROKES = [
+  ["M20 17 Q47 42 81 85", "M82 15 Q55 49 18 84"],
+  ["M18 20 Q50 45 83 82", "M84 19 Q51 50 21 83"],
+  ["M21 15 Q46 50 80 86", "M80 20 Q54 45 17 81"],
+];
+function PencilX({ size: S, seed = 0, filtered = true }) {
+  const [a, b] = X_STROKES[Math.abs(seed) % X_STROKES.length];
+  return (
+    <svg style={{ position: "absolute", left: 0, top: 0, width: S, height: S, pointerEvents: "none", ...(filtered ? { filter: "url(#pencil)" } : null) }}
+      viewBox="0 0 100 100" fill="none" stroke={T.pencil} strokeWidth={(1.6 * 100 / S).toFixed(2)} strokeLinecap="round" aria-hidden="true" data-mark="pending-x">
+      <path d={a} /><path d={b} />
+    </svg>
+  );
+}
+
 /* A score written on a scorecard, with the shapes the chooser uses. */
 function PencilMark({ score, par, size = 22, font = 15 }) {
   if (score == null) return <span style={{ ...written(14, T.muted) }}>·</span>;
   const d = score - par;
-  const col = markColor(d);
   return (
     <span style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: size, height: size }}>
-      <MarkShapes d={d} size={size} color={col} font={font} digits={String(score).length} />
-      <span style={{ position: "relative", ...written(font, col) }}>{score}</span>
+      <MarkShapes d={d} size={size} font={font} digits={String(score).length} />
+      <span style={{ position: "relative", ...written(font) }}>{score}</span>
     </span>
   );
 }

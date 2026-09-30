@@ -52,7 +52,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 3. On any deploy that ships user-facing changes, bump BOTH version markers together and keep the numbers in sync:
    - the cache name in `sw.js` (e.g. `loop-golf-v4` -> `-v5`). REQUIRED — without it, Brett's installed PWA keeps serving the old cached bundle.
    - the on-screen build tag: `const BUILD = "vN · <date>"` near the top of `src/app.jsx` (just after the icon definitions). Keep the existing `"vN · <date>"` format (e.g. `"v5 · Aug 2"`) and match `vN` to the new cache version.
-   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.13 on branch `claude/bold-pascal-2s136s`** (PR open) / **v22.12 on `main`**. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
+   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.14 on branch `claude/bold-pascal-2s136s`** (PR open) / **v22.13 on `main`**. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
 4. Show Brett a diff.
 5. WAIT for his explicit "go" before git commit / git push. Never push without approval.
 6. Pages redeploys the same URL automatically (~1 min); Brett fully closes and reopens the app to load the new service worker.
@@ -84,8 +84,9 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
   Script, which does NOT ship as a font: the wordmark is outline paths in `theme.jsx`. Do not go
   looking for a Pinyon woff2; there isn't one, and the render is identical.
 - The Pinyon Script wordmark is outline paths inside `theme.jsx`, not a font.
-- Anything "written" carries `filter: url(#pencil)`; a chosen-but-uncommitted score carries the
-  `#soft` disc. Both filters are mounted once by `<PencilDefs />` at the app root.
+- Anything "written" carries `filter: url(#pencil)`, mounted once by `<PencilDefs />` at the app
+  root. A chosen-but-uncommitted score carries a hand-drawn `PencilX` over the numeral (v22.14,
+  D58); the old `#soft` disc is gone.
 - **Every screen is paper.** At v21.3 History was the last one on the dark palette; the `C` table,
   `NUM`, `SANS`, `tnum`, `lbl` and `DarkShell` are all gone. `src/theme.jsx` is the only source of
   colour and type. Do not reintroduce a dark mode — it is paper.
@@ -100,8 +101,9 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 - The chooser is a snapping strip (v22.9): five cells visible, centred on par (or on the written
   score), scrollable from 1 up to par+10 (capped at 15). Shapes count strokes — one ring per stroke
   under par, one box per stroke over — and the finished card draws the same, so a 7 on a par 4 is
-  three boxes everywhere. Nothing is pre-selected.
-- **Two ways to confirm.** First tap sets a pending score (shaded disc, mirrored into the You box
+  three boxes everywhere. Numerals and shapes are all pencil graphite (v22.14, D58): no result
+  colours on scores. Nothing is pre-selected.
+- **Two ways to confirm.** First tap sets a pending score (pencil X, mirrored into the You box
   and the segment card). Then EITHER tap the same number again, OR leave the hole — `Hole N+1`,
   `Hole N-1`, or tapping a cell in the Out/In strips all write the pending score first. Tapping a
   different number moves the pending score; the last one tapped is what gets written.
@@ -187,8 +189,9 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
 - The caddie engine, shot log, learning loop and caddie screen (S1–S5) SHIPPED as v22.2 (PR #5),
   followed by v22.3–v22.5 (PR #6) and v22.6–v22.10 (PR #7: temperature, 27-hole picker, Setup
   fixes, seed cards, the snapping score strip, the caddie-brain engine integration). `main` is
-  v22.12 (PR #8 marked-green mode + pin; PR #9 Ironwood field-test fixes, D51–D55). v22.13 (slider
-  fields on the log and putt cards, D56–D57) is on `claude/bold-pascal-2s136s`. Read `docs/HANDOFF-NEXT.md` first.
+  v22.13 (PR #8 marked-green mode + pin; PR #9 Ironwood fixes D51–D55; PR #10 sliders D56–D57).
+  v22.14 (pencil scorecard, D58) is on `claude/bold-pascal-2s136s`; v22.15 is specified in
+  `docs/SPEC-shotlog-v2.md` (test mode, map intent, GPS-derived results, hole Review). Read `docs/HANDOFF-NEXT.md` first.
 - `Start round` opens the **CaddieScreen** directly at hole 1, pre-tee; `‹ Card` goes to the
   scorecard, whose hole-nav row gains a `Caddie` control. The caddie needs GPS (permission prompt
   on the first `I'm on the tee`), the course's OSM geometry (fetched on Setup when a course is
@@ -207,7 +210,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   Shot-log export/import lives on History.
 - Spec: `docs/SPEC-caddie.md` (locked) + `docs/SPEC-caddie-UI.md` (the UI addendum, §8 states / §13
   flags). Decisions made along the way that override the spec live in `docs/DECISIONS-caddie.md`
-  (D1–D57) — read it, don't copy it into other docs.
+  (D1–D58) — read it, don't copy it into other docs.
 - Refresh workflow (spec §5.8): after a round, export the shot log or a Shot Pattern export →
   hand it to the Golf project chat → it lands under `data/extracted/` → `npm run build:profile`
   regenerates `src/profile.json`.
