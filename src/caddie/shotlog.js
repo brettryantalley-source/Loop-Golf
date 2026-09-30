@@ -83,7 +83,7 @@ function defaultShotType(club, startDistanceYds) {
 
 /** Brett's most common intended shape for this club from prior records; "straight" with no history
  *  (also the tie-break when two shapes are equally common). */
-function defaultIntendedShape(club, history) {
+export function defaultIntendedShape(club, history) {
   if (!Array.isArray(history) || !history.length || !club) return "straight";
   const counts = { draw: 0, straight: 0, fade: 0 };
   for (const rec of history) {
@@ -110,12 +110,19 @@ function curveForShape(shape) {
  */
 export function newShotRecord(input = {}) {
   const club = input.club ?? defaultClub(input.recommendation);
-  const linePlayed = input.linePlayed ?? inferLinePlayed(club, input.recommendation);
-  const target = defaultTarget(club, linePlayed, input.recommendation, input.target);
+  const intent = normIntent(input.intent);
+  // v22.15: with an intent on the map, the line played is read off where Brett aimed (§2)
+  const linePlayed = input.linePlayed ?? (intent ? linePlayedFor(intent, input.recommendation, club) : inferLinePlayed(club, input.recommendation));
+  const target = intent?.target && !input.target
+    ? { frame: { x: intent.target.x, y: intent.target.y }, label: intent.targetLabel ?? null }
+    : defaultTarget(club, linePlayed, input.recommendation, input.target);
   const startDistance = input.start?.distanceToPinYds;
   const shotType = input.shotType ?? defaultShotType(club, startDistance);
-  const intendedShape = input.intendedShape ?? defaultIntendedShape(club, input.history);
+  const intendedShape = input.intendedShape ?? intent?.shape ?? defaultIntendedShape(club, input.history);
   const curve = input.curve ?? curveForShape(intendedShape);
+  const logged = input.logged ?? "quick";
+  // an explicit null (an auto-created record nobody has graded yet) stays null; undefined defaults
+  const orDefault = (v, d) => (v === null ? null : v ?? d);
 
   return {
     id: input.id ?? genId(),
@@ -135,14 +142,20 @@ export function newShotRecord(input = {}) {
     club,
     linePlayed,
     shotType,
-    contact: input.contact ?? 0,
-    strike: input.strike ?? "center",
+    contact: orDefault(input.contact, 0),
+    strike: orDefault(input.strike, "center"),
     intendedShape,
-    startLine: input.startLine ?? "on",
+    startLine: orDefault(input.startLine, "on"),
     curve,
     end: input.end ?? null,
     derived: input.derived ?? null,
-    logged: input.logged ?? "quick",
+    logged,
+    /* v22.15 (SPEC-shotlog-v2 §7), all additive: the pre-shot intent, where the curve value came
+       from, whether Brett has looked at the record, and whether its start was placed by hand. */
+    intent,
+    curveSource: input.curveSource ?? null,
+    reviewed: input.reviewed ?? (logged !== "auto" && logged !== "skipped"),
+    placed: !!input.placed,
   };
 }
 
@@ -178,19 +191,34 @@ export function bareShotRecord(input = {}) {
 
 /* ---------- §4.3 quick path / detail / skip ---------- */
 
-/** "Good shot ✓" — every field at its default, `logged: "quick"`. */
-export function quickLog(record) {
-  return newShotRecord({ ...record, logged: "quick" });
+/** The card's defaults for the graded fields an auto-created record leaves null (v22.15). */
+export function withCardDefaults(record) {
+  return { ...record, contact: record.contact ?? 0, strike: record.strike ?? "center", startLine: record.startLine ?? "on" };
 }
 
-/** Detail entry — `fields` overrides whichever ones were off; `logged: "full"`. */
+/** "Good shot ✓" — every field at its default, `logged: "quick"`. Brett looked at it: reviewed. */
+export function quickLog(record) {
+  return newShotRecord({ ...withCardDefaults(record), logged: "quick", reviewed: true });
+}
+
+/** Detail entry — `fields` overrides whichever ones were off; `logged: "full"`, reviewed. */
 export function detailLog(record, fields = {}) {
-  return newShotRecord({ ...record, ...fields, logged: "full" });
+  return newShotRecord({ ...withCardDefaults(record), ...fields, logged: "full", reviewed: true });
 }
 
 /** §4.4 — a shot moved past without logging. GPS result still recorded; excluded from miss-cause analysis. */
 export function skipShot(record) {
-  return newShotRecord({ ...record, logged: "skipped" });
+  return newShotRecord({ ...record, logged: "skipped", reviewed: false });
+}
+
+/**
+ * v22.15 §3 — the record auto-created when a shot closes and Brett never opened its card: the
+ * intent (default or set), the recommendation's club (else null), `logged: "auto"`,
+ * `reviewed: false`. Contact, strike and start line stay null — nobody graded them, so the learning
+ * loop does not read a default 0 as a pure strike; the card and the Review sheet fill the defaults.
+ */
+export function autoShotRecord(record) {
+  return newShotRecord({ ...record, logged: "auto", reviewed: false, contact: null, strike: null, startLine: null, curveSource: record.curveSource ?? null });
 }
 
 /* ---------- putt capture (Sep 28 spec, filling engine spec §4.1's "separate future spec") ----------
@@ -272,12 +300,17 @@ function rightPerp(dir) {
  * two raw distances behind that miss (start→target, and the actual distance along the target
  * line) — src/caddie/learning.js reads these to learn an absolute distance median.
  */
-export function closeOutShot(prev, { endGps, endLie, endAccuracyM, endFrame } = {}, cfg = DEFAULT_CONFIG) {
+export function closeOutShot(prev0, { endGps, endLie, endAccuracyM, endFrame, intent } = {}, cfg = DEFAULT_CONFIG) {
+  // v22.15: `intent` (the caddie's intent for this shot at the moment it closed) supersedes the one
+  // the record was logged with; either way the record's target becomes where Brett aimed.
+  const it = normIntent(intent !== undefined ? intent : prev0.intent);
+  const prev = it ? withIntent(prev0, it) : prev0;
   const end = {
     lat: endGps?.lat ?? null,
-    lng: endGps?.lng ?? null,
+    lng: endGps?.lng ?? endGps?.lon ?? null,
     accuracyM: endAccuracyM ?? null,
     lie: endLie ?? null,
+    ...(it ? { frame: endFrame && Number.isFinite(endFrame.x) ? { x: endFrame.x, y: endFrame.y } : null } : {}),
   };
 
   const startFrame = prev.start?.frame;
@@ -304,7 +337,155 @@ export function closeOutShot(prev, { endGps, endLie, endAccuracyM, endFrame } = 
     }
   }
 
-  return { ...prev, end, derived };
+  if (!it) return { ...prev, end, derived };
+  const r = deriveResult(
+    startFrame ? { x: startFrame.x, y: startFrame.y, accuracyM: prev.start?.accuracyM ?? null } : null,
+    it,
+    endFrame ? { x: endFrame.x, y: endFrame.y, accuracyM: endAccuracyM ?? null } : null,
+    cfg,
+  );
+  const out = { ...prev, end, derived: { ...derived, ...r } };
+  // §3: the curve follows the GPS read until Brett sets it by hand
+  if (prev.curveSource !== "hand" && r.curveAuto != null) { out.curve = r.curveAuto; out.curveSource = "auto"; }
+  return out;
+}
+
+/* ---------- v22.15 intent and the derived result (SPEC-shotlog-v2 §2, §3) ---------- */
+
+/** A target within this many yards of an option's target counts as playing that option (§2). */
+export const LINE_MATCH_YDS = 5;
+const SHAPES = ["draw", "straight", "fade"];
+const isPt = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.y);
+
+/** A stored intent, validated (null when there is none). Unknown keys are dropped. */
+export function normIntent(it) {
+  if (!it || typeof it !== "object") return null;
+  const target = isPt(it.target) ? { x: it.target.x, y: it.target.y } : null;
+  const ll0 = it.targetLL;
+  const targetLL = ll0 && Number.isFinite(ll0.lat) && Number.isFinite(ll0.lng ?? ll0.lon) ? { lat: ll0.lat, lng: ll0.lng ?? ll0.lon } : null;
+  const l0 = it.lineLL;
+  const lineLL = l0 && Number.isFinite(l0.lat) && Number.isFinite(l0.lng ?? l0.lon) ? { lat: l0.lat, lng: l0.lng ?? l0.lon } : null;
+  return {
+    target, targetLabel: it.targetLabel ?? null, targetLL,
+    startLineDeg: Number.isFinite(it.startLineDeg) ? it.startLineDeg : null,
+    // a point on the start line (lat/lng), so the bearing can be read again in another frame (Review)
+    ...(lineLL ? { lineLL } : {}),
+    shape: SHAPES.includes(it.shape) ? it.shape : null,
+    source: it.source === "set" ? "set" : "default",
+  };
+}
+
+/** Bearing of `to` seen from `from` in a hole frame: degrees clockwise from +y (the tee → green way), (−180, 180]. */
+export function bearingInFrame(from, to) {
+  if (!isPt(from) || !isPt(to)) return null;
+  const dx = to.x - from.x, dy = to.y - from.y;
+  if (Math.hypot(dx, dy) < 1e-9) return null;
+  return Math.round((Math.atan2(dx, dy) / DEG) * 10) / 10;
+}
+
+/**
+ * §2 — `linePlayed` derived from where Brett aimed: `safe` if the target is within 5 yds of the
+ * SAFE option's target, `aggressive` within 5 yds of AGGRESSIVE's (the nearer wins when both are),
+ * else `own`. An untouched (default) intent keeps the §9.5 club rule too: a club that matches only
+ * the other option says that option was played.
+ */
+export function linePlayedFor(intent, recommendation, club) {
+  const it = normIntent(intent);
+  if (!recommendation) return "own";
+  const byClub = inferLinePlayed(club, recommendation);
+  if (!it?.target) return byClub;
+  const d = (o) => (o?.target && isPt(o.target) ? Math.hypot(o.target.x - it.target.x, o.target.y - it.target.y) : Infinity);
+  const ds = d(recommendation.safe), da = d(recommendation.aggressive);
+  const byTarget = ds <= LINE_MATCH_YDS || da <= LINE_MATCH_YDS ? (da < ds ? "aggressive" : "safe") : "own";
+  if (it.source !== "set" && byClub !== "own" && byClub !== byTarget) return byClub;
+  return byTarget;
+}
+
+/** The record with an intent applied: target, label, line played and intended shape follow it. */
+function withIntent(rec, it) {
+  const out = { ...rec, intent: it };
+  if (it.target) out.target = { frame: { x: it.target.x, y: it.target.y }, label: it.targetLabel ?? rec.target?.label ?? null };
+  if (it.shape) out.intendedShape = it.shape;
+  if (rec.recommendation) out.linePlayed = linePlayedFor(it, rec.recommendation, rec.club);
+  return out;
+}
+
+/**
+ * §2 — the intent for a shot: the marks Brett set (`set`: target {x,y}, targetLabel, startLineDeg,
+ * shape) over the defaults — target = the recommended option's target, start line through the
+ * target, shape = his usual shape for the club (defaultIntendedShape). `frame` (optional, the shot's
+ * hole frame) adds the target in lat/lng so the Review sheet can compare shots across frames.
+ * source = "set" once any mark is Brett's. With no option and no marks (no recommendation): shape only.
+ */
+export function shotIntent({ set = {}, option = null, ball = null, history = null, club = option?.club ?? null, frame = null } = {}) {
+  const mine = set || {};
+  const target = isPt(mine.target) ? { x: mine.target.x, y: mine.target.y } : isPt(option?.target) ? { x: option.target.x, y: option.target.y } : null;
+  const targetLabel = isPt(mine.target) ? mine.targetLabel ?? "own target" : option?.target?.label ?? null;
+  const startLineDeg = Number.isFinite(mine.startLineDeg) ? mine.startLineDeg : target && isPt(ball) ? bearingInFrame(ball, target) : null;
+  const shape = SHAPES.includes(mine.shape) ? mine.shape : defaultIntendedShape(club, history);
+  const source = isPt(mine.target) || Number.isFinite(mine.startLineDeg) || SHAPES.includes(mine.shape) ? "set" : "default";
+  let targetLL = null;
+  if (target && frame && typeof frame.toLatLng === "function") { const q = frame.toLatLng(target); targetLL = { lat: q.lat, lng: q.lon ?? q.lng }; }
+  const ll0 = mine.lineLL;
+  const lineLL = Number.isFinite(mine.startLineDeg) && ll0 && Number.isFinite(ll0.lat) && Number.isFinite(ll0.lng ?? ll0.lon) ? { lat: ll0.lat, lng: ll0.lng ?? ll0.lon } : null;
+  return { target, targetLabel, targetLL, startLineDeg, shape, source, ...(lineLL ? { lineLL } : {}) };
+}
+
+/** A miss in yards → 0 / ±1 / ±2 by the §3 bands: |v| < slight → 0, slight … big → ±1, > big → ±2. */
+export function missBand(v, bands = DEFAULT_CONFIG.MISS_BANDS) {
+  if (!Number.isFinite(v)) return null;
+  const a = Math.abs(v), b = bands || DEFAULT_CONFIG.MISS_BANDS;
+  const k = a < b.slightYds ? 0 : a <= b.bigYds ? 1 : 2;
+  return k === 0 ? 0 : Math.sign(v) * k;
+}
+
+/**
+ * §3 — the result of a closed shot, in yards in the shot's hole frame, from its start, the intent's
+ * target and its end:
+ *   distMissYds  along the ball → target line, end past the target (+ long, − short)
+ *   latMissYds   perpendicular offset of the end from that line (+ right, − left, seen from the ball)
+ *   curveAuto    missBand(latMissYds): right of target = fade side (+), left = draw side (−). The shape
+ *                only changes the words (curveReadback), never the number.
+ *   distClass    missBand(distMissYds): −2 … +2, short … long. Not written into `contact`.
+ *   derivedLowAcc  either fix's accuracyM > LOW_ACC_M (12 m); the fields are still computed.
+ * start / end = { x, y, accuracyM? }; the start line is not observable from two fixes and is not used.
+ * Every field is null when a point is missing.
+ */
+export function deriveResult(start, intent, end, cfg = DEFAULT_CONFIG) {
+  const it = normIntent(intent);
+  const lowM = cfg?.LOW_ACC_M ?? DEFAULT_CONFIG.LOW_ACC_M;
+  const acc = [start?.accuracyM, end?.accuracyM].filter(Number.isFinite);
+  const derivedLowAcc = acc.length ? acc.some((m) => m > lowM) : null;
+  const none = { distMissYds: null, latMissYds: null, curveAuto: null, distClass: null, derivedLowAcc: isPt(start) && isPt(end) ? derivedLowAcc : null };
+  const T = it?.target;
+  if (!isPt(start) || !isPt(end) || !isPt(T)) return none;
+  const tv = { x: T.x - start.x, y: T.y - start.y };
+  const L = Math.hypot(tv.x, tv.y);
+  if (L < 1e-9) return none;
+  const dir = { x: tv.x / L, y: tv.y / L }, perp = rightPerp(dir);
+  const v = { x: end.x - start.x, y: end.y - start.y };
+  const distMissYds = round1(v.x * dir.x + v.y * dir.y - L);
+  const latMissYds = round1(v.x * perp.x + v.y * perp.y);
+  const bands = cfg?.MISS_BANDS || DEFAULT_CONFIG.MISS_BANDS;
+  return { distMissYds, latMissYds, curveAuto: missBand(latMissYds, bands), distClass: missBand(distMissYds, bands), derivedLowAcc: !!derivedLowAcc };
+}
+
+/** The read-back word for curveAuto against the intended shape (§3), or null for 0 / no value. */
+export function curveReadback(curveAuto, shape) {
+  if (!curveAuto) return null;
+  const big = Math.abs(curveAuto) === 2;
+  if (shape === "draw") return curveAuto < 0 ? (big ? "way over-drew" : "over-drew") : (big ? "held it, big" : "held / under-drew");
+  if (shape === "fade") return curveAuto > 0 ? (big ? "way over-faded" : "over-faded") : (big ? "held it, big" : "held / under-faded");
+  return curveAuto < 0 ? (big ? "well left" : "left") : (big ? "well right" : "right");
+}
+
+/** A derived result in one line for the Review row: `+2 long · 12 R`, `on · 3 L`; null without one. */
+export function resultText(d) {
+  if (!d || !Number.isFinite(d.distMissYds) || !Number.isFinite(d.latMissYds)) return null;
+  const k = d.distClass ?? 0;
+  const dist = k === 0 ? "on" : `${k > 0 ? "+" : "−"}${Math.abs(k)} ${k > 0 ? "long" : "short"}`;
+  const lat = Math.round(Math.abs(d.latMissYds));
+  return `${dist} · ${lat === 0 ? "0" : `${lat} ${d.latMissYds > 0 ? "R" : "L"}`}`;
 }
 
 function round1(x) {
@@ -364,6 +545,20 @@ export function saveShot(storage, record) {
   all[roundId] = list;
   writeShotsMap(storage, all);
   return rec;
+}
+
+/** v22.15 Review — remove one record by id (Delete stroke). Returns true when something went. */
+export function deleteShot(storage, id, roundId) {
+  const all = readShotsMap(storage);
+  let hit = false;
+  for (const rid of roundId != null ? [roundId] : Object.keys(all)) {
+    const list = all[rid];
+    if (!Array.isArray(list)) continue;
+    const next = list.filter((r) => r.id !== id);
+    if (next.length !== list.length) { all[rid] = next; hit = true; }
+  }
+  if (hit) writeShotsMap(storage, all);
+  return hit;
 }
 
 /** Every shot record in storage, across every round. */

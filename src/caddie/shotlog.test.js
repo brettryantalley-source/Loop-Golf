@@ -12,7 +12,9 @@ import {
   migrateShot, loadShots, saveShot, allShots, exportShots, importShots,
   missCauseSample, recordLieOverride, loadLieOverrides,
   PUTT_AXES, newPuttRecord, quickMade, bareShotRecord,
+  deriveResult, missBand, shotIntent, autoShotRecord, linePlayedFor, bearingInFrame, curveReadback, resultText, normIntent, deleteShot, withCardDefaults,
 } from "./shotlog.js";
+import { DEFAULT_CONFIG, mergeConfig } from "./config.js";
 
 /** In-memory localStorage-shaped stub. */
 function makeStorage(seed = {}) {
@@ -404,4 +406,105 @@ test("bareShotRecord: no recommendation, no target, nulls where nothing is known
   const back = loadShots(st, "r9");
   assert.equal(back.length, 1); assert.equal(back[0].id, r.id); assert.equal(back[0].recommendation, null); assert.equal(back[0].derived.intendedYds, null);
   assert.equal(JSON.parse(exportShots(st)).shots.length, 1);
+});
+
+/* ---------- v22.15 shot log v2 (docs/SPEC-shotlog-v2.md §2, §3, §7) ---------- */
+
+test("T45 intent defaults: an untouched shot aims at the recommendation, starts through the target, shape = his usual", () => {
+  const rec = fakeRecommendation();
+  const history = [newShotRecord({ club: "5i", intendedShape: "fade" }), newShotRecord({ club: "5i", intendedShape: "fade" }), newShotRecord({ club: "5i", intendedShape: "draw" })];
+  const ball = { x: 0, y: 0 };
+  const it = shotIntent({ option: rec.safe, ball, history });
+  assert.deepEqual(it.target, { x: 0, y: 238 });
+  assert.equal(it.targetLabel, "leave 100, fairway center");
+  assert.equal(it.startLineDeg, 0, "straight up the frame, through the target");
+  assert.equal(it.shape, "fade", "the most common shape for the 5-iron");
+  assert.equal(it.source, "default");
+  // an aggressive target to the right: the default line bears right of +y
+  const ag = shotIntent({ option: rec.aggressive, ball: { x: 0, y: 0 } });
+  assert.ok(ag.startLineDeg > 0 && ag.startLineDeg < 5);
+  assert.equal(bearingInFrame({ x: 0, y: 0 }, { x: -10, y: 0 }), -90);
+  // a mark set by Brett wins and makes the intent "set"; the record carries it
+  const set = shotIntent({ set: { target: { x: -3, y: 235 }, shape: "draw" }, option: rec.safe, ball, history });
+  assert.equal(set.source, "set"); assert.deepEqual(set.target, { x: -3, y: 235 }); assert.equal(set.shape, "draw");
+  const r = newShotRecord({ recommendation: rec, start: { frame: ball, distanceToPinYds: 238 }, intent: set });
+  assert.deepEqual(r.target.frame, { x: -3, y: 235 }, "the record's target is where he aimed");
+  assert.equal(r.intendedShape, "draw");
+  assert.equal(r.linePlayed, "safe", "within 5 yds of SAFE's target");
+  assert.equal(linePlayedFor({ target: { x: 8, y: 247 }, source: "set" }, rec, "5i"), "aggressive", "within 5 yds of AGGRESSIVE's");
+  assert.equal(linePlayedFor({ target: { x: -30, y: 200 }, source: "set" }, rec, "5i"), "own");
+  // a default intent keeps the §9.5 club rule: the aggressive club alone says aggressive
+  assert.equal(linePlayedFor({ target: { x: 0, y: 238 }, source: "default" }, rec, "2Hy"), "aggressive");
+  // no recommendation: shape only
+  const bare = shotIntent({ club: "7i" });
+  assert.equal(bare.target, null); assert.equal(bare.startLineDeg, null); assert.equal(bare.shape, "straight");
+  // an intent round-trips normIntent and a frame adds the lat/lng
+  const F = { toLatLng: ({ x, y }) => ({ lat: 34 + y / 1e5, lon: -84 + x / 1e5 }) };
+  const withLL = shotIntent({ option: rec.safe, ball, frame: F });
+  assert.deepEqual(withLL.targetLL, { lat: 34 + 238 / 1e5, lng: -84 });
+  assert.deepEqual(normIntent(JSON.parse(JSON.stringify(withLL))), withLL);
+});
+
+test("T46 derived: 15 right with a draw → curveAuto +1, distClass 0; 25 left → −2; 20 m accuracy → derivedLowAcc", () => {
+  const start = { x: 0, y: 0, accuracyM: 4 };
+  const intent = { target: { x: 0, y: 150 }, shape: "draw" };
+  const right = deriveResult(start, intent, { x: 15, y: 150, accuracyM: 4 });
+  assert.deepEqual(right, { distMissYds: 0, latMissYds: 15, curveAuto: 1, distClass: 0, derivedLowAcc: false });
+  assert.equal(curveReadback(right.curveAuto, "draw"), "held / under-drew");
+  const left = deriveResult(start, intent, { x: -25, y: 150 });
+  assert.equal(left.latMissYds, -25); assert.equal(left.curveAuto, -2);
+  assert.equal(curveReadback(-1, "draw"), "over-drew");
+  // distance: long +, short −, on the same bands
+  assert.equal(deriveResult(start, intent, { x: 0, y: 162 }).distClass, 1);
+  assert.equal(deriveResult(start, intent, { x: 0, y: 125 }).distClass, -2);
+  assert.equal(deriveResult(start, intent, { x: 0, y: 145 }).distClass, 0);
+  // the bands: < 8 → 0, 8 … 20 → ±1, > 20 → ±2
+  assert.deepEqual([7.9, 8, 20, 20.1, -8, -20.1].map((v) => missBand(v, DEFAULT_CONFIG.MISS_BANDS)), [0, 1, 1, 2, -1, -2]);
+  assert.equal(missBand(10, mergeConfig({ MISS_BANDS: { slightYds: 12 } }).MISS_BANDS), 0, "tunable from bogeyman-matches:config:v1");
+  // sign conventions hold whichever way the shot runs in the frame (a shot running +x: right = −y)
+  const east = deriveResult({ x: 0, y: 0 }, { target: { x: 100, y: 0 } }, { x: 110, y: -9 });
+  assert.equal(east.distMissYds, 10); assert.equal(east.latMissYds, 9);
+  // accuracy: either fix over 12 m flags it; the fields are still computed
+  const low = deriveResult({ x: 0, y: 0, accuracyM: 20 }, intent, { x: 15, y: 150, accuracyM: 4 });
+  assert.equal(low.derivedLowAcc, true); assert.equal(low.curveAuto, 1);
+  // missing any point → nulls, never NaN
+  assert.deepEqual(deriveResult(start, { shape: "fade" }, { x: 1, y: 1 }), { distMissYds: null, latMissYds: null, curveAuto: null, distClass: null, derivedLowAcc: false });
+  assert.equal(resultText({ distMissYds: 14, latMissYds: 12.4, distClass: 1 }), "+1 long · 12 R");
+  assert.equal(resultText({ distMissYds: -2, latMissYds: -3, distClass: 0 }), "on · 3 L");
+});
+
+test("T47 auto-close: a shot nobody logged gets an auto record, reviewed false, curve from GPS; a hand-set curve survives a re-derive", () => {
+  const rec = fakeRecommendation();
+  const intent = shotIntent({ option: rec.safe, ball: { x: 0, y: 0 } });
+  const auto = autoShotRecord({ roundId: "r1", hole: 7, shotNo: 2, recommendation: rec, start: { lat: 34, lng: -84, accuracyM: 4, frame: { x: 0, y: 0 }, distanceToPinYds: 238 }, intent });
+  assert.equal(auto.logged, "auto"); assert.equal(auto.reviewed, false);
+  assert.equal(auto.club, "5i", "the recommendation's club");
+  assert.equal(auto.contact, null, "nobody graded the strike"); assert.equal(auto.strike, null); assert.equal(auto.startLine, null);
+  const closed = closeOutShot(auto, { endGps: { lat: 34.002, lng: -84 }, endLie: "fairway", endAccuracyM: 4, endFrame: { x: 12, y: 226 } });
+  assert.equal(closed.derived.latMissYds, 12); assert.equal(closed.derived.distMissYds, -12);
+  assert.equal(closed.derived.distanceMissYds, -12, "the v1 miss fields agree: both measure against the aim");
+  assert.equal(closed.curve, 1); assert.equal(closed.curveSource, "auto");
+  assert.equal(closed.derived.distClass, -1);
+  assert.deepEqual(closed.end.frame, { x: 12, y: 226 });
+  // a hand-set curve is never overwritten
+  const hand = { ...detailLog(closed, { curve: -2 }), curveSource: "hand" };
+  assert.equal(hand.reviewed, true); assert.equal(hand.logged, "full");
+  assert.equal(hand.contact, 0, "the card fills the graded defaults");
+  const again = closeOutShot(hand, { endGps: { lat: 34.002, lng: -84 }, endAccuracyM: 4, endFrame: { x: 30, y: 226 } });
+  assert.equal(again.derived.curveAuto, 2); assert.equal(again.curve, -2); assert.equal(again.curveSource, "hand");
+  // a new intent at close time wins over the logged one (Brett moved the target after logging)
+  const moved = closeOutShot(auto, { endFrame: { x: 12, y: 226 }, intent: { ...intent, target: { x: 12, y: 226 }, source: "set" } });
+  assert.equal(moved.derived.latMissYds, 0); assert.equal(moved.linePlayed, "own"); assert.deepEqual(moved.target.frame, { x: 12, y: 226 });
+  // old records (no intent) close exactly as before: no new fields
+  const old = closeOutShot(quickLog({ start: { frame: { x: 0, y: 0 } }, recommendation: rec }), { endFrame: { x: 0, y: 238 } });
+  assert.equal("curveAuto" in old.derived, false);
+  // storage: additive fields round-trip, an old record still loads, Delete stroke removes one
+  const st = makeStorage();
+  saveShot(st, closed); saveShot(st, { id: "old1", roundId: "r1", hole: 1, shotNo: 1, club: "7i" });
+  const back = loadShots(st, "r1");
+  assert.deepEqual(back.find((r) => r.id === closed.id), closed);
+  assert.equal(back.find((r) => r.id === "old1").reviewed, undefined, "an old record reads as it was (undefined = not flagged)");
+  assert.equal(JSON.parse(exportShots(st)).shots.length, 2);
+  assert.equal(deleteShot(st, "old1"), true); assert.equal(loadShots(st, "r1").length, 1);
+  assert.deepEqual(withCardDefaults({ contact: null, strike: null, startLine: null }), { contact: 0, strike: "center", startLine: "on" });
 });

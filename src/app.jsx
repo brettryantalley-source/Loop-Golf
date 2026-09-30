@@ -13,7 +13,7 @@ import { groupResultsByClub, clubKeyOf, routingLabel, routingNines, splitTee27, 
   normalizeStrokeIndex, localNineCombos, localCombo, localCardHoles, localRoutingFor, apiTeeNamed } from "./routing.js";
 import { localClubFor } from "./localCards.js";
 import { loadProfile, resolveEntry } from "./caddie/profile.js";
-import { MapLayer, useSatellite, prefetchTiles, satelliteCheck, TILE_PREFETCH_ENABLED } from "./caddie/mapLayer.jsx";
+import { MapLayer, useSatellite, prefetchTiles, satelliteCheck, TILE_PREFETCH_ENABLED, renderNodes } from "./caddie/mapLayer.jsx";
 /* Caddie (S3b, v22): the engine, its inputs and the screen's state + render model. */
 import { assembleShotContext, frameBearing } from "./caddie/context.js";
 import { recommend, windEffect } from "./caddie/engine.js";
@@ -21,14 +21,17 @@ import { fetchWeather, weatherRefreshDue, weatherTempF } from "./caddie/sensors.
 import {
   loadLieOverrides, recordLieOverride, routeShot, newShotRecord, quickLog, detailLog, skipShot, closeOutShot,
   saveShot, loadShots, allShots, exportShots, importShots, newPuttRecord, quickMade, PUTT_AXES, bareShotRecord,
+  autoShotRecord, shotIntent, curveReadback, resultText, deleteShot, bearingInFrame, normIntent,
 } from "./caddie/shotlog.js";
-import { satelliteCheckLine } from "./caddie/overlay.js";
+/* v22.15 shot log v2: the hole's story at the score (docs/SPEC-shotlog-v2.md §4, §5). */
+import { holeReview, reviewNeeded, splitHole, placeShot, recomputeChain, setShotIntent, lineFromTap, deleteStroke, renumber, inferredPutts, reviewAll } from "./caddie/review.js";
+import { satelliteCheckLine, fallbackMapModel, fitBounds, cameraFor, linearProjector } from "./caddie/overlay.js";
 import { fetchElevationSamples, elevationSamplePoints } from "./caddie/sensors.js";
 import { DEFAULT_CONFIG, mergeConfig } from "./caddie/config.js";
 import {
   COPY, GPS_TIMEOUT_MS, initialCaddie, caddieReducer, caddieHoleFor, serializeCaddie, restoreCaddie, pinSetting, pinPointFor,
   pinFromMapTap, pickerModel, syntheticHole, clubBrainContext, mapInput, caddieView, defaultNineMap, geometryKeyFor, scorecardOrder, detectedHoleNo,
-  hasUnloggedShot, clubShort, ellipsesFor, withinRoundCtx, learningOverlays, aggressionModel, pinFromDrag,
+  clubShort, ellipsesFor, withinRoundCtx, learningOverlays, aggressionModel, pinFromDrag, fakeFix, intentSet,
 } from "./caddie/caddieState.js";
 /* v22.11: marked-green mode — the caddie on a hole OpenStreetMap does not have. */
 import { loadGreens, saveGreen, greenFor, greenSlot, markedGreenHole, markedGreenContext, anchorFrame, toSyntheticFrame, markedEndLie } from "./caddie/greens.js";
@@ -65,7 +68,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.14 · Sep 30";
+const BUILD = "v22.15 · Sep 30";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -689,7 +692,12 @@ function localTeeOptions(card, combo, full, srcLabel) {
   }).filter(Boolean);
 }
 
-function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHistory, courseMap }) {
+function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHistory, courseMap, testMode = false, setTestMode }) {
+  // v22.15 §1: long-press (~700 ms) the build tag for the Test mode sheet
+  const [testOpen, setTestOpen] = useState(false);
+  const pressT = React.useRef(null);
+  const pressStart = () => { clearTimeout(pressT.current); pressT.current = setTimeout(() => setTestOpen(true), 700); };
+  const pressEnd = () => clearTimeout(pressT.current);
   const [picking, setPicking] = useState(false);
   const [club, setClub] = useState(null);                 // v22.7: the picked club { key, club_name, clubApiId, entries }
   const [routings, setRoutings] = useState([]);           // its routings (entries or 27-hole combinations)
@@ -825,13 +833,32 @@ function Setup({ course, setCourse, diff, setDiff, stats, history, onStart, onHi
     <div style={{ height: "100dvh", maxWidth: 460, margin: "0 auto", boxSizing: "border-box", display: "flex", flexDirection: "column",
       padding: "max(env(safe-area-inset-top), 30px) 20px max(env(safe-area-inset-bottom), 18px)", background: T.paper }}>
       {picking && <CoursePicker onPick={pickClub} onClose={() => setPicking(false)} />}
+      {testOpen && (
+        <CaddieSheet onClose={() => setTestOpen(false)} label="Test mode">
+          <div style={{ ...caps(12), marginBottom: 12 }}>Test mode</div>
+          <button data-part="test-fake-gps" role="switch" aria-checked={testMode ? "true" : "false"} onClick={() => setTestMode && setTestMode(!testMode)}
+            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", height: 52, borderTop: rule, borderBottom: rule, background: "transparent", color: T.ink, padding: 0 }}>
+            <span style={{ fontFamily: F.label, fontSize: 14, fontWeight: 700 }}>Fake my location</span>
+            <span style={{ ...(testMode ? primaryPill : outlinedPill), height: 32, minWidth: 64, padding: "0 14px", borderRadius: 16, fontSize: 10 }}>{testMode ? "On" : "Off"}</span>
+          </button>
+          <div style={{ fontFamily: F.label, fontSize: 12, lineHeight: 1.45, color: T.ink, margin: "10px 0 14px" }}>
+            Every GPS fix in the caddie becomes a tap on its map — I'm on the tee, I'm at my ball, On the green, Mark green here. For trying the caddie off the course; turn it off before a real round.
+          </div>
+          <button onClick={() => setTestOpen(false)} className="lc-primary" style={{ ...primaryPill, width: "100%", height: 48 }}>{COPY.done}</button>
+        </CaddieSheet>
+      )}
 
       {/* the card: double-rule frame, sections evenly spaced between ink rules */}
       <div style={{ flexGrow: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "space-between",
         border: rule, boxShadow: `inset 0 0 0 3px ${T.paper}, inset 0 0 0 4px ${T.ink}`, padding: "20px 22px 18px" }}>
 
         <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <span style={{ position: "absolute", top: 0, right: 0, ...caps(9, 700, "0.04em"), color: T.muted, whiteSpace: "nowrap" }}>{BUILD}</span>
+          <span data-part="build-tag" onPointerDown={pressStart} onPointerUp={pressEnd} onPointerLeave={pressEnd} onPointerCancel={pressEnd} onContextMenu={(e) => e.preventDefault()}
+            style={{ position: "absolute", top: 0, right: 0, display: "flex", alignItems: "baseline", gap: 6, ...caps(9, 700, "0.04em"), color: T.muted, whiteSpace: "nowrap",
+              padding: "6px 0 6px 10px", marginTop: -6, userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none", touchAction: "manipulation" }}>
+            {testMode && <span data-part="test-tag" style={{ ...writtenWord(20), lineHeight: "10px", letterSpacing: "0.04em", textTransform: "none" }}>TEST</span>}
+            {BUILD}
+          </span>
           <Logo width={168} />
           <div style={doubleRule} />
         </div>
@@ -1156,7 +1183,7 @@ function SideTotal({ label, t }) {
   );
 }
 
-function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExit, onCaddie }) {
+function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExit, onCaddie, onScored, reviewInfo, onReview }) {
   const [confirmExit, setConfirmExit] = useState(false);
   const [pending, setPending] = useState(null);          // { hole, v } — chosen, not written
   const m = useMemo(() => evalMatch(scores, ghost.holes), [scores, ghost]);
@@ -1179,7 +1206,11 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
      loses a real score silently; a wrong one can be retapped. */
   const goHole = (i) => {
     if (i === hole) return;
-    if (pend != null) write(pend);
+    if (pend != null) {
+      const after = write(pend);
+      // v22.15 §4: a score written by leaving the hole opens the Review sheet too; the move waits for it
+      if (onScored && scores[hole] == null && onScored(hole + 1, after[hole], i)) return;
+    }
     setHole(i);
   };
 
@@ -1188,11 +1219,15 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
     const after = write(v);
     /* Hole 18 written and nothing left blank -> the round is over (decision 4). */
     const blanksBefore = before.reduce((a, s, i) => a + (s == null && i !== hole ? 1 : 0), 0);
-    if (blanksBefore === 0 && before[hole] == null) { onFinish(after); return; }
+    const finish = blanksBefore === 0 && before[hole] == null;
     const nextBlank = after.findIndex((s, i) => s == null && i > hole);
-    if (nextBlank !== -1) { setHole(nextBlank); return; }
-    if (hole < 17) setHole(hole + 1);
+    const next = finish ? "finish" : nextBlank !== -1 ? nextBlank : hole < 17 ? hole + 1 : null;
+    /* v22.15 §4: the hole's story first when it needs a look — the Review sheet moves on when it closes */
+    if (onScored && onScored(hole + 1, after[hole], next)) return;
+    if (finish) { onFinish(after); return; }
+    if (next != null) setHole(next);
   };
+  const rv = scores[hole] != null && reviewInfo ? reviewInfo(hole + 1) : null;
   const tap = (v) => { if (pend === v) commit(v); else setPending({ hole, v }); };
   /* Leaving for the caddie is navigation too: a pending score is written, never dropped. */
   const goCaddie = () => { if (pend != null) write(pend); if (onCaddie) onCaddie(); };
@@ -1296,6 +1331,13 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <span style={{ ...printed(72), lineHeight: "62px", color: T.black }}>{hole + 1}</span>
             <span style={{ fontFamily: F.label, fontSize: 11, color: T.ink }}>par <span style={printed(12)}>{par}</span> · index <span style={printed(12)}>{h.si}</span></span>
+            {/* v22.15 §4: a finished hole with a shot story reopens its Review sheet */}
+            {rv && onReview && (
+              <button data-part="review-button" onClick={() => onReview(hole + 1)}
+                style={{ marginTop: 2, height: 22, padding: "0 8px", background: "none", border: "none", color: T.ink, ...caps(9, 700, "0.14em") }}>
+                {COPY.review}{rv.unreviewed > 0 && <span style={{ ...printed(12), color: T.bogey, letterSpacing: 0 }}> ?</span>}
+              </button>
+            )}
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
             <span style={caps(9, 400, "0.14em")}>You</span>
@@ -1404,6 +1446,19 @@ const CADDIE_CONFIG_KEY = "bogeyman-matches:config:v1";
 function loadCaddieConfig() {
   try { const raw = localStorage.getItem(CADDIE_CONFIG_KEY); return mergeConfig(raw ? JSON.parse(raw) : null); } catch (e) { return DEFAULT_CONFIG; }
 }
+/* v22.15 test mode (SPEC-shotlog-v2 §1): `testMode.fakeGps` in the same config object, read and
+   written on its own so the Setup toggle never disturbs any other override stored there. */
+function loadTestMode() {
+  try { const raw = JSON.parse(localStorage.getItem(CADDIE_CONFIG_KEY) || "null"); return !!(raw && raw.testMode && raw.testMode.fakeGps === true); } catch (e) { return false; }
+}
+function saveTestMode(on) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CADDIE_CONFIG_KEY) || "null");
+    const cfg = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+    cfg.testMode = { ...(cfg.testMode && typeof cfg.testMode === "object" ? cfg.testMode : {}), fakeGps: !!on };
+    localStorage.setItem(CADDIE_CONFIG_KEY, JSON.stringify(cfg));
+  } catch (e) { /* private mode: the toggle holds for this session */ }
+}
 /* Profile v2 — bundled with the app. null only if the file is malformed (§8 No profile). */
 function loadCaddieProfile() { try { return loadProfile(PROFILE_JSON, loadCaddieConfig()); } catch (e) { return null; } }
 /* S5 (§5.2–§5.4): Shot Pattern's profile with Loop's between-round overlays merged in by
@@ -1496,11 +1551,11 @@ function YardsSheet({ initial, onUse, onClose }) {
   );
 }
 
-/* ---------- shot log (S4): the long card + the collapsed previous-shot prompt (spec §4.2–§4.4) ---------- */
+/* ---------- shot log (S4): the long card (spec §4.2–§4.3). v22.15: the collapsed previous-shot
+   prompt (§4.4 step 2) is gone — a shot closes itself with an auto record (SPEC-shotlog-v2 §3). ---------- */
 const capWord = (s) => (s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : s);
 const CONTACT_OPTS = [[-2, "−2 super fat"], [-1, "−1 chunky"], [0, "0 pure"], [1, "+1 thin"], [2, "+2 v. thin"]];
 const CURVE_OPTS = [[-2, "−2 big draw"], [-1, "−1 draw"], [0, "0 straight"], [1, "+1 fade"], [2, "+2 big fade"]];
-const LINE_OPTS = [["safe", "Safe"], ["aggressive", "Aggressive"], ["own", "Own call"]];
 const SHOTTYPE_OPTS = [["full", "Full"], ["finesse", "Finesse"], ["recovery", "Recovery"]];
 const wordOpts = (words) => words.map((w) => [w, capWord(w)]);
 
@@ -1592,52 +1647,58 @@ function ScaleSlider({ title, options, value, onChange, ariaLabel }) {
 }
 
 /**
- * The long card (§4.2). `collapsed` shows only the three previous-shot pills (§4.4 step 2, not
- * dismissible — `blocking` is always true alongside it); otherwise the full segmented form, a
- * "Good shot ✓" quick pill up top and Save/Skip at the bottom, two columns where the field allows.
+ * The long card (§4.2): a "Good shot ✓" quick pill up top, the club, the shot type, the v22.13
+ * sliders, Save / Skip. v22.15 (SPEC-shotlog-v2 §2–§3): no collapsed prompt mode; no Line played
+ * pill (the line is read off the target on the map); a record that already has a GPS result opens
+ * with Curve on that read (`curveSource: "auto"`) until Brett moves the slider (`"hand"`), and a
+ * low-accuracy result puts the ? on Curve. Save and Good shot hand back to the caddie as it was.
  */
-function LongCardSheet({ record, collapsed, blocking, clubOrder, onQuick, onSave, onSkip, onDetail, onClose }) {
-  const [draft, setDraft] = useState(record);
-  useEffect(() => { setDraft(record); }, [record.id]);
+function LongCardSheet({ record, clubOrder, onQuick, onSave, onSkip, onClose }) {
+  const init = (r) => {
+    const auto = r.curveSource !== "hand" && Number.isFinite(r.derived?.curveAuto);
+    return { ...r, contact: r.contact ?? 0, strike: r.strike ?? "center", startLine: r.startLine ?? "on", curve: auto ? r.derived.curveAuto : r.curve, curveSource: auto ? "auto" : r.curveSource ?? null };
+  };
+  const [draft, setDraft] = useState(() => init(record));
+  useEffect(() => { setDraft(init(record)); }, [record.id]);
   const set = (k, val) => setDraft((d) => ({ ...d, [k]: val }));
-  // v22.12: a shot with no recommendation — Brett names the club; there is no line to have played
+  // v22.12: a shot with no recommendation — Brett names the club
   const bare = !record.recommendation;
   const needClub = bare && !draft.club;
   const off = needClub ? { opacity: 0.45 } : null;
+  const lowAcc = !!record.derived?.derivedLowAcc;
+  const word = curveReadback(record.derived?.curveAuto, draft.intendedShape);
+  // the fields the card owns; linePlayed: undefined re-derives it for the club picked (§2)
+  const fields = () => ({ club: draft.club, shotType: draft.shotType, contact: draft.contact, strike: draft.strike, intendedShape: draft.intendedShape,
+    startLine: draft.startLine, curve: draft.curve, curveSource: draft.curveSource, linePlayed: undefined });
   return (
-    <div data-part="sheet" data-log={collapsed ? "prev" : "full"} onClick={blocking ? undefined : onClose}
+    <div data-part="sheet" data-log="full" onClick={onClose}
       style={{ position: "fixed", inset: 0, background: "rgba(31,31,31,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 65 }}>
       <div role="dialog" aria-label="Log shot" onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "92vh", overflowY: "auto",
         background: T.paper, borderTop: `4px double ${T.ink}`, padding: "14px 22px calc(env(safe-area-inset-bottom) + 14px)" }}>
-        <div style={{ ...caps(12), marginBottom: collapsed ? 14 : 10 }}>{collapsed ? "Log the last shot" : COPY.logShot}</div>
-        {collapsed ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <button onClick={onQuick} className="lc-primary" style={{ ...primaryPill, height: 52, width: "100%" }}><FlagGlyph />Good shot ✓</button>
-            <button onClick={onDetail} style={{ ...outlinedPill, height: 48, width: "100%" }}>Detail</button>
-            <button onClick={onSkip} style={{ ...outlinedPill, height: 48, width: "100%" }}>Skip</button>
+        <div style={{ ...caps(12), marginBottom: 10 }}>{COPY.logShot}{Number.isInteger(record.shotNo) ? <span style={{ ...printed(12), marginLeft: 6 }}>{record.shotNo}</span> : null}</div>
+        {bare && <div data-part="log-bare" style={{ fontFamily: F.label, fontSize: 12, lineHeight: 1.4, color: T.ink, margin: "-6px 0 12px" }}>No caddie call on this shot. Pick the club you hit.</div>}
+        {resultText(record.derived) && (
+          <div data-part="log-result" style={{ fontFamily: F.label, fontSize: 12, color: T.ink, margin: "-4px 0 10px" }}>
+            GPS <span style={printed(13)}>{resultText(record.derived)}</span>{lowAcc && <span style={{ ...printed(13), color: T.bogey }}> ?</span>}
           </div>
-        ) : (
-          <>
-            {bare && <div data-part="log-bare" style={{ fontFamily: F.label, fontSize: 12, lineHeight: 1.4, color: T.ink, margin: "-6px 0 12px" }}>No caddie call on this shot. Pick the club you hit.</div>}
-            <button onClick={() => onQuick(draft)} disabled={needClub} className={needClub ? undefined : "lc-primary"} style={{ ...primaryPill, height: 44, width: "100%", marginBottom: 10, ...off }}><FlagGlyph />Good shot ✓</button>
-            <SegField title="Club">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {clubOrder.map((id) => <SegPill key={id} label={clubShort(id)} current={id === draft.club} onClick={() => set("club", id)} />)}
-              </div>
-            </SegField>
-            {!bare && <SegField title="Line played"><SegGrid cols={3} options={LINE_OPTS} value={draft.linePlayed} onChange={(val) => set("linePlayed", val)} /></SegField>}
-            <SegField title="Shot type"><SegGrid cols={3} options={SHOTTYPE_OPTS} value={draft.shotType} onChange={(val) => set("shotType", val)} /></SegField>
-            <ScaleSlider title="Contact" options={CONTACT_OPTS} value={draft.contact} onChange={(val) => set("contact", val)} />
-            <ScaleSlider title="Strike" options={wordOpts(["heel", "center", "toe"])} value={draft.strike} onChange={(val) => set("strike", val)} />
-            <ScaleSlider title="Intended shape" options={wordOpts(["draw", "straight", "fade"])} value={draft.intendedShape} onChange={(val) => set("intendedShape", val)} />
-            <ScaleSlider title="Start line" options={wordOpts(["left", "on", "right"])} value={draft.startLine} onChange={(val) => set("startLine", val)} />
-            <ScaleSlider title="Curve" options={CURVE_OPTS} value={draft.curve} onChange={(val) => set("curve", val)} />
-            <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-              <button onClick={() => onSave(draft)} disabled={needClub} className={needClub ? undefined : "lc-primary"} style={{ ...primaryPill, flex: 1.4, height: 44, ...off }}><FlagGlyph />Save</button>
-              <button onClick={onSkip} style={{ ...outlinedPill, flex: 1, height: 44 }}>Skip</button>
-            </div>
-          </>
         )}
+        <button onClick={() => onQuick({ ...draft, ...fields() })} disabled={needClub} className={needClub ? undefined : "lc-primary"} style={{ ...primaryPill, height: 44, width: "100%", marginBottom: 10, ...off }}><FlagGlyph />Good shot ✓</button>
+        <SegField title="Club">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {clubOrder.map((id) => <SegPill key={id} label={clubShort(id)} current={id === draft.club} onClick={() => set("club", id)} />)}
+          </div>
+        </SegField>
+        <SegField title="Shot type"><SegGrid cols={3} options={SHOTTYPE_OPTS} value={draft.shotType} onChange={(val) => set("shotType", val)} /></SegField>
+        <ScaleSlider title="Contact" options={CONTACT_OPTS} value={draft.contact} onChange={(val) => set("contact", val)} />
+        <ScaleSlider title="Strike" options={wordOpts(["heel", "center", "toe"])} value={draft.strike} onChange={(val) => set("strike", val)} />
+        <ScaleSlider title="Intended shape" options={wordOpts(["draw", "straight", "fade"])} value={draft.intendedShape} onChange={(val) => set("intendedShape", val)} />
+        <ScaleSlider title="Start line" options={wordOpts(["left", "on", "right"])} value={draft.startLine} onChange={(val) => set("startLine", val)} />
+        <ScaleSlider title={<>Curve{lowAcc && <span data-part="curve-lowacc" style={{ ...printed(11), color: T.bogey }}> ?</span>}{draft.curveSource === "auto" && word ? <span style={{ fontFamily: F.label, fontSize: 10, textTransform: "none", letterSpacing: 0, marginLeft: 6 }}>({word})</span> : null}</>}
+          ariaLabel="Curve" options={CURVE_OPTS} value={draft.curve} onChange={(val) => setDraft((d) => ({ ...d, curve: val, curveSource: "hand" }))} />
+        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+          <button onClick={() => onSave(fields())} disabled={needClub} className={needClub ? undefined : "lc-primary"} style={{ ...primaryPill, flex: 1.4, height: 44, ...off }}><FlagGlyph />Save</button>
+          <button onClick={onSkip} style={{ ...outlinedPill, flex: 1, height: 44 }}>Skip</button>
+        </div>
       </div>
     </div>
   );
@@ -1769,7 +1830,7 @@ function Caddie(props) {
   return <CaddieScreen {...props} nineMap={needs ? nm.map : null} />;
 }
 
-function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWeather, onCard, onScore, onRetryProfile, contextRef, nineMap, roundId }) {
+function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWeather, onCard, onScore, onRetryProfile, contextRef, nineMap, roundId, testMode = false }) {
   const safe = useSafeArea();
   const vh = useViewportHeight();
   const compact = vh < 740;                             // 375×667: one-row distances, one-line reasons (§3.5)
@@ -1806,6 +1867,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   const [windDir, setWindDir] = useState(null);
   const [yardsOpen, setYardsOpen] = useState(false);     // false | "next" (a new ball, §8) | "same" (v22.12: this ball, from the rail)
   const [markHereOpen, setMarkHereOpen] = useState(false);  // v22.12: the Mark green here confirmation
+  const [shotsOpen, setShotsOpen] = useState(false);        // v22.15 §5: the Shots list
 
   const ballXY = noGeo ? (cs.ball && Fr ? Fr.toFrame({ lat: cs.ball.lat, lon: cs.ball.lng }) : null)
     : cs.ballXY || (cs.ball && Fr ? Fr.toFrame({ lat: cs.ball.lat, lon: cs.ball.lng }) : null);
@@ -1869,22 +1931,36 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   const pinFrom = (cs.phase === "ready" && ballXY) || built?.tee || null;
   const pinYds = pinView && pinFrom && (dragPin || pinXY) ? Math.hypot((dragPin || pinXY).x - pinFrom.x, (dragPin || pinXY).y - pinFrom.y) : null;
 
+  // v22.15: this hole's records (the rail's ? count, the Shots list)
+  const holeRecords = useMemo(() => (roundId ? loadShots(safeStorage(), roundId).filter((r) => r.hole === n) : []), [roundId, n, shotsRev]);
+  const unreviewed = holeRecords.filter((r) => r.reviewed === false).length;
+  // §6: the green cannot be detected on a hole with no OSM geometry (no map, a marked green, or a
+  // green marked by standing on it) — or with yards and no GPS
+  const greenManual = noGeo || cs.phase === "yards";
   const v = caddieView({ state: cs, par: h.par, profileOk: !!profile, mapOk: !!built, res: engine?.res || null, options: engine?.options || null,
     inferred: engine?.inferred || null, onGreen: !!engine?.onGreen, ballXY: cs.phase === "yards" ? null : ballXY, green: engine?.green || null, config,
-    markable, greenMarked: !!marked, synthetic: !!built?.synthetic, pinYds: pinView ? pinYds : null, satFailure: noGeo ? sat.failure : null });
+    markable, greenMarked: !!marked, synthetic: !!built?.synthetic, pinYds: pinView ? pinYds : null, satFailure: noGeo ? sat.failure : null,
+    greenManual, unreviewed });
 
   /* ---------- S4: shot log (SPEC-caddie §4, UI addendum §3.4/§9.4–9.5) ---------- */
-  // Routing (§4.1): on the green → nothing to capture here (routeShot itself would say "putt");
-  // no live recommendation (locating, no fix, no profile, ...) → null, so Log shot / the prompt
-  // never fire against stale data.
-  const shotKind = engine?.onGreen ? "putt"
-    : engine?.res?.context ? routeShot({ distanceToPinYds: engine.res.context.distances.pin, lieType: engine.res.context.lieType })
-    : null;
-  const unloggedPending = hasUnloggedShot(cs, shotKind);
+  /* v22.15 §2 — the intent: Brett's marks for this shot over the defaults (the toggled option's
+     target, the line through it, his usual shape for the club). Same shot and yards take the shape
+     only (no map marks). The target is in this hole's frame (the synthetic one on a marked green)
+     and in lat/lng, so the Review sheet can compare shots measured in different frames. */
+  const marks = intentSet(cs);
+  const liveOpts = engine?.options || null;
+  const activeOpt = v.view === "ready" || v.view === "sameshot" ? (v.sameShot ? liveOpts?.safe : liveOpts?.[cs.opt] || liveOpts?.safe) || null : null;
+  const mapMarks = v.view === "ready" || v.view === "sameshot";
+  const intentNow = (opt = activeOpt) => shotIntent({
+    set: mapMarks ? marks : { shape: marks.shape }, option: mapMarks ? opt : null,
+    ball: cs.phase === "yards" ? null : ballXY, club: opt?.club ?? null, history: allShots(safeStorage()), frame: cs.phase === "yards" ? null : Fr,
+  });
   // §9.4/§9.5 — everything the shot record needs to default from, snapshotted at the moment Brett
   // acts (Log shot / I'm at my ball), not eagerly at arrival: the toggle, chips and pin may still
-  // change while he's standing over the ball. `club` (optional) overrides the toggle's club, e.g.
-  // when the detail card's own Club segmented control is edited.
+  // change while he's standing over the ball. `club` (optional) overrides the toggle's club.
+  // v22.15: the record for this shot keeps its id if one exists (a second Log shot edits it).
+  const existingFor = (hole = n, shotNo = cs.shotNo) => (cs.openShot && cs.openShot.hole === hole && cs.openShot.shotNo === shotNo ? cs.openShot : null)
+    || (roundId ? loadShots(safeStorage(), roundId).find((r) => r.hole === hole && r.shotNo === shotNo && r.shotType !== "putt") : null) || null;
   const buildDraftShot = (club) => {
     const res = engine?.res;
     if (!res || !res.safe) return null;
@@ -1895,7 +1971,9 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     const startFrame = cs.phase === "yards" ? null : ballXY;
     const toggled = v.sameShot ? res.safe : (res[cs.opt] || res.safe);
     const chipsInEffect = { chips: cs.chips, pin: pinSet, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride };
+    const opt = engine?.options?.[v.sameShot ? "safe" : cs.opt] || toggled;
     return newShotRecord({
+      id: existingFor()?.id,
       roundId: roundId ?? null, courseId, nine: n <= 9 ? "front" : "back", hole: n, shotNo: cs.shotNo,
       start: {
         lat: startGps?.lat ?? null, lng: startGps?.lng ?? null, accuracyM: startGps?.accuracyM ?? null,
@@ -1906,15 +1984,14 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
       wind: res.context.wind,
       recommendation: { ...res, chipsInEffect },
       club: club ?? toggled.club,
+      intent: cs.phase === "yards" ? shotIntent({ set: { shape: marks.shape }, club: club ?? toggled.club, history: allShots(safeStorage()) }) : intentNow(opt),
       history: allShots(safeStorage()),
     });
   };
-  // { record, collapsed, blocking } | null — local, not persisted (only the underlying data is,
-  // via cs.logCard/cs.openShot — §9.8). collapsed = the 3-pill previous-shot prompt (§4.4 step 2);
-  // blocking = true for that prompt, which has no scrim-dismiss ("one tap and the caddie appears").
   // v22.12: Log shot with nothing on screen to price it (no map, no satellite, before Enter yards, or
   // the engine returned nothing): a recommendation-less record, the club picked on the card.
   const buildBareShot = () => bareShotRecord({
+    id: existingFor()?.id,
     roundId: roundId ?? null, courseId, nine: n <= 9 ? "front" : "back", hole: n, shotNo: cs.shotNo,
     gps: cs.ball || null,
     // shot 1 is from the tee, so the card's yardage is the honest start distance with nothing better
@@ -1923,32 +2000,40 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     conditions: cs.conditionsOverride ?? "normal",
     history: allShots(safeStorage()),
   });
+  // a bare record still carries the shape Brett picked (§2: shape pills on every shot state)
+  const bareWithShape = (r) => (r ? { ...r, intent: normIntent({ shape: marks.shape || r.intendedShape }), intendedShape: marks.shape || r.intendedShape } : r);
+  // { record } | null — local; the underlying data is persisted through cs.logCard / cs.openShot (§9.8).
   const [logSheet, setLogSheet] = useState(null);
-  const openLogSheet = (opts) => {
-    const record = buildDraftShot() || (opts.blocking ? null : buildBareShot());
+  const openLogSheet = () => {
+    const record = buildDraftShot() || bareWithShape(buildBareShot());
     if (!record) return;
-    setLogSheet({ record, ...opts });
-    dispatch({ type: "logOpen", card: opts.blocking ? "prev" : "log" });
+    setLogSheet({ record });
+    dispatch({ type: "logOpen" });
   };
-  // `build` turns the sheet's current record into the final one (quickLog / detailLog / skipShot);
-  // `blocking` sheets resolve straight into the real "I'm at my ball" locate (§4.4: "One tap and
-  // the caddie appears").
+  // `build` turns the sheet's record into the final one (quickLog / detailLog / skipShot). v22.15 §3
+  // auto-advance: the sheet closes onto the caddie as it was (Ready with this ball) — no extra tap.
+  // A record that is already closed (reopened from the Shots list) is saved in place, not re-opened.
   const commitLog = (build) => {
     if (!logSheet) return;
-    const record = build(logSheet.record);
+    let record = build(logSheet.record);
+    // the card's Intended shape is the intent's shape: keep the two in step, and the caddie's marks
+    // too, so the close-out (which applies the intent in effect) does not undo the card
+    if (record.intent && record.intendedShape && record.intent.shape !== record.intendedShape) {
+      record = { ...record, intent: { ...record.intent, shape: record.intendedShape, source: "set" } };
+      if (!logSheet.closed && record.hole === n && record.shotNo === cs.shotNo) dispatch({ type: "intent", patch: { shape: record.intendedShape } });
+    }
     saveShotHere(record);
-    dispatch({ type: record.logged === "skipped" ? "logSkip" : "logSave", record });
-    const wasBlocking = logSheet.blocking;
+    if (!logSheet.closed) dispatch({ type: record.logged === "skipped" ? "logSkip" : "logSave", record });
+    else dispatch({ type: "logDismiss" });
     setLogSheet(null);
-    if (wasBlocking) locate("ball");
   };
   const cancelLogSheet = () => { setLogSheet(null); dispatch({ type: "logDismiss" }); };
   // Reopen a restored logCard (e.g. after a reload mid-hole, §9.8) once the engine has recomputed.
   useEffect(() => {
     // v22.13: "putt" is the PuttSheet's own card — restoring it here opened a stray bare long card under it (v22.12)
-    if (logSheet || !cs.logCard || cs.logCard === "putt") return;
-    const record = buildDraftShot() || (cs.logCard === "prev" ? null : buildBareShot());
-    if (record) setLogSheet({ record, collapsed: cs.logCard === "prev", blocking: cs.logCard === "prev" });
+    if (logSheet || cs.logCard !== "log") return;
+    const record = buildDraftShot() || bareWithShape(buildBareShot());
+    if (record) setLogSheet({ record });
     else dispatch({ type: "logDismiss" });
   }, [cs.logCard, !!engine?.res]);
   // §4.5 — the hole moved on (score entered, possibly while the caddie screen wasn't even open)
@@ -1982,6 +2067,24 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   const fitBall = keepCam ? lastFit.current.ball : mi.fitBall, fitOptions = keepCam ? lastFit.current.options : mi.fitOptions;
   const notice = v.notice || (built ? sat.notice : null);
   const markAt = noGeo && !built && v.view === "markgreen" && cs.ball ? { lat: cs.ball.lat, lon: cs.ball.lng } : null;
+  /* v22.15 §2: the target marker and the start line on Ready; the ellipse follows a moved target
+     (the recommendation does not — it is what Brett was told, the marker is where he aims) */
+  const [dragTarget, setDragTarget] = useState(null);
+  const shownTarget = mapMarks && !pinView ? dragTarget || marks.target || activeOpt?.target || null : null;
+  const optKey = v.sameShot ? "safe" : cs.opt;
+  const drawnOptions = mi.options && mapMarks && (dragTarget || marks.target) && mi.options[optKey]
+    ? { ...mi.options, [optKey]: { ...mi.options[optKey], target: { ...(dragTarget || marks.target), label: "own target" } } } : mi.options;
+  const toLLxy = (p) => { if (!Fr || !p) return null; const q = Fr.toLatLng(p); return { lat: q.lat, lng: q.lon }; };
+  const setTarget = (p) => { setDragTarget(null); if (p) dispatch({ type: "intent", patch: { target: { x: p.x, y: p.y }, targetLabel: "own target", targetLL: toLLxy(p) } }); };
+  const setLine = (p) => {
+    const deg = p && ballXY ? bearingInFrame(ballXY, p) : null;
+    const r = deg != null ? (deg * Math.PI) / 180 : 0;
+    dispatch({ type: "intent", patch: { startLineDeg: deg, lineLL: deg != null ? toLLxy({ x: ballXY.x + Math.sin(r) * 100, y: ballXY.y + Math.cos(r) * 100 }) : null } });
+  };
+  // §1: test mode on a hole with nothing to frame (no map, no mark view) — the course centre
+  // north-up ~400 yds, or the ball when there is one
+  const fakeAt = testMode && !built && !markAt
+    ? (cs.ball ? { lat: cs.ball.lat, lon: cs.ball.lng, spanYds: 400, ball: true } : (courseLL ? { ...courseLL, spanYds: 400, ball: false } : null)) : null;
   const markGreen = (q) => { setGreens(saveGreen(safeStorage(), slot.courseId, slot.holeKey, q)); dispatch({ type: "greenMarked" }); };
   const barH = 78 + safe.bottom;
   const insets = useMemo(() => ({ top: safe.top + 49, right: CADDIE_RAIL_W, bottom: barH + 16, left: 0 }), [safe.top, barH]);
@@ -1996,18 +2099,66 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   };
   useEffect(() => { if (weatherRefreshDue(weather)) refreshWeather(); }, []);
 
-  /* GPS: one fix per tap, high accuracy, 10 s (§8 Locating) */
-  const locate = (kind) => {
-    const trigger = kind === "retry" ? (cs.trigger || (cs.ball || cs.yards != null ? "ball" : "tee")) : kind;
-    dispatch({ type: kind });
-    if (trigger === "tee" && weatherRefreshDue(weather)) refreshWeather();
+  /* v22.15 §1 — the one place a fix comes from. Real GPS: one fix per tap, high accuracy, 10 s
+     (§8 Locating). Test mode: the map is armed (the action went to the reducer with `tap`) and the
+     next tap on it calls the same onFix with a fix of the same shape (accuracy 4 m). Everything
+     after that — close-out, hole detection, lie inference, the reducer's `fix` — is shared. */
+  const fixHandler = React.useRef(null);
+  const getFix = (onFix, onErr) => {
+    if (testMode) { fixHandler.current = { onFix, onErr }; return; }
     const geo = typeof navigator !== "undefined" ? navigator.geolocation : null;
-    if (!geo) { dispatch({ type: "fixError", code: 2 }); return; }
+    if (!geo) { onErr({ code: 2 }); return; }
     let done = false;
-    const guard = setTimeout(() => { if (!done) { done = true; dispatch({ type: "fixError", code: 3 }); } }, GPS_TIMEOUT_MS + 1500);
+    const guard = setTimeout(() => { if (!done) { done = true; onErr({ code: 3 }); } }, GPS_TIMEOUT_MS + 1500);
     geo.getCurrentPosition((pos) => {
       if (done) return; done = true; clearTimeout(guard);
-      const fix = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracyM: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null };
+      onFix({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracyM: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null });
+    }, (err) => {
+      if (done) return; done = true; clearTimeout(guard);
+      onErr(err);
+    }, { enableHighAccuracy: true, timeout: GPS_TIMEOUT_MS, maximumAge: 0 });
+  };
+  const [markHereAt, setMarkHereAt] = useState(null);    // test mode: where the tap says the green is
+  const onFakeTap = (q) => {
+    const a = cs.awaitingTap;
+    const hnd = fixHandler.current;
+    fixHandler.current = null;
+    dispatch({ type: "tapDone" });
+    if (a?.action === "mark") { setMarkHereAt({ lat: q.lat, lng: q.lon, accuracyM: 4 }); setMarkHereOpen(true); return; }
+    if (hnd) hnd.onFix(fakeFix(q));
+    else dispatch({ type: "fixError", code: 3 });        // the handler did not survive (a reload): Try again re-arms
+  };
+
+  /* §3 — what closes when the next fix arrives: the shot being played now. Snapshotted when Brett
+     acts (the engine blanks while Locating) and kept for a Try again of the same ball. */
+  const closingRef = React.useRef(null);
+  const snapshotClosing = (trigger) => {
+    if (trigger === "tee") return null;
+    const live = cs.phase === "ready" || cs.phase === "yards";
+    if (!live) return closingRef.current && closingRef.current.hole === n && closingRef.current.shotNo === cs.shotNo ? closingRef.current : null;
+    const logged = existingFor();
+    const intent = cs.phase === "yards" ? shotIntent({ set: { shape: marks.shape }, club: logged?.club ?? activeOpt?.club ?? null, history: allShots(safeStorage()) }) : intentNow();
+    const draft = logged ? null : (buildDraftShot() || bareWithShape(buildBareShot()));
+    return { hole: n, shotNo: cs.shotNo, logged, draft, intent, frameHole: built };
+  };
+  const closeShot = (snap, { fix, endFrame, endLie }) => {
+    if (!snap || !fix) return;
+    const base = snap.logged || (snap.draft ? autoShotRecord(snap.draft) : null);
+    if (!base) return;
+    // an intent set after the card was saved still counts: the one in effect at the close wins
+    const intent = snap.logged && !snap.logged.intent ? undefined : snap.intent;
+    saveShotHere(closeOutShot(base, { endGps: fix, endLie: endLie ?? null, endAccuracyM: fix.accuracyM, endFrame: endFrame ?? null, intent }, config));
+    if (cs.openShot && cs.openShot.id === base.id) dispatch({ type: "logClosed" });
+  };
+
+  const locate = (kind) => {
+    const trigger = kind === "retry" ? (cs.trigger || (cs.ball || cs.yards != null ? "ball" : "tee")) : kind;
+    const snap = snapshotClosing(trigger);
+    closingRef.current = snap;
+    dispatch({ type: kind, tap: testMode });
+    if (trigger === "tee" && weatherRefreshDue(weather)) refreshWeather();
+    getFix((fix) => {
+      closingRef.current = null;
       let holeNo = null, hole = built;
       if (trigger === "tee" && geometry && key != null) {       // v22.11: no hole detection from an unmapped hole (§2 rule only)
         const order = scorecardOrder(geometry, nineMap);
@@ -2016,38 +2167,40 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
         if (m && course.holes[m - 1]) { holeNo = m; hole = buildFor(m); }
       }
       const Fh = frameOf(hole);
+      // v22.12: a shot logged before I'm on the tee is the tee shot itself — the tee fix is its start, not its end
+      const teeShot = trigger === "tee" && cs.openShot && cs.openShot.hole === (holeNo || n) && cs.openShot.shotNo === 1 ? cs.openShot : null;
+      if (teeShot && !Number.isFinite(teeShot.start?.lat)) {
+        const tp = Fh ? Fh.toFrame({ lat: fix.lat, lon: fix.lng }) : null;
+        const patched = { ...teeShot, start: { ...(teeShot.start || {}), lat: fix.lat, lng: fix.lng, accuracyM: fix.accuracyM, frame: noGeo ? null : tp } };
+        saveShotHere(patched);
+        dispatch({ type: "logSave", record: patched });
+      }
       if (noGeo) {
         // v22.11: ballXY and the previous-shot lines go in the anchor frame; the shot being closed
         // out was aimed in the last ball's synthetic frame (`hole`), so its end is measured there.
         const aF = anchorF || anchorFrame({ lat: fix.lat, lon: fix.lng });
-        // v22.12: a shot logged before I'm on the tee is the tee shot itself — the tee fix is its start, not its end
-        const closable = cs.openShot && !(trigger === "tee" && cs.openShot.hole === n);
-        if (closable && Fh) {
-          const endFrame = Fh.toFrame({ lat: fix.lat, lon: fix.lng });
-          saveShotHere(closeOutShot(cs.openShot, { endGps: fix, endLie: markedEndLie(hole, endFrame), endAccuracyM: fix.accuracyM, endFrame }, config));
-          dispatch({ type: "logClosed" });
-        } else if (closable && cs.openShot.hole === n) {
-          // v22.12: no map and no marked green — still record where the ball ended; no frame, so no miss math
-          saveShotHere(closeOutShot(cs.openShot, { endGps: fix, endLie: null, endAccuracyM: fix.accuracyM, endFrame: null }, config));
-          dispatch({ type: "logClosed" });
-        }
+        const endFrame = Fh ? Fh.toFrame({ lat: fix.lat, lon: fix.lng }) : null;
+        // v22.12: no map and no marked green — still record where the ball ended; no frame, so no miss math
+        closeShot(snap, { fix, endFrame, endLie: endFrame ? markedEndLie(hole, endFrame) : null });
         dispatch({ type: "fix", fix, point: aF ? aF.toFrame({ lat: fix.lat, lon: fix.lng }) : null, hole: null });
         return;
       }
       const point = Fh ? Fh.toFrame({ lat: fix.lat, lon: fix.lng }) : null;
-      // §4.5 — this fix is what the last long shot (if any) was waiting on: fill in its end
-      // position and the miss math, then let it go.
-      if (cs.openShot && point) {
+      // §4.5 / v22.15 §3 — this fix is what the shot being played was waiting on: its end position
+      // and the result, on the logged record or on an auto-created one
+      if (point && snap) {
         const endLie = inferLie(hole, geometry, ll(fix) || point, { accuracyM: fix.accuracyM, overrides, courseId }).lieType;
-        const closed = closeOutShot(cs.openShot, { endGps: fix, endLie, endAccuracyM: fix.accuracyM, endFrame: point }, config);
-        saveShotHere(closed);
-        dispatch({ type: "logClosed" });
+        closeShot(snap, { fix, endFrame: point, endLie });
       }
       dispatch({ type: "fix", fix, point, hole: holeNo });
     }, (err) => {
-      if (done) return; done = true; clearTimeout(guard);
+      // §6: On the green with no fix still closes the shot (no end) — the reducer puts him on the green
+      if (trigger === "green" && snap) {
+        const base = snap.logged || (snap.draft ? autoShotRecord(snap.draft) : null);
+        if (base) { saveShotHere(closeOutShot(base, { intent: snap.intent }, config)); if (cs.openShot && cs.openShot.id === base.id) dispatch({ type: "logClosed" }); }
+      }
       dispatch({ type: "fixError", code: err && err.code });
-    }, { enableHighAccuracy: true, timeout: GPS_TIMEOUT_MS, maximumAge: 0 });
+    });
   };
 
   /* chips: every change recomputes; a lie correction is also stored for §5.6 (§9.4) */
@@ -2068,13 +2221,11 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   const pickerM = picker ? pickerModel(picker, { chip: v.details.chips.find((c) => c.key === picker), current: chipCurrent(picker) }) : null;
 
   const act = (a) => {
-    // §4.4 step 2 — "I'm at my ball" on an unlogged long shot shows its card collapsed first;
-    // resolving it (commitLog, blocking: true) is what actually calls locate("ball").
-    if (a === "ball" && unloggedPending) { openLogSheet({ collapsed: true, blocking: true }); return; }
-    if (a === "tee" || a === "ball" || a === "retry") locate(a);
+    // v22.15: no previous-shot prompt — I'm at my ball closes the shot itself (§3)
+    if (a === "tee" || a === "ball" || a === "retry" || a === "green") locate(a);
     else if (a === "yards") setYardsOpen("next");
     else if (a === "yardsSame") setYardsOpen("same");
-    else if (a === "logshot") openLogSheet({ collapsed: false, blocking: false });
+    else if (a === "logshot") openLogSheet();
     else if (a === "logputt") dispatch({ type: "puttOpen" });
     else if (a === "score") onScore(n);
     else if (a === "profile") onRetryProfile();
@@ -2089,12 +2240,16 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   return (
     <div data-screen="caddie" style={{ position: "fixed", inset: 0, overflow: "hidden", background: T.paper, color: T.ink, fontFamily: F.label, userSelect: "none", WebkitUserSelect: "none" }}>
       <style dangerouslySetInnerHTML={{ __html: CADDIE_CSS }} />
-      <MapLayer hole={built} geometry={geometry} ball={mi.ball} accuracyM={mi.accuracyM} pin={mi.pin} options={mi.options} active={mi.active} sameShot={mi.sameShot}
+      <MapLayer hole={built} geometry={geometry} ball={mi.ball} accuracyM={mi.accuracyM} pin={mi.pin} options={drawnOptions} active={mi.active} sameShot={mi.sameShot}
         previousShots={mi.previousShots} fitBall={fitBall} fitOptions={fitOptions} insets={insets} fallback={sat.mode === "fallback" || (!built && !markAt)}
         onPinTap={(p) => { const q = pinFromMapTap(built, p); if (q) dispatch({ type: "pin", value: q }); }}
         onMapTap={() => { if (cs.exp) dispatch({ type: "exp", exp: false }); }} onSatelliteFail={sat.markFailed}
         markAt={markAt} onMarkGreen={markGreen} onRemark={() => dispatch({ type: "remark", on: true })}
-        pinView={pinView} onPinDrag={setDragPin} onPinDrop={(p) => { const q = pinFromDrag(built, p); if (q) dispatch({ type: "pin", value: q }); }} />
+        pinView={pinView} onPinDrag={setDragPin} onPinDrop={(p) => { const q = pinFromDrag(built, p); if (q) dispatch({ type: "pin", value: q }); }}
+        intentMarker={shownTarget} startLineDeg={mapMarks ? marks.startLineDeg ?? null : null}
+        onTargetDrag={(p) => { if (p) setDragTarget(p); }} onTargetDrop={setTarget}
+        lineMode={!!cs.lineMode && mapMarks} onLineTap={setLine}
+        onFakeTap={cs.awaitingTap ? onFakeTap : null} fakeAt={fakeAt} testBorder={testMode} />
 
       {/* v22.11 B: the pin button — paper disc, ink flag; bottom-left of the map region, clear of the attribution */}
       {built && ["pretee", "ready", "sameshot", "green"].includes(v.view) && (
@@ -2118,7 +2273,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
 
       {/* v22.12 Mark green here — no imagery needed: the fix Brett is standing on becomes this hole's green */}
       {noGeo && cs.ball && (v.view === "nomap" || v.view === "markgreen") && (
-        <button data-part="mark-here" onClick={() => setMarkHereOpen(true)}
+        <button data-part="mark-here" onClick={() => { if (testMode) { dispatch({ type: "awaitMark" }); return; } setMarkHereAt(null); setMarkHereOpen(true); }}
           style={{ position: "absolute", left: 14, bottom: barH + 26, height: 38, padding: "0 12px", display: "flex", alignItems: "center", gap: 8, zIndex: 15,
             background: T.paper, border: rule, borderRadius: 0, color: T.ink, fontFamily: F.label, fontSize: 12, whiteSpace: "nowrap", boxShadow: "0 1px 3px rgba(20,28,16,.35)" }}>
           <svg width="11" height="15" viewBox="0 0 14 18" fill="none" stroke={T.ink} strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
@@ -2145,7 +2300,10 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
         background: T.paper, borderLeft: `4px double ${T.ink}`, zIndex: 20, display: "flex", flexDirection: "row-reverse", overflow: "hidden" }}>
         <div data-part="rail-col" style={{ flex: "none", width: 102, padding: `${safe.top + 7}px 7px 0`, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minHeight: 0 }}>
           <span style={k9}>Hole</span>
-          <span style={{ ...printed(42), color: T.black, lineHeight: 0.9, marginTop: 6 }}>{r.hole}</span>
+          <span style={{ position: "relative", ...printed(42), color: T.black, lineHeight: 0.9, marginTop: 6 }}>{r.hole}
+            {/* v22.15 §3–§4: a small ? while this hole has shots nobody has looked at */}
+            {r.unreviewed > 0 && <span data-part="rail-q" aria-label={`${r.unreviewed} to review`} style={{ position: "absolute", left: "100%", top: -2, marginLeft: 2, ...printed(13), color: T.bogey, lineHeight: 1, whiteSpace: "nowrap" }}>?{r.unreviewed > 1 ? <sub style={{ fontSize: 9 }}>{r.unreviewed}</sub> : null}</span>}
+          </span>
           <span style={{ fontSize: 11, color: T.ink, marginTop: 6 }}>par <span style={printed(12)}>{r.par}</span> · shot <span style={printed(12)}>{r.shot}</span></span>
           {hr}
           {r.toggle === "pills" && (
@@ -2176,10 +2334,30 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
             </>
           )}
           <span data-part="aim" style={{ fontSize: 12.5, fontWeight: 500, lineHeight: 1.25, color: T.ink, marginTop: r.showClub ? -4 : 0 }}>{r.aim}</span>
+          {/* v22.15 §2: the shape for this shot, and the start line on the map */}
+          {r.shapes && (
+            <div role="group" aria-label="Shape" data-part="rail-shapes" style={{ marginTop: 10, width: 88, display: "flex", flexDirection: "column", border: rule, borderRadius: 12, overflow: "hidden", flex: "none" }}>
+              {COPY.shapes.map(([k, label], i) => {
+                const on = (marks.shape || (activeOpt ? intentNow().shape : "straight")) === k;
+                return (
+                  <button key={k} data-shape={k} onClick={() => dispatch({ type: "intent", patch: { shape: k } })} aria-pressed={on ? "true" : "false"}
+                    style={{ height: compact ? 22 : 24, borderTop: i ? hairline : "none", background: on ? T.ink : "transparent", color: on ? T.paper : T.ink,
+                      boxShadow: on ? `inset 0 0 0 1.5px ${T.yellow}` : "none", ...caps(9, 700, "0.08em"), textAlign: "center" }}>{label}</button>
+                );
+              })}
+            </div>
+          )}
+          {r.line && (
+            <button data-part="rail-line" onClick={() => dispatch({ type: "lineMode", on: !cs.lineMode })} aria-pressed={cs.lineMode ? "true" : "false"}
+              style={{ marginTop: 8, width: 88, height: 30, flex: "none", border: rule, borderRadius: 15, background: cs.lineMode ? T.ink : "transparent", color: cs.lineMode ? T.paper : T.ink,
+                boxShadow: cs.lineMode ? `inset 0 0 0 1.5px ${T.yellow}` : "none", textAlign: "center", ...caps(9, 700, "0.14em") }}>
+              {COPY.line}{Number.isFinite(marks.startLineDeg) && !cs.lineMode ? " ·" : ""}
+            </button>
+          )}
           {/* v22.12: no map — Enter yards (for this ball) is a text button here; the bar keeps I'm at my ball + Log shot */}
           {r.action && (
             <button data-part="rail-action" onClick={() => act(r.action.action)}
-              style={{ marginTop: 14, width: 88, height: 40, flex: "none", borderTop: rule, borderBottom: rule, background: "transparent", color: T.ink, textAlign: "center", ...caps(10, 700, "0.14em") }}>
+              style={{ marginTop: r.shapes ? 8 : 14, width: 88, height: r.shapes ? 34 : 40, flex: "none", borderTop: rule, borderBottom: rule, background: "transparent", color: T.ink, textAlign: "center", ...caps(10, 700, "0.14em") }}>
               {r.action.label}
             </button>
           )}
@@ -2189,7 +2367,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
           </button>
         </div>
 
-        <div data-part="details" className="lc-det" aria-hidden={exp ? "false" : "true"} style={{ flex: "none", width: 250, padding: `${safe.top + 7}px 12px 0 14px`, borderRight: hairline,
+        <div data-part="details" className="lc-det" aria-hidden={exp ? "false" : "true"} style={{ position: "relative", flex: "none", width: 250, padding: `${safe.top + 7}px 12px 48px 14px`, borderRight: hairline,
           opacity: exp ? 1 : 0, overflow: "hidden", pointerEvents: exp ? "auto" : "none" }}>
           {/* 1. distances */}
           <div style={{ display: "grid", gridTemplateColumns: compact ? "repeat(4, 1fr)" : "1fr 1fr", rowGap: 10, borderBottom: rule, padding: "2px 0 8px" }}>
@@ -2256,6 +2434,14 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
           {d.mapNote && (
             <div data-part="map-note" className={compact ? "lc-clamp1" : undefined} style={{ marginTop: 8, paddingTop: 7, borderTop: hairline, fontSize: 11, lineHeight: 1.45, color: T.ink }}>{d.mapNote}</div>
           )}
+          {/* v22.15 §5: the hole's strokes so far — the back door for an intent or a ball position after the fact */}
+          {r.shots && (
+            <button data-part="shots-button" onClick={() => setShotsOpen(true)}
+              style={{ position: "absolute", left: 0, bottom: 0, width: 250, height: 48, borderTop: rule, borderRight: hairline, background: T.paper, color: T.ink, textAlign: "center", ...caps(10, 700, "0.14em") }}>
+              {COPY.shots} · <span style={{ ...printed(12), letterSpacing: 0 }}>{holeRecords.filter((x) => x.shotType !== "putt").length}</span>
+              {r.unreviewed > 0 && <span style={{ ...printed(12), color: T.bogey, letterSpacing: 0 }}> ?</span>}
+            </button>
+          )}
           {/* 6. nudge (§3.3 item 6, spec §5.5): one line per nudge, then per contact flag; nothing when none */}
           {d.today.length > 0 && (
             <div data-part="today" style={{ marginTop: 8, paddingTop: 7, borderTop: hairline, display: "flex", gap: 8, alignItems: "baseline" }}>
@@ -2286,30 +2472,47 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
           onPick={(val) => applyChip(picker, val)} onInferred={() => applyChip(picker, null)} />
       )}
       {yardsOpen && <YardsSheet initial={yardsInitial} onClose={() => setYardsOpen(false)} onUse={(y) => { const same = yardsOpen === "same"; setYardsOpen(false); dispatch({ type: "yards", yards: y, same }); }} />}
-      {markHereOpen && cs.ball && (
-        <CaddieSheet onClose={() => setMarkHereOpen(false)} label={COPY.markHere}>
+      {markHereOpen && (markHereAt || cs.ball) && (
+        <CaddieSheet onClose={() => { setMarkHereOpen(false); setMarkHereAt(null); }} label={COPY.markHere}>
           <div style={{ ...caps(12), marginBottom: 8 }}>{COPY.markHere}</div>
           <div style={{ fontFamily: F.label, fontSize: 13, lineHeight: 1.45, color: T.ink, marginBottom: 14 }}>
             Stand on the green of hole <span style={printed(14)}>{n}</span>. Loop keeps this spot as its green
-            {Number.isFinite(cs.ball.accuracyM) ? <> (GPS ±<span style={printed(14)}>{Math.round(cs.ball.accuracyM)}</span> m)</> : null} for every round here.
+            {Number.isFinite((markHereAt || cs.ball).accuracyM) ? <> ({markHereAt ? "test tap" : "GPS"} ±<span style={printed(14)}>{Math.round((markHereAt || cs.ball).accuracyM)}</span> m)</> : null} for every round here.
           </div>
           <div style={{ display: "flex", gap: 10 }}>
-            <button data-part="mark-here-confirm" onClick={() => { setMarkHereOpen(false); markGreen({ lat: cs.ball.lat, lon: cs.ball.lng }); }} className="lc-primary" style={{ ...primaryPill, flex: 1.45, height: 52 }}><FlagGlyph />Mark green</button>
-            <button onClick={() => setMarkHereOpen(false)} style={{ ...outlinedPill, flex: 1, height: 52 }}>Cancel</button>
+            <button data-part="mark-here-confirm" onClick={() => { const at = markHereAt || cs.ball; setMarkHereOpen(false); setMarkHereAt(null); markGreen({ lat: at.lat, lon: at.lng }); }} className="lc-primary" style={{ ...primaryPill, flex: 1.45, height: 52 }}><FlagGlyph />Mark green</button>
+            <button onClick={() => { setMarkHereOpen(false); setMarkHereAt(null); }} style={{ ...outlinedPill, flex: 1, height: 52 }}>Cancel</button>
           </div>
         </CaddieSheet>
       )}
       {logSheet && (
-        <LongCardSheet record={logSheet.record} collapsed={logSheet.collapsed} blocking={logSheet.blocking} clubOrder={profile?.clubOrder || []}
+        <LongCardSheet record={logSheet.record} clubOrder={profile?.clubOrder || []}
           onQuick={(dr) => commitLog((r) => (r.recommendation
-            ? quickLog(r)
-            // v22.12 no recommendation: the club off the card; shot type and shape re-default for it
-            : quickLog({ ...r, club: dr?.club ?? r.club, shotType: undefined, intendedShape: undefined, curve: undefined, history: allShots(safeStorage()) })))}
+            ? quickLog({ ...r, club: dr.club ?? r.club, linePlayed: undefined, curve: dr.curve, curveSource: dr.curveSource })
+            // v22.12 no recommendation: the club off the card; shot type re-defaults for it
+            : quickLog({ ...r, club: dr?.club ?? r.club, shotType: undefined, curve: dr.curve, curveSource: dr.curveSource, history: allShots(safeStorage()) })))}
           onSave={(fields) => commitLog((r) => detailLog(r, fields))}
           onSkip={() => commitLog((r) => skipShot(r))}
-          onDetail={() => setLogSheet((s) => ({ ...s, collapsed: false }))}
           onClose={cancelLogSheet} />
       )}
+      {shotsOpen && (() => {
+        const all = roundId ? loadShots(safeStorage(), roundId) : [];
+        const ctx = reviewContext({ course, geometry, nineMap, n, records: all.filter((x) => x.hole === n) });
+        return (
+          <ReviewSheet mode="shots" n={n} records={all} ctx={ctx} clubOrder={profile?.clubOrder || []} config={config}
+            base={{ roundId: roundId ?? null, courseId, nine: n <= 9 ? "front" : "back" }}
+            onClose={() => setShotsOpen(false)}
+            onDone={(changed, deleted, { all: story }) => {
+              writeReview(changed, deleted, roundId);
+              setShotsRev((x) => x + 1);
+              // the map's previous-shot lines follow the edited positions (the caddie's ball frame is the review frame)
+              const { shots: ss } = splitHole(story, n);
+              const lines = ss.map((r) => { const p = recPoints(r, ctx.F, ctx.sameFrame); return p.s && p.e ? { from: p.s, to: p.e } : null; }).filter(Boolean);
+              if (lines.length) dispatch({ type: "lines", hole: n, lines });
+              setShotsOpen(false);
+            }} />
+        );
+      })()}
       {cs.logCard === "putt" && (
         <PuttSheet initialFt={cs.lastPuttFt ?? 20}
           onMade={(distanceFt) => {
@@ -2328,6 +2531,317 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
       )}
     </div>
   );
+}
+
+/* ---------- v22.15 the hole's story: the Review sheet (SPEC-shotlog-v2 §4) and the Shots list (§5) ----------
+   One component for both. `holeReview` (src/caddie/review.js) is the model; the sheet keeps a
+   working copy of the hole's records, every edit goes through review.js, and nothing is written
+   until Save all / Save (or Later, which keeps the edits but leaves the ? marks). The mini map is a
+   compact render of the drawn paper map (overlay.js fallbackMapModel + a linear camera), not a
+   second MapLayer: it needs its own taps (Place, Target, Line), no satellite and no camera rules. */
+
+/** The review frame for hole n: the mapped hole's own frame, else the course's north-up anchor frame
+    (the same one the caddie keeps an unmapped hole's ball positions in). */
+function reviewContext({ course, geometry, nineMap, n, records }) {
+  let nm = nineMap;
+  if (nm === undefined) { try { nm = geometry && needsNineMap(geometry) ? resolveNineMap(safeStorage(), geometry, course).map : null; } catch (e) { nm = null; } }
+  const k = geometry ? geometryKeyFor(geometry, nm, n) : null;
+  const hh = course.holes[n - 1];
+  let geoHole = null;
+  try { geoHole = k != null && hh ? buildHole(geometry, k, { par: hh.par, yards: hh.yards }) : null; } catch (e) { geoHole = null; }
+  const first = (records || []).map((r) => r.start || r.gps || r.end).find((p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng ?? p.lon));
+  const F = frameOf(geoHole) || anchorFrame(courseAnchor(course) || (first ? { lat: first.lat, lon: first.lng ?? first.lon } : null));
+  const slot = greenSlot(course, n, { apiId: apiIdOf(course), clubId: clubIdOf(course) });
+  const g = geoHole ? null : greenFor(loadGreens(safeStorage()), slot.courseId, slot.holeKey);
+  const greenPt = g && F ? F.toFrame({ lat: g.lat, lon: g.lon }) : null;
+  return { geoHole, F, sameFrame: !!geoHole, greenPt };
+}
+const ptIn = (F, sameFrame, q, frame) => {
+  const g = q && Number.isFinite(q.lat) && Number.isFinite(q.lng ?? q.lon) ? { lat: q.lat, lon: q.lng ?? q.lon } : null;
+  return g && F ? F.toFrame(g) : sameFrame && frame && Number.isFinite(frame.x) ? { x: frame.x, y: frame.y } : null;
+};
+/** A record's start / end / target in the review frame, and its start-line bearing there. */
+function recPoints(r, F, sameFrame) {
+  const s = ptIn(F, sameFrame, r.start, r.start?.frame);
+  const e = ptIn(F, sameFrame, r.end, r.end?.frame);
+  const t = ptIn(F, sameFrame, r.intent?.targetLL, r.intent?.target || r.target?.frame);
+  const lp = ptIn(F, false, r.intent?.lineLL, null);
+  const line = s && lp ? bearingInFrame(s, lp) : s && sameFrame && Number.isFinite(r.intent?.startLineDeg) ? r.intent.startLineDeg : s && t ? bearingInFrame(s, t) : null;
+  return { s, e, t, line };
+}
+
+const RM_PENCIL = T.pencil;
+function ReviewMap({ ctx, shots, selId, mode, onTap, onTargetDrop, height = 184 }) {
+  const boxRef = React.useRef(null);
+  const [w, setW] = useState(331);
+  const [drag, setDrag] = useState(null);
+  const dragRef = React.useRef(null);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return undefined;
+    const read = () => { const r = el.getBoundingClientRect(); if (r.width > 0) setW(Math.round(r.width)); };
+    read();
+    window.addEventListener("resize", read);
+    return () => window.removeEventListener("resize", read);
+  }, []);
+  const { geoHole, F, sameFrame, greenPt } = ctx;
+  const pts = shots.map((r) => ({ id: r.id, n: r.shotNo, ...recPoints(r, F, sameFrame) }));
+  const vp = { width: w, height };
+  const camKey = JSON.stringify(pts.map((p) => [p.s, p.e, p.t].map((q) => q && [Math.round(q.x), Math.round(q.y)])));
+  const cam = useMemo(() => {
+    const list = [];
+    if (geoHole) { list.push(geoHole.tee || { x: 0, y: 0 }); for (const q of geoHole.green?.ring || []) list.push({ x: q[0], y: q[1] }); }
+    if (greenPt) list.push({ x: greenPt.x - 14, y: greenPt.y - 14 }, { x: greenPt.x + 14, y: greenPt.y + 14 });
+    for (const p of pts) for (const q of [p.s, p.e, p.t]) if (q) list.push(q);
+    const b = fitBounds(list) || { minX: -40, minY: -40, maxX: 40, maxY: 260 };
+    const cx = (b.minX + b.maxX) / 2, cy = (b.minY + b.maxY) / 2;
+    const hw = Math.max(45, (b.maxX - b.minX) / 2 + 12), hh = Math.max(60, (b.maxY - b.minY) / 2 + 12);
+    return cameraFor({ minX: cx - hw, maxX: cx + hw, minY: cy - hh, maxY: cy + hh }, vp, {}, { padding: 10 });
+  }, [w, height, geoHole, greenPt && greenPt.x, camKey]);
+  const L = linearProjector(cam, vp);
+  const base = geoHole ? fallbackMapModel({ hole: geoHole, project: L.project }) : [];
+  const sel = pts.find((p) => p.id === selId) || null;
+  const selT = drag || sel?.t || null;
+  const local = (ev) => { const r = boxRef.current.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; };
+  const down = (ev) => {
+    const pt = local(ev);
+    const tp = selT ? L.project(selT) : null;
+    if (tp && Math.hypot(pt.x - tp.x, pt.y - tp.y) <= 22 && onTargetDrop) {
+      try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch (e) { /* synthetic */ }
+      dragRef.current = { id: ev.pointerId, p: selT };
+      setDrag(selT);
+    } else dragRef.current = { id: ev.pointerId, tap: pt };
+  };
+  const move = (ev) => {
+    const d = dragRef.current;
+    if (!d || d.id !== ev.pointerId || d.tap) return;
+    const q = L.unproject(local(ev));
+    d.p = q; setDrag(q);
+  };
+  const up = (ev) => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    if (!d || d.id !== ev.pointerId) return;
+    if (d.tap) { const pt = local(ev); if (Math.hypot(pt.x - d.tap.x, pt.y - d.tap.y) <= 10 && onTap) onTap(L.unproject(pt)); return; }
+    setDrag(null);
+    if (d.p && onTargetDrop) onTargetDrop(d.p);
+  };
+  const P = (q) => L.project(q);
+  const f1 = (x) => Math.round(x * 10) / 10;
+  return (
+    <div ref={boxRef} data-part="review-map" data-mode={mode || "none"} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { dragRef.current = null; setDrag(null); }}
+      style={{ position: "relative", width: "100%", height, border: rule, background: T.paper, touchAction: "none", overflow: "hidden", cursor: mode ? "crosshair" : "default" }}>
+      <svg width={w} height={height} viewBox={`0 0 ${w} ${height}`} style={{ display: "block", pointerEvents: "none" }} aria-hidden="true">
+        {renderNodes(base)}
+        {greenPt && (() => { const g = P(greenPt); return <circle cx={f1(g.x)} cy={f1(g.y)} r={Math.max(5, 13 * cam.pxPerYd)} fill={T.fillWon} stroke={T.ink} strokeWidth="1" />; })()}
+        {pts.map((p) => (p.s && p.e ? (() => { const a = P(p.s), b = P(p.e); return <path key={`l${p.id}`} d={`M${f1(a.x)} ${f1(a.y)} L${f1(b.x)} ${f1(b.y)}`} stroke={RM_PENCIL} strokeWidth={p.id === selId ? 2 : 1.4} strokeDasharray="2.5 5" strokeLinecap="round" fill="none" filter="url(#pencil)" opacity={p.id === selId ? 1 : 0.7} />; })() : null))}
+        {sel?.s && Number.isFinite(sel.line) && (() => {
+          const a = P(sel.s), r = (sel.line * Math.PI) / 180, b = P({ x: sel.s.x + Math.sin(r) * 1200, y: sel.s.y + Math.cos(r) * 1200 });
+          return <line data-part="review-line" x1={f1(a.x)} y1={f1(a.y)} x2={f1(b.x)} y2={f1(b.y)} stroke={RM_PENCIL} strokeWidth="1.3" strokeLinecap="round" filter="url(#pencil)" opacity="0.85" />;
+        })()}
+        {selT && (() => { const t = P(selT); return (
+          <g data-part="review-target">
+            {drag && <circle cx={f1(t.x)} cy={f1(t.y)} r="16" fill="none" stroke={RM_PENCIL} strokeWidth="1.1" strokeDasharray="3 3" />}
+            <circle cx={f1(t.x)} cy={f1(t.y)} r="9" fill="none" stroke={RM_PENCIL} strokeWidth="1.7" filter="url(#pencil)" />
+            <circle cx={f1(t.x)} cy={f1(t.y)} r="2" fill={RM_PENCIL} />
+          </g>
+        ); })()}
+        {pts.map((p) => (p.s ? (() => { const a = P(p.s), on = p.id === selId; return <circle key={`b${p.id}`} data-part={on ? "review-ball" : undefined} cx={f1(a.x)} cy={f1(a.y)} r={on ? 6 : 4} fill={T.paper} stroke={T.black} strokeWidth={on ? 1.6 : 1.1} />; })() : null))}
+        {pts.length > 0 && (() => { const lastE = pts[pts.length - 1].e; if (!lastE) return null; const a = P(lastE); return <circle cx={f1(a.x)} cy={f1(a.y)} r="3" fill={T.black} />; })()}
+      </svg>
+    </div>
+  );
+}
+
+const RV_TOOL = { height: 30, padding: "0 10px", border: rule, borderRadius: 15, background: "transparent", color: T.ink, ...caps(9, 700, "0.1em") };
+const RV_TOOL_ON = { ...RV_TOOL, background: T.ink, color: T.paper, boxShadow: `inset 0 0 0 1.5px ${T.yellow}` };
+
+/**
+ * mode "review": the hole's score is written — header, putt stepper, rows, Save all / Later.
+ * mode "shots": the Shots list mid-hole (no score yet) — rows, Save / Close.
+ * onDone(records, deletedIds, { reviewed }) writes; onClose() leaves without writing.
+ */
+function ReviewSheet({ mode = "review", n, score = null, records, ctx, clubOrder = [], config = DEFAULT_CONFIG, base = {}, onDone, onClose }) {
+  const [recs, setRecs] = useState(() => records.filter((r) => r.hole === n));
+  const [deleted, setDeleted] = useState([]);
+  const [edited, setEdited] = useState(() => new Set());
+  const [open, setOpen] = useState(null);             // the expanded row: record id, or "missing:k"
+  const [tool, setTool] = useState(null);             // "place" | "target" | "line" on the mini map
+  const [puttCount, setPuttCount] = useState(null);
+  const { shots, putts } = splitHole(recs, n);
+  const R = holeReview(shots, putts, mode === "review" ? score : null, n, { puttCount: puttCount ?? undefined });
+  const count = R.problems.find((p) => p.type === "count");
+  const opts = { frame: ctx.F, sameFrame: ctx.sameFrame, cfg: config, hole: n, base: { ...base, hole: n } };
+  const touch = (id) => setEdited((s) => new Set([...s, id]));
+  const patchRec = (id, patch) => { setRecs((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r))); touch(id); };
+  const onTap = (row) => (p) => {
+    if (!tool || !p) return;
+    if (tool === "place") {
+      const out = placeShot(recs, row.n, p, opts);
+      const rec = out.find((r) => r.hole === n && r.shotNo === row.n && r.shotType !== "putt");
+      setRecs(out);
+      if (rec) { touch(rec.id); setOpen(rec.id); }
+      setTool(null);
+    } else if (tool === "target" && row.record) {
+      setRecs((rs) => setShotIntent(rs, row.record.id, { target: p }, opts)); touch(row.record.id); setTool(null);
+    } else if (tool === "line" && row.record) {
+      const deg = lineFromTap(recs, row.record.id, p, opts);
+      setRecs((rs) => setShotIntent(rs, row.record.id, { startLineDeg: deg }, opts)); touch(row.record.id);
+    }
+  };
+  const addStroke = () => {
+    const k = R.header.shots + 1;
+    const r = bareShotRecord({ ...base, hole: n, shotNo: k, gps: null });
+    setRecs((rs) => [...rs, { ...r, logged: "auto", reviewed: false, contact: null, strike: null, startLine: null, intent: normIntent({}) }]);
+    setOpen(r.id); setTool("place");
+  };
+  const delStroke = (row) => {
+    if (!row.record) return;
+    const id = row.record.id;
+    setRecs(recomputeChain(deleteStroke(recs, id), opts));
+    setDeleted((d) => [...d, id]);
+    setOpen(null); setTool(null);
+  };
+  const finish = (reviewed) => {
+    let out = renumber(recs);
+    if (reviewed) out = reviewAll(out).map((r) => (edited.has(r.id) && r.logged === "auto" ? { ...r, logged: "full" } : r));
+    else if (mode === "shots") out = out.map((r) => (edited.has(r.id) ? { ...r, reviewed: true, logged: r.logged === "auto" ? "full" : r.logged } : r));
+    if (reviewed && R.puttsNeeded) out = [...out, ...inferredPutts(R.header.putts, { ...base, hole: n, courseId: base.courseId })];
+    const changed = reviewed ? out : out.filter((r) => edited.has(r.id) || !records.some((o) => o.id === r.id));
+    onDone(changed, deleted, { reviewed, all: out });
+  };
+
+  const rowLine = (row) => {
+    if (row.kind === "putt") return [`Putt ${row.n}`, row.result];
+    const club = row.club ? clubShort(row.club) : "—";
+    return [club, row.pos, row.intent, row.result];
+  };
+  return (
+    <div data-part="sheet" data-review={mode} onClick={mode === "shots" ? onClose : undefined}
+      style={{ position: "fixed", inset: 0, background: "rgba(31,31,31,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 70 }}>
+      <div role="dialog" aria-label={mode === "review" ? `Review hole ${n}` : `Shots, hole ${n}`} onClick={(e) => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: 460, maxHeight: "94vh", display: "flex", flexDirection: "column", background: T.paper, borderTop: `4px double ${T.ink}` }}>
+        <div style={{ padding: "14px 22px 8px", borderBottom: hairline, flex: "none" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+            <span style={caps(12)}>{mode === "review" ? <>Hole <span style={printed(13)}>{n}</span>{Number.isFinite(score) && <> · <span style={printed(13)}>{score}</span> strokes</>}</> : <>Shots · hole <span style={printed(13)}>{n}</span></>}</span>
+            <span data-part="review-counts" style={{ fontFamily: F.label, fontSize: 12, color: T.ink }}>
+              <span style={printed(13)}>{R.header.shots}</span> {R.header.shots === 1 ? "shot" : "shots"}{mode === "review" && <> · <span style={printed(13)}>{R.header.putts}</span> {R.header.putts === 1 ? "putt" : "putts"}</>}
+            </span>
+          </div>
+          {mode === "review" && R.puttsNeeded && (
+            <div data-part="putt-stepper" style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+              <span style={caps(9)}>Putts</span>
+              <button aria-label="One putt fewer" onClick={() => setPuttCount(Math.max(0, R.header.putts - 1))} style={{ ...RV_TOOL, width: 34, padding: 0 }}>−</button>
+              <span style={{ ...written(24), minWidth: 18, textAlign: "center" }}>{R.header.putts}</span>
+              <button aria-label="One putt more" onClick={() => setPuttCount(R.header.putts + 1)} style={{ ...RV_TOOL, width: 34, padding: 0 }}>+</button>
+              <span style={{ fontFamily: F.label, fontSize: 11, color: T.muted }}>no putts logged</span>
+            </div>
+          )}
+          {count && (
+            <div data-part="review-mismatch" style={{ fontFamily: F.label, fontSize: 12, color: T.double, marginTop: 6 }}>
+              The card says <span style={printed(13)}>{count.score}</span>; this story has <span style={printed(13)}>{count.story}</span>. The score stands.
+            </div>
+          )}
+        </div>
+        <div style={{ overflowY: "auto", padding: "0 22px", flex: "1 1 auto" }}>
+          {R.rows.map((row) => {
+            const id = row.record ? row.record.id : `${row.kind}:${row.n}`;
+            const isOpen = open === id;
+            const cells = rowLine(row);
+            return (
+              <div key={id} data-part="review-row" data-kind={row.kind} data-n={row.n} data-open={isOpen ? "true" : "false"} style={{ borderBottom: hairline }}>
+                <button onClick={() => { setOpen(isOpen ? null : id); setTool(row.kind === "shot" && !row.record ? "place" : null); }}
+                  style={{ width: "100%", display: "grid", gridTemplateColumns: row.kind === "putt" ? "26px 1fr auto 14px" : "26px 52px 46px 50px 1fr 14px", alignItems: "center",
+                    gap: 4, height: 40, background: "transparent", color: T.ink, textAlign: "left", padding: 0 }}>
+                  <span style={{ ...printed(15), color: T.black }}>{row.kind === "putt" ? "P" : row.n}</span>
+                  {cells.map((c, i) => (
+                    <span key={i} className="lc-clamp1" style={{ fontSize: i === 0 ? 12 : 11, color: c === "—" ? T.muted : T.ink, fontWeight: i === 0 ? 700 : 400,
+                      textAlign: row.kind === "putt" && i === 1 ? "right" : "left", ...(i === cells.length - 1 && row.kind === "shot" ? printed(12) : {}) }}>{c}</span>
+                  ))}
+                  <span data-part={row.unreviewed ? "review-q" : undefined} style={{ ...printed(14), color: T.bogey, textAlign: "right" }}>{row.unreviewed || row.missing ? "?" : ""}</span>
+                </button>
+                {isOpen && row.kind === "shot" && (
+                  <div data-part="review-detail" style={{ padding: "2px 0 12px" }}>
+                    {ctx.F ? (
+                      <>
+                        <ReviewMap ctx={ctx} shots={splitHole(recs, n).shots} selId={row.record?.id} mode={tool} onTap={onTap(row)}
+                          onTargetDrop={row.record ? (p) => { setRecs((rs) => setShotIntent(rs, row.record.id, { target: p }, opts)); touch(row.record.id); } : null} />
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "8px 0 4px" }}>
+                          <button data-part="review-place" onClick={() => setTool(tool === "place" ? null : "place")} style={tool === "place" ? RV_TOOL_ON : RV_TOOL}>Place</button>
+                          {row.record && <button data-part="review-target-tool" onClick={() => setTool(tool === "target" ? null : "target")} style={tool === "target" ? RV_TOOL_ON : RV_TOOL}>Target</button>}
+                          {row.record && <button data-part="review-line-tool" onClick={() => setTool(tool === "line" ? null : "line")} style={tool === "line" ? RV_TOOL_ON : RV_TOOL}>{COPY.line}</button>}
+                        </div>
+                        {tool && <div style={{ fontFamily: F.label, fontSize: 11, color: T.ink, marginBottom: 4 }}>
+                          {tool === "place" ? `Tap the map where shot ${row.n} was played from.` : tool === "target" ? "Tap where you aimed (or drag the ring)." : "Tap the start line; tap the ball to clear it."}
+                        </div>}
+                      </>
+                    ) : <div style={{ fontFamily: F.label, fontSize: 11, color: T.muted, margin: "4px 0 8px" }}>No map or course location for this hole — positions cannot be placed.</div>}
+                    {row.record && (() => {
+                      const r = row.record;
+                      const shape = r.intent?.shape || r.intendedShape || "straight";
+                      const lowAcc = !!r.derived?.derivedLowAcc;
+                      return (
+                        <>
+                          <div role="group" aria-label="Shape" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, margin: "4px 0 8px" }}>
+                            {COPY.shapes.map(([k, label]) => <SegPill key={k} label={label} current={shape === k} onClick={() => { setRecs((rs) => setShotIntent(rs, r.id, { shape: k }, opts)); touch(r.id); }} />)}
+                          </div>
+                          {(!r.recommendation || !r.club) && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
+                              {clubOrder.map((c) => <SegPill key={c} label={clubShort(c)} current={c === r.club} onClick={() => patchRec(r.id, { club: c })} fontSize={10} />)}
+                            </div>
+                          )}
+                          <ScaleSlider title="Contact" options={CONTACT_OPTS} value={r.contact ?? 0} onChange={(val) => patchRec(r.id, { contact: val })} />
+                          <ScaleSlider title="Strike" options={wordOpts(["heel", "center", "toe"])} value={r.strike ?? "center"} onChange={(val) => patchRec(r.id, { strike: val })} />
+                          <ScaleSlider title="Start line" options={wordOpts(["left", "on", "right"])} value={r.startLine ?? "on"} onChange={(val) => patchRec(r.id, { startLine: val })} />
+                          <ScaleSlider title={<>Curve{lowAcc && <span style={{ ...printed(11), color: T.bogey }}> ?</span>}</>} ariaLabel="Curve" options={CURVE_OPTS} value={r.curve ?? 0}
+                            onChange={(val) => patchRec(r.id, { curve: val, curveSource: "hand" })} />
+                        </>
+                      );
+                    })()}
+                    {/* Delete / Add keep the story in step with the score — the Review sheet's job; mid-hole the
+                        caddie's shot count is the story, so the Shots list edits rows but never adds or removes one */}
+                    {mode === "review" && row.record && <button data-part="review-delete" onClick={() => delStroke(row)} style={{ ...RV_TOOL, marginTop: 6, color: T.double, borderColor: T.double }}>Delete stroke</button>}
+                  </div>
+                )}
+                {isOpen && row.kind === "putt" && row.record && !row.record.putt?.made && (
+                  <div style={{ padding: "2px 0 10px" }}>
+                    {PUTT_AXES.map((axis) => (
+                      <ScaleSlider key={axis.key} title={axis.label} options={axis.short.map((label, i) => [i - 2, label, axis.options[i]])} value={row.record.putt?.[axis.key] ?? 0}
+                        onChange={(val) => patchRec(row.record.id, { putt: { ...row.record.putt, [axis.key]: val } })} />
+                    ))}
+                    {mode === "review" && <button onClick={() => delStroke(row)} style={{ ...RV_TOOL, marginTop: 6, color: T.double, borderColor: T.double }}>Delete stroke</button>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {mode === "review" && <button data-part="review-add" onClick={addStroke} style={{ ...RV_TOOL, margin: "10px 0 12px" }}>Add stroke</button>}
+          {mode === "shots" && R.rows.length === 0 && <div style={{ fontFamily: F.label, fontSize: 12, color: T.muted, padding: "14px 0" }}>No shots on this hole yet.</div>}
+        </div>
+        <div style={{ display: "flex", gap: 10, padding: "10px 18px calc(env(safe-area-inset-bottom) + 12px)", borderTop: `4px double ${T.ink}`, flex: "none" }}>
+          {mode === "review" ? (
+            <>
+              <button data-part="review-save" onClick={() => finish(true)} className="lc-primary" style={{ ...primaryPill, flex: 1.45, height: 52 }}><FlagGlyph />{COPY.saveAll}</button>
+              <button data-part="review-later" onClick={() => finish(false)} style={{ ...outlinedPill, flex: 1, height: 52 }}>{COPY.later}</button>
+            </>
+          ) : (
+            <>
+              <button data-part="review-save" onClick={() => finish(false)} className="lc-primary" style={{ ...primaryPill, flex: 1.45, height: 52 }}><FlagGlyph />Save</button>
+              <button onClick={onClose} style={{ ...outlinedPill, flex: 1, height: 52 }}>Close</button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Write what a Review / Shots sheet handed back: upserts, deletes. Returns nothing. */
+function writeReview(changed, deleted, roundId) {
+  const st = safeStorage();
+  if (!st) return;
+  for (const id of deleted || []) deleteShot(st, id, roundId);
+  for (const r of changed || []) saveShot(st, r);
 }
 
 /* ---------- shared: leave-round sheet ---------- */
@@ -3221,6 +3735,8 @@ function App() {
   const [weather, setWeather] = useState(null);
   const [profileBase, setProfile] = useState(loadCaddieProfile);
   const [history, setHistory] = useState(loadHistory());
+  const [testMode, setTestModeState] = useState(loadTestMode);
+  const setTestMode = (on) => { saveTestMode(on); setTestModeState(!!on); };
   // §5.2–§5.4: Loop's between-round overlays, rebuilt when history changes and each time the
   // caddie opens (a shot-log import lands in storage, not in React state).
   const caddieOpen = screen === "caddie";
@@ -3260,6 +3776,30 @@ function App() {
     if (roundId) setHistory(h => h.map(r => r.id === roundId ? buildRecord({ id: r.id, date: r.date }, course, diff, ns, ghost) : r));
   };
   const reset = () => { setRoundId(null); setScreen("setup"); };
+  /* v22.15 §4 — a score written on the card: the Review sheet first when the hole's story needs it
+     (an unreviewed or missing stroke, or a putt count that does not match); the move the card was
+     about to make (the next blank hole, or finishing the round) waits until it closes. */
+  const onScored = (n, score, next) => {
+    if (!caddie || !roundId) return false;
+    let need = false;
+    try { need = reviewNeeded(loadShots(safeStorage(), roundId), n, score); } catch (e) { need = false; }
+    if (!need) return false;
+    dispatchCaddie({ type: "reviewOpen", hole: n, next });
+    return true;
+  };
+  const reviewInfo = (n) => {
+    if (!roundId) return null;
+    try {
+      const mine = loadShots(safeStorage(), roundId).filter((r) => r.hole === n);
+      return mine.length ? { n: mine.length, unreviewed: mine.filter((r) => r.reviewed === false).length } : null;
+    } catch (e) { return null; }
+  };
+  const closeReview = () => {
+    const next = caddie?.review?.next ?? null;
+    dispatchCaddie({ type: "reviewClose" });
+    if (next === "finish") finalize(scores);
+    else if (Number.isInteger(next)) setHole(next);
+  };
   // Delete a stored round so test rounds never pollute the record.
   const deleteRound = (id) => {
     setHistory(h => h.filter(r => r.id !== id));
@@ -3278,10 +3818,23 @@ function App() {
     <div style={{ minHeight: "100dvh", background: T.paper, color: T.ink, fontFamily: F.label }}>
       <style dangerouslySetInnerHTML={{ __html: RESET }} />
       <PencilDefs />
-      {screen === "setup" && <Setup course={course} setCourse={setCourse} diff={diff} setDiff={setDiff} stats={stats} history={history} onStart={start} onHistory={() => setScreen("history")} courseMap={courseMap} />}
-      {screen === "play" && course && ghost && <Play course={course} ghost={ghost} scores={scores} setScores={setScores} hole={hole} setHole={setHole} onFinish={finalize} onExit={exitRound} onCaddie={openCaddie} />}
+      {screen === "setup" && <Setup course={course} setCourse={setCourse} diff={diff} setDiff={setDiff} stats={stats} history={history} onStart={start} onHistory={() => setScreen("history")} courseMap={courseMap}
+        testMode={testMode} setTestMode={setTestMode} />}
+      {screen === "play" && course && ghost && <Play course={course} ghost={ghost} scores={scores} setScores={setScores} hole={hole} setHole={setHole} onFinish={finalize} onExit={exitRound} onCaddie={openCaddie}
+        onScored={onScored} reviewInfo={reviewInfo} onReview={(n) => { if (caddie) dispatchCaddie({ type: "reviewOpen", hole: n, next: null }); }} />}
       {screen === "caddie" && course && caddie && <Caddie course={course} geometry={courseMap.geometry} profile={profile} cs={caddie} dispatch={dispatchCaddie}
-        weather={weather} setWeather={setWeather} contextRef={caddieCtx} roundId={roundId} onCard={() => openCard()} onScore={(n) => openCard(n)} onRetryProfile={() => setProfile(loadCaddieProfile())} />}
+        weather={weather} setWeather={setWeather} contextRef={caddieCtx} roundId={roundId} onCard={() => openCard()} onScore={(n) => openCard(n)} onRetryProfile={() => setProfile(loadCaddieProfile())}
+        testMode={testMode} />}
+      {caddie && caddie.review && course && (screen === "play" || screen === "caddie") && (() => {
+        const n = caddie.review.hole;
+        const all = roundId ? loadShots(safeStorage(), roundId) : [];
+        const ctx = reviewContext({ course, geometry: courseMap.geometry, nineMap: undefined, n, records: all.filter((r) => r.hole === n) });
+        return (
+          <ReviewSheet key={`review-${n}`} mode="review" n={n} score={scores[n - 1]} records={all} ctx={ctx} clubOrder={profile?.clubOrder || []} config={profile?.config || DEFAULT_CONFIG}
+            base={{ roundId: roundId ?? null, courseId: apiIdOf(course), nine: n <= 9 ? "front" : "back" }}
+            onClose={closeReview} onDone={(changed, deleted) => { writeReview(changed, deleted, roundId); closeReview(); }} />
+        );
+      })()}
       {screen === "summary" && course && ghost && <Summary course={course} ghost={ghost} scores={scores} history={history} roundId={roundId} onEditScore={editScore} onReset={reset} />}
       {screen === "history" && <History history={history} stats={stats} cloud={cloud} onDelete={deleteRound} onImport={importRounds} onBack={() => setScreen("setup")} />}
     </div>

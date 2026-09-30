@@ -12,7 +12,7 @@ import { DEFAULT_CONFIG, mergeConfig, lieDistAdj } from "./config.js";
 import { loadProfile } from "./profile.js";
 import { ellipseSampler } from "./engine.js";
 import { makeSamples } from "./random.js";
-import { bareShotRecord, closeOutShot, quickLog, detailLog } from "./shotlog.js";
+import { bareShotRecord, closeOutShot, quickLog, detailLog, autoShotRecord, shotIntent } from "./shotlog.js";
 import {
   familyOf, withinRound, recencyWeight, shrink, priorFor, applyShotLog, entryWithOverlay,
   lieOverrideAt, aggressionScorecard, clubGapYds, fitEll80, entryKey,
@@ -482,4 +482,39 @@ test("recommendation-less records: learning skips their misses, counts their con
   const sc = aggressionScorecard(shots.map(quickLog), { rB: Array(18).fill(4) });
   assert.equal(sc.own.n, 5); assert.equal(sc.own.scored, 0); assert.equal(sc.text, null);
   assert.ok(!JSON.stringify(sc).includes("NaN"));
+});
+
+/* ---------- v22.15: auto-created records (SPEC-shotlog-v2 §3) ---------- */
+
+test("auto records: learned like quick ones when they have a derived result; ungraded contact is not a pure strike; no result → skipped", () => {
+  const rec = { safe: { club: "7i", target: { x: 0, y: 176 }, expScore: 3.2 }, aggressive: null };
+  const auto = (i, end) => closeOutShot(autoShotRecord({
+    id: `a${i}`, roundId: "rA", hole: 1 + i, shotNo: 2, club: "7i", shotType: "full", ts: `2026-09-30T1${i}:00:00.000Z`,
+    lie: { inferred: "fairway", confidence: "high", confirmed: "fairway", quality: "standard" },
+    start: { lat: 34, lng: -84, accuracyM: 4, frame: { x: 0, y: 0 }, distanceToPinYds: 176 }, recommendation: rec,
+    intent: shotIntent({ option: rec.safe, ball: { x: 0, y: 0 } }),
+  }), { endGps: { lat: 34.001, lng: -84 }, endLie: "fairway", endAccuracyM: 4, endFrame: end });
+  const short = [0, 1, 2].map((i) => auto(i, { x: 0, y: 160 }));
+  assert.ok(short.every((s) => s.logged === "auto" && s.contact === null && s.derived.distanceMissYds === -16));
+  // §5.5 within the round: two or more short misses nudge exactly as quick records would
+  const w = withinRound(short, DEFAULT_CONFIG, { P, lie: "fairway" });
+  const wq = withinRound(short.map((s) => ({ ...s, logged: "quick" })), DEFAULT_CONFIG, { P, lie: "fairway" });
+  assert.deepEqual(w.adjust, wq.adjust);
+  assert.ok(Object.keys(w.adjust.distYds).length >= 1, "the short misses count");
+  assert.equal(w.flags.length, 0, "null contact raises no contact flag");
+  // §5.3 between rounds: the same overlay as quick records
+  const ov = applyShotLog(P, short, { roundIndexById: { rA: 1 } }, DEFAULT_CONFIG);
+  const ovq = applyShotLog(P, short.map((s) => ({ ...s, logged: "quick" })), { roundIndexById: { rA: 1 } }, DEFAULT_CONFIG);
+  assert.deepEqual(ov, ovq); assert.ok(Object.keys(ov).length === 1);
+  // a null contact never clears a contact streak either: three fat strikes then an auto record still flag
+  const fat = [0, 1, 2].map((i) => ({ ...shot({ hole: 10 + i, contact: -1 }) }));
+  const mixed = withinRound([...fat, short[0]], DEFAULT_CONFIG, { P, lie: "fairway" });
+  assert.equal(mixed.flags.length, withinRound(fat, DEFAULT_CONFIG, { P, lie: "fairway" }).flags.length);
+  // an auto record with no result (no fix at the end, or no target) is skipped
+  const none = closeOutShot(autoShotRecord({ id: "n1", roundId: "rA", hole: 9, shotNo: 2, club: "7i", recommendation: rec, start: { frame: { x: 0, y: 0 } }, intent: { shape: "draw" } }), {});
+  assert.equal(none.derived.distanceMissYds, null);
+  assert.deepEqual(applyShotLog(P, [none], { roundIndexById: { rA: 1 } }, DEFAULT_CONFIG), {});
+  assert.doesNotThrow(() => withinRound([none], DEFAULT_CONFIG, { P }));
+  // §5.7 the line played is the derived one
+  assert.equal(aggressionScorecard(short, { rA: Array(18).fill(4) }).safe.n, 3);
 });

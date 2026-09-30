@@ -136,6 +136,17 @@ export const DEFAULT_CONFIG = Object.freeze({
   RECENCY_MAX_MONTHS: 12,
   ON_TARGET: { distPct: 0.05, latDeg: 1.5 },
 
+  /* ---- shot log v2 (v22.15, docs/SPEC-shotlog-v2.md §3, §7) ----
+     A closed shot's result is read off GPS against the intended target: |miss| < slightYds → 0,
+     slightYds … bigYds → ±1, > bigYds → ±2, on both axes (curveAuto from the lateral miss,
+     distClass from the distance miss). Either fix worse than LOW_ACC_M metres marks the result
+     `derivedLowAcc` (still computed, flagged with the ? on the card). */
+  MISS_BANDS: { slightYds: 8, bigYds: 20 },
+  LOW_ACC_M: 12,
+  /* Test mode (spec §1): `Fake my location` turns every GPS fix into a tap on the caddie map.
+     Never on by default; toggled from the Setup build tag and kept in bogeyman-matches:config:v1. */
+  testMode: { fakeGps: false },
+
   /* ---- conditions detection v2 (integration item 11; research §4.2) ----
      ALL THRESHOLDS UNCALIBRATED engine defaults. The Conditions chip always wins.
        wet (rain):  Σ precipitation last 12 h ≥ rainMm12h OR last 24 h ≥ rainMm24h

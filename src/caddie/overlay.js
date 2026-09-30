@@ -483,6 +483,7 @@ export function overlayModel(input) {
     project, viewport = { width: 375, height: 812 }, hole = null, ball = null, accuracyM = null, pin = null,
     active = null, other = null, previousShots = [], palette = "satellite", idPrefix = "ovl", redrawKey = "", recomputing = false,
     pinMarker = false, pinDragging = false,
+    intent = null,
   } = input;
   const P = PALETTES[palette] || PALETTES.satellite;
   const hatchId = `${idPrefix}-hatch`, clipId = `${idPrefix}-trouble`;
@@ -572,6 +573,27 @@ export function overlayModel(input) {
   if (defs.length) out.unshift(el("defs", {}, defs));
   if (cur.length) out.push(el("g", { "data-part": "cur", className: "loop-ovl-cur", "data-redraw": String(redrawKey), opacity: recomputing ? 0.4 : 1 }, cur));
 
+  // 8b. v22.15 intent (SPEC-shotlog-v2 §2) — Brett's own marks, so pencil: the start-line ray from
+  //     the ball to the map edge, and the target marker (a ring with a dot, not the flag). Paper on
+  //     satellite, pencil graphite on the drawn map, both through the #pencil filter.
+  if (B && intent) {
+    const g = [];
+    if (Number.isFinite(intent.lineDeg)) {
+      const far = rayEnd(ball, intent.lineDeg);
+      const F2 = project(far);
+      if (P.halo) g.push(el("line", { x1: f1(B.x), y1: f1(B.y), x2: f1(F2.x), y2: f1(F2.y), stroke: P.halo, strokeWidth: 3.8, strokeLinecap: "round" }));
+      g.push(el("line", { "data-part": "start-line", x1: f1(B.x), y1: f1(B.y), x2: f1(F2.x), y2: f1(F2.y), stroke: P.prev, strokeWidth: 1.6, strokeLinecap: "round", filter: "url(#pencil)" }));
+    }
+    if (intent.marker && Number.isFinite(intent.marker.x)) {
+      const M = project(intent.marker);
+      if (intent.dragging) g.push(el("circle", { "data-part": "target-drag", cx: f1(M.x), cy: f1(M.y), r: 18, fill: "none", stroke: P.prev, strokeWidth: 1.2, strokeDasharray: "3 3" }));
+      if (P.halo) g.push(el("circle", { cx: f1(M.x), cy: f1(M.y), r: TARGET_MARKER_R, fill: "none", stroke: P.halo, strokeWidth: 4 }));
+      g.push(el("circle", { "data-part": "target-marker", cx: f1(M.x), cy: f1(M.y), r: TARGET_MARKER_R, fill: "none", stroke: P.prev, strokeWidth: 1.8, filter: "url(#pencil)" }));
+      g.push(el("circle", { cx: f1(M.x), cy: f1(M.y), r: 2.2, fill: P.prev }));
+    }
+    if (g.length) out.push(el("g", { "data-part": "intent" }, g));
+  }
+
   // 9. ball: paper disc r 6, 1.6 black ring, over a r 7.5 dark disc; low accuracy adds a dashed ring
   if (B) {
     const g = [];
@@ -584,6 +606,18 @@ export function overlayModel(input) {
     out.push(el("g", { "data-part": "ball" }, g));
   }
   return out;
+}
+
+/** The target marker's radius (px) and hit radius — a fingertip around the ring (§2). */
+export const TARGET_MARKER_R = 11;
+export const TARGET_MARKER_HIT_PX = 26;
+export const targetMarkerHit = (markerPx, pt, radius = TARGET_MARKER_HIT_PX) =>
+  !!(markerPx && pt) && Math.hypot(pt.x - markerPx.x, pt.y - markerPx.y) <= radius;
+
+/** A point `yds` along a hole-frame bearing (degrees clockwise from +y) from p — far enough to leave any map. */
+export function rayEnd(p, deg, yds = 1500) {
+  const r = deg * DEG;
+  return { x: p.x + Math.sin(r) * yds, y: p.y + Math.cos(r) * yds };
 }
 
 /** clipPath children: every trouble ring (trees keep their clearings via evenodd) + outside OB. */

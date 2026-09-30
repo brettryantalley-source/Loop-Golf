@@ -12,7 +12,7 @@ import { dirname, join } from "node:path";
 import {
   K80, thetaDeg, ellipseScreen, supportPoints, pointInEllipse, ellipsePolygon, ellipseBbox, bboxYds,
   ellipseFromEntry, withEllipses, ellipseInFrame, fitBounds, cameraPoints, cameraFor, linearProjector,
-  zoomForPxPerYd, cameraKey, mapModeFor, NOTICE_NO_SATELLITE, overlayModel, fallbackMapModel, tagsOf, pxPerYdAt,
+  zoomForPxPerYd, cameraKey, mapModeFor, NOTICE_NO_SATELLITE, overlayModel, rayEnd, targetMarkerHit, TARGET_MARKER_R, fallbackMapModel, tagsOf, pxPerYdAt,
   NOTICE_NO_SATELLITE_MARKED, NOTICE_MARK_GREEN, markCamera, pinViewCamera, pinViewKey, pinMarkerHit, visibleRegion, satelliteFailure, satelliteCheckLine } from "./overlay.js";
 import { ellipseSampler, ELL80_K, recommend } from "./engine.js";
 import { loadProfile, resolveEntry } from "./profile.js";
@@ -448,4 +448,34 @@ test("satelliteCheckLine: Setup's line — ready, or exactly what failed", () =>
   assert.equal(satelliteCheckLine({ lib: false, tile: { ok: false, status: 401 } }), "Satellite: map library failed to load · tiles blocked (HTTP 401)");
   assert.equal(satelliteCheckLine({ lib: true, tile: null, noLocation: true }), "Satellite: no course location to test");
   for (const r of [{ lib: false, tile: { ok: false, status: 403 } }, { lib: true, tile: { ok: true } }]) assert.ok(!satelliteCheckLine(r).includes("!"));
+});
+
+/* ---------- v22.15 intent marks (SPEC-shotlog-v2 §2) ---------- */
+
+test("intent on the map: the start-line ray leaves the ball on its bearing, the target marker is a pencil ring + dot, no text", () => {
+  const cam = { center: { x: 0, y: 100 }, pxPerYd: 2 };
+  const L = linearProjector(cam, { width: 375, height: 812 });
+  const nodes = overlayModel({ project: L.project, viewport: { width: 375, height: 812 }, ball: { x: 0, y: 0 }, palette: "paper",
+    intent: { marker: { x: 10, y: 150 }, lineDeg: 5, dragging: true } });
+  const find = (list, part) => { for (const n of list || []) { if (n?.attrs?.["data-part"] === part) return n; const c = find(n?.children, part); if (c) return c; } return null; };
+  const ray = find(nodes, "start-line"), ring = find(nodes, "target-marker");
+  assert.ok(ray && ring && find(nodes, "target-drag"));
+  const B = L.project({ x: 0, y: 0 });
+  // up the screen and a touch right (5° clockwise of the hole's +y)
+  assert.ok(ray.attrs.y2 < B.y - 500 && ray.attrs.x2 > B.x);
+  assert.ok(Math.abs(Math.atan2(ray.attrs.x2 - B.x, B.y - ray.attrs.y2) * 180 / Math.PI - 5) < 0.2);
+  assert.equal(ray.attrs.filter, "url(#pencil)"); assert.equal(ring.attrs.filter, "url(#pencil)");
+  assert.equal(ring.attrs.stroke, "#3F3F3F", "pencil graphite on the drawn map");
+  assert.equal(ring.attrs.r, TARGET_MARKER_R);
+  const M = L.project({ x: 10, y: 150 });
+  assert.deepEqual([ring.attrs.cx, ring.attrs.cy], [Math.round(M.x * 10) / 10, Math.round(M.y * 10) / 10]);
+  // on satellite the marks are paper with a halo (§4.2: no ink on grass)
+  const sat = overlayModel({ project: L.project, ball: { x: 0, y: 0 }, palette: "satellite", intent: { marker: { x: 10, y: 150 }, lineDeg: null } });
+  assert.equal(find(sat, "target-marker").attrs.stroke, "#F4F0E4"); assert.equal(find(sat, "start-line"), null);
+  assert.ok(!tagsOf(nodes).includes("text"), "T37 still: no text on the map");
+  // no ball → no marks
+  assert.equal(find(overlayModel({ project: L.project, intent: { marker: { x: 1, y: 1 }, lineDeg: 0 } }), "intent"), null);
+  assert.deepEqual(rayEnd({ x: 0, y: 0 }, 90, 10), { x: 10, y: 10 * Math.cos(Math.PI / 2) });
+  assert.equal(targetMarkerHit({ x: 100, y: 100 }, { x: 120, y: 110 }), true);
+  assert.equal(targetMarkerHit({ x: 100, y: 100 }, { x: 130, y: 100 }), false);
 });

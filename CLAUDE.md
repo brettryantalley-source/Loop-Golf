@@ -34,7 +34,8 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
   - `geo.js` — OSM geometry → the hole frame, lie inference, distances, hole detection, the 27-hole nine map, the coverage check.
   - `sensors.js` — Open-Meteo weather/elevation, injected fetch, never throws (falls back to last good value, marked stale).
   - `context.js` — assembles the engine's `ctx` (`ShotContext`) from round state, hole, GPS, weather, overrides.
-  - `shotlog.js` — the post-shot capture log (`bogeyman-matches:shots:v1`, `:lieOverrides:v1`).
+  - `shotlog.js` — the post-shot capture log (`bogeyman-matches:shots:v1`, `:lieOverrides:v1`); v22.15 adds intent, `deriveResult` and auto records.
+  - `review.js` — the hole Review sheet's pure model (v22.15): rows per stroke, Place, chain recompute, putt inference.
   - `learning.js` — the learning loop: within-round nudges, between-round shrinkage/recency, shot-log overlays, lie-override takeover, the aggression scorecard.
   - `random.js` — the seeded sampler behind the dispersion simulation.
   - `caddieState.js` — the caddie screen's pure reducer + view model (round-level state, chips, pin, toggle, §8 states, aim short form); `src/app.jsx`'s `CaddieScreen` renders it and nothing else.
@@ -52,7 +53,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 3. On any deploy that ships user-facing changes, bump BOTH version markers together and keep the numbers in sync:
    - the cache name in `sw.js` (e.g. `loop-golf-v4` -> `-v5`). REQUIRED — without it, Brett's installed PWA keeps serving the old cached bundle.
    - the on-screen build tag: `const BUILD = "vN · <date>"` near the top of `src/app.jsx` (just after the icon definitions). Keep the existing `"vN · <date>"` format (e.g. `"v5 · Aug 2"`) and match `vN` to the new cache version.
-   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.14 on branch `claude/bold-pascal-2s136s`** (PR open) / **v22.13 on `main`**. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
+   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.15 on branch `claude/bold-pascal-2s136s`** (PR #11 open) / **v22.13 on `main`**. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
 4. Show Brett a diff.
 5. WAIT for his explicit "go" before git commit / git push. Never push without approval.
 6. Pages redeploys the same URL automatically (~1 min); Brett fully closes and reopens the app to load the new service worker.
@@ -178,7 +179,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
 - Handoffs live in `docs/`; `docs/README.md` says which is current. A thread that finishes a phase writes or updates its handoff, and the next thread starts by reading it.
 - Every thread starts with: `git status` (must be clean), `git log --oneline -3`, `npm test`. Every thread ends with its work committed and the push command handed to Brett.
 - `computeGhost` / `evalMatch` byte-identical check before every commit, as before.
-- `npm test` runs 238 tests as of v22.13 (160 at the end of the Sep 28–29 caddie build (T1–T42 across S1–S5, named
+- `npm test` runs 252 tests as of v22.15 (160 at the end of the Sep 28–29 caddie build (T1–T42 across S1–S5, named
   as in `docs/SPEC-caddie.md` §9 and `docs/SPEC-caddie-UI.md` §12, plus units); it globs
   `src/**/*.test.js`, so a later agent adding files under `src/caddie/` picks up new tests
   automatically. If a thread after this one sees a different count, an app-side agent has added or
@@ -190,8 +191,9 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   followed by v22.3–v22.5 (PR #6) and v22.6–v22.10 (PR #7: temperature, 27-hole picker, Setup
   fixes, seed cards, the snapping score strip, the caddie-brain engine integration). `main` is
   v22.13 (PR #8 marked-green mode + pin; PR #9 Ironwood fixes D51–D55; PR #10 sliders D56–D57).
-  v22.14 (pencil scorecard, D58) is on `claude/bold-pascal-2s136s`; v22.15 is specified in
-  `docs/SPEC-shotlog-v2.md` (test mode, map intent, GPS-derived results, hole Review). Read `docs/HANDOFF-NEXT.md` first.
+  v22.14 (pencil scorecard, D58) and v22.15 (shot log v2 — `docs/SPEC-shotlog-v2.md`, D59–D65:
+  test mode with fake GPS by tap, pre-shot intent on the map, GPS-derived results, the hole Review
+  sheet, Shots list, manual On the green) are on `claude/bold-pascal-2s136s` in PR #11. Read `docs/HANDOFF-NEXT.md` first.
 - `Start round` opens the **CaddieScreen** directly at hole 1, pre-tee; `‹ Card` goes to the
   scorecard, whose hole-nav row gains a `Caddie` control. The caddie needs GPS (permission prompt
   on the first `I'm on the tee`), the course's OSM geometry (fetched on Setup when a course is
@@ -207,10 +209,11 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   `bogeyman-matches:shots:v1`, lie overrides `bogeyman-matches:lieOverrides:v1`, per-course nine
   map `bogeyman-matches:nineMap:v1:{courseId}`, config overrides `bogeyman-matches:config:v1`
   (merged over `DEFAULT_CONFIG`), caddie round state inside `bogeyman-matches:v1` under `caddie`.
-  Shot-log export/import lives on History.
+  Shot-log export/import lives on History. **Test mode** (v22.15, D59): long-press the Setup build tag
+  → `Fake my location`; every fix becomes a map tap through the real code path.
 - Spec: `docs/SPEC-caddie.md` (locked) + `docs/SPEC-caddie-UI.md` (the UI addendum, §8 states / §13
   flags). Decisions made along the way that override the spec live in `docs/DECISIONS-caddie.md`
-  (D1–D58) — read it, don't copy it into other docs.
+  (D1–D65) — read it, don't copy it into other docs.
 - Refresh workflow (spec §5.8): after a round, export the shot log or a Shot Pattern export →
   hand it to the Golf project chat → it lands under `data/extracted/` → `npm run build:profile`
   regenerates `src/profile.json`.
