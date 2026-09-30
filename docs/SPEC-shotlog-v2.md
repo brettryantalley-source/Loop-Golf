@@ -165,3 +165,43 @@ Config (`bogeyman-matches:config:v1`, DEFAULT_CONFIG): `MISS_BANDS: { slightYds:
 - T49 On the green with no map → green state → putt card → score.
 - Playwright: a whole par 4 played by taps in test mode on the Hampton fixture (tee → fairway → green
   → 2 putts → score), with one shot skipped and placed in Review; the record set inspected at the end.
+
+---
+
+## 10. Breadcrumb trail and stops (v22.18, agreed Sep 30)
+
+Brett's favourite Tangent feature: a dotted GPS trail of everywhere he walked on a hole, with easy
+marks where he stopped and probably hit a shot. Loop is a web app: iOS gives it GPS only while the
+app is open and the screen is on, so the trail has gaps while the phone is pocketed. It is built as
+a **shot-position memory** first, a walking map second.
+
+- **Recording.** While the caddie screen is open (any state after `Start round`), `watchPosition`
+  at high accuracy feeds a per-hole trail: `{ t, lat, lng, acc }`, thinned to points ≥ 3 m apart or
+  ≥ 10 s apart, capped at 600 points per hole. Stored in `bogeyman-matches:trail:v1:{roundId}` as
+  `{ [hole]: points[] }`; discarded with the round's other caddie state when a new round starts
+  (history keeps the shot records, not the trail). Test mode's fake taps are appended as trail
+  points too, so the feature is testable.
+- **Stops.** A stop is a run of points staying within 6 m for ≥ 15 s (config `TRAIL_STOP = { radiusM: 6,
+  minSec: 15 }`); its position is the run's mean, its `acc` the best of the run. The tee fix and any
+  fix taken by an action are stops by definition. Stops that coincide (≤ 8 yds) with a recorded
+  shot's `start` are shown as that shot; the rest are **candidates**.
+- **Drawing (§4.2 amendment).** Trail points: pencil dots, 2 px, 45 % alpha, drawn under the
+  previous-shot lines. Stops: pencil rings 8 px; candidates hollow, matched stops filled with the
+  shot number. On the fallback drawn map the same in ink.
+- **Back to a stop.** Tapping a candidate ring opens a small tag: `Shot N was here` (N = the next
+  unplaced shot on the hole, editable by tapping the number) · `Ignore`. Choosing it sets that shot's
+  `start` (and `placed: true`) exactly as Review's Place does, and recomputes the chain (§4). In the
+  Review sheet and the Shots list, `Place` first offers the hole's candidate stops as a short list
+  (`Stop 2 · 187 yds out · 10:42`) before falling back to a free tap on the mini map.
+- **Screen awake (optional).** A `Keep screen on while playing` toggle in the test-mode sheet
+  (persisted `config:v1.trail.wakeLock`) requests `navigator.wakeLock` when the caddie is open,
+  released when the app hides. Default off; the notice says once "Screen stays on · battery" when
+  it engages. If the API is missing it is greyed out.
+- **Battery / privacy.** Watching stops when the screen hides (the OS does it anyway) and when the
+  round is finished or abandoned; nothing leaves the phone (the trail is not mirrored to Firestore).
+- **Pure model** `src/caddie/trail.js`: `appendPoint`, `stopsFrom(points, cfg)`, `matchStops(stops,
+  shots)`, `candidateFor(stop, shots)`; tests: thinning, stop detection on a synthetic walk, matching
+  against recorded starts, a candidate placed into a shot recomputing its neighbours.
+- **Tests / Playwright.** T50 stops from a synthetic trail; T51 candidate → Place → chain. In test
+  mode, tap a walk down Hampton hole 1 with two 15 s pauses (advance the clock), see two candidate
+  rings, place one as shot 2.

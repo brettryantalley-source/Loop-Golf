@@ -17,8 +17,10 @@ v22.3–v22.5; PR #5 the caddie). `main` also has v22.13 (PR #10, sliders D56–
 **v22.14** (pencil-only score marks, D58) and **v22.15** (shot log v2, `docs/SPEC-shotlog-v2.md`,
 D59–D65) in PR #11. Queued after it: v22.16 aim warning (re-run the dispersion sim at Brett's target and
 line; warn when trouble is 10+ points worse than the recommendation or his club bias leaves the green;
-n ≥ 10), and v22.17 a Shot Pattern per-round Shot List importer (screenshots → JSON under
-`data/extracted/rounds/` → `source: shotpattern` records through the History import).
+n ≥ 10), v22.17 a Shot Pattern per-round Shot List importer (screenshots → JSON under
+`data/extracted/rounds/` → `source: shotpattern` records through the History import; the first round,
+Ironwood 2026-09-28, is partly transcribed in `data/extracted/rounds/2026-09-28-ironwood/shots.json`),
+and v22.18 the breadcrumb trail + stops (`SPEC-shotlog-v2.md` §10).
 Brett merges a PR from his phone (GitHub app or "merge" in the Claude app); Pages redeploys in
 about a minute; he fully closes and reopens Loop and reads the build tag top-right of Setup.
 
