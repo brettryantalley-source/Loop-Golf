@@ -9,20 +9,35 @@ git log --oneline -6
 npm install && npm test    # 268 tests; must be green
 ```
 
-## Where things stand (Sep 29, after the v22.11 build)
+## Where things stand (Oct 1, after PR #11 merged)
 
-Live at https://brettryantalley-source.github.io/Loop-Golf/ — **`main` is v22.12** (PR #9 merged Sep 29:
-Ironwood field-test fixes D51–D55; PR #8 marked-green mode + pin; PR #7 v22.6–v22.10; PR #6
-v22.3–v22.5; PR #5 the caddie). `main` also has v22.13 (PR #10, sliders D56–D57). Branch **`claude/bold-pascal-2s136s`** carries
-**v22.14** (pencil-only score marks, D58), **v22.15** (shot log v2, `docs/SPEC-shotlog-v2.md`,
-D59–D65) and **v22.16** (Shot Pattern importer + history card fix, D66–D71) in PR #11, with five
-Shot Pattern rounds imported (Ironwood 9/28, Hampton 9/20, Lake Arrowhead 9/12, Beachwood 9/2, Chicopee Woods 8/15:
-400 records in `src/shotpattern.json`; five of Brett's ten still to transcribe as recordings arrive). Queued after it: v22.17 aim warning (re-run the dispersion sim at Brett's target and
-line; warn when trouble is 10+ points worse than the recommendation or his club bias leaves the green;
-n ≥ 10), and v22.18 the breadcrumb trail + stops (`SPEC-shotlog-v2.md` §10). To add a Shot Pattern round: transcribe its
-Shot Lists into `data/extracted/rounds/{date}-{course}/shots.json`, run `npm run import:shots`, rebuild.
-Brett merges a PR from his phone (GitHub app or "merge" in the Claude app); Pages redeploys in
-about a minute; he fully closes and reopens Loop and reads the build tag top-right of Setup.
+Live at https://brettryantalley-source.github.io/Loop-Golf/ — **`main` is v22.16** (PR #11 merged Oct 1:
+v22.14 pencil-only score marks D58, v22.15 shot log v2 `docs/SPEC-shotlog-v2.md` D59–D65, v22.16 Shot
+Pattern importer + history card fix D66–D71; before it PR #10 sliders, PR #9 Ironwood fixes, PR #8
+marked-green mode, PR #7 v22.6–v22.10, PR #6 v22.3–v22.5, PR #5 the caddie). The working branch
+`claude/bold-pascal-2s136s` is restarted from `main` after each merge; nothing is unmerged.
+
+**Shot Pattern rounds imported: five of ten** — Ironwood 9/28, Hampton 9/20, Lake Arrowhead 9/12,
+Beachwood 9/2, Chicopee Woods Village/School 8/15: 400 records in `src/shotpattern.json`. Still to
+transcribe: Canongate 8/23 (81), Riverpines Championship 8/9 (80) and the three older rounds in Brett's
+Shot Pattern window. **Routine for each** (a code thread does all of it; no middle step): Brett screen-
+records Shot Pattern's round page — scorecard, Summary, then the four Shot List tabs (Driving, Approach,
+Short Game, Putting) scrolled slowly top to bottom — and drops the recording in the chat. The thread
+extracts frames (`ffmpeg -vf "fps=2,scale=460:-1"`, dedupe near-identical frames, 4-up contact sheets),
+reads them, writes `data/extracted/rounds/{date}-{course}/shots.json` (schema 1; the five existing files
+are the contract), reconciles every hole — drives + approaches + short game + putts + penalty strokes
+must equal the card score — then `npm run import:shots`, `npm test` (268), the frozen check, `./build.sh`,
+commit, push, PR, merge on Brett's "merge". Conventions learned: Shot Pattern's "(+2)" on a tee shot to a
+penalty is one penalty stroke plus the re-tee (store `penalty: 1`, note it); "Unknown Club" → `null`;
+clubs Dr, 2i, 2Hy, 4Hy, 5i–9i, PW, GW, SW, LW, putter; lies tee / fairway / rough / bunker / recovery /
+penalty / green. Data-only commits do not bump the build tag.
+
+Queued builds: **v22.17 aim warning** (re-run the dispersion sim at Brett's target and line; warn when
+trouble is 10+ points worse than the recommendation or his club bias leaves the green; n ≥ 10; reads
+`tendencies()` in `learning.js`, which the imported rounds feed) and **v22.18 breadcrumb trail + stops**
+(`SPEC-shotlog-v2.md` §10). Brett merges a PR from his phone (GitHub app or "merge" in the Claude app);
+Pages redeploys in about a minute; he fully closes and reopens Loop and reads the build tag top-right
+of Setup.
 
 Engine as of v22.10 follows `docs/CADDIE-BRAIN-INTEGRATION.md` (D43–D46; known gaps in D46).
 `npm test` is 268 tests. Decisions run D1–D71 in `docs/DECISIONS-caddie.md`.

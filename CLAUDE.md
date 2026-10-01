@@ -24,7 +24,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 - `src/localCards.js` — scorecards Brett verified by hand for clubs the course API gets wrong (Ironwood, v22.12, D55); `src/routing.js` — 27-hole clubs: routings, nine composition, the odd/even stroke index (D54).
 - `src/holeMap.jsx`, `src/fixtures/` — PARKED. Nothing imports them and they are not bundled, but their tests still run. See "Parked, not deleted".
 - `vendor/` (MapLibre GL) — LIVE again as of v22: lazy-loaded from disk the first time the caddie screen opens, served same-origin, cached by the service worker.
-- `src/caddie/` — the caddie engine, shot log, learning loop and caddie screen (S1–S5, complete on branch `claude/bold-pascal-2s136s`, draft PR #5, unshipped; see "Caddie (v22 build)" below). Pure logic modules have no DOM/storage/network except where noted; storage and fetch are injected. One line each:
+- `src/caddie/` — the caddie engine, shot log, learning loop and caddie screen (S1–S5, shipped v22.2–v22.16; see "Caddie (v22 build)" below). Pure logic modules have no DOM/storage/network except where noted; storage and fetch are injected. One line each:
   - `config.js` — every tunable the engine reads (`DEFAULT_CONFIG`), merged at runtime over `bogeyman-matches:config:v1`.
   - `baseline.js` — the published expected-strokes baseline (Broadie, cited in the file) the engine prices candidates against.
   - `course.js` — a hole in a local yard frame (x lateral, y tee→green); lie classification, distances, fat side, corridor.
@@ -54,7 +54,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 3. On any deploy that ships user-facing changes, bump BOTH version markers together and keep the numbers in sync:
    - the cache name in `sw.js` (e.g. `loop-golf-v4` -> `-v5`). REQUIRED — without it, Brett's installed PWA keeps serving the old cached bundle.
    - the on-screen build tag: `const BUILD = "vN · <date>"` near the top of `src/app.jsx` (just after the icon definitions). Keep the existing `"vN · <date>"` format (e.g. `"v5 · Aug 2"`) and match `vN` to the new cache version.
-   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.16 on branch `claude/bold-pascal-2s136s`** (PR #11 open) / **v22.13 on `main`**. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
+   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.16 on `main`** (PR #11 merged Oct 1). The working branch is `claude/bold-pascal-2s136s`, restarted from `main` after each merge. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
 4. Show Brett a diff.
 5. WAIT for his explicit "go" before git commit / git push. Never push without approval.
 6. Pages redeploys the same URL automatically (~1 min); Brett fully closes and reopens the app to load the new service worker.
@@ -191,11 +191,12 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
 - The caddie engine, shot log, learning loop and caddie screen (S1–S5) SHIPPED as v22.2 (PR #5),
   followed by v22.3–v22.5 (PR #6) and v22.6–v22.10 (PR #7: temperature, 27-hole picker, Setup
   fixes, seed cards, the snapping score strip, the caddie-brain engine integration). `main` is
-  v22.13 (PR #8 marked-green mode + pin; PR #9 Ironwood fixes D51–D55; PR #10 sliders D56–D57).
-  v22.14 (pencil scorecard, D58), v22.15 (shot log v2 — `docs/SPEC-shotlog-v2.md`, D59–D65: test mode
-  with fake GPS by tap, pre-shot intent on the map, GPS-derived results, the hole Review sheet, Shots
-  list, manual On the green) and v22.16 (Shot Pattern importer + history card fix, D66–D71) are on
-  `claude/bold-pascal-2s136s` in PR #11. Read `docs/HANDOFF-NEXT.md` first.
+  **v22.16** (PR #8 marked-green mode + pin; PR #9 Ironwood fixes D51–D55; PR #10 sliders D56–D57;
+  PR #11, merged Oct 1: v22.14 pencil scorecard D58, v22.15 shot log v2 — `docs/SPEC-shotlog-v2.md`,
+  D59–D65: test mode with fake GPS by tap, pre-shot intent on the map, GPS-derived results, the hole
+  Review sheet, Shots list, manual On the green — and v22.16 Shot Pattern importer + history card fix,
+  D66–D71, with five rounds imported). Queued: v22.17 aim warning, v22.18 breadcrumb trail (§10).
+  Read `docs/HANDOFF-NEXT.md` first.
 - `Start round` opens the **CaddieScreen** directly at hole 1, pre-tee; `‹ Card` goes to the
   scorecard, whose hole-nav row gains a `Caddie` control. The caddie needs GPS (permission prompt
   on the first `I'm on the tee`), the course's OSM geometry (fetched on Setup when a course is
