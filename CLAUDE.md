@@ -54,7 +54,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 3. On any deploy that ships user-facing changes, bump BOTH version markers together and keep the numbers in sync:
    - the cache name in `sw.js` (e.g. `loop-golf-v4` -> `-v5`). REQUIRED — without it, Brett's installed PWA keeps serving the old cached bundle.
    - the on-screen build tag: `const BUILD = "vN · <date>"` near the top of `src/app.jsx` (just after the icon definitions). Keep the existing `"vN · <date>"` format (e.g. `"v5 · Aug 2"`) and match `vN` to the new cache version.
-   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.16 on `main`** (PR #11 merged Oct 1). The working branch is `claude/bold-pascal-2s136s`, restarted from `main` after each merge. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
+   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers currently sit at **v22.16 on `main`** (PR #11 merged Oct 1); the open branch carries **v22.16.1** (history since June + two more Shot Pattern rounds). The working branch is `claude/bold-pascal-2s136s`, restarted from `main` after each merge. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
 4. Show Brett a diff.
 5. WAIT for his explicit "go" before git commit / git push. Never push without approval.
 6. Pages redeploys the same URL automatically (~1 min); Brett fully closes and reopens the app to load the new service worker.
@@ -180,7 +180,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
 - Handoffs live in `docs/`; `docs/README.md` says which is current. A thread that finishes a phase writes or updates its handoff, and the next thread starts by reading it.
 - Every thread starts with: `git status` (must be clean), `git log --oneline -3`, `npm test`. Every thread ends with its work committed and the push command handed to Brett.
 - `computeGhost` / `evalMatch` byte-identical check before every commit, as before.
-- `npm test` runs 268 tests as of v22.16 (160 at the end of the Sep 28–29 caddie build (T1–T42 across S1–S5, named
+- `npm test` runs 269 tests as of v22.16.1 (160 at the end of the Sep 28–29 caddie build (T1–T42 across S1–S5, named
   as in `docs/SPEC-caddie.md` §9 and `docs/SPEC-caddie-UI.md` §12, plus units); it globs
   `src/**/*.test.js`, so a later agent adding files under `src/caddie/` picks up new tests
   automatically. If a thread after this one sees a different count, an app-side agent has added or

@@ -6,7 +6,7 @@
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 268 tests; must be green
+npm install && npm test    # 269 tests; must be green
 ```
 
 ## Where things stand (Oct 1, after PR #11 merged)
@@ -17,20 +17,29 @@ Pattern importer + history card fix D66–D71; before it PR #10 sliders, PR #9 I
 marked-green mode, PR #7 v22.6–v22.10, PR #6 v22.3–v22.5, PR #5 the caddie). The working branch
 `claude/bold-pascal-2s136s` is restarted from `main` after each merge; nothing is unmerged.
 
-**Shot Pattern rounds imported: five of ten** — Ironwood 9/28, Hampton 9/20, Lake Arrowhead 9/12,
-Beachwood 9/2, Chicopee Woods Village/School 8/15: 400 records in `src/shotpattern.json`. Still to
-transcribe: Canongate 8/23 (81), Riverpines Championship 8/9 (80) and the three older rounds in Brett's
-Shot Pattern window. **Routine for each** (a code thread does all of it; no middle step): Brett screen-
+**Shot Pattern rounds imported: seven of thirteen** — Ironwood 9/28, Hampton 9/20, Lake Arrowhead 9/12,
+Beachwood 9/2, Canongate 8/23, Chicopee Woods Village/School 8/15, Riverpines 8/9: 558 records in
+`src/shotpattern.json` (v22.16.1, Oct 1). Shot Pattern's round history runs back to Jun 17; still to
+transcribe: Chicopee Village/Mill 8/3, Sugar Creek 7/26, Chicopee Mill/School 7/17, Woodmont 6/27,
+Riverpines 6/21, Woodmont 6/17 — their cards are already in History (below), only the shot lists are missing.
+**History since June (v22.16.1):** `src/seedRounds.js` holds 12 imported cards, Jun 17 → Sep 20, every
+one reproducing GHIN's differential (GHIN's list: `data/extracted/2026-09-30-ghin-scores.json`). Only the
+five newest reach the last-5, so the ghost stays at 7.4. Bear Slide 6/10 and Cider Ridge 6/6 are in GHIN
+but predate Shot Pattern — no card, not in History, until Brett sends GHIN's hole-by-hole. Play dates are
+Shot Pattern's (Brett, Oct 1): Beachwood 9/2 and Ironwood 9/28, though GHIN shows 9/5 and 9/30.
+**Routine for each** (a code thread does all of it; no middle step): Brett screen-
 records Shot Pattern's round page — scorecard, Summary, then the four Shot List tabs (Driving, Approach,
 Short Game, Putting) scrolled slowly top to bottom — and drops the recording in the chat. The thread
 extracts frames (`ffmpeg -vf "fps=2,scale=460:-1"`, dedupe near-identical frames, 4-up contact sheets),
 reads them, writes `data/extracted/rounds/{date}-{course}/shots.json` (schema 1; the five existing files
 are the contract), reconciles every hole — drives + approaches + short game + putts + penalty strokes
-must equal the card score — then `npm run import:shots`, `npm test` (268), the frozen check, `./build.sh`,
+must equal the card score — then `npm run import:shots`, `npm test` (269), the frozen check, `./build.sh`,
 commit, push, PR, merge on Brett's "merge". Conventions learned: Shot Pattern's "(+2)" on a tee shot to a
 penalty is one penalty stroke plus the re-tee (store `penalty: 1`, note it); "Unknown Club" → `null`;
 clubs Dr, 2i, 2Hy, 4Hy, 5i–9i, PW, GW, SW, LW, putter; lies tee / fairway / rough / bunker / recovery /
 penalty / green. Data-only commits do not bump the build tag.
+Cloud containers block unpkg.com, which `./build.sh` uses for React: `npm pack react@18.3.1 react-dom@18.3.1`
+and copy each `package/umd/*.production.min.js` to `build/react.min.js` / `build/react-dom.min.js` (byte-identical).
 
 Queued builds: **v22.17 aim warning** (re-run the dispersion sim at Brett's target and line; warn when
 trouble is 10+ points worse than the recommendation or his club bias leaves the green; n ≥ 10; reads
@@ -40,7 +49,7 @@ Pages redeploys in about a minute; he fully closes and reopens Loop and reads th
 of Setup.
 
 Engine as of v22.10 follows `docs/CADDIE-BRAIN-INTEGRATION.md` (D43–D46; known gaps in D46).
-`npm test` is 268 tests. Decisions run D1–D71 in `docs/DECISIONS-caddie.md`.
+`npm test` is 269 tests. Decisions run D1–D71 in `docs/DECISIONS-caddie.md`.
 
 **Ironwood (Fishers, IN) is not traced in OpenStreetMap.** v22.11's marked-green mode is the
 bridge (satellite on GPS, tap the green, distance-only pricing). First round there (Sep 29, v22.11):
