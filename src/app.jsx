@@ -3,7 +3,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRe
 import { initializeFirestore, persistentLocalCache, persistentSingleTabManager, collection, doc, setDoc, getDocs } from "firebase/firestore";
 import { T, F, caps, printed, written, writtenWord, rule, hairline, doubleRule, PencilDefs, Logo, teeTintFor, PencilRing, GhostGlyph } from "./theme.jsx";
 /* v22.8: Brett's last five scorecards (differential floor + History ledger rows). */
-import { SEED_ROUNDS, historyRows } from "./seedRounds.js";
+import { SEED_ROUNDS, historyRows, scoreSeeds, recordLedger, dayTime } from "./seedRounds.js";
 /* Caddie (S3a, v22): the map layer. The profile is bundled, never fetched (addendum §11.1). */
 import { fetchGeometry } from "./geometry.js";
 import { buildHole, frameOf, detectHole, needsNineMap, nineMapCandidates, saveNineMap, loadNineMap, loadGeometryCache, saveGeometryCache, inferLie, ll,
@@ -72,7 +72,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.16.1 · Oct 1";
+const BUILD = "v22.16.2 · Oct 1";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -473,6 +473,11 @@ function deriveStats(history) {
     marginStr: n ? `${margin >= 0 ? "+" : ""}${margin.toFixed(1)}` : "—",
   };
 }
+/* v22.16.2 — Brett's imported cards (src/seedRounds.js), each played against the ghost Loop would
+   have built that day by CALLING the frozen engine, so they count toward the record. Static data:
+   scored once at load. `statsWithCards` is what every record display reads. */
+const SEEDS = scoreSeeds(SEED_ROUNDS, { computeGhost, evalMatch, matchResult });
+const statsWithCards = (history) => deriveStats(recordLedger(history, SEEDS));
 
 
 
@@ -3020,7 +3025,7 @@ function Summary({ course, ghost, scores, history, roundId, onEditScore, onReset
     try { return aggressionModel(loadShots(safeStorage(), roundId), [], { [roundId]: scores }).rounds[roundId] || null; } catch (e) { return null; }
   }, [roundId, scores]);
   const won = m.you > m.opp, tie = m.you === m.opp;
-  const stats = deriveStats(history);
+  const stats = statsWithCards(history);
   const toPar = m.total.yourTot - course.par;
   const tp = toPar === 0 ? "even" : toPar > 0 ? `+${toPar}` : `${toPar}`;
   const [editHole, setEditHole] = useState(null);
@@ -3352,7 +3357,7 @@ function parseBackup(text) {
 
 /* ---------- history (paper ledger, v21.3) ---------- */
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const fmtDate = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : `${MONTHS[d.getMonth()]} ${d.getDate()}`; };
+const fmtDate = (iso) => { const d = new Date(dayTime(iso)); return isNaN(d) ? "" : `${MONTHS[d.getMonth()]} ${d.getDate()}`; };  // v22.16.2: a bare date is that day, not UTC midnight
 const RES_FILL_LETTER = { W: T.fillWon, L: T.fillLost, T: T.fillHalf };
 const RES_EDGE = { W: T.ink, L: T.double, T: T.muted };
 const RES_LONG = { W: "won", L: "lost", T: "halved" };
@@ -3363,6 +3368,7 @@ const RES_LONG = { W: "won", L: "lost", T: "halved" };
    match line, the segments, the record) assumes a ghost and evalMatch, neither of which a seed
    round has. */
 function SeedCardView({ seed, onBack }) {
+  const mt = seed.match || null;
   const cols = "26px repeat(9, minmax(0, 1fr)) 28px 30px";
   const nine = (start) => {
     const isIn = start === 9;
@@ -3393,6 +3399,8 @@ function SeedCardView({ seed, onBack }) {
         {row("par", (i) => seed.pars[i], sum((i) => seed.pars[i]), seed.pars.reduce((a, b) => a + b, 0), 20, T.hair, { ...printed(11, 400), color: T.ink })}
         {/* imported cards are pencil too — Brett wrote these on paper before Loop existed */}
         {row("you", (i) => <PencilMark score={seed.scores[i]} par={seed.pars[i]} />, sum((i) => seed.scores[i] ?? 0), seed.scores.reduce((a, b) => a + (b ?? 0), 0), 28, T.hair, written(18))}
+        {/* v22.16.2 — the ghost of that day, in its own pencil (the finished card's gh. row) */}
+        {mt && row("gh.", (i) => mt.ghostHoleScores[i], sum((i) => mt.ghostHoleScores[i]), mt.ghostTotal, 26, T.hair, written(15, T.ghost))}
         {row("yds", (i) => seed.yards[i] ?? "—", sum((i) => seed.yards[i] || 0), seed.yards.reduce((a, b) => a + (b || 0), 0), 18, T.ink, { ...printed(10, 400), color: T.muted })}
       </div>
     );
@@ -3410,6 +3418,12 @@ function SeedCardView({ seed, onBack }) {
       <div style={{ textAlign: "center", padding: "14px 0", borderBottom: rule }}>
         <div style={caps(10)}>card · {seed.course} · {fmtDate(seed.date)}</div>
         <div style={{ ...writtenWord(30), lineHeight: "34px", marginTop: 4 }}>{seed.tee}</div>
+        {mt && (
+          <div style={{ fontFamily: F.label, fontSize: 12, marginTop: 4 }}>
+            <span style={writtenWord(17)}>{RES_LONG[mt.result]}</span>{" "}
+            <span style={written(17)}>{fmtPts(mt.yourPoints)}</span>–<span style={written(17, T.ghost)}>{fmtPts(mt.ghostPoints)}</span> vs. the ghost
+          </div>
+        )}
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "12px 0 6px" }}>
         <span style={caps(10)}>The card</span>
@@ -3423,6 +3437,11 @@ function SeedCardView({ seed, onBack }) {
         <span>Card total <span style={printed(12)}>{seed.cardTotal}</span></span>
         {seed.cardTotal !== seed.gross && <span>Differential adj. <span style={printed(12)}>{seed.gross}</span></span>}
       </div>
+      {mt && (
+        <div style={{ padding: "6px 4px 0", fontFamily: F.label, fontSize: 11, color: T.muted }}>
+          Ghost <span style={printed(12)}>{mt.ghostTotal}</span> · your last-5 that day <span style={printed(12)}>{mt.ghostDiff.toFixed(1)}</span> · gets <span style={printed(12)}>{mt.ghostHcp}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -3454,7 +3473,7 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
   const fileRef = React.useRef(null);
   const shotFileRef = React.useRef(null);
   // v22.8: the ledger merges played rounds with Brett's imported seed scorecards, newest first.
-  const rows = useMemo(() => historyRows(history, SEED_ROUNDS), [history]);
+  const rows = useMemo(() => historyRows(history, SEEDS), [history]);
 
   const doExport = async () => {
     if (!history.length) { setMsg("Nothing to export yet."); return; }
@@ -3562,26 +3581,28 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
         <div style={{ borderTop: rule }}>
           {rows.map(row => {
             if (row.kind === "card") {
-              const s = row.seed;
+              const s = row.seed, mt = s.match;
               return (
-                /* imported scorecard — no ghost, no points, no delete. A neutral hairline edge
-                   (not a W/L/T colour) so it never reads as part of the record tally. */
+                /* imported scorecard — no delete. v22.16.2: played against the ghost of its day, so
+                   it takes the same W/L/T edge mark as a played round; `card` still says what it is. */
                 <button key={`card:${s.date}:${s.course}`} onClick={() => setViewSeed(s)}
                   style={{ display: "block", width: "100%", textAlign: "left", background: "none",
-                    border: "none", borderBottom: rule, borderLeft: `4px solid ${T.hair}`, padding: "8px 8px 7px" }}>
+                    border: "none", borderBottom: rule, borderLeft: `4px solid ${(mt && RES_EDGE[mt.result]) || T.hair}`, padding: "8px 8px 7px" }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                     <span style={{ ...writtenWord(21), lineHeight: "21px", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {s.course}
                     </span>
-                    <span style={{ ...written(18), whiteSpace: "nowrap" }}>
-                      {s.cardTotal}
-                      {s.cardTotal !== s.gross && <span style={{ fontFamily: F.label, fontSize: 10, fontWeight: 700, color: T.muted, marginLeft: 5 }}>adj {s.gross}</span>}
-                    </span>
+                    {mt && <span style={{ ...written(18), whiteSpace: "nowrap" }}>{fmtPts(mt.yourPoints)}–{fmtPts(mt.ghostPoints)}</span>}
                   </div>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 1, fontFamily: F.label, fontSize: 11, color: T.ink }}>
-                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.tee} · {fmtDate(s.date)}</span>
+                    {mt && <><span style={{ ...writtenWord(15) }}>{RES_LONG[mt.result] || "—"}</span><span style={{ color: T.muted }}>·</span></>}
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fmtDate(s.date)} · {s.tee}</span>
                     <span style={{ color: T.muted }}>·</span>
                     <span style={{ ...caps(9, 700, "0.12em"), color: T.muted }}>card</span>
+                    <span style={{ flex: 1 }} />
+                    <span style={{ color: T.muted, whiteSpace: "nowrap" }}>
+                      <span style={printed(12)}>{s.cardTotal}</span>{s.cardTotal !== s.gross ? ` · adj ${s.gross}` : ""}{mt ? ` · ghost ${mt.ghostTotal}` : ""}
+                    </span>
                   </div>
                 </button>
               );
@@ -3806,7 +3827,7 @@ function App() {
   }, [history]);
   useEffect(() => { saveTombs(tombs); }, [tombs]);
   const ghost = useMemo(() => course ? computeGhost(course, diff) : null, [course, diff]);
-  const stats = useMemo(() => deriveStats(history), [history]);
+  const stats = useMemo(() => statsWithCards(history), [history]);
   // Start round → the caddie, hole 1, pre-tee (addendum §2). The round gets its id now (not at
   // finalize) so shots logged mid-round carry the same roundId the finished history record ends
   // up with — S4 §4.6.
