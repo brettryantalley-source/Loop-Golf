@@ -6,7 +6,7 @@
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 269 tests; must be green
+npm install && npm test    # 274 tests; must be green
 ```
 
 ## Where things stand (Oct 1, after PR #11 merged)
@@ -27,13 +27,17 @@ one reproducing GHIN's differential (GHIN's list: `data/extracted/2026-09-30-ghi
 five newest reach the last-5, so the ghost stays at 7.4. Bear Slide 6/10 and Cider Ridge 6/6 are in GHIN
 but predate Shot Pattern — no card, not in History, until Brett sends GHIN's hole-by-hole. Play dates are
 Shot Pattern's (Brett, Oct 1): Beachwood 9/2 and Ironwood 9/28, though GHIN shows 9/5 and 9/30.
+**Cards vs. the ghost (v22.16.2, D72):** every card is played against the ghost Loop would have built that
+day (`ghostDiff`, `strokeIndex` from golfcourseapi) and counts toward the record: the cards alone are
+**6–4–2**. June 17 and 21's ghosts average only 3 and 4 prior GHIN rounds — send GHIN rounds older than
+May 16 to fill them. A new card needs both fields or it stays unscored (History shows it without a result).
 **Routine for each** (a code thread does all of it; no middle step): Brett screen-
 records Shot Pattern's round page — scorecard, Summary, then the four Shot List tabs (Driving, Approach,
 Short Game, Putting) scrolled slowly top to bottom — and drops the recording in the chat. The thread
 extracts frames (`ffmpeg -vf "fps=2,scale=460:-1"`, dedupe near-identical frames, 4-up contact sheets),
 reads them, writes `data/extracted/rounds/{date}-{course}/shots.json` (schema 1; the five existing files
 are the contract), reconciles every hole — drives + approaches + short game + putts + penalty strokes
-must equal the card score — then `npm run import:shots`, `npm test` (269), the frozen check, `./build.sh`,
+must equal the card score — then `npm run import:shots`, `npm test` (274), the frozen check, `./build.sh`,
 commit, push, PR, merge on Brett's "merge". Conventions learned: Shot Pattern's "(+2)" on a tee shot to a
 penalty is one penalty stroke plus the re-tee (store `penalty: 1`, note it); "Unknown Club" → `null`;
 clubs Dr, 2i, 2Hy, 4Hy, 5i–9i, PW, GW, SW, LW, putter; lies tee / fairway / rough / bunker / recovery /
@@ -49,7 +53,7 @@ Pages redeploys in about a minute; he fully closes and reopens Loop and reads th
 of Setup.
 
 Engine as of v22.10 follows `docs/CADDIE-BRAIN-INTEGRATION.md` (D43–D46; known gaps in D46).
-`npm test` is 269 tests. Decisions run D1–D71 in `docs/DECISIONS-caddie.md`.
+`npm test` is 274 tests. Decisions run D1–D71 in `docs/DECISIONS-caddie.md`.
 
 **Ironwood (Fishers, IN) is not traced in OpenStreetMap.** v22.11's marked-green mode is the
 bridge (satellite on GPS, tap the green, distance-only pricing). First round there (Sep 29, v22.11):

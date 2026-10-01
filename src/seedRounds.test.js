@@ -7,20 +7,29 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SEED_ROUNDS, historyRows } from "./seedRounds.js";
+import fs from "node:fs";
+import { SEED_ROUNDS, historyRows, seedMatch, scoreSeeds, recordLedger, dayTime } from "./seedRounds.js";
+import { matchResult } from "./historyFix.js";
+
+/* The engine under test is the REAL one, sliced out of app.jsx exactly as historyFix.test.js does —
+ * computeGhost / evalMatch are frozen and never copied. */
+const APP = fs.readFileSync(new URL("./app.jsx", import.meta.url), "utf8");
+const slice = (from, to) => { const i = APP.indexOf(from), j = APP.indexOf(to, i); assert.ok(i >= 0 && j > i, `app.jsx: ${from}`); return APP.slice(i, j); };
+const ENGINE = { ...new Function(`${slice("function computeGhost(", "\nconst scoreName")}\nreturn { computeGhost, evalMatch };`)(), matchResult };
+const GHIN = JSON.parse(fs.readFileSync(new URL("../data/extracted/2026-09-30-ghin-scores.json", import.meta.url), "utf8"));
 
 /* Same one-line formula as scoreDifferential in app.jsx (duplicated here on purpose — app.jsx
  * is JSX and isn't importable by the plain node test runner). Rounded to 0.1, no PCC. */
 const scoreDifferential = (gross, rating, slope) => Math.round((gross - rating) * 113 / slope * 10) / 10;
 
-test("SEED_ROUNDS: every card is 18 holes, pars/yards/scores all present", () => {
+test("SEED_ROUNDS: every card is 18 holes, pars/yards/scores/strokeIndex all present", () => {
   assert.equal(SEED_ROUNDS.length, 12);
   for (const r of SEED_ROUNDS) {
-    for (const k of ["pars", "yards", "scores"]) {
+    for (const k of ["pars", "yards", "scores", "strokeIndex"]) {
       assert.equal(r[k].length, 18, `${r.course} ${k} should be 18 holes`);
       assert.ok(r[k].every((v) => typeof v === "number" && v > 0), `${r.course} ${k} should be all positive numbers`);
     }
-    assert.equal(r.strokeIndex, null, `${r.course} strokeIndex should be null (not on the cards)`);
+    assert.deepEqual([...r.strokeIndex].sort((a, b) => a - b), [...Array(18)].map((_, i) => i + 1), `${r.course} strokeIndex should be 1–18 once each`);
   }
 });
 
@@ -64,6 +73,64 @@ test("SEED_ROUNDS: the five newest cards average 7.4 — the older cards never r
   assert.equal(avg, 7.4);
 });
 
+/* ---------- the record vs. the ghost (v22.16.2) ---------- */
+
+test("SEED_ROUNDS: ghostDiff is the last-5 Loop would have had that day (GHIN's differentials before it + Canongate's card)", () => {
+  const pool = GHIN.rounds.map((r) => [r.date, r.diff]);
+  pool.push(["2026-08-23", 6.5]);                                    // Canongate: a Loop seed, not in GHIN
+  pool.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  for (const s of SEED_ROUNDS) {
+    const prior = pool.filter(([d]) => d < s.date).slice(-5);
+    const want = Math.round((prior.reduce((a, [, v]) => a + v, 0) / prior.length) * 10) / 10;   // computeAutoDiff's rounding
+    assert.equal(s.ghostDiff, want, `${s.date} ${s.course}: ${prior.length} prior rounds`);
+  }
+});
+
+test("seedMatch: every card against its ghost, scored by the frozen engine", () => {
+  const got = Object.fromEntries(SEED_ROUNDS.map((s) => { const m = seedMatch(s, ENGINE); return [s.date, `${m.result} ${m.yourPoints}-${m.ghostPoints} ghost ${m.ghostTotal} (gets ${m.ghostHcp})`]; }));
+  assert.deepEqual(got, {
+    "2026-06-17": "W 4.5-3.5 ghost 84 (gets 12)",
+    "2026-06-21": "W 7.5-0.5 ghost 82 (gets 12)",
+    "2026-06-27": "L 2.75-5.25 ghost 81 (gets 9)",
+    "2026-07-17": "W 5-3 ghost 81 (gets 9)",
+    "2026-07-26": "L 2.25-5.75 ghost 78 (gets 7)",
+    "2026-08-03": "W 6-2 ghost 81 (gets 9)",
+    "2026-08-09": "L 3.5-4.5 ghost 79 (gets 9)",
+    "2026-08-15": "W 4.5-3.5 ghost 83 (gets 11)",
+    "2026-08-23": "T 4-4 ghost 82 (gets 11)",
+    "2026-09-02": "L 1.5-6.5 ghost 79 (gets 7)",
+    "2026-09-12": "T 4-4 ghost 82 (gets 10)",
+    "2026-09-20": "W 4.5-3.5 ghost 82 (gets 11)",
+  });
+});
+
+test("seedMatch: a card without a stroke index or ghost differential is not scored", () => {
+  const s = SEED_ROUNDS[0];
+  assert.equal(seedMatch({ ...s, strokeIndex: null }, ENGINE), null);
+  assert.equal(seedMatch({ ...s, ghostDiff: undefined }, ENGINE), null);
+});
+
+test("recordLedger: cards and played rounds, oldest first; the cards alone are 6–4–2", () => {
+  const scored = scoreSeeds(SEED_ROUNDS, ENGINE);
+  const cardsOnly = recordLedger([], scored);
+  assert.equal(cardsOnly.length, 12);
+  const tally = cardsOnly.reduce((a, r) => ({ ...a, [r.result]: (a[r.result] || 0) + 1 }), {});
+  assert.deepEqual(tally, { W: 6, L: 4, T: 2 });
+  assert.equal(cardsOnly[0].date, "2026-06-17");
+  assert.equal(cardsOnly.at(-1).date, "2026-09-20");
+  const played = { id: "rIron", date: "2026-09-29T21:10:00.000Z", result: "W", yourPoints: 5, ghostPoints: 3 };
+  const both = recordLedger([played], scored);
+  assert.equal(both.length, 13);
+  assert.equal(both.at(-1), played, "the played round is newest and passes through untouched");
+  assert.ok(both.every((r, i) => i === 0 || dayTime(both[i - 1].date) <= dayTime(r.date)));
+});
+
+test("dayTime: a bare date is that day at local noon, never the evening before", () => {
+  const d = new Date(dayTime("2026-09-20"));
+  assert.equal(d.getDate(), 20);
+  assert.equal(d.getHours(), 12);
+});
+
 /* ---------- historyRows ---------- */
 
 const round = (date, id) => ({ id, date, course: "Played Course", yourPoints: 5, ghostPoints: 3, result: "W" });
@@ -80,14 +147,15 @@ test("historyRows: merges rounds and seeds, newest first by date", () => {
   assert.equal(rows[0].round.id, "r2");                    // 2026-09-25 is the newest of all
 });
 
-test("historyRows: seed rows never carry points — no yourPoints/ghostPoints/result on a card row", () => {
-  const rows = historyRows([], SEED_ROUNDS);
+test("historyRows: a card row carries its result only under seed.match — never top-level points", () => {
+  const rows = historyRows([], scoreSeeds(SEED_ROUNDS, ENGINE));
   assert.equal(rows.length, SEED_ROUNDS.length);
   for (const row of rows) {
     assert.equal(row.kind, "card");
     assert.equal(row.seed.yourPoints, undefined);
     assert.equal(row.seed.ghostPoints, undefined);
     assert.equal(row.seed.result, undefined);
+    assert.ok(row.seed.match && ["W", "L", "T"].includes(row.seed.match.result));
   }
 });
 
