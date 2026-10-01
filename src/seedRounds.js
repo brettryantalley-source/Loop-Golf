@@ -1,8 +1,10 @@
 /*
- * seedRounds.js — Brett's last five rounds, transcribed from his Shot Pattern scorecards
- * (Sep 29, 2026). Two jobs:
+ * seedRounds.js — Brett's rounds before Loop, transcribed from his Shot Pattern scorecards: the
+ * five most recent on Sep 29, 2026, and June 17 → Aug 9 on Oct 1 (with GHIN's scoring record,
+ * data/extracted/2026-09-30-ghin-scores.json). Two jobs:
  *
- *   1. The last-5 differential floor (`computeAutoDiff` in app.jsx). `gross` is the ADJUSTED
+ *   1. The last-5 differential floor (`computeAutoDiff` in app.jsx) — only the five newest rounds
+ *      in the pool count, so the older cards here are history and never move the ghost. `gross` is the ADJUSTED
  *      gross the official differential was computed from — GHIN's posted score, which caps holes
  *      at net double bogey — so the app reproduces the official number. Where GHIN has no posting
  *      (Canongate) the card total is used.
@@ -32,8 +34,8 @@ export const SEED_ROUNDS = [
     strokeIndex: null, source: "shotpattern-card + ghin",
   },
   {
-    date: "2026-09-05", course: "Beachwood Golf Club", tee: "Blue", rating: 71.6, slope: 127,
-    gross: 86, cardTotal: 84,                        // GHIN 86 → 12.8; the card adds to 84 — flagged for Brett
+    date: "2026-09-02", course: "Beachwood Golf Club", tee: "Blue", rating: 71.6, slope: 127,
+    gross: 86, cardTotal: 84,                        // GHIN 86 → 12.8 (GHIN dates it 9/5; Shot Pattern's 9/2 is the day played); the card adds to 84 — flagged for Brett
     pars:   [5, 4, 4, 3, 4, 4, 4, 3, 5,  4, 4, 4, 4, 5, 3, 4, 5, 3],
     yards:  [527, 366, 396, 172, 391, 402, 343, 187, 546,  328, 404, 360, 397, 575, 199, 386, 488, 224],
     scores: [6, 5, 4, 4, 4, 5, 5, 4, 5,  6, 6, 4, 4, 5, 3, 4, 6, 4],
@@ -53,6 +55,62 @@ export const SEED_ROUNDS = [
     pars:   [4, 5, 4, 3, 4, 4, 3, 4, 5,  4, 4, 4, 3, 5, 4, 4, 3, 5],
     yards:  [369, 548, 423, 230, 402, 430, 196, 404, 559,  414, 401, 374, 159, 520, 432, 407, 206, 566],
     scores: [4, 5, 6, 4, 4, 4, 3, 6, 7,  4, 5, 5, 4, 5, 5, 4, 3, 5],
+    strokeIndex: null, source: "shotpattern-card + ghin",
+  },
+  {
+    date: "2026-08-09", course: "Riverpines Golf Course", tee: "Black", rating: 71.1, slope: 132,
+    gross: 80, cardTotal: 80,                        // GHIN 80 → 7.6 (Shot Pattern calls the tee Championship)
+    pars:   [4, 4, 3, 4, 3, 4, 4, 5, 4,  4, 4, 4, 4, 3, 4, 3, 5, 4],
+    yards:  [422, 418, 172, 447, 209, 436, 363, 540, 325,  374, 410, 383, 420, 174, 405, 184, 501, 419],
+    scores: [4, 4, 3, 5, 3, 5, 4, 5, 4,  5, 6, 4, 4, 5, 4, 4, 6, 5],
+    strokeIndex: null, source: "shotpattern-card + ghin",
+  },
+  {
+    date: "2026-08-03", course: "Chicopee Woods · Village/Mill", tee: "Gold", rating: 72.7, slope: 133,
+    gross: 78, cardTotal: 78,                        // GHIN 78 → 4.5
+    pars:   [4, 5, 4, 3, 4, 4, 3, 4, 5,  5, 3, 4, 5, 3, 4, 4, 4, 4],
+    yards:  [369, 548, 423, 230, 402, 430, 196, 404, 559,  525, 164, 357, 571, 251, 419, 334, 400, 426],
+    scores: [4, 6, 4, 3, 4, 4, 3, 4, 5,  5, 3, 3, 6, 5, 4, 5, 5, 5],
+    strokeIndex: null, source: "shotpattern-card + ghin",
+  },
+  {
+    date: "2026-07-26", course: "Sugar Creek Golf Course", tee: "Blue", rating: 70.1, slope: 125,
+    gross: 81, cardTotal: 81,                        // GHIN 81 → 9.9
+    pars:   [4, 5, 4, 5, 4, 3, 4, 4, 3,  4, 3, 4, 4, 4, 4, 4, 3, 5],
+    yards:  [389, 488, 425, 486, 415, 144, 336, 363, 197,  384, 165, 417, 410, 386, 324, 341, 164, 484],
+    scores: [3, 5, 6, 6, 5, 3, 5, 4, 3,  5, 3, 6, 4, 5, 5, 5, 3, 5],
+    strokeIndex: null, source: "shotpattern-card + ghin",
+  },
+  {
+    date: "2026-07-17", course: "Chicopee Woods · Mill/School", tee: "Gold", rating: 72.7, slope: 135,
+    gross: 81, cardTotal: 80,                        // GHIN 81 → 6.9 (GHIN: School/Mill); the card adds to 80 — flagged for Brett
+    pars:   [5, 3, 4, 5, 3, 4, 4, 4, 4,  4, 4, 4, 3, 5, 4, 4, 3, 5],
+    yards:  [525, 164, 357, 571, 251, 419, 334, 400, 426,  414, 401, 374, 159, 520, 432, 407, 206, 566],
+    scores: [4, 3, 4, 5, 4, 5, 4, 6, 4,  5, 5, 4, 3, 5, 5, 6, 4, 4],
+    strokeIndex: null, source: "shotpattern-card + ghin",
+  },
+  {
+    date: "2026-06-27", course: "Woodmont Golf & CC", tee: "Medal", rating: 71.3, slope: 135,
+    gross: 84, cardTotal: 85,                        // GHIN posted 84 → 10.6 (hole caps)
+    pars:   [5, 3, 4, 4, 4, 3, 4, 4, 5,  5, 3, 4, 3, 4, 3, 5, 4, 5],
+    yards:  [506, 166, 392, 432, 397, 120, 363, 442, 518,  506, 106, 373, 142, 391, 179, 543, 360, 485],
+    scores: [5, 5, 6, 4, 5, 3, 4, 4, 5,  5, 6, 5, 3, 6, 2, 7, 4, 6],
+    strokeIndex: null, source: "shotpattern-card + ghin",
+  },
+  {
+    date: "2026-06-21", course: "Riverpines Golf Course", tee: "Black", rating: 71.1, slope: 132,
+    gross: 73, cardTotal: 73,                        // GHIN 73 → 1.6 (eagle on 17)
+    pars:   [4, 4, 3, 4, 3, 4, 4, 5, 4,  4, 4, 4, 4, 3, 4, 3, 5, 4],
+    yards:  [422, 418, 172, 447, 209, 436, 363, 540, 325,  374, 410, 383, 420, 174, 405, 184, 501, 419],
+    scores: [4, 5, 3, 4, 4, 4, 5, 4, 4,  5, 5, 4, 4, 3, 5, 3, 3, 4],
+    strokeIndex: null, source: "shotpattern-card + ghin",
+  },
+  {
+    date: "2026-06-17", course: "Woodmont Golf & CC", tee: "Medal", rating: 71.3, slope: 135,
+    gross: 79, cardTotal: 81,                        // GHIN posted 80 → differential 6.4 ⇒ adjusted 79; attested
+    pars:   [5, 3, 4, 4, 4, 3, 4, 4, 5,  5, 3, 4, 3, 4, 3, 5, 4, 5],
+    yards:  [506, 166, 392, 432, 397, 120, 363, 442, 518,  506, 106, 373, 142, 391, 179, 543, 360, 485],
+    scores: [5, 3, 3, 5, 5, 4, 5, 4, 4,  7, 3, 5, 3, 4, 2, 7, 7, 5],
     strokeIndex: null, source: "shotpattern-card + ghin",
   },
 ];

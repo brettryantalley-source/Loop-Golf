@@ -1,0 +1,20 @@
+{
+  "source": "ghin-scoring-record",
+  "note": "Transcribed Oct 1 from Brett's GHIN Scorecards screen recording (Sep 30, 9:07 pm), every row June 1 → Sep 30 2026. `posted` is the score GHIN shows; `diff` is GHIN's differential. `adjGross` is the whole score that reproduces `diff` with Loop's scoreDifferential() (gross − rating) × 113 / slope; where it is below `posted`, GHIN applied a hole cap or PCC. `totalOnly` = GHIN tagged it Total Score (no hole-by-hole card). `date` is the day played; where GHIN shows a different day it is kept as `ghinDate` (Brett, Oct 1: Shot Pattern's dates are the play dates). Hole-by-hole cards: every round from Jun 17 on is a Shot Pattern card in src/seedRounds.js (Oct 1; Ironwood is a Loop round). Bear Slide 6/10 and Cider Ridge 6/6 predate Shot Pattern's round history, so they have no card yet and are not in History. Where a card's total differs from `posted` (Mill/School 7/17: card 80, GHIN 81; Woodmont 6/27: 85 vs 84; Woodmont 6/17: 81 vs 80) the seed keeps both.",
+  "rounds": [
+    { "date": "2026-09-28", "ghinDate": "2026-09-30", "club": "Ironwood Golf Club", "nines": "Lakes/Ridge", "tee": "Blue", "rating": 71.7, "slope": 139, "posted": 81, "diff": 7.6, "adjGross": 81, "totalOnly": true },
+    { "date": "2026-09-20", "club": "Hampton Golf Village", "tee": "Championship", "rating": 72.7, "slope": 137, "posted": 82, "diff": 6.8, "adjGross": 81 },
+    { "date": "2026-09-12", "club": "Lake Arrowhead Yacht & Country Club", "tee": "Blue Fox", "rating": 73.3, "slope": 133, "posted": 79, "diff": 4.8, "adjGross": 79 },
+    { "date": "2026-09-02", "ghinDate": "2026-09-05", "club": "Beachwood Golf Club", "tee": "Blue", "rating": 71.6, "slope": 127, "posted": 86, "diff": 12.8, "adjGross": 86, "totalOnly": true },
+    { "date": "2026-08-15", "club": "Chicopee Woods Golf Course", "nines": "School/Village", "tee": "Gold", "rating": 73.6, "slope": 137, "posted": 81, "diff": 6.1, "adjGross": 81 },
+    { "date": "2026-08-09", "club": "Riverpines Golf Course", "tee": "Black", "rating": 71.1, "slope": 132, "posted": 80, "diff": 7.6, "adjGross": 80 },
+    { "date": "2026-08-03", "club": "Chicopee Woods Golf Course", "nines": "Village/Mill", "tee": "Gold", "rating": 72.7, "slope": 133, "posted": 78, "diff": 4.5, "adjGross": 78 },
+    { "date": "2026-07-26", "club": "Sugar Creek Golf Course", "tee": "Blue", "rating": 70.1, "slope": 125, "posted": 81, "diff": 9.9, "adjGross": 81 },
+    { "date": "2026-07-17", "club": "Chicopee Woods Golf Course", "nines": "School/Mill", "tee": "Gold", "rating": 72.7, "slope": 135, "posted": 81, "diff": 6.9, "adjGross": 81 },
+    { "date": "2026-06-27", "club": "Woodmont Golf & Country Club", "tee": "Medal", "rating": 71.3, "slope": 135, "posted": 84, "diff": 10.6, "adjGross": 84 },
+    { "date": "2026-06-21", "club": "Riverpines Golf Course", "tee": "Black", "rating": 71.1, "slope": 132, "posted": 73, "diff": 1.6, "adjGross": 73 },
+    { "date": "2026-06-17", "club": "Woodmont Golf & Country Club", "tee": "Medal", "rating": 71.3, "slope": 135, "posted": 80, "diff": 6.4, "adjGross": 79, "attested": true },
+    { "date": "2026-06-10", "club": "Bear Slide Golf Club", "tee": "Blue", "rating": 72.3, "slope": 134, "posted": 84, "diff": 9.0, "adjGross": 83 },
+    { "date": "2026-06-06", "club": "Cider Ridge Golf Club", "tee": "II", "rating": 71.7, "slope": 130, "posted": 82, "diff": 8.1, "adjGross": 81 }
+  ]
+}

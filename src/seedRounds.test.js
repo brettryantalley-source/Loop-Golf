@@ -1,7 +1,8 @@
 /*
- * seedRounds.test.js — Brett's last five scorecards (v22.8): every card is a real 18, the
- * differential each one reproduces matches GHIN, the five-round average is what Setup should
- * show, and historyRows() merges rounds + seeds without letting a seed carry points.
+ * seedRounds.test.js — Brett's imported scorecards (v22.8; June 17 → Aug 9 added Oct 1): every
+ * card is a real 18, the differential each one reproduces matches GHIN, the five NEWEST cards
+ * average to what Setup should show, and historyRows() merges rounds + seeds without letting a
+ * seed carry points.
  * Run: node --test src/seedRounds.test.js
  */
 import { test } from "node:test";
@@ -13,7 +14,7 @@ import { SEED_ROUNDS, historyRows } from "./seedRounds.js";
 const scoreDifferential = (gross, rating, slope) => Math.round((gross - rating) * 113 / slope * 10) / 10;
 
 test("SEED_ROUNDS: every card is 18 holes, pars/yards/scores all present", () => {
-  assert.equal(SEED_ROUNDS.length, 5);
+  assert.equal(SEED_ROUNDS.length, 12);
   for (const r of SEED_ROUNDS) {
     for (const k of ["pars", "yards", "scores"]) {
       assert.equal(r[k].length, 18, `${r.course} ${k} should be 18 holes`);
@@ -46,8 +47,20 @@ test("SEED_ROUNDS: each card reproduces its official differential from the adjus
   }
 });
 
-test("SEED_ROUNDS: the five-round average differential is 7.4", () => {
-  const avg = Math.round((SEED_ROUNDS.reduce((a, r) => a + scoreDifferential(r.gross, r.rating, r.slope), 0) / SEED_ROUNDS.length) * 10) / 10;
+test("SEED_ROUNDS: every card reproduces GHIN's differential for its date (data/extracted/2026-09-30-ghin-scores.json)", () => {
+  const ghin = {
+    "2026-09-20": 6.8, "2026-09-12": 4.8, "2026-09-02": 12.8, "2026-08-23": 6.5, "2026-08-15": 6.1,
+    "2026-08-09": 7.6, "2026-08-03": 4.5, "2026-07-26": 9.9, "2026-07-17": 6.9,
+    "2026-06-27": 10.6, "2026-06-21": 1.6, "2026-06-17": 6.4,
+  };
+  assert.deepEqual(SEED_ROUNDS.map((r) => r.date).sort(), Object.keys(ghin).sort(), "one card per date");
+  for (const r of SEED_ROUNDS) assert.equal(scoreDifferential(r.gross, r.rating, r.slope), ghin[r.date], `${r.date} ${r.course}`);
+});
+
+test("SEED_ROUNDS: the five newest cards average 7.4 — the older cards never reach the last-5 window", () => {
+  const newest = [...SEED_ROUNDS].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 5);
+  assert.deepEqual(newest.map((r) => r.date), ["2026-09-20", "2026-09-12", "2026-09-02", "2026-08-23", "2026-08-15"]);
+  const avg = Math.round((newest.reduce((a, r) => a + scoreDifferential(r.gross, r.rating, r.slope), 0) / newest.length) * 10) / 10;
   assert.equal(avg, 7.4);
 });
 
@@ -78,13 +91,13 @@ test("historyRows: seed rows never carry points — no yourPoints/ghostPoints/re
   }
 });
 
-test("historyRows: empty history still returns all five seed cards", () => {
+test("historyRows: empty history still returns every seed card", () => {
   const rows = historyRows(undefined, SEED_ROUNDS);
-  assert.equal(rows.length, 5);
+  assert.equal(rows.length, SEED_ROUNDS.length);
   assert.ok(rows.every((r) => r.kind === "card"));
 });
 
 test("historyRows: a round and a seed on the same date both appear (History shows the ledger as-is; dedupe is the differential's job, not the ledger's)", () => {
   const rows = historyRows([round("2026-09-20", "r-same-day")], SEED_ROUNDS);
-  assert.equal(rows.length, 6);
+  assert.equal(rows.length, SEED_ROUNDS.length + 1);
 });
