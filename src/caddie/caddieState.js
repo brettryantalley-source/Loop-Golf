@@ -59,6 +59,16 @@ export const COPY = Object.freeze({
   pinNote: "Or tap the green on the map.",
   yardsTitle: "Yards to pin",
   use: (n) => `Use ${n}`,
+  /* v22.15 shot log v2 */
+  tapMap: "Tap the map…",
+  aimTap: "Tap the map",
+  onGreen: "On the green",
+  shots: "Shots",
+  line: "Line",
+  shapes: [["draw", "Draw"], ["straight", "Straight"], ["fade", "Fade"]],
+  review: "Review",
+  saveAll: "Save all",
+  later: "Later",
 });
 export const NOTICES = Object.freeze({
   nofix: "No GPS fix. Step into the open and tap Try again.",
@@ -72,6 +82,8 @@ export const NOTICES = Object.freeze({
   noHazards: NOTE_NO_HAZARDS,
   /* v22.12: an unmapped hole with a fix but no satellite says which part failed (overlay.js satelliteFailure) */
   noSatellite: (why) => `Satellite: ${why}. Enter yards for a club.`,
+  /* v22.15 test mode (SPEC-shotlog-v2 §1) */
+  testTap: "Test mode · tap the map where you are",
 });
 
 /* ---------- 1. state ---------- */
@@ -97,6 +109,12 @@ export function initialCaddie(hole = 1) {
     lastPuttFt: null,    // the last putt distance used THIS HOLE — the stepper's starting point; resets on a new hole
     pinView: false,      // v22.11: the map zoomed to the green with the draggable pin (transient, not persisted)
     remark: false,       // v22.11: marked-green mode is waiting for a re-tap of the green (transient, not persisted)
+    /* v22.15 (SPEC-shotlog-v2 §1, §2, §4, §6) */
+    awaitingTap: null,   // test mode: { action, trigger } — the next map tap is the fix (serialized, never restored)
+    intent: {},          // this hole's pre-shot marks: { [hole]: { [shotNo]: { target, targetLabel, targetLL, startLineDeg, shape } } }
+    lineMode: false,     // the rail's Line is armed: map taps set the start line (transient)
+    greenHole: null,     // the hole Brett said he is on the green of (manual On the green, §6)
+    review: null,        // the Review sheet: { hole, next } — next = "finish" | a 0-based hole index | null
   };
 }
 
@@ -116,6 +134,8 @@ function newHole(s, n) {
     ...s, hole: n, shotNo: 1, phase: "pretee", prevPhase: null, trigger: null,
     ball: null, ballXY: null, yards: null, opt: "safe", exp: false, chips: {}, pins, logCard: null,
     shots: { ...s.shots, [n]: [] }, context: null, lastPuttFt: null, pinView: false, remark: false,
+    // v22.15: intents belong to the shots of one hole and are in their records by now
+    awaitingTap: null, intent: {}, lineMode: false, greenHole: null,
   };
 }
 
@@ -123,7 +143,7 @@ function newHole(s, n) {
  *  or previous-shot prompt for the shot just left behind should already be resolved by this point
  *  (the "ball" tap is intercepted while one is pending — see `hasUnloggedShot`); clearing `logCard`
  *  here is defensive. */
-const newBall = (s) => ({ ...s, opt: "safe", exp: false, chips: {}, logCard: null, pinView: false, remark: false });
+const newBall = (s) => ({ ...s, opt: "safe", exp: false, chips: {}, logCard: null, pinView: false, remark: false, lineMode: false });
 
 const PIN_PRESETS = ["front", "middle", "back"];
 const isXY = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.y);
@@ -133,10 +153,18 @@ export function caddieReducer(s, a) {
   switch (a.type) {
     case "tee":
     case "ball":
+    case "green":        // v22.15 §6: the manual On the green takes a fix like I'm at my ball
     case "retry": {
       const trigger = a.type === "retry" ? (s.trigger || (s.ball || s.yards != null ? "ball" : "tee")) : a.type;
-      return { ...s, phase: "locating", prevPhase: s.phase === "locating" ? s.prevPhase : s.phase, trigger, pinView: false };
+      // test mode (§1): `tap` arms the map — the next tap is the fix; the phase is Locating meanwhile
+      const awaitingTap = a.tap ? { action: a.type, trigger } : null;
+      return { ...s, phase: "locating", prevPhase: s.phase === "locating" ? s.prevPhase : s.phase, trigger, pinView: false, lineMode: false, awaitingTap };
     }
+    /* test mode, Mark green here (§1): the next tap is where the green is — no fix, no shot */
+    case "awaitMark":
+      return { ...s, awaitingTap: { action: "mark", trigger: null }, pinView: false, lineMode: false };
+    case "tapDone":
+      return s.awaitingTap ? { ...s, awaitingTap: null } : s;
     case "fix": {
       // a.fix = { lat, lng, accuracyM }; a.point = {x,y} in the (possibly new) hole's frame; a.hole = detected hole
       let t = s;
@@ -144,14 +172,21 @@ export function caddieReducer(s, a) {
       const trigger = t === s ? s.trigger || "ball" : "tee";
       const point = isXY(a.point) ? { x: a.point.x, y: a.point.y } : null;
       if (trigger === "tee") {
-        return newBall({ ...t, phase: "ready", prevPhase: null, trigger, shotNo: 1, ball: a.fix, ballXY: point, yards: null, shots: { ...t.shots, [t.hole]: [] } });
+        return newBall({ ...t, phase: "ready", prevPhase: null, trigger, shotNo: 1, ball: a.fix, ballXY: point, yards: null, shots: { ...t.shots, [t.hole]: [] }, awaitingTap: null, greenHole: null });
       }
       const prev = t.shots[t.hole] || [];
       const shots = t.ballXY && point ? [...prev, { from: t.ballXY, to: point }] : prev;
-      return newBall({ ...t, phase: "ready", prevPhase: null, trigger, shotNo: t.shotNo + 1, ball: a.fix, ballXY: point, yards: null, shots: { ...t.shots, [t.hole]: shots } });
+      const greenHole = trigger === "green" ? t.hole : t.greenHole;
+      return newBall({ ...t, phase: "ready", prevPhase: null, trigger: trigger === "green" ? "ball" : trigger, shotNo: t.shotNo + 1, ball: a.fix, ballXY: point, yards: null,
+        shots: { ...t.shots, [t.hole]: shots }, awaitingTap: null, greenHole });
     }
     case "fixError":
-      return { ...s, phase: a.code === 1 ? "locationoff" : "nofix", prevPhase: null };
+      // v22.15 §6: On the green with no fix still puts Brett on the green (the shot closes with no end)
+      if (s.trigger === "green") {
+        const back = s.prevPhase && s.prevPhase !== "locating" ? s.prevPhase : s.ball ? "ready" : s.yards ? "yards" : "pretee";
+        return { ...s, phase: back, prevPhase: null, trigger: "ball", awaitingTap: null, greenHole: s.hole, shotNo: s.shotNo + 1 };
+      }
+      return { ...s, phase: a.code === 1 ? "locationoff" : "nofix", prevPhase: null, awaitingTap: null };
     case "yards": {
       const n = Math.round(a.yards);
       if (!(n > 0)) return s;
@@ -192,13 +227,12 @@ export function caddieReducer(s, a) {
     case "context":
       return { ...s, context: a.context ?? null };
     /* ---------- S4: shot-log capture flow (§4.2–§4.5) ---------- */
-    /* logOpen: show a sheet. a.card = "prev" for the blocking previous-shot prompt (§4.4 step 2);
-       anything else (including undefined) opens the optional Log-shot card for the current ball. */
+    /* logOpen: show the Log-shot card for the current ball. v22.15 (SPEC-shotlog-v2 §3): the
+       blocking previous-shot prompt (§4.4 step 2) is gone — a shot closes itself with an auto
+       record, so there is only ever the optional card. */
     case "logOpen":
-      return { ...s, logCard: a.card === "prev" ? "prev" : "log" };
-    /* logDismiss: close the optional Log-shot sheet without writing anything. The previous-shot
-       prompt is not dismissible this way — it always resolves through logSave/logSkip (§4.4: "One
-       tap and the caddie appears"). */
+      return { ...s, logCard: "log" };
+    /* logDismiss: close the Log-shot sheet without writing anything. */
     case "logDismiss":
       return s.logCard === "log" ? { ...s, logCard: null } : s;
     /* logSave / logSkip: a.record is a full ShotRecord already built by the caller (quickLog,
@@ -242,6 +276,26 @@ export function caddieReducer(s, a) {
       if (pins[s.hole] && typeof pins[s.hole] === "object") delete pins[s.hole];
       return { ...s, remark: false, pins };
     }
+    /* ---------- v22.15 shot log v2 ---------- */
+    /* intent: a.patch merges into this shot's marks (a.hole / a.shotNo default to the caddie's);
+       a null value clears that mark. */
+    case "intent": {
+      const hole = Number.isInteger(a.hole) ? a.hole : s.hole, shotNo = Number.isInteger(a.shotNo) ? a.shotNo : s.shotNo;
+      const cur = { ...(s.intent?.[hole]?.[shotNo] || {}) };
+      for (const [k, v] of Object.entries(a.patch || {})) { if (v == null) delete cur[k]; else cur[k] = v; }
+      const forHole = { ...(s.intent?.[hole] || {}) };
+      if (Object.keys(cur).length) forHole[shotNo] = cur; else delete forHole[shotNo];
+      return { ...s, intent: { ...s.intent, [hole]: forHole } };
+    }
+    case "lineMode":
+      return { ...s, lineMode: !!a.on, pinView: a.on ? false : s.pinView };
+    case "reviewOpen":
+      return Number.isInteger(a.hole) ? { ...s, review: { hole: a.hole, next: a.next ?? null } } : s;
+    case "reviewClose":
+      return s.review ? { ...s, review: null } : s;
+    /* lines: the previous-shot lines for a hole rebuilt from its (edited) records */
+    case "lines":
+      return Number.isInteger(a.hole) && Array.isArray(a.lines) ? { ...s, shots: { ...s.shots, [a.hole]: a.lines.filter((x) => isXY(x?.from) && isXY(x?.to)) } } : s;
     case "restore":
       return restoreCaddie(a.state) || s;
     default:
@@ -262,26 +316,25 @@ function setPin(s, v) {
 /** The pin setting in effect on the caddie's hole (§6: Middle unless Brett moved it). */
 export const pinSetting = (s, hole = s.hole) => s.pins?.[hole] ?? "middle";
 
-/**
- * S4 §4.4 — whether the CURRENT ball position is a long shot Brett hasn't logged yet, i.e. the
- * "I'm at my ball" tap must show the collapsed previous-shot prompt instead of locating.
- * `kind` is shotlog.js `routeShot()`'s classification for the ball in effect right now
- * ("long" | "shortGame" | "putt"), or null when there's no live recommendation to log against.
- * A shot is logged once `openShot` names this exact (hole, shotNo).
- */
-export function hasUnloggedShot(s, kind) {
-  if (kind !== "long") return false;
-  const o = s.openShot;
-  return !(o && o.hole === s.hole && o.shotNo === s.shotNo);
+/** v22.15 §1 — a test-mode tap becomes a fix of exactly the real shape (accuracy 4 m). */
+export const FAKE_ACCURACY_M = 4;
+export function fakeFix(p) {
+  const lng = p?.lng ?? p?.lon;
+  return p && Number.isFinite(p.lat) && Number.isFinite(lng) ? { lat: p.lat, lng, accuracyM: FAKE_ACCURACY_M } : null;
 }
+
+/** v22.15 §2 — the marks Brett set for a shot (none → {}). */
+export const intentSet = (s, hole = s.hole, shotNo = s.shotNo) => s.intent?.[hole]?.[shotNo] || {};
 
 /* ---------- persistence (§9.8, §11.1, T42) ---------- */
 
 /** What goes into the round state's `caddie` key. `context` = the ShotContext on screen (a snapshot). */
 export function serializeCaddie(s, context = s?.context ?? null) {
   if (!s) return null;
-  const { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, shots, logCard, openShot, putts, lastPuttFt } = s;
-  return { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, shots, context, logCard, openShot, putts, lastPuttFt };
+  const { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, shots, logCard, openShot, putts, lastPuttFt,
+    awaitingTap, intent, greenHole, review } = s;
+  return { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, shots, context, logCard, openShot, putts, lastPuttFt,
+    awaitingTap: awaitingTap ?? null, intent: intent ?? {}, greenHole: greenHole ?? null, review: review ?? null };
 }
 
 /**
@@ -313,12 +366,36 @@ export function restoreCaddie(raw) {
   s.shots = {};
   for (const [k, list] of Object.entries(raw.shots || {})) if (Array.isArray(list)) s.shots[k] = list.filter((x) => isXY(x?.from) && isXY(x?.to));
   s.context = raw.context && typeof raw.context === "object" ? raw.context : null;
-  s.logCard = raw.logCard === "log" || raw.logCard === "prev" || raw.logCard === "putt" ? raw.logCard : null;
+  // v22.15: the old blocking prompt ("prev") is gone; a reload that had it open comes back to the screen
+  s.logCard = raw.logCard === "log" || raw.logCard === "putt" ? raw.logCard : null;
   s.openShot = raw.openShot && typeof raw.openShot === "object" && typeof raw.openShot.id === "string"
     && Number.isInteger(raw.openShot.hole) && Number.isInteger(raw.openShot.shotNo) ? raw.openShot : null;
   s.putts = {};
   for (const [k, v] of Object.entries(raw.putts || {})) if (Number.isInteger(v) && v >= 0) s.putts[k] = v;
   s.lastPuttFt = Number.isFinite(raw.lastPuttFt) && raw.lastPuttFt > 0 ? raw.lastPuttFt : null;
+  /* v22.15. awaitingTap is never restored: like Locating, a reload comes back to before the tap
+     (the phase above already did that), and the tap's handler did not survive the reload. */
+  s.intent = {};
+  for (const [h, per] of Object.entries(raw.intent || {})) {
+    if (!per || typeof per !== "object") continue;
+    const out = {};
+    for (const [n, it] of Object.entries(per)) {
+      if (!it || typeof it !== "object") continue;
+      const m = {};
+      if (isXY(it.target)) m.target = { x: it.target.x, y: it.target.y };
+      if (typeof it.targetLabel === "string") m.targetLabel = it.targetLabel;
+      if (isLL(it.targetLL)) m.targetLL = { lat: it.targetLL.lat, lng: it.targetLL.lng ?? it.targetLL.lon };
+      if (Number.isFinite(it.startLineDeg)) m.startLineDeg = it.startLineDeg;
+      if (isLL(it.lineLL)) m.lineLL = { lat: it.lineLL.lat, lng: it.lineLL.lng ?? it.lineLL.lon };
+      if (["draw", "straight", "fade"].includes(it.shape)) m.shape = it.shape;
+      if (Object.keys(m).length) out[n] = m;
+    }
+    if (Object.keys(out).length) s.intent[h] = out;
+  }
+  s.greenHole = Number.isInteger(raw.greenHole) && raw.greenHole === s.hole ? raw.greenHole : null;
+  s.review = raw.review && Number.isInteger(raw.review.hole) && raw.review.hole >= 1 && raw.review.hole <= 18
+    ? { hole: raw.review.hole, next: raw.review.next === "finish" || (Number.isInteger(raw.review.next) && raw.review.next >= 0 && raw.review.next < 18) ? raw.review.next : null }
+    : null;
   return s;
 }
 
@@ -703,16 +780,21 @@ export function caddieView({
   state, par = null, profileOk = true, mapOk = true, res = null, options = null, inferred = null, onGreen = false,
   ballXY = null, green = null, config = DEFAULT_CONFIG,
   markable = false, greenMarked = false, synthetic = false, pinYds = null, satFailure = null,
+  greenManual = false, unreviewed = 0,
 }) {
   const s = state;
   const holeNo = s.hole;
   let view;
+  // v22.15 §6: Brett said he is on the green of this hole (manual On the green) — the putt card's
+  // state whatever the map can or cannot see
+  const saidGreen = s.greenHole != null && s.greenHole === holeNo && (s.phase === "ready" || s.phase === "yards");
   // v22.11 marked-green mode: `markable` = this hole has no geometry but the satellite-on-GPS
   // bridge can run (the caller says no when the satellite cannot be had). Pre-tee and the GPS
   // errors keep their own views; a fix with no marked green is `markgreen`. Once a green is
   // marked the caller hands over its synthetic hole, so mapOk is true and every state is normal.
   if (!profileOk) view = "noprofile";
   else if (s.phase === "locating") view = "locating";
+  else if (saidGreen) view = "green";
   else if (!mapOk && s.phase !== "yards" && markable) {
     view = s.phase === "nofix" || s.phase === "locationoff" ? s.phase : s.phase === "ready" ? "markgreen" : "pretee";
   }
@@ -751,8 +833,17 @@ export function caddieView({
     aim: view === "ready" || view === "sameshot" ? aimShort(active, { ball: ballXY, green }) : view === "yards" && !active ? DASH : AIM[view],
     details: s.exp ? COPY.close : COPY.details,
     // v22.12: on a hole with no map the bar carries I'm at my ball + Log shot, so Enter yards (for
-    // the ball Brett is at) moves here as a text button under the aim
-    action: bare ? { label: COPY.yards, action: "yardsSame" } : null,
+    // the ball Brett is at) moves here as a text button under the aim. v22.15 (SPEC-shotlog-v2 §8):
+    // on a mapped Ready too — yards for this ball.
+    action: bare || view === "ready" || view === "sameshot" ? { label: COPY.yards, action: "yardsSame" } : null,
+    // v22.15 §2 / §8 rail extras: shape pills wherever a shot is about to be hit, Line only where
+    // the map can take a mark (Ready and Same shot — §2 says Same shot takes the shape only, but an
+    // approach is usually Same shot and its one option has a target to move; yards: shape only),
+    // Shots wherever the hole has a story
+    shapes: ["pretee", "ready", "sameshot", "yards", "nomap", "markgreen"].includes(view),
+    line: view === "ready" || view === "sameshot",
+    shots: !["noprofile", "locating"].includes(view),
+    unreviewed: Number.isFinite(unreviewed) && unreviewed > 0 ? unreviewed : 0,
   };
 
   /* details column */
@@ -803,11 +894,23 @@ export function caddieView({
   else if (view === "markgreen") { primary = { label: COPY.ball, action: "ball" }; secondary = { label: COPY.logShot, action: "logshot" }; }
   else if (view === "pretee" && markable && !mapOk) { primary = { label: COPY.tee, action: "tee" }; secondary = { label: COPY.logShot, action: "logshot" }; }
   else if (view === "nofix" || view === "locationoff") { primary = { label: COPY.retry, action: "retry" }; secondary = { label: COPY.yards, action: "yards" }; }
-  else if (view === "pretee") primary = { label: COPY.tee, action: "tee" };
+  else if (view === "pretee") { primary = { label: COPY.tee, action: "tee" }; secondary = { label: COPY.logShot, action: "logshot" }; }   // v22.15 §8
   else if (view === "green") { primary = { label: COPY.score(holeNo), action: "score" }; secondary = { label: COPY.logPutt, action: "logputt" }; }
   else { primary = { label: COPY.ball, action: "ball" }; secondary = { label: COPY.logShot, action: "logshot" }; }
 
-  const notice = view === "noprofile" ? NOTICES.noprofile
+  // v22.15 §6: where the green cannot be detected, On the green takes the secondary after the tee shot
+  if (greenManual && s.shotNo >= 2 && s.phase !== "pretee" && ["ready", "sameshot", "yards", "nomap", "markgreen"].includes(view)) {
+    secondary = { label: COPY.onGreen, action: "green" };
+  }
+  // v22.15 §1 test mode: while the map is armed the bar waits for the tap
+  if (s.awaitingTap) {
+    primary = { label: COPY.tapMap, action: null, disabled: true };
+    secondary = null;
+    rail.aim = COPY.aimTap;
+    rail.shapes = false; rail.line = false; rail.action = null;
+  }
+
+  const notice = s.awaitingTap ? NOTICES.testTap : view === "noprofile" ? NOTICES.noprofile
     : view === "nomap" ? (satFailure && s.ball ? NOTICES.noSatellite(satFailure) : NOTICES.nomap(holeNo))
     : view === "nofix" ? NOTICES.nofix
     : view === "locationoff" ? NOTICES.locationoff

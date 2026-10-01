@@ -9,6 +9,7 @@
  *   entryWithOverlay()   §5.2  the merged entry numbers the engine would use
  *   lieOverrideAt()      §5.6  lie-chip corrections that stick
  *   aggressionScorecard()§5.7  safe / aggressive / own vs. the engine's expScore
+ *   tendencies()         v22.16 per-club left/right, short/long and big-miss shares (signs only)
  *
  * Source separation (§5.2, T32): `P.raw` is Shot Pattern only and is never written. Everything
  * here returns NEW objects; nothing mutates an argument.
@@ -754,12 +755,89 @@ function tally(shots, holeScores) {
  * Display only — nothing here feeds a recommendation.
  */
 export function aggressionScorecard(shots, holeScores) {
-  const list = (shots || []).filter((s) => s && LINES.includes(s.linePlayed) && !isShortGameOrPutt(s));
+  // v22.16: Shot Pattern imports never know the line played or the engine's price — never counted
+  // (the importer also writes linePlayed null; this is the belt to that brace).
+  const list = (shots || []).filter((s) => s && LINES.includes(s.linePlayed) && !isShortGameOrPutt(s) && s.source !== "shotpattern");
   const season = tally(list, holeScores);
   const rounds = {};
   const ids = [...new Set(list.map((s) => s.roundId))];
   for (const id of ids) rounds[id] = tally(list.filter((s) => s.roundId === id), holeScores);
   return { ...season, rounds };
+}
+
+/* ---------- v22.16 per-club tendencies (for the aim warning) ---------- */
+
+const BIG_MISS_YDS = 20;   // |lateral| beyond this is a big miss (the MISS_BANDS bigYds line)
+
+const signOf = (v) => (num(v) ? Math.sign(v) || 0 : null);
+const pct = (k, n) => (n > 0 ? Math.round((1000 * k) / n) / 10 : null);
+
+/**
+ * The direction and distance signs one record can give, and whether it was a big lateral miss:
+ * { lat: −1 | 0 | 1 | null, dist: −1 | 0 | 1 | null, big: boolean | null }.
+ *   Loop records  the sign of derived.lateralMissYds / distanceMissYds, else v22.15's
+ *                 latMissYds / distMissYds. A miss of exactly 0 is 0 (neither side).
+ *   Shot Pattern  derived.missLatSign / missDistSign (the words), lateralMissYds on a drive.
+ *   putts         line → lat, speed → dist; a made putt with no grades reads 0 / 0.
+ * `big` is known when the lateral yards are, or when the whole miss is ≤ bigYds (a 7-yard miss
+ * cannot hide a 20-yard lateral); otherwise null, so an unsplit magnitude is never guessed at.
+ */
+export function missSignsOf(r, bigYds = BIG_MISS_YDS) {
+  if (!r) return { lat: null, dist: null, big: null };
+  if (r.shotType === "putt" || r.putt) {
+    const p = r.putt || {};
+    const made = !!p.made;
+    return { lat: num(p.line) ? Math.sign(p.line) || 0 : made ? 0 : null, dist: num(p.speed) ? Math.sign(p.speed) || 0 : made ? 0 : null, big: null };
+  }
+  const d = r.derived || {};
+  const latYds = num(d.lateralMissYds) ? d.lateralMissYds : num(d.latMissYds) ? d.latMissYds : null;
+  const distYds = num(d.distanceMissYds) ? d.distanceMissYds : num(d.distMissYds) ? d.distMissYds : null;
+  const lat = latYds != null ? signOf(latYds) : num(d.missLatSign) ? Math.sign(d.missLatSign) || 0 : null;
+  const dist = distYds != null ? signOf(distYds) : num(d.missDistSign) ? Math.sign(d.missDistSign) || 0 : null;
+  const big = latYds != null ? Math.abs(latYds) > bigYds : num(d.missTotalYds) && d.missTotalYds <= bigYds ? false : null;
+  return { lat, dist, big };
+}
+
+/**
+ * v22.16 — per-club tendency tallies for the aim warning to read: which way Brett misses each club.
+ * `records` = shot records from any source (Loop's own and Shot Pattern imports alike). Skipped
+ * shots, recovery shots (a punch-out's direction says nothing about the club) and records with no
+ * club are left out; putts count under "Putter". Opts: `shotTypes` (default full, finesse, putt),
+ * `bigYds` (default 20).
+ * → { [club]: { n, nLat, nDist, nBig, leftPct, rightPct, shortPct, longPct, bigMissPct } } where
+ * each pct is 0–100 (one decimal) over the records that know that axis (nLat / nDist / nBig), and
+ * null when none does. Signs only — no yards are averaged, so an unsplit Shot Pattern magnitude
+ * never becomes a lateral or distance number here. Display / warning input only; not a profile field.
+ */
+export function tendencies(records, { shotTypes = ["full", "finesse", "putt"], bigYds = BIG_MISS_YDS } = {}) {
+  const want = new Set(shotTypes);
+  const acc = new Map();
+  for (const r of records || []) {
+    if (!r || r.logged === "skipped") continue;
+    const putt = r.shotType === "putt" || !!r.putt;
+    const type = putt ? "putt" : swingOf(r);
+    if (!want.has(type)) continue;
+    const club = putt ? "Putter" : r.club;
+    if (!club) continue;
+    const s = missSignsOf(r, bigYds);
+    if (s.lat == null && s.dist == null && s.big == null) continue;
+    if (!acc.has(club)) acc.set(club, { n: 0, nLat: 0, nDist: 0, nBig: 0, left: 0, right: 0, short: 0, long: 0, bigN: 0 });
+    const t = acc.get(club);
+    t.n++;
+    if (s.lat != null) { t.nLat++; if (s.lat < 0) t.left++; else if (s.lat > 0) t.right++; }
+    if (s.dist != null) { t.nDist++; if (s.dist < 0) t.short++; else if (s.dist > 0) t.long++; }
+    if (s.big != null) { t.nBig++; if (s.big) t.bigN++; }
+  }
+  const out = {};
+  for (const [club, t] of acc) {
+    out[club] = {
+      n: t.n, nLat: t.nLat, nDist: t.nDist, nBig: t.nBig,
+      leftPct: pct(t.left, t.nLat), rightPct: pct(t.right, t.nLat),
+      shortPct: pct(t.short, t.nDist), longPct: pct(t.long, t.nDist),
+      bigMissPct: pct(t.bigN, t.nBig),
+    };
+  }
+  return out;
 }
 
 export const _internal = { readShot, evidenceFor, clubText, haversineM, wMedian, wVar, ELL80_K, FAMILIES };

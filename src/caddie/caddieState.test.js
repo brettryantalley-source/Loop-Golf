@@ -13,9 +13,13 @@ import { dirname, join } from "node:path";
 import {
   COPY, NOTICES, initialCaddie, caddieReducer, caddieHoleFor, serializeCaddie, restoreCaddie, pinSetting, pinPointFor, pinFromMapTap,
   greenPosition, aimShort, clubShort, chipList, pickerModel, windText, windChipText, elevText, dispersionLine, syntheticHole, clubBrainContext,
-  overlayPair, mapInput, caddieView, defaultNineMap, geometryKeyFor, scorecardOrder, detectedHoleNo, hasUnloggedShot,
+  overlayPair, mapInput, caddieView, defaultNineMap, geometryKeyFor, scorecardOrder, detectedHoleNo, intentSet,
   withinRoundCtx, todayLines, ellipsesFor, roundIndexFromHistory, learningOverlays, aggressionView, aggressionModel, pinFromDrag,
+  fakeFix, FAKE_ACCURACY_M,
 } from "./caddieState.js";
+import { parseOverpass } from "../geometry.js";
+import { detectHole, buildHole } from "./geo.js";
+import { autoShotRecord, shotIntent } from "./shotlog.js";
 import { markedGreenHole } from "./greens.js";
 import { frameOf } from "./geo.js";
 import { destination, YARDS_PER_METER } from "../geometry.js";
@@ -236,7 +240,7 @@ test("§8: every state's rail aim, bar labels and notice", () => {
   };
   const bar = (v) => [v.bar.primary.label, v.bar.secondary?.label ?? null, !!v.bar.primary.disabled];
   const table = {
-    pretee:      ["Tap I'm on the tee", ["I'm on the tee", null, false], null],
+    pretee:      ["Tap I'm on the tee", ["I'm on the tee", "Log shot", false], null],   // v22.15 §8
     locating:    ["Locating", ["Locating", null, true], null],
     ready:       ["Center", ["I'm at my ball", "Log shot", false], null],
     sameshot:    ["Center", ["I'm at my ball", "Log shot", false], null],
@@ -473,61 +477,41 @@ function draftFor(s, { hole = s.hole, shotNo = s.shotNo, res = fakeRes(), startF
   };
 }
 
-test("T16 (UI-level): routeShot classifies the ball the caddie is standing over; hasUnloggedShot only fires for a long, unlogged one", () => {
-  const s = run(initialCaddie(5), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
+test("T16 (UI-level): routeShot classifies the ball the caddie is standing over", () => {
   assert.equal(routeShot({ distanceToPinYds: 238, lieType: "fairway" }), "long");
   assert.equal(routeShot({ distanceToPinYds: 40, lieType: "rough" }), "shortGame");
   assert.equal(routeShot({ distanceToPinYds: 12, lieType: "green" }), "putt");
-  // long and nothing logged yet for this (hole, shotNo) → the "I'm at my ball" tap must prompt
-  assert.equal(hasUnloggedShot(s, "long"), true);
-  // shortGame / putt never gate the tap, logged or not
-  assert.equal(hasUnloggedShot(s, "shortGame"), false);
-  assert.equal(hasUnloggedShot(s, "putt"), false);
-  assert.equal(hasUnloggedShot(s, null), false, "no live recommendation to log against");
 });
 
 test("T17 (quick path via the reducer): Good shot writes the §4.3 defaults and the caddie tracks it as openShot", () => {
   let s = run(initialCaddie(7), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
-  assert.equal(hasUnloggedShot(s, "long"), true);
   s = caddieReducer(s, { type: "logOpen" });
   assert.equal(s.logCard, "log");
   const record = quickLog(draftFor(s));
   s = caddieReducer(s, { type: "logSave", record });
   assert.equal(s.logCard, null, "the sheet closes once saved");
-  assert.equal(s.openShot.logged, "quick");
+  assert.equal(s.openShot.logged, "quick"); assert.equal(s.openShot.reviewed, true);
   assert.equal(s.openShot.contact, 0); assert.equal(s.openShot.strike, "center"); assert.equal(s.openShot.startLine, "on");
   assert.equal(s.openShot.curve, 0, "matches the default (straight) intended shape");
   assert.equal(s.openShot.club, "PW", "the toggled (SAFE) option's club");
-  // logged for this exact (hole, shotNo) → the prompt would not fire again
-  assert.equal(hasUnloggedShot(s, "long"), false);
 });
 
-test("previous-shot prompt: appears while a long shot sits unlogged, clears on Good shot / Detail+Save / Skip", () => {
+test("v22.15: the blocking previous-shot prompt is gone — logOpen only opens the optional card; Detail+Save and Skip still resolve", () => {
   const base = run(initialCaddie(4), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
-  assert.equal(hasUnloggedShot(base, "long"), true);
-
-  // Good shot ✓ from the collapsed prompt
+  // a stale "prev" request opens the ordinary card, which the scrim can dismiss
   let s = caddieReducer(base, { type: "logOpen", card: "prev" });
-  assert.equal(s.logCard, "prev");
-  s = caddieReducer(s, { type: "logSave", record: quickLog(draftFor(s)) });
-  assert.equal(s.logCard, null); assert.equal(hasUnloggedShot(s, "long"), false);
-
-  // Detail → Save from the collapsed prompt: still resolves through logSave
-  let s2 = caddieReducer(base, { type: "logOpen", card: "prev" });
-  const detailed = detailLog(draftFor(s2), { contact: -1, strike: "toe" });
-  s2 = caddieReducer(s2, { type: "logSave", record: detailed });
-  assert.equal(s2.openShot.logged, "full"); assert.equal(s2.openShot.contact, -1);
-  assert.equal(hasUnloggedShot(s2, "long"), false);
-
+  assert.equal(s.logCard, "log");
+  assert.equal(caddieReducer(s, { type: "logDismiss" }).logCard, null);
+  assert.equal(caddieReducer(s, { type: "logDismiss" }).openShot, null, "dismissing without saving leaves nothing logged");
+  // Detail → Save
+  const detailed = detailLog(draftFor(s), { contact: -1, strike: "toe" });
+  const s2 = caddieReducer(s, { type: "logSave", record: detailed });
+  assert.equal(s2.openShot.logged, "full"); assert.equal(s2.openShot.contact, -1); assert.equal(s2.openShot.reviewed, true);
   // Skip
-  let s3 = caddieReducer(base, { type: "logOpen", card: "prev" });
-  s3 = caddieReducer(s3, { type: "logSkip", record: skipShot(draftFor(s3)) });
-  assert.equal(s3.openShot.logged, "skipped"); assert.equal(hasUnloggedShot(s3, "long"), false);
-
-  // logDismiss only closes the optional (non-blocking) Log-shot sheet, never the prompt's data
-  const opened = caddieReducer(base, { type: "logOpen" });
-  assert.equal(caddieReducer(opened, { type: "logDismiss" }).logCard, null);
-  assert.equal(caddieReducer(opened, { type: "logDismiss" }).openShot, null, "dismissing without saving leaves nothing logged");
+  const s3 = caddieReducer(s, { type: "logSkip", record: skipShot(draftFor(s)) });
+  assert.equal(s3.openShot.logged, "skipped"); assert.equal(s3.openShot.reviewed, false);
+  // a reload that had the old prompt open restores to the plain screen
+  assert.equal(restoreCaddie({ ...serializeCaddie(base), logCard: "prev" }).logCard, null);
 });
 
 test("T18: the record closed out by the next fix carries end + derived (§4.5)", () => {
@@ -559,7 +543,7 @@ test("T19: a skipped shot still gets closed out with its GPS result, and missCau
 test("persist / restore round-trips the pending Log-shot sheet and the openShot awaiting closeout", () => {
   let s = run(initialCaddie(11), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
   const record = quickLog(draftFor(s));
-  s = caddieReducer(s, { type: "logOpen", card: "prev" });
+  s = caddieReducer(s, { type: "logOpen" });
   s = caddieReducer(s, { type: "logSave", record });
   const back = restoreCaddie(JSON.parse(JSON.stringify(serializeCaddie(s))));
   assert.equal(back.logCard, null, "the sheet itself was already resolved before saving");
@@ -874,15 +858,16 @@ test("v22.12 bar: every no-map state keeps I'm at my ball / the tee + Log shot, 
     // pre-tee with the marked-green bridge on
     [caddieView({ state: S, par: 4, mapOk: false, markable: true }), ["pretee", "I'm on the tee", "tee", "Log shot", "logshot", "Enter yards"]],
     // a marked green on the drawn map (no satellite): the synthetic hole is a map, so the ordinary Ready bar
-    [caddieView({ state: fixed, par: 4, mapOk: true, markable: true, synthetic: true, res: fakeRes(), ballXY: { x: 0, y: 0 } }), ["ready", "I'm at my ball", "ball", "Log shot", "logshot", null]],
+    // (v22.15 §8: Enter yards is on the Ready rail too)
+    [caddieView({ state: fixed, par: 4, mapOk: true, markable: true, synthetic: true, res: fakeRes(), ballXY: { x: 0, y: 0 } }), ["ready", "I'm at my ball", "ball", "Log shot", "logshot", "Enter yards"]],
     // …and Ready with no recommendation (the engine returned nothing) still offers Log shot
-    [caddieView({ state: fixed, par: 4, mapOk: true, res: null, ballXY: { x: 0, y: 0 } }), ["ready", "I'm at my ball", "ball", "Log shot", "logshot", null]],
+    [caddieView({ state: fixed, par: 4, mapOk: true, res: null, ballXY: { x: 0, y: 0 } }), ["ready", "I'm at my ball", "ball", "Log shot", "logshot", "Enter yards"]],
   ];
   for (const [v, want] of cases) {
     assert.deepEqual(bar(v), want, want[0]);
     assert.ok(!v.bar.primary.disabled);
   }
-  // mapped holes: no rail button, the §8 bars unchanged
+  // mapped holes: no rail button pre-tee or on yards, the §8 bars unchanged
   assert.equal(caddieView({ state: S, par: 4 }).rail.action, null);
   assert.equal(caddieView({ state: run(S, { type: "yards", yards: 150 }), par: 4, res: fakeRes() }).rail.action, null);
   // a GPS error on an unmapped hole shows the GPS state (Try again), not No course map
@@ -919,4 +904,128 @@ test("v22.12 yards for the same ball: the rail's Enter yards keeps the shot numb
   assert.equal(run(fixed, { type: "yards", yards: 120 }).shotNo, 3);
   // `same` from pre-tee is shot 1 as always
   assert.equal(run(initialCaddie(4), { type: "yards", yards: 380, same: true }).shotNo, 1);
+});
+
+/* ---------- v22.15 shot log v2 (docs/SPEC-shotlog-v2.md §1, §2, §6, §8) ---------- */
+
+const hamptonGeo = parseOverpass(JSON.parse(readFileSync(join(here, "../fixtures/hampton-overpass.json"), "utf8")));
+
+test("T44 fake GPS: arm → tap → fix goes through closeOutShot and hole detection, like a real fix", () => {
+  // hole 1, shot 2, a shot logged and waiting for its closeout
+  let s = run(initialCaddie(1), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
+  const open = quickLog(draftFor(s, { targetFrame: { x: 0, y: 238 } }));
+  s = caddieReducer(s, { type: "logSave", record: open });
+  // I'm at my ball in test mode: the map is armed, the bar waits, the notice says so
+  s = caddieReducer(s, { type: "ball", tap: true });
+  assert.deepEqual(s.awaitingTap, { action: "ball", trigger: "ball" });
+  const v = caddieView({ state: s, par: 4 });
+  assert.equal(v.bar.primary.label, "Tap the map…"); assert.equal(v.bar.primary.disabled, true); assert.equal(v.bar.secondary, null);
+  assert.equal(v.notice, "Test mode · tap the map where you are"); assert.equal(v.rail.aim, "Tap the map");
+  // the tap is a fix of the real shape
+  const tap = { lat: 34.3012, lon: -84.0601 };
+  const f = fakeFix(tap);
+  assert.deepEqual(f, { lat: 34.3012, lng: -84.0601, accuracyM: FAKE_ACCURACY_M });
+  assert.equal(FAKE_ACCURACY_M, 4);
+  // the same close-out as a real fix
+  const closed = closeOutShot(s.openShot, { endGps: f, endLie: "fairway", endAccuracyM: f.accuracyM, endFrame: { x: 3, y: 232 } });
+  assert.equal(closed.end.lat, tap.lat); assert.equal(closed.end.accuracyM, 4); assert.equal(closed.derived.distanceMissYds, -6);
+  s = run(s, { type: "fix", fix: f, point: { x: 3, y: 232 } }, { type: "logClosed" });
+  assert.equal(s.awaitingTap, null); assert.equal(s.shotNo, 2); assert.deepEqual(s.ball, f); assert.equal(s.openShot, null);
+  // on the tee: a tap on hole 2's tee is detected as hole 2 (the app's detectHole, same inputs)
+  s = caddieReducer(s, { type: "tee", tap: true });
+  assert.equal(s.awaitingTap.action, "tee");
+  const tee2 = hamptonGeo.holes[2].line[0];
+  const f2 = fakeFix(destination(tee2, 90, 10));
+  const r = detectHole(hamptonGeo, f2, 1);
+  assert.equal(r.advanced, true); assert.equal(r.hole, 2);
+  s = caddieReducer(s, { type: "fix", fix: f2, point: { x: 0, y: 0 }, hole: 2 });
+  assert.equal(s.hole, 2); assert.equal(s.shotNo, 1); assert.equal(s.awaitingTap, null);
+  // Mark green here in test mode arms the map without a fix or a shot
+  const m = caddieReducer(s, { type: "awaitMark" });
+  assert.equal(m.awaitingTap.action, "mark"); assert.equal(m.phase, s.phase); assert.equal(m.shotNo, s.shotNo);
+  assert.equal(caddieReducer(m, { type: "tapDone" }).awaitingTap, null);
+  // a GPS error clears the arm; a reload never comes back armed (and not Locating either)
+  assert.equal(run(s, { type: "ball", tap: true }, { type: "fixError", code: 3 }).awaitingTap, null);
+  const armed = caddieReducer(s, { type: "ball", tap: true });
+  const back = restoreCaddie(JSON.parse(JSON.stringify(serializeCaddie(armed))));
+  assert.equal(back.awaitingTap, null); assert.equal(back.phase, "ready");
+  assert.deepEqual(serializeCaddie(armed).awaitingTap, { action: "ball", trigger: "ball" }, "serialized for the record, §7");
+});
+
+test("intent marks: per hole and shot, cleared by null, gone on a new hole; Line mode is transient", () => {
+  let s = run(initialCaddie(3), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
+  s = caddieReducer(s, { type: "intent", patch: { target: { x: 4, y: 150 }, targetLabel: "own target" } });
+  s = caddieReducer(s, { type: "intent", patch: { shape: "fade", startLineDeg: -2 } });
+  assert.deepEqual(intentSet(s), { target: { x: 4, y: 150 }, targetLabel: "own target", shape: "fade", startLineDeg: -2 });
+  s = caddieReducer(s, { type: "intent", patch: { startLineDeg: null } });
+  assert.equal("startLineDeg" in intentSet(s), false);
+  // it persists (§7) and restores
+  const back = restoreCaddie(JSON.parse(JSON.stringify(serializeCaddie(s))));
+  assert.deepEqual(intentSet(back), intentSet(s));
+  // Line mode: on with the rail button, off on a new ball
+  s = caddieReducer(s, { type: "lineMode", on: true });
+  assert.equal(s.lineMode, true);
+  const next = run(s, { type: "ball" }, { type: "fix", fix: fix(), point: { x: 4, y: 150 } });
+  assert.equal(next.lineMode, false); assert.deepEqual(intentSet(next), {}, "shot 2 starts with no marks");
+  assert.deepEqual(intentSet(next, 3, 1).shape, "fade", "shot 1's marks stay until the hole changes");
+  assert.deepEqual(caddieReducer(next, { type: "hole", hole: 4 }).intent, {});
+  // the rail: shape pills on the shot states, Line on Ready and Same shot (not yards, §2)
+  const ready = caddieView({ state: next, par: 4, res: fakeRes(), ballXY: { x: 4, y: 150 } });
+  assert.equal(ready.rail.shapes, true); assert.equal(ready.rail.line, true); assert.equal(ready.rail.shots, true);
+  assert.equal(caddieView({ state: next, par: 4, res: fakeRes({ sameShot: true }), ballXY: { x: 4, y: 150 } }).rail.line, true, "Same shot keeps the marks (D-note: §2 said shape only)");
+  assert.equal(caddieView({ state: run(next, { type: "yards", yards: 150, same: true }), par: 4, res: fakeRes() }).rail.line, false);
+  assert.equal(caddieView({ state: initialCaddie(3), par: 4 }).rail.shapes, true);
+  assert.equal(caddieView({ state: next, par: 4, res: fakeRes(), ballXY: { x: 4, y: 150 }, unreviewed: 2 }).rail.unreviewed, 2);
+  // T45 on the reducer's marks: nothing set → the default intent
+  const it = shotIntent({ set: intentSet(next), option: fakeRes().safe, ball: { x: 4, y: 150 } });
+  assert.equal(it.source, "default"); assert.deepEqual(it.target, { x: 0, y: 175 });
+});
+
+test("T49 On the green with no map → the green state → putt card → score", () => {
+  // an unmapped hole, shot 2: the bar's secondary is On the green (the green cannot be detected)
+  let s = run(initialCaddie(5), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } }, { type: "ball" }, { type: "fix", fix: fix(34.301), point: { x: 0, y: 200 } });
+  assert.equal(s.shotNo, 2);
+  let v = caddieView({ state: s, par: 4, mapOk: false, markable: false, greenManual: true });
+  assert.equal(v.view, "nomap"); assert.deepEqual([v.bar.primary.label, v.bar.secondary.label, v.bar.secondary.action], ["I'm at my ball", "On the green", "green"]);
+  // not on the tee shot, and never on a hole whose green is detected
+  assert.equal(caddieView({ state: run(initialCaddie(5), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } }), par: 3, mapOk: false, greenManual: true }).bar.secondary.label, "Log shot");
+  assert.equal(caddieView({ state: s, par: 4, res: fakeRes(), ballXY: { x: 0, y: 200 } }).bar.secondary.label, "Log shot");
+  // tapping it takes a fix (test mode: armed first), closes the shot and puts Brett on the green
+  s = caddieReducer(s, { type: "green", tap: true });
+  assert.deepEqual(s.awaitingTap, { action: "green", trigger: "green" });
+  s = caddieReducer(s, { type: "fix", fix: fix(34.302), point: { x: 0, y: 380 } });
+  assert.equal(s.greenHole, 5); assert.equal(s.shotNo, 3); assert.equal(s.trigger, "ball");
+  v = caddieView({ state: s, par: 4, mapOk: false, greenManual: true });
+  assert.equal(v.view, "green"); assert.deepEqual([v.bar.primary.label, v.bar.primary.action, v.bar.secondary.label], ["Score hole 5", "score", "Log putt"]);
+  assert.equal(v.rail.aim, "On the green"); assert.equal(v.rail.showClub, false);
+  // the putt card as on a detected green
+  s = run(s, { type: "puttOpen" }, { type: "puttSave", record: newPuttRecord({ hole: 5, shotNo: 1, distanceFt: 18 }) }, { type: "puttSave", record: quickMade({ hole: 5, shotNo: 2, distanceFt: 2 }) });
+  assert.equal(s.putts[5], 2); assert.equal(s.logCard, null);
+  // a failed fix still puts him on the green (the shot closes with no end)
+  const f = run(initialCaddie(6), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } }, { type: "green" }, { type: "fixError", code: 3 });
+  assert.equal(f.greenHole, 6); assert.equal(f.phase, "ready"); assert.equal(caddieView({ state: f, par: 3, mapOk: false, greenManual: true }).view, "green");
+  // scoring the hole moves on and forgets it
+  const next = caddieReducer(s, { type: "scores", scores: [null, null, null, null, 4, ...Array(13).fill(null)] });
+  assert.equal(next.hole, 1); assert.equal(next.greenHole, null);
+});
+
+test("Review sheet state: open with a continuation, close, survives a reload", () => {
+  let s = run(initialCaddie(7), { type: "reviewOpen", hole: 7, next: 7 });
+  assert.deepEqual(s.review, { hole: 7, next: 7 });
+  const back = restoreCaddie(JSON.parse(JSON.stringify(serializeCaddie(s))));
+  assert.deepEqual(back.review, { hole: 7, next: 7 });
+  assert.deepEqual(run(initialCaddie(18), { type: "reviewOpen", hole: 18, next: "finish" }).review, { hole: 18, next: "finish" });
+  assert.equal(caddieReducer(s, { type: "reviewClose" }).review, null);
+  // the scores action (which moves the caddie hole) keeps the sheet open
+  assert.deepEqual(caddieReducer(s, { type: "scores", scores: [4, 3, 4, 4, 5, 4, 5, ...Array(11).fill(null)] }).review, { hole: 7, next: 7 });
+  assert.equal(restoreCaddie({ ...serializeCaddie(s), review: { hole: 40 } }).review, null);
+});
+
+test("auto records carry the recommendation's club and the intent; the rail's ? counts them", () => {
+  const s = run(initialCaddie(2), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
+  const res = fakeRes();
+  const intent = shotIntent({ set: intentSet(s), option: res.safe, ball: { x: 0, y: 0 } });
+  const auto = autoShotRecord({ ...draftFor(s), intent });
+  assert.equal(auto.club, "PW"); assert.equal(auto.logged, "auto"); assert.equal(auto.reviewed, false); assert.equal(auto.linePlayed, "safe");
+  assert.equal(caddieView({ state: s, res, ballXY: { x: 0, y: 0 }, unreviewed: 1 }).rail.unreviewed, 1);
 });

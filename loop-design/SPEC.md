@@ -59,16 +59,18 @@ Double-rule frame around the whole screen. Sections separated by 1px ink rules, 
 Top to bottom, spaced evenly:
 
 1. **Header** — left: course · tee, "segment 3 of 6 · holes 7–9"; right: `YOU 2 · up · GHOST 0` (points, pencil).
-2. **Segment card** — grid: Hole (number + par/idx), Ghost (pencil grey), You. Current hole's cell is yellow. A chosen-but-unconfirmed score shows as the shaded number in the You row.
+2. **Segment card** — grid: Hole (number + par/idx), Ghost (pencil grey), You. Current hole's cell is yellow. (v22.14) A chosen-but-unconfirmed score shows a pencil X over the numeral; previously the shaded number in the You row.
 3. **Current hole** — Ghost box (hairline, ghost's score) · big hole number (Old Standard, black) with "par 4 · index 5" · You box (ink border, yellow fill, chosen score).
 4. **Score chooser** — exactly five numbers relative to par. Nothing pre-selected.
-   - Eagle (par−2): green, two concentric circles
-   - Birdie (par−1): green, one circle
-   - Par: black, no shape
-   - Bogey (par+1): yellow `#B8901E`, one box
-   - Double+ (par+2 or worse): red, two boxes
+   - (v22.9 / v22.14) One ring per stroke under par, one box per stroke over, numeral and shapes all
+     pencil graphite — the result colours below are superseded.
+   - Eagle (par−2): ~~green~~, two concentric circles
+   - Birdie (par−1): ~~green~~, one circle
+   - Par: no shape
+   - Bogey (par+1): ~~yellow `#B8901E`~~, one box
+   - Double+ (par+2 or worse): ~~red~~, two boxes
    - Shapes: near-clean ellipse/rect, 1.4px stroke in the number's color, slight tilt (±1.5–8°), tiny pen-lift gap.
-   - Tap once: a soft blurred graphite disc (`rgba(63,63,63,0.26)`, blur ~2px, no lines) appears behind the number and the score shows in the You box and the segment card. Tap the same number again to commit and advance.
+   - Tap once (v22.14: a hand-drawn pencil X over the numeral replaces this): a soft blurred graphite disc (`rgba(63,63,63,0.26)`, blur ~2px, no lines) appears behind the number and the score shows in the You box and the segment card. Tap the same number again to commit and advance.
 5. **← Hole 6 / Hole 8 →** — small caps links under the chooser.
 6. **Out / In strips** — two 9-column grids (rows: hole, you, gh.). Hole/you/ghost cells filled green/red/grey by result; current hole yellow. Segment boundaries (after 3, 6) are ink lines; others hairline. Above each strip: "S1 won · S2 won · you 25, ghost 29" / "S4 · S5 · S6 open".
 7. **Out you · In open · Total you** — footer line.

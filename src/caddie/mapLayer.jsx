@@ -26,7 +26,7 @@
  */
 import {
   cameraKey, cameraFor, cameraPoints, fitBounds, linearProjector, zoomForPxPerYd,
-  overlayModel, fallbackMapModel, mapModeFor, markCamera, pinViewCamera, pinViewKey, pinMarkerHit, satelliteFailure,
+  overlayModel, fallbackMapModel, mapModeFor, markCamera, pinViewCamera, pinViewKey, pinMarkerHit, satelliteFailure, targetMarkerHit,
 } from "./overlay.js";
 import { frameOf, pinFromTap, holeFrame, clampToGreen } from "./geo.js";
 import { nearMarkedGreen } from "./greens.js";
@@ -249,7 +249,7 @@ export function useSatellite(geo, key, { at = null, greenMarked = false, holeNo 
 }
 
 /* ---------- rendering overlay.js descriptors ---------- */
-function renderNodes(nodes) {
+export function renderNodes(nodes) {
   return (nodes || []).map((n, i) => {
     const { "data-redraw": redraw, ...attrs } = n.attrs || {};
     return React.createElement(n.tag, { key: redraw != null ? `r:${redraw}` : i, ...attrs }, n.children ? renderNodes(n.children) : undefined);
@@ -296,11 +296,22 @@ const r1 = (n) => Math.round(n * 10) / 10;
  *                 overlay is hidden, and every tap does nothing. Press and hold the marker 300 ms,
  *                 then drag: onPinDrag(p | null) live (p clamped inside the green, hole frame),
  *                 onPinDrop(p) on release.
+ *
+ * v22.15 (SPEC-shotlog-v2 §1, §2):
+ *   intentMarker  {x,y} hole frame — the target marker (pencil ring + dot); press and hold 300 ms,
+ *                 then drag (the pin view's mechanics): onTargetDrag(p | null) live, onTargetDrop(p).
+ *   startLineDeg  the start-line ray from the ball (hole-frame bearing, clockwise from +y), or null.
+ *   lineMode      a tap sets the start line: onLineTap(p) (hole frame), onLineTap(null) on the ball.
+ *   onFakeTap(ll) test mode, armed: the next tap is a GPS fix at {lat, lon}; nothing else happens.
+ *   fakeAt        { lat, lon, spanYds, ball } — no hole and no mark view: a north-up frame on this
+ *                 point (the course centre) so there is something to tap; drawn when there are no tiles.
+ *   testBorder    a thin dashed pencil border round the map: test mode is on.
  */
 export function MapLayer({
   hole = null, geometry = null, ball = null, accuracyM = null, pin = null, options = null, active = "safe", sameShot = false,
   previousShots = [], insets = {}, fallback = false, onPinTap, onMapTap, onSatelliteFail, recomputing = false, attributionBottom,
   fitBall, fitOptions, markAt = null, onMarkGreen, onRemark, pinView = false, onPinDrag, onPinDrop,
+  intentMarker = null, startLineDeg = null, onTargetDrag, onTargetDrop, lineMode = false, onLineTap, onFakeTap = null, fakeAt = null, testBorder = false,
 }) {
   const camBall = fitBall !== undefined ? fitBall : ball;
   const camOptions = fitOptions !== undefined ? fitOptions : options;
@@ -311,6 +322,7 @@ export function MapLayer({
   const [mapFailed, setMapFailed] = useState(false);
   const [mapGen, setMapGen] = useState(0);                // bumps when a MapLibre map is created
   const [drag, setDrag] = useState(null);                 // v22.11: the pin marker's frame point mid-drag
+  const [tdrag, setTdrag] = useState(null);               // v22.15: the target marker's frame point mid-drag
   const dragRef = useRef(null);
   const pressRef = useRef(null);
   const failRef = useRef(onSatelliteFail); failRef.current = onSatelliteFail;
@@ -327,8 +339,13 @@ export function MapLayer({
   }, []);
 
   const Fr = useMemo(() => frameOf(hole), [hole]);
-  const markMode = !hole && !!markAt && Number.isFinite(markAt.lat) && Number.isFinite(markAt.lon ?? markAt.lng);
-  const markLat = markMode ? markAt.lat : null, markLon = markMode ? (markAt.lon ?? markAt.lng) : null;
+  // v22.15: with no hole, the test-mode frame on the course centre works like the mark view
+  const markSrc = !hole && markAt && Number.isFinite(markAt.lat) && Number.isFinite(markAt.lon ?? markAt.lng) ? markAt
+    : !hole && fakeAt && Number.isFinite(fakeAt.lat) && Number.isFinite(fakeAt.lon ?? fakeAt.lng) ? fakeAt : null;
+  const markMode = !!markSrc;
+  const fakeFrame = markMode && markSrc === fakeAt;
+  const markLat = markMode ? markSrc.lat : null, markLon = markMode ? (markSrc.lon ?? markSrc.lng) : null;
+  const markSpan = fakeFrame ? fakeAt.spanYds || 400 : 300;
   const markF = useMemo(() => (markMode ? holeFrame({ origin: { lat: markLat, lon: markLon }, bearingDeg: 0 }) : null), [markMode, markLat, markLon]);
   const PF = Fr || markF;                                  // the frame the overlay projects through
   const inPinView = !!pinView && !!hole?.green;
@@ -342,7 +359,7 @@ export function MapLayer({
   /* camera — refit only when the cameraKey changes (§4.1, §9.7; T36). v22.11: the mark view keys
      on the fix, the pin view on the hole (a pin dragged inside it never refits). */
   const vpKey = `${Math.round(vp.width)}x${Math.round(vp.height)}|${Math.round(insets.top || 0)},${Math.round(insets.right || 0)},${Math.round(insets.bottom || 0)}`;
-  const key = markMode ? `mark|${markLat.toFixed(6)},${markLon.toFixed(6)}|${vpKey}`
+  const key = markMode ? `mark|${markLat.toFixed(6)},${markLon.toFixed(6)}|${markSpan}|${vpKey}`
     : inPinView ? pinViewKey({ hole, viewport: vp, insets })
     : cameraKey({ hole, ball: camBall, options: camOptions, viewport: vp, insets });
   const camRef = useRef({ key: null, cam: null, mark: null });
@@ -351,7 +368,7 @@ export function MapLayer({
       key,
       cam: markMode ? null : inPinView ? pinViewCamera(hole, vp, insets, { pin })
         : hole ? cameraFor(fitBounds(cameraPoints({ hole, ball: camBall, pin, options: camOptions })), vp, insets) : null,
-      mark: markMode ? markCamera(vp, insets) : null,
+      mark: markMode ? markCamera(vp, insets, { spanYds: markSpan }) : null,
     };
   }
   const cam = camRef.current.cam, markCam = camRef.current.mark;
@@ -427,26 +444,31 @@ export function MapLayer({
     map.jumpTo(camView);
   }, [camView, vp.width, vp.height]);
 
-  /* projection: map.project on satellite, the camera's linear projection otherwise */
-  const lin = cam ? linearProjector(cam, vp) : null;
+  /* projection: map.project on satellite, the camera's linear projection otherwise (v22.15: the
+     mark / test frame too, so a tap lands on the drawn paper map when there are no tiles) */
+  const lin = cam ? linearProjector(cam, vp) : markCam ? linearProjector({ center: markCam.centerOffset, pxPerYd: markCam.pxPerYd }, vp) : null;
   const map = satellite ? mapRef.current : null;
   const project = map && PF
     ? (p) => { const q = PF.toLatLng(p); const s = map.project([q.lon, q.lat]); return { x: s.x, y: s.y }; }
-    : lin && !markMode ? lin.project : null;
+    : lin && (!markMode || drawn) ? lin.project : null;
   const unproject = map && PF
     ? (s) => { const q = map.unproject([s.x, s.y]); return PF.toFrame({ lat: q.lat, lon: q.lng }); }
-    : lin && !markMode ? lin.unproject : null;
+    : lin && (!markMode || drawn) ? lin.unproject : null;
 
+  // field / test debug handle, like window.__loopMap: the overlay's projection in the frame it draws
+  if (typeof window !== "undefined") window.__loopOverlay = { project, unproject, frame: PF, mode: markMode ? (fakeFrame ? "test" : "mark") : hole ? "hole" : "none" };
   const { active: opt, other } = overlayPair(options, active, sameShot);
   const pinDrawn = (inPinView && drag) || pin;
   const redrawKey = [active, sameShot ? 1 : 0, opt?.club, opt?.target && `${r1(opt.target.x)},${r1(opt.target.y)}`, opt?.ell && `${r1(opt.ell.w)}x${r1(opt.ell.h)}`,
     pin && `${r1(pin.x)},${r1(pin.y)}`, inPinView ? "pv" : ""].join("|");
 
   // the pin view hides the shot (its ellipse and lines would sit on the green) — pin and ball only
+  const markerDrawn = tdrag || intentMarker;
   const model = (hole || markMode) && project ? overlayModel({
-    project, viewport: vp, hole, ball: markMode ? { x: 0, y: 0 } : ball, accuracyM, pin: markMode ? null : pinDrawn,
+    project, viewport: vp, hole, ball: markMode ? (fakeFrame && !fakeAt.ball ? null : { x: 0, y: 0 }) : ball, accuracyM, pin: markMode ? null : pinDrawn,
     active: inPinView ? null : opt, other: inPinView ? null : other, previousShots: inPinView ? [] : previousShots,
     palette: drawn ? "paper" : "satellite", idPrefix, redrawKey, recomputing, pinMarker: inPinView, pinDragging: inPinView && !!drag,
+    intent: inPinView || markMode ? null : { marker: markerDrawn, lineDeg: startLineDeg, dragging: !!tdrag },
   }) : [];
   const base = hole && drawn && project ? fallbackMapModel({ hole, project }) : [];
 
@@ -454,9 +476,24 @@ export function MapLayer({
   const TAP_SLOP_PX = 8, HOLD_MS = 300, LONG_MS = 600;
   const local = (ev) => { const r = boxRef.current.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; };
   const endDrag = () => { dragRef.current = null; setDrag(null); if (onPinDrag) onPinDrag(null); };
+  const endTdrag = () => { dragRef.current = null; setTdrag(null); if (onTargetDrag) onTargetDrag(null); };
   const tap = (pt) => {
+    // v22.15 test mode: armed, the tap is a fix — wherever it lands, and nothing else happens
+    if (onFakeTap) {
+      let q = null;
+      if (map) { const g = map.unproject([pt.x, pt.y]); q = { lat: g.lat, lon: g.lng }; }
+      else if (unproject && PF) { const g = PF.toLatLng(unproject(pt)); q = { lat: g.lat, lon: g.lon }; }
+      if (q && Number.isFinite(q.lat) && Number.isFinite(q.lon)) onFakeTap(q);
+      return;
+    }
     if (inPinView) return;                                // pin view: a tap does nothing else (B.3)
+    if (lineMode && hole && unproject && ball && onLineTap) {
+      const p = unproject(pt), bp = project(ball);
+      onLineTap(Math.hypot(pt.x - bp.x, pt.y - bp.y) <= 20 ? null : p);
+      return;
+    }
     if (markMode) {
+      if (fakeFrame) return;
       if (!map) return;
       const q = map.unproject([pt.x, pt.y]);
       if (onMarkGreen && Number.isFinite(q.lat) && Number.isFinite(q.lng)) onMarkGreen({ lat: q.lat, lon: q.lng });
@@ -473,7 +510,18 @@ export function MapLayer({
     const pr = { id: ev.pointerId, x0: pt.x, y0: pt.y, moved: false, mode: null, timer: null, grab: null };
     pressRef.current = pr;
     const pinPx = inPinView && pin && project ? project(pin) : null;
-    if (pinPx && unproject && pinMarkerHit(pinPx, pt)) {
+    const tgtPx = !onFakeTap && !inPinView && !markMode && hole && intentMarker && onTargetDrop && project ? project(intentMarker) : null;
+    if (tgtPx && unproject && targetMarkerHit(tgtPx, pt)) {
+      // v22.15 §2: the target marker — the pin drag's hold-then-drag, anywhere on the map
+      pr.grab = { dx: tgtPx.x - pt.x, dy: tgtPx.y - pt.y };
+      pr.timer = setTimeout(() => {
+        if (pressRef.current !== pr) return;
+        pr.mode = "tdrag";
+        try { boxRef.current.setPointerCapture(pr.id); } catch (e) { /* synthetic events */ }
+        dragRef.current = { x: intentMarker.x, y: intentMarker.y }; setTdrag(dragRef.current);
+        if (onTargetDrag) onTargetDrag(dragRef.current);
+      }, HOLD_MS);
+    } else if (pinPx && unproject && pinMarkerHit(pinPx, pt)) {
       pr.grab = { dx: pinPx.x - pt.x, dy: pinPx.y - pt.y };
       pr.timer = setTimeout(() => {
         if (pressRef.current !== pr) return;
@@ -496,6 +544,11 @@ export function MapLayer({
       if (q && hole?.green) { dragRef.current = clampToGreen(hole, q); setDrag(dragRef.current); if (onPinDrag) onPinDrag(dragRef.current); }
       return;
     }
+    if (pr.mode === "tdrag") {
+      const q = unproject ? unproject({ x: pt.x + pr.grab.dx, y: pt.y + pr.grab.dy }) : null;
+      if (q) { dragRef.current = { x: q.x, y: q.y }; setTdrag(dragRef.current); if (onTargetDrag) onTargetDrag(dragRef.current); }
+      return;
+    }
     if (!pr.moved && Math.hypot(pt.x - pr.x0, pt.y - pr.y0) > TAP_SLOP_PX) { pr.moved = true; clearTimeout(pr.timer); }
   };
   const onPointerUp = (ev) => {
@@ -504,6 +557,7 @@ export function MapLayer({
     pressRef.current = null;
     clearTimeout(pr.timer);
     if (pr.mode === "drag") { const p = dragRef.current; endDrag(); if (p && onPinDrop) onPinDrop(p); return; }
+    if (pr.mode === "tdrag") { const p = dragRef.current; endTdrag(); if (p && onTargetDrop) onTargetDrop(p); return; }
     if (pr.mode === "long" || pr.moved) return;
     tap(local(ev));
   };
@@ -513,13 +567,15 @@ export function MapLayer({
     if (!pr) return;
     clearTimeout(pr.timer);
     if (pr.mode === "drag") endDrag();                    // the system took the touch: no pin change
+    if (pr.mode === "tdrag") endTdrag();
   };
   useEffect(() => { if (!inPinView && dragRef.current) endDrag(); }, [inPinView]);
 
   const svgStyle = { position: "absolute", left: 0, top: 0, width: "100%", height: "100%", display: "block", overflow: "visible" };
   const attrBottom = attributionBottom ?? Math.max(6, (insets.bottom || 0) - 10);
   return (
-    <div ref={boxRef} className="loop-map" data-mode={markMode ? "mark" : inPinView ? "pin" : hole?.synthetic ? "marked" : hole ? "hole" : "none"}
+    <div ref={boxRef} className="loop-map" data-mode={fakeFrame ? "test" : markMode ? "mark" : inPinView ? "pin" : hole?.synthetic ? "marked" : hole ? "hole" : "none"}
+      data-armed={onFakeTap ? "true" : undefined} data-line={lineMode ? "true" : undefined}
       onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel}
       onContextMenu={(e) => e.preventDefault()}
       style={{ position: "absolute", inset: 0, overflow: "hidden", background: drawn ? T.paper : SAT_BG, touchAction: "none", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}>
@@ -533,6 +589,8 @@ export function MapLayer({
       <svg data-layer="overlay" style={{ ...svgStyle, pointerEvents: "none" }} width={vp.width} height={vp.height} viewBox={`0 0 ${vp.width} ${vp.height}`} aria-hidden="true">
         {renderNodes(model)}
       </svg>
+      {/* v22.15: test mode — a thin dashed pencil border, so a fake round is never mistaken for a live one */}
+      {testBorder && <div data-part="test-border" aria-hidden="true" style={{ position: "absolute", inset: 2, border: `1.5px dashed ${T.pencil}`, pointerEvents: "none", zIndex: 5 }} />}
       {(hole || markMode) && (
         <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()} style={{ position: "absolute", left: 6, bottom: attrBottom, padding: "1px 4px", background: "rgba(0,0,0,.4)",
           color: T.paper, fontFamily: F.label, fontSize: 9, lineHeight: "12px", whiteSpace: "nowrap", pointerEvents: "auto" }}>

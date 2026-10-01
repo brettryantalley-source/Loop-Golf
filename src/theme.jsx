@@ -18,7 +18,6 @@ export const T = {
   fillWon:   "#DCEBDC",
   fillLost:  "#F1DAD6",
   fillHalf:  "#E6E4DF",
-  shade:     "rgba(63,63,63,0.26)",   // pending-score disc
   teeBlue:   "#4F6E8F",   // v22.8: blue tee markers
   teeRed:    "#A3352B",   // v22.8: red/burgundy tee markers — same value as `double` (the "lost" red); kept as its own name for callers that mean "tee colour" rather than "lost"
 };
@@ -68,8 +67,7 @@ export const hairline = `1px solid ${T.hair}`;
 export const doubleRule = { width: "100%", height: 3, borderTop: rule, borderBottom: rule };
 
 /* ---- the pencil filter ------------------------------------------------- *
-   Mounted once at the app root. #pencil = graphite grain + ~0.8px wobble.
-   #soft = the blurred disc behind a chosen-but-uncommitted score.          */
+   Mounted once at the app root. #pencil = graphite grain + ~0.8px wobble. */
 export function PencilDefs() {
   return (
     <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true"><defs>
@@ -79,9 +77,6 @@ export function PencilDefs() {
         <feComposite in="SourceGraphic" in2="grainA" operator="in" result="tex" />
         <feTurbulence type="turbulence" baseFrequency="0.04" numOctaves="1" seed="9" result="wob" />
         <feDisplacementMap in="tex" in2="wob" scale="0.8" xChannelSelector="R" yChannelSelector="G" />
-      </filter>
-      <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur stdDeviation="2.2" />
       </filter>
     </defs></svg>
   );
