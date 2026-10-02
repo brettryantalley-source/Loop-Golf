@@ -12,6 +12,9 @@ import { buildHole, frameOf, detectHole, needsNineMap, nineMapCandidates, saveNi
 import { groupResultsByClub, clubKeyOf, routingLabel, routingNines, splitTee27, nineCombos, teeForCombo, loadLastRouting, saveLastRouting, defaultRoutingIndex,
   normalizeStrokeIndex, localNineCombos, localCombo, localCardHoles, localRoutingFor, apiTeeNamed } from "./routing.js";
 import { localClubFor, LOCAL_CLUBS } from "./localCards.js";
+/* v22.16.3: hole geometry traced by hand for a club OpenStreetMap has no holes for (Woodmont, Canton GA). */
+import { localGeometryFor } from "./localGeometry.js";
+import WOODMONT_GEOMETRY from "./localGeometry/woodmont.json";
 /* v22.16: finished rounds re-read from a verified card (Ironwood 2026-09-28, the API's pars / indexes). */
 import { fixHistoryFromLocalCards, matchResult } from "./historyFix.js";
 import { loadProfile, resolveEntry } from "./caddie/profile.js";
@@ -72,7 +75,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.16.2 · Oct 1";
+const BUILD = "v22.16.3 · Oct 2";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -213,7 +216,10 @@ const safeStorage = () => { try { return window.localStorage; } catch (e) { retu
      doesn't have this course; retrying the same query won't change that)
    - it answered with SOME but not all 18 holes               -> partial (retryable — a wider/second
      Overpass mirror can fill in what the first one missed)
-   - no anchor (lat/lon) to even query from                   -> unavailable, unchanged (nothing to retry) */
+   - no anchor (lat/lon) to even query from                   -> unavailable, unchanged (nothing to retry)
+   v22.16.3: a club with a bundled trace (LOCAL_GEOMETRY) never asks Overpass and ignores a cache that
+   predates the trace; the entry is stamped with the trace's version, so a newer trace replaces it once. */
+const LOCAL_GEOMETRY = [WOODMONT_GEOMETRY];
 function useCourseMap(course) {
   const apiId = clubIdOf(course);                     // per club: switching routings never refetches
   const [geometry, setGeometry] = useState(() => (apiId != null ? loadGeometryCache(safeStorage(), apiId) : null));
@@ -225,15 +231,17 @@ function useCourseMap(course) {
     if (apiId == null) { setGeometry(null); setSt({ phase: "none", done: 0, total: 0 }); return undefined; }
     let live = true;
     const force = forceRefetch.current; forceRefetch.current = false;
+    const local = localGeometryFor(LOCAL_GEOMETRY, apiId);
     let g = force ? null : loadGeometryCache(safeStorage(), apiId);
+    if (g && local && g.local !== local.version) g = null;   // cached before the trace existed (an empty OSM answer) or from an older trace
     setGeometry(g);                                   // never show the previous course's holes
     (async () => {
       if (!g) {
-        const anchor = courseAnchor(course);
-        if (!anchor) { setGeometry(null); setSt({ phase: "unavailable", done: 0, total: 0 }); return; }
+        const anchor = local ? null : courseAnchor(course);
+        if (!local && !anchor) { setGeometry(null); setSt({ phase: "unavailable", done: 0, total: 0 }); return; }
         setSt({ phase: "loading", done: 0, total: 18 });
         try {
-          const parsed = await fetchGeometry(anchor.lat, anchor.lon);
+          const parsed = local ? local.geometry : await fetchGeometry(anchor.lat, anchor.lon);
           // §6.5 / D23: sample elevation once per course at geometry-fetch time, cached alongside
           // it. Best-effort and silent — offline (or Open-Meteo unreachable) leaves elevation
           // absent and the caddie's elevationDeltaYds falls back to 0 (context.js), never throws.
@@ -247,7 +255,7 @@ function useCourseMap(course) {
               }
             } catch (e2) { /* silent — elevation is a nice-to-have */ }
           }
-          saveGeometryCache(safeStorage(), apiId, parsed, elevation);
+          saveGeometryCache(safeStorage(), apiId, parsed, elevation, local ? local.version : null);
           g = loadGeometryCache(safeStorage(), apiId) || parsed;
         } catch (e) {
           if (live) { setGeometry(null); setSt({ phase: "network-error", done: 0, total: 0 }); }
