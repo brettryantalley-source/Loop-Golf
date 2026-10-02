@@ -53,7 +53,7 @@ Pages redeploys in about a minute; he fully closes and reopens Loop and reads th
 of Setup.
 
 Engine as of v22.10 follows `docs/CADDIE-BRAIN-INTEGRATION.md` (D43–D46; known gaps in D46).
-`npm test` is 274 tests. Decisions run D1–D71 in `docs/DECISIONS-caddie.md`.
+`npm test` is 285 tests (v22.16.3). Decisions run D1–D73 in `docs/DECISIONS-caddie.md`.
 
 **Ironwood (Fishers, IN) is not traced in OpenStreetMap.** v22.11's marked-green mode is the
 bridge (satellite on GPS, tap the green, distance-only pricing). First round there (Sep 29, v22.11):
@@ -61,6 +61,16 @@ the satellite never loaded and the app could not say why — v22.12 adds the Set
 line; read it before the next round and report the exact text. The permanent fix is tracing the
 course in the OSM iD editor; a prompt for a web-enabled chat to check OSM coverage was handed to
 Brett on Sep 29.
+
+**Woodmont (Canton, GA) has a hole map as of v22.16.3 (D73).** OSM has the club outline only (Overpass,
+Oct 2: no holes, greens, tees, fairways or bunkers — the app was right to say `No course map`).
+`src/localGeometry/woodmont.json` is a hand trace from aerial imagery: 18 hole lines, 18 greens, 58 tee
+boxes, 17 fairways, 44 bunkers, the two lakes and the creek. `useCourseMap` reads it before the cache or
+Overpass, so the Setup line reads `Course map ready` and the caddie draws every hole. It is NOT surveyed.
+First round there: stand on the middle of three greens with the caddie open and read the distance to
+the middle (should be 0–3 yds); report the offset by hole, and `shiftM` in the file moves everything at
+once. Tee boxes marked `q: est` are ellipses on the pad centre, not outlines (8, 15 and 18 are the least
+certain). No trees and no OB. The permanent fix is the same ways in OSM; the trace converts directly.
 
 ## What each screen does now
 

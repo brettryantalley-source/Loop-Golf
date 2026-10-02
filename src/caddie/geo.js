@@ -587,11 +587,12 @@ export function coverageCheck(geometry, { expected } = {}) {
 
 export const geoCacheKey = (apiId) => `bogeyman-matches:geo:v1:${apiId}`;
 
-/** Store the compact geometry (+ elevation samples, §6.5). Returns true when written. */
-export function saveGeometryCache(storage, apiId, geometry, elevation = null) {
+/** Store the compact geometry (+ elevation samples, §6.5). `local` = the version stamp of a bundled
+ *  trace (localGeometry.js) when that is where the geometry came from. Returns true when written. */
+export function saveGeometryCache(storage, apiId, geometry, elevation = null, local = null) {
   if (!storage || apiId == null || !geometry) return false;
   try {
-    storage.setItem(geoCacheKey(apiId), JSON.stringify({ ...compactGeometry(geometry), elevation }));
+    storage.setItem(geoCacheKey(apiId), JSON.stringify({ ...compactGeometry(geometry), elevation, ...(local ? { local } : {}) }));
     return true;
   } catch { return false; }
 }
