@@ -449,6 +449,32 @@ export function recommend(rawCtx, hole, P) {
 
 /* ---------- §3.10 display strings ---------- */
 
+/**
+ * Brett's own target (v22.16.5): the club whose average shot best fits the distance to `target` —
+ * carry when the target is on the green, carry + roll anywhere else — simulated like any candidate,
+ * so the club, its dispersion and its numbers follow the marker. Not an option of recommend(): the
+ * SAFE / AGGRESSIVE pair is still what the caddie said; this is what Brett chose to aim at.
+ */
+export function priceTarget(rawCtx, hole, P, target) {
+  if (!target || !Number.isFinite(target.x) || !Number.isFinite(target.y)) return null;
+  const cfg = P.config || DEFAULT_CONFIG;
+  const ctx = normalizeContext(rawCtx, hole);
+  const need = dist(ctx.ball, target);
+  const toGreen = classify(hole, target) === "green";
+  let best = null;
+  for (const e of candidateEntries(P, ctx.lieType, { conditions: ctx.conditions })) {
+    const lm = landingModel(e, ctx.ball, target, ctx, cfg);
+    const err = Math.abs((toGreen ? lm.mean : lm.total) - need);
+    if (!best || err < best.err) best = { e, err };
+  }
+  if (!best) return null;
+  const leave = Math.round(dist(target, pinPoint(hole, ctx.ball, ctx.pinPos)));
+  const cand = { club: best.e.club, swing: best.e.swing, entry: best.e, kind: toGreen ? "approach" : "layup", target: { x: target.x, y: target.y },
+    label: toGreen ? "own target" : `leave ${leave}, own target` };
+  const sim = simulateCandidate(cand, ctx, hole, P, makeSamples(cfg.SAMPLES, cfg.SEED));
+  return formatOption({ ...cand, ...sim }, P, null);
+}
+
 function pct(x) { return `${Math.round(x * 100)}%`; }
 
 export function displayLines(res, cfg = DEFAULT_CONFIG) {

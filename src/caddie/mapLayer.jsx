@@ -301,7 +301,7 @@ const r1 = (n) => Math.round(n * 10) / 10;
  *   intentMarker  {x,y} hole frame — the target marker (pencil ring + dot); press and hold 300 ms,
  *                 then drag (the pin view's mechanics): onTargetDrag(p | null) live, onTargetDrop(p).
  *   startLineDeg  the start-line ray from the ball (hole-frame bearing, clockwise from +y), or null.
- *   lineMode      a tap sets the start line: onLineTap(p) (hole frame), onLineTap(null) on the ball.
+ *   lineMode      press and drag (or tap) sets the start line: onLineTap(p) (hole frame) live, onLineTap(null) on the ball.
  *   onFakeTap(ll) test mode, armed: the next tap is a GPS fix at {lat, lon}; nothing else happens.
  *   fakeAt        { lat, lon, spanYds, ball } — no hole and no mark view: a north-up frame on this
  *                 point (the course centre) so there is something to tap; drawn when there are no tiles.
@@ -477,6 +477,12 @@ export function MapLayer({
   const local = (ev) => { const r = boxRef.current.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; };
   const endDrag = () => { dragRef.current = null; setDrag(null); if (onPinDrag) onPinDrag(null); };
   const endTdrag = () => { dragRef.current = null; setTdrag(null); if (onTargetDrag) onTargetDrag(null); };
+  // the start line through a screen point; on the ball (within 20 px) it clears
+  const lineAt = (pt) => {
+    if (!unproject || !project || !ball || !onLineTap) return;
+    const p = unproject(pt), bp = project(ball);
+    onLineTap(Math.hypot(pt.x - bp.x, pt.y - bp.y) <= 20 ? null : p);
+  };
   const tap = (pt) => {
     // v22.15 test mode: armed, the tap is a fix — wherever it lands, and nothing else happens
     if (onFakeTap) {
@@ -487,11 +493,7 @@ export function MapLayer({
       return;
     }
     if (inPinView) return;                                // pin view: a tap does nothing else (B.3)
-    if (lineMode && hole && unproject && ball && onLineTap) {
-      const p = unproject(pt), bp = project(ball);
-      onLineTap(Math.hypot(pt.x - bp.x, pt.y - bp.y) <= 20 ? null : p);
-      return;
-    }
+    if (lineMode && hole && unproject && ball && onLineTap) { lineAt(pt); return; }
     if (markMode) {
       if (fakeFrame) return;
       if (!map) return;
@@ -511,7 +513,11 @@ export function MapLayer({
     pressRef.current = pr;
     const pinPx = inPinView && pin && project ? project(pin) : null;
     const tgtPx = !onFakeTap && !inPinView && !markMode && hole && intentMarker && onTargetDrop && project ? project(intentMarker) : null;
-    if (tgtPx && unproject && targetMarkerHit(tgtPx, pt)) {
+    if (!onFakeTap && !inPinView && lineMode && hole && unproject && ball && onLineTap) {
+      // v22.16.5: Line follows the finger — press anywhere and drag; a tap still sets it in one go
+      pr.mode = "line";
+      try { boxRef.current.setPointerCapture(pr.id); } catch (e) { /* synthetic events */ }
+    } else if (tgtPx && unproject && targetMarkerHit(tgtPx, pt)) {
       // v22.15 §2: the target marker — the pin drag's hold-then-drag, anywhere on the map
       pr.grab = { dx: tgtPx.x - pt.x, dy: tgtPx.y - pt.y };
       pr.timer = setTimeout(() => {
@@ -544,6 +550,11 @@ export function MapLayer({
       if (q && hole?.green) { dragRef.current = clampToGreen(hole, q); setDrag(dragRef.current); if (onPinDrag) onPinDrag(dragRef.current); }
       return;
     }
+    if (pr.mode === "line") {
+      if (Math.hypot(pt.x - pr.x0, pt.y - pr.y0) > TAP_SLOP_PX) pr.moved = true;
+      if (pr.moved) lineAt(pt);
+      return;
+    }
     if (pr.mode === "tdrag") {
       const q = unproject ? unproject({ x: pt.x + pr.grab.dx, y: pt.y + pr.grab.dy }) : null;
       if (q) { dragRef.current = { x: q.x, y: q.y }; setTdrag(dragRef.current); if (onTargetDrag) onTargetDrag(dragRef.current); }
@@ -558,6 +569,7 @@ export function MapLayer({
     clearTimeout(pr.timer);
     if (pr.mode === "drag") { const p = dragRef.current; endDrag(); if (p && onPinDrop) onPinDrop(p); return; }
     if (pr.mode === "tdrag") { const p = dragRef.current; endTdrag(); if (p && onTargetDrop) onTargetDrop(p); return; }
+    if (pr.mode === "line") { lineAt(local(ev)); return; }
     if (pr.mode === "long" || pr.moved) return;
     tap(local(ev));
   };
