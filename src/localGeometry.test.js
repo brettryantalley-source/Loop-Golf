@@ -159,3 +159,17 @@ test("featuresForHole: tee boxes are given to the hole they sit on", () => {
     assert.ok(f.tees.some((t) => pointInRing(geo.holes[n].teeEnd, t.ring)), `hole ${n}: the line starts inside one of its tee boxes`);
   }
 });
+
+/* ---------- Chicopee Woods (v22.16.6, D74): OSM holes + traced woods and fairways ---------- */
+
+const chicopee = JSON.parse(readFileSync(join(here, "localGeometry", "chicopee.json"), "utf8"));
+
+test("chicopee: every routing id finds the trace; keys match the Overpass geometry", () => {
+  for (const id of chicopee.apiIds) assert.ok(localGeometryFor([woodmont, chicopee], id), id);
+  const { geometry } = localGeometryFor([chicopee], "c3jm8n4d");
+  const keys = Object.keys(geometry.holes);
+  assert.equal(keys.length, 27);
+  for (let n = 1; n <= 18; n++) assert.ok(keys.includes(String(n)), `key ${n}`);
+  assert.ok(keys.includes("1@858968511"), "School 1 keeps its OSM id in the key");
+  assert.ok(geometry.features.some((f) => f.kind === "trees") && geometry.features.some((f) => f.kind === "fairway"));
+});
