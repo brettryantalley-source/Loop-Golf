@@ -598,3 +598,33 @@ test("bucketFor / B2 use half-open buckets and the rough table for rough", () =>
   assert.equal(bucketFor(P, 140, "rough").lie, "rough");
   assert.ok(B2(P, 140, "fairway") > 0);
 });
+
+/* ---------- doglegs: aim follows the golf=hole centreline, not the tee→green chord ---------- */
+
+// Chicopee Woods Village 1 as OSM draws it (way 858334864): 364 yds, the line bends 31 yds left
+// at 275 out. No fairway outline is mapped, so the centreline is the only shape the engine has.
+const village1 = {
+  id: "village-1", par: 4, yards: 364, tee: { x: 0, y: 0 },
+  green: { ring: ellipse(0, 364, 14, 14, 32), center: { x: 0, y: 364 } },
+  fairways: [], tees: [], hazards: [], boundary: null,
+  line: [{ x: 0, y: 0 }, { x: -31, y: 275 }, { x: 0, y: 364 }],
+};
+
+test("dogleg: tee-shot candidates sit on the bent centreline, not the chord", () => {
+  const ctx = normalizeContext({ ball: { x: 0, y: 0 }, lieType: "tee", par: 4, shotNo: 1 }, village1);
+  const cands = generateCandidates(ctx, village1, P).filter((c) => c.kind !== "approach");
+  assert.ok(cands.length > 0);
+  for (const c of cands) {
+    const y = c.target.y, lineX = y <= 275 ? (-31 * y) / 275 : -31 + (31 * (y - 275)) / 89;
+    assert.ok(Math.abs(c.target.x - lineX) <= 2, `${c.club} ${c.label} at x=${c.target.x}, line x=${lineX.toFixed(1)}`);
+  }
+  const res = recommend({ ball: { x: 0, y: 0 }, lieType: "tee", par: 4, shotNo: 1 }, village1, P);
+  assert.ok(res.safe.target.x < -10, `SAFE aims ${res.safe.target.x} — should follow the bend left`);
+});
+
+test("dogleg: past the corner the line is ball → green, as on a straight hole", () => {
+  const ctx = normalizeContext({ ball: { x: -30, y: 280 }, lieType: "fairway", par: 4, shotNo: 2 }, village1);
+  const withLine = generateCandidates(ctx, village1, P);
+  const without = generateCandidates(ctx, { ...village1, line: undefined }, P);
+  assert.deepEqual(withLine.map((c) => [c.club, c.target]), without.map((c) => [c.club, c.target]));
+});
