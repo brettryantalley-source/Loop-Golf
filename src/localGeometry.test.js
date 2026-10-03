@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { toOverpass, localGeometryFor } from "./localGeometry.js";
+import { toOverpass, localGeometryFor, imageryFor } from "./localGeometry.js";
 import { parseOverpass, featuresForHole, yardsBetween, haversineM, pointInRing } from "./geometry.js";
 import { coverageCheck, buildHole, detectHole, saveGeometryCache, loadGeometryCache } from "./caddie/geo.js";
 import { classify } from "./caddie/course.js";
@@ -172,4 +172,11 @@ test("chicopee: every routing id finds the trace; keys match the Overpass geomet
   for (let n = 1; n <= 18; n++) assert.ok(keys.includes(String(n)), `key ${n}`);
   assert.ok(keys.includes("1@858968511"), "School 1 keeps its OSM id in the key");
   assert.ok(geometry.features.some((f) => f.kind === "trees") && geometry.features.some((f) => f.kind === "fairway"));
+});
+
+test("chicopee: names its own imagery (Wayback, 256-px tiles); other clubs keep MapTiler", () => {
+  const img = imageryFor([woodmont, chicopee], "rp4r4x8z");
+  assert.ok(img && /wayback\.maptiles\.arcgis\.com/.test(img.url) && img.url.includes("{z}/{y}/{x}"));
+  assert.equal(img.tileSize, 256);
+  assert.equal(imageryFor([woodmont, chicopee], woodmont.apiId), null);
 });

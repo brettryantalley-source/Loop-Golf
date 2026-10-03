@@ -42,3 +42,10 @@ export function localGeometryFor(registry, clubId) {
   if (!geometry) { geometry = parseOverpass(toOverpass(data)); PARSED.set(data, geometry); }
   return { version: `${data.apiId}@${data.version}`, geometry, name: data.name || null };
 }
+
+/** The bundled map's own satellite imagery ({ url, tileSize, maxzoom, zooms, probeZoom, credit }), or null (MapTiler). */
+export function imageryFor(registry, clubId) {
+  if (clubId == null || !Array.isArray(registry)) return null;
+  const data = registry.find((d) => d && (String(d.apiId) === String(clubId) || (d.apiIds || []).some((id) => String(id) === String(clubId))));
+  return data && data.imagery && typeof data.imagery.url === "string" ? data.imagery : null;
+}

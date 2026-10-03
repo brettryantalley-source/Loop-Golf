@@ -51,6 +51,13 @@ export const PREFETCH_ZOOMS = [16, 17, 18];                    // 512-px tiles: 
    If the terms forbid it, set this false: Setup skips the prefetch and a round with no signal falls
    back to the drawn map (§4.3). The service worker's cache-first tile store is separate (sw.js). */
 export const TILE_PREFETCH_ENABLED = true;
+/* v22.16.8: imagery per course. MapTiler by default; a bundled course map can name its own XYZ
+   source (Chicopee: an Esri World Imagery Wayback capture — green, leaf-on, ~0.27 m), 256-px tiles
+   one zoom deeper. Set by the app for the chosen course before anything fetches or draws a tile. */
+const MAPTILER_IMAGERY = { url: TILE_URL, tileSize: 512, maxzoom: 18, zooms: PREFETCH_ZOOMS, probeZoom: 17, credit: null };
+let IMAGERY = MAPTILER_IMAGERY;
+export function setImagery(img) { IMAGERY = img && typeof img.url === "string" ? { ...MAPTILER_IMAGERY, ...img } : MAPTILER_IMAGERY; }
+export const activeImagery = () => IMAGERY;
 export const MAPLIBRE_JS = "./vendor/maplibre-gl.js";
 export const MAPLIBRE_CSS = "./vendor/maplibre-gl.css";
 
@@ -90,14 +97,14 @@ export function useMapLibre(wanted) {
 }
 
 /* ---------- tiles: prefetch (Setup, §11.2) and the per-hole satellite check (§4.3, T39) ---------- */
-export function tileUrl(t) { return TILE_URL.replace("{z}", t.z).replace("{x}", t.x).replace("{y}", t.y); }
+export function tileUrl(t) { return IMAGERY.url.replace("{z}", t.z).replace("{x}", t.x).replace("{y}", t.y); }
 
 const holeKeys = (geo) => Object.keys(geo?.holes || {})
   .filter((k) => geo.holes[k]?.line?.length >= 2)
   .sort((a, b) => (parseInt(a, 10) - parseInt(b, 10)) || a.localeCompare(b));
 
 /** Tiles covering one hole's centreline + green, padded (the fitted bounds of any shot on it). */
-export function holeTiles(geo, key, zooms = PREFETCH_ZOOMS, padM = 60) {
+export function holeTiles(geo, key, zooms = IMAGERY.zooms, padM = 60) {
   const h = geo?.holes?.[key];
   const bbox = h ? geometryBbox({ holes: { [key]: h } }, padM) : null;
   return bbox ? tilesForBbox(bbox, zooms) : [];
@@ -114,7 +121,7 @@ async function fetchWithTimeout(url, ms) {
  * controls the page). Hole by hole, so Setup can say "loading 7 of 18". Skips cached tiles and
  * tiles an earlier hole already covered. onProgress({ holesDone, holes, ok, total }).
  */
-export async function prefetchTiles(geo, { onProgress, zooms = PREFETCH_ZOOMS, concurrency = 4, isLive = () => true, timeoutMs = 8000 } = {}) {
+export async function prefetchTiles(geo, { onProgress, zooms = IMAGERY.zooms, concurrency = 4, isLive = () => true, timeoutMs = 8000 } = {}) {
   const keys = holeKeys(geo);
   if (!keys.length || typeof caches === "undefined") return { holes: keys.length, holesDone: 0, ok: 0, total: 0 };
   const cache = await caches.open(TILE_CACHE);
@@ -141,7 +148,7 @@ export async function prefetchTiles(geo, { onProgress, zooms = PREFETCH_ZOOMS, c
 }
 
 /** How many of the course's tiles are already cached: { have, total } (v19 helper, kept). */
-export async function tileCacheStatus(geo, zooms = PREFETCH_ZOOMS) {
+export async function tileCacheStatus(geo, zooms = IMAGERY.zooms) {
   const keys = holeKeys(geo);
   if (!keys.length || typeof caches === "undefined") return null;
   const urls = [...new Set(keys.flatMap((k) => holeTiles(geo, k, zooms).map(tileUrl)))];
@@ -152,7 +159,7 @@ export async function tileCacheStatus(geo, zooms = PREFETCH_ZOOMS) {
 }
 
 /** True when every z17 tile of this hole is cached (the prefetch ran, or the hole was viewed online). */
-export async function holeTilesCached(geo, key, zoom = 17) {
+export async function holeTilesCached(geo, key, zoom = IMAGERY.probeZoom) {
   if (typeof caches === "undefined") return false;
   const urls = holeTiles(geo, key, [zoom]).map(tileUrl);
   if (!urls.length) return false;
@@ -164,7 +171,7 @@ export async function holeTilesCached(geo, key, zoom = 17) {
 }
 
 /** v22.11: is the z17 tile under a point cached? (marked-green mode has no hole to cover) */
-export async function pointTileCached(at, zoom = 17) {
+export async function pointTileCached(at, zoom = IMAGERY.probeZoom) {
   if (typeof caches === "undefined" || !at) return false;
   try { return !!(await (await caches.open(TILE_CACHE)).match(tileUrl(lonLatToTile(at.lon, at.lat, zoom)))); } catch (e) { return false; }
 }
@@ -181,7 +188,7 @@ export async function probeTileDetail(at, timeoutMs = 8000) {
   let timedOut = false;
   const t = setTimeout(() => { timedOut = true; if (ctl) ctl.abort(); }, timeoutMs);
   try {
-    const r = await fetch(tileUrl(lonLatToTile(at.lon ?? at.lng, at.lat, 17)), ctl ? { signal: ctl.signal } : undefined);
+    const r = await fetch(tileUrl(lonLatToTile(at.lon ?? at.lng, at.lat, IMAGERY.probeZoom)), ctl ? { signal: ctl.signal } : undefined);
     return { ok: !!r.ok, status: r.status, error: null };
   } catch (e) {
     return { ok: false, status: null, error: timedOut ? "timeout" : (e && e.name) || "error" };
@@ -391,7 +398,7 @@ export function MapLayer({
         container: mapBoxRef.current,
         style: {
           version: 8,
-          sources: { sat: { type: "raster", tiles: [TILE_URL], tileSize: 512, maxzoom: 18 } },
+          sources: { sat: { type: "raster", tiles: [IMAGERY.url], tileSize: IMAGERY.tileSize, maxzoom: IMAGERY.maxzoom } },
           layers: [
             { id: "bg", type: "background", paint: { "background-color": SAT_BG } },
             { id: "sat", type: "raster", source: "sat", paint: { "raster-fade-duration": 0 } },
@@ -606,7 +613,7 @@ export function MapLayer({
       {(hole || markMode) && (
         <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()} style={{ position: "absolute", left: 6, bottom: attrBottom, padding: "1px 4px", background: "rgba(0,0,0,.4)",
           color: T.paper, fontFamily: F.label, fontSize: 9, lineHeight: "12px", whiteSpace: "nowrap", pointerEvents: "auto" }}>
-          {!drawn && <><a href="https://www.maptiler.com/copyright/" target="_blank" rel="noopener" style={{ color: T.paper, textDecoration: "none" }}>© MapTiler</a>{" "}</>}
+          {!drawn && (IMAGERY.credit ? <>{IMAGERY.credit}{" "}</> : <><a href="https://www.maptiler.com/copyright/" target="_blank" rel="noopener" style={{ color: T.paper, textDecoration: "none" }}>© MapTiler</a>{" "}</>)}
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style={{ color: T.paper, textDecoration: "none" }}>© OpenStreetMap contributors</a>
         </div>
       )}
