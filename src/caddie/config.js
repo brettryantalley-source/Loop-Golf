@@ -112,6 +112,24 @@ export const DEFAULT_CONFIG = Object.freeze({
      one whose mean landing is nearest its target. */
   EXP_TIE_TOLERANCE: 0.03,
 
+  /* ---- course management (strategy.js; docs/CADDIE-BRAIN-INTEGRATION.md part 2; D76) ----
+     Michael Leonard, "How to Play Wicked Smart Golf" (tips 3–6). The guide's rules choose SAFE from
+     the priced candidates; Brett's numbers overrule the pin rule only when its pick finds more than
+     maxExtraTrouble more trouble, or costs more than maxCostStrokes, than the best-priced shot. Each
+     rule switches off on its own (false → that part of SAFE is the plain lowest expected score).
+     The guide gives rules, not numbers: every threshold below is an engine assumption, uncalibrated,
+     except noHeroMaxTrouble, which is the guide's own "9 out of 10". */
+  STRATEGY: {
+    driverDefault: true,          // tip 3: a tie on a par-4/5 tee goes to the driver
+    pinRule: true,                // tips 4–5: front / back pin → middle of the green; middle pin → at it
+    attackClubs: ["PW", "GW", "SW", "LW"],   // tip 5: "especially with wedges" — the only clubs that aim at a middle flag
+    clubUpShortWeight: 2,         // tip 4: finishing short of the depth target counts double (club up)
+    maxExtraTrouble: 0.05,        // the pin rule yields when its pick finds > 5 points more trouble …
+    maxCostStrokes: 0.5,          // … or costs > ½ stroke more than the best-priced shot
+    noHero: true,                 // tip 6: from trees or a bad / buried rough lie, no hero shots
+    noHeroMaxTrouble: 0.10,       // "9 out of 10"; nothing that clean → the least trouble (punch out)
+  },
+
   /* ---- expected strokes (§3.5) ---- */
   /* E(d, lie) = baseline − Brett's approach SG for the bucket. Brett's putting deficit is a
      separate line in his profile (sg putting per 18); adding its per-hole share keeps off-green
