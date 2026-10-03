@@ -14,7 +14,7 @@
 
 import { parseOverpass, destination } from "./geometry.js";
 
-/** Overpass-shaped `{ elements }` from a local file. Ids are negative (new objects). `shiftM` = [east, north] metres. */
+/** Overpass-shaped `{ elements }` from a local file. Ids are negative (new objects) unless a way keeps its OSM `id` (Chicopee's holes, so their keys match the Overpass geometry). `shiftM` = [east, north] metres. */
 export function toOverpass(data) {
   const [dE, dN] = Array.isArray(data.shiftM) ? data.shiftM : [0, 0];
   const at = (p) => {
@@ -23,19 +23,20 @@ export function toOverpass(data) {
     if (dE) q = destination(q, dE > 0 ? 90 : 270, Math.abs(dE));
     return q;
   };
-  return { elements: data.ways.map((w, i) => ({ type: "way", id: -(i + 1), tags: w.tags, geometry: w.pts.map(at) })) };
+  return { elements: data.ways.map((w, i) => ({ type: "way", id: Number.isInteger(w.id) ? w.id : -(i + 1), tags: w.tags, geometry: w.pts.map(at) })) };
 }
 
 const PARSED = new WeakMap();
 
 /**
  * The parsed geometry for a club, or null when no local file covers it.
- * registry = the bundled files ([{ apiId, version, ways, … }]); clubId = the club's API id.
+ * registry = the bundled files ([{ apiId, apiIds?, version, ways, … }]); clubId = the club's API id.
  * `version` stamps the cache entry (geo.js saveGeometryCache) so an older cache is replaced once.
  */
 export function localGeometryFor(registry, clubId) {
   if (clubId == null || !Array.isArray(registry)) return null;
-  const data = registry.find((d) => d && String(d.apiId) === String(clubId));
+  // a 27-hole club answers to every routing's id (`apiIds`), whichever one keys its map
+  const data = registry.find((d) => d && (String(d.apiId) === String(clubId) || (d.apiIds || []).some((id) => String(id) === String(clubId))));
   if (!data) return null;
   let geometry = PARSED.get(data);
   if (!geometry) { geometry = parseOverpass(toOverpass(data)); PARSED.set(data, geometry); }

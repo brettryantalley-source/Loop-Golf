@@ -15,6 +15,7 @@ import { localClubFor, LOCAL_CLUBS } from "./localCards.js";
 /* v22.16.3: hole geometry traced by hand for a club OpenStreetMap has no holes for (Woodmont, Canton GA). */
 import { localGeometryFor } from "./localGeometry.js";
 import WOODMONT_GEOMETRY from "./localGeometry/woodmont.json";
+import CHICOPEE_GEOMETRY from "./localGeometry/chicopee.json";
 /* v22.16: finished rounds re-read from a verified card (Ironwood 2026-09-28, the API's pars / indexes). */
 import { fixHistoryFromLocalCards, matchResult } from "./historyFix.js";
 import { loadProfile, resolveEntry } from "./caddie/profile.js";
@@ -75,7 +76,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.16.5 · Oct 3";
+const BUILD = "v22.16.6 · Oct 3";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -219,7 +220,7 @@ const safeStorage = () => { try { return window.localStorage; } catch (e) { retu
    - no anchor (lat/lon) to even query from                   -> unavailable, unchanged (nothing to retry)
    v22.16.3: a club with a bundled trace (LOCAL_GEOMETRY) never asks Overpass and ignores a cache that
    predates the trace; the entry is stamped with the trace's version, so a newer trace replaces it once. */
-const LOCAL_GEOMETRY = [WOODMONT_GEOMETRY];
+const LOCAL_GEOMETRY = [WOODMONT_GEOMETRY, CHICOPEE_GEOMETRY];
 function useCourseMap(course) {
   const apiId = clubIdOf(course);                     // per club: switching routings never refetches
   const [geometry, setGeometry] = useState(() => (apiId != null ? loadGeometryCache(safeStorage(), apiId) : null));
