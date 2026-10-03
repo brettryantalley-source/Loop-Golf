@@ -13,7 +13,7 @@ import { baselineE, baselinePutts, isotonic, BASELINE_ROWS, BASELINE_ROWS_RAW, S
 import { makeSamples } from "./random.js";
 import { classify, greenDistances, pinPoint, fatSide, corridorAt, waterEntry, ringDistance, rect, ellipse } from "./course.js";
 import { loadProfile, resolveEntry, E, Eputt, B, B2, bucketFor, candidateEntries, personalSg, puttingGapAt, handicapPrior, _internal } from "./profile.js";
-import { recommend, generateCandidates, simulateCandidate, normalizeContext, displayLines, windEffect, playsLike, ellipseSampler, ELL80_K } from "./engine.js";
+import { recommend, priceTarget, generateCandidates, simulateCandidate, normalizeContext, displayLines, windEffect, playsLike, ellipseSampler, ELL80_K } from "./engine.js";
 import { TEMPLATES } from "./reasons.js";
 import { openPar5, waterLeftPar4, waterRightPar4, noWaterPar4, bunkeredPar3, par5With } from "../fixtures/synthetic-holes.js";
 
@@ -627,4 +627,21 @@ test("dogleg: past the corner the line is ball → green, as on a straight hole"
   const withLine = generateCandidates(ctx, village1, P);
   const without = generateCandidates(ctx, { ...village1, line: undefined }, P);
   assert.deepEqual(withLine.map((c) => [c.club, c.target]), without.map((c) => [c.club, c.target]));
+});
+
+/* ---------- own target (v22.16.5): the club and its numbers follow the marker ---------- */
+
+test("priceTarget: the club fits the marker's distance and moves with it", () => {
+  const ctx = { ball: { x: 0, y: 0 }, lieType: "fairway", par: 4, shotNo: 2 };
+  const hole = { ...village1, line: undefined };
+  const near = priceTarget(ctx, hole, P, { x: 0, y: 120 });
+  const far = priceTarget(ctx, hole, P, { x: 0, y: 200 });
+  assert.ok(near && far);
+  assert.ok(far.carryYds > near.carryYds, `${far.club} should be longer than ${near.club}`);
+  assert.ok(Math.abs(near.meanYds - 120) <= 15 && Math.abs(far.meanYds - 200) <= 20, `${near.meanYds} / ${far.meanYds}`);
+  assert.equal(near.target.x, 0); assert.equal(near.target.y, 120);
+  assert.match(near.target.label, /^leave \d+, own target$/);
+  const onGreen = priceTarget(ctx, hole, P, { x: 0, y: 364 });
+  assert.equal(onGreen.kind, "approach");
+  assert.equal(priceTarget(ctx, hole, P, null), null);
 });

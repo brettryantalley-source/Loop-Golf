@@ -21,7 +21,7 @@ import { loadProfile, resolveEntry } from "./caddie/profile.js";
 import { MapLayer, useSatellite, prefetchTiles, satelliteCheck, TILE_PREFETCH_ENABLED, renderNodes } from "./caddie/mapLayer.jsx";
 /* Caddie (S3b, v22): the engine, its inputs and the screen's state + render model. */
 import { assembleShotContext, frameBearing } from "./caddie/context.js";
-import { recommend, windEffect } from "./caddie/engine.js";
+import { recommend, windEffect, priceTarget } from "./caddie/engine.js";
 import { fetchWeather, weatherRefreshDue, weatherTempF } from "./caddie/sensors.js";
 import {
   loadLieOverrides, recordLieOverride, routeShot, newShotRecord, quickLog, detailLog, skipShot, closeOutShot,
@@ -75,7 +75,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.16.4 · Oct 3";
+const BUILD = "v22.16.5 · Oct 3";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -1954,7 +1954,21 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   // §6: the green cannot be detected on a hole with no OSM geometry (no map, a marked green, or a
   // green marked by standing on it) — or with yards and no GPS
   const greenManual = noGeo || cs.phase === "yards";
-  const v = caddieView({ state: cs, par: h.par, profileOk: !!profile, mapOk: !!built, res: engine?.res || null, options: engine?.options || null,
+  /* v22.16.5: a moved target re-prices the shot — the club whose average fits it, that club's
+     dispersion, To target — while the marker is dragged and after it is dropped */
+  const [dragTarget, setDragTarget] = useState(null);
+  const ownAt = cs.phase === "ready" && engine?.res?.safe && built ? dragTarget || intentSet(cs).target || null : null;
+  const own = useMemo(() => {
+    if (!ownAt) return null;
+    try {
+      const o = priceTarget(engine.ctx, built, profile, ownAt);
+      if (!o) return null;
+      const lieOf = (c, sw) => resolveEntry(profile, c, sw, engine.ctx.lieType, { wet: engine.ctx.conditions === "wet" });
+      return ellipsesFor({ safe: o, aggressive: null, sameShot: true }, lieOf, { lieQuality: engine.ctx.lieQuality, config }).safe;
+    } catch (e) { console.warn("own target failed", e); return null; }
+  }, [engine, built, profile, ownAt?.x, ownAt?.y]);
+  const shownOptions = own && engine?.options ? { ...engine.options, [engine.res.sameShot ? "safe" : cs.opt]: own } : engine?.options || null;
+  const v = caddieView({ state: cs, par: h.par, profileOk: !!profile, mapOk: !!built, res: engine?.res || null, options: shownOptions,
     inferred: engine?.inferred || null, onGreen: !!engine?.onGreen, ballXY: cs.phase === "yards" ? null : ballXY, green: engine?.green || null, config,
     markable, greenMarked: !!marked, synthetic: !!built?.synthetic, pinYds: pinView ? pinYds : null, satFailure: noGeo ? sat.failure : null,
     greenManual, unreviewed });
@@ -1965,7 +1979,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
      only (no map marks). The target is in this hole's frame (the synthetic one on a marked green)
      and in lat/lng, so the Review sheet can compare shots measured in different frames. */
   const marks = intentSet(cs);
-  const liveOpts = engine?.options || null;
+  const liveOpts = shownOptions;
   const activeOpt = v.view === "ready" || v.view === "sameshot" ? (v.sameShot ? liveOpts?.safe : liveOpts?.[cs.opt] || liveOpts?.safe) || null : null;
   const mapMarks = v.view === "ready" || v.view === "sameshot";
   const intentNow = (opt = activeOpt) => shotIntent({
@@ -2075,7 +2089,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
 
   /* map */
   const prevShots = noGeo ? (built ? toSyntheticFrame(cs.shots[n] || [], anchorF, Fr) : []) : cs.shots[n] || [];
-  const mi = mapInput({ state: cs, view: v.view, ballXY, accuracyM: cs.ball?.accuracyM ?? null, options: engine?.options || null, sameShot: v.sameShot, pin: pinXY, previousShots: prevShots });
+  const mi = mapInput({ state: cs, view: v.view, ballXY, accuracyM: cs.ball?.accuracyM ?? null, options: shownOptions, sameShot: v.sameShot, pin: pinXY, previousShots: prevShots });
   // §8: Locating, No GPS fix, Location off and Yards entered keep the last camera (no ball drawn).
   const lastFit = React.useRef({ hole: null, ball: null, options: null });
   if (v.view === "ready" || v.view === "sameshot") lastFit.current = { hole: n, ball: mi.fitBall, options: mi.fitOptions };
@@ -2086,7 +2100,6 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   const markAt = noGeo && !built && v.view === "markgreen" && cs.ball ? { lat: cs.ball.lat, lon: cs.ball.lng } : null;
   /* v22.15 §2: the target marker and the start line on Ready; the ellipse follows a moved target
      (the recommendation does not — it is what Brett was told, the marker is where he aims) */
-  const [dragTarget, setDragTarget] = useState(null);
   const shownTarget = mapMarks && !pinView ? dragTarget || marks.target || activeOpt?.target || null : null;
   const optKey = v.sameShot ? "safe" : cs.opt;
   const drawnOptions = mi.options && mapMarks && (dragTarget || marks.target) && mi.options[optKey]
