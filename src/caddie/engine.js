@@ -134,6 +134,41 @@ function landingModel(entry, ball, target, ctx, cfg) {
   return { mean, total: mean + roll, roll, dir, perp, bearing: b, wind: pl.wind, sdMult: q.sdMult };
 }
 
+/**
+ * The hole's playing line from the ball: the ball, the golf=hole centreline's bend points still
+ * ahead of it, the green center. Null when no bend point is ahead (a straight hole, or the ball is
+ * past the corner): then the straight-line candidates below are unchanged.
+ */
+export function doglegPath(hole, ball) {
+  const line = hole.line || [];
+  const ahead = line.slice(1, -1).filter((v) => v.y > ball.y + 10 && v.y < hole.green.center.y);
+  return ahead.length ? [ball, ...ahead, hole.green.center] : null;
+}
+
+/** The point on `path` (from its start) whose straight distance from path[0] is `d`; the end if none. */
+export function pointAtReach(path, d) {
+  const o = path[0];
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i], b = path[i + 1];
+    if (dist(o, b) < d) continue;
+    let lo = 0, hi = dist(a, b);
+    for (let k = 0; k < 30; k++) { const m = (lo + hi) / 2; if (dist(o, pointAlong(a, b, m)) < d) lo = m; else hi = m; }
+    return pointAlong(a, b, lo);
+  }
+  return { ...path[path.length - 1] };
+}
+
+/** The point `L` yards back along `path` from its end (the green center). */
+export function pointBackFromEnd(path, L) {
+  let left = L;
+  for (let i = path.length - 1; i > 0; i--) {
+    const a = path[i], b = path[i - 1], len = dist(a, b);
+    if (left <= len) return pointAlong(a, b, left);
+    left -= len;
+  }
+  return { ...path[0] };
+}
+
 export function generateCandidates(ctx, hole, P) {
   const cfg = P.config;
   const entries = candidateEntries(P, ctx.lieType, { conditions: ctx.conditions });
@@ -141,6 +176,7 @@ export function generateCandidates(ctx, hole, P) {
   const g = greenDistances(hole, ctx.ball, ctx.pinPos);
   const pin = pinPoint(hole, ctx.ball, ctx.pinPos);
   const fat = fatSide(hole);
+  const bend = doglegPath(hole, ctx.ball);
   const out = [];
   const push = (c) => {
     const aim = ctx.adjust?.aimYds?.[c.entry.family] || 0;
@@ -173,7 +209,7 @@ export function generateCandidates(ctx, hole, P) {
   const layups = new Map();                            // one layup candidate per club × swing: its best-fit leave
   for (let L = cfg.LAYUP_MIN_YDS; L <= cfg.LAYUP_MAX_YDS; L += cfg.LAYUP_STEP_YDS) {
     if (dPin - L < 20) break;
-    const q = pointAlong(center, ctx.ball, L);          // L short of the green center, on the line
+    const q = bend ? pointBackFromEnd(bend, L) : pointAlong(center, ctx.ball, L); // L short of the green center, on the line
     const need = dist(ctx.ball, q);
     let best = null;
     for (const e of nonReaching) {
@@ -195,14 +231,18 @@ export function generateCandidates(ctx, hole, P) {
   // a layup and already has its centerline candidate above.
   for (const e of nonReaching) {
     const lm = landingModel(e, ctx.ball, center, ctx, cfg);
-    const yLand = ctx.ball.y + lm.total;
+    // On a dogleg the center is the hole's line at this club's reach, not the tee→green chord.
+    const on = bend ? pointAtReach(bend, lm.total) : null;
+    const yLand = on ? on.y : ctx.ball.y + lm.total;
+    const cx = on ? Math.round(on.x) : 0;
     const corr = e.family === "long" ? corridorAt(hole, yLand) : null;
-    const xs = [0];
+    const xs = [cx];
     if (corr) for (let x = Math.ceil(corr[0]); x <= corr[1]; x += cfg.CORRIDOR_STEP_YDS) xs.push(x);
     for (const x of xs) {
       const t = { x, y: yLand };
       const leave = Math.round(dist(t, pin));
-      const side = x === 0 ? "center" : x < 0 ? `${Math.abs(x)} left of center` : `${x} right of center`;
+      const off = x - cx;
+      const side = off === 0 ? "center" : off < 0 ? `${Math.abs(off)} left of center` : `${off} right of center`;
       push({ club: e.club, swing: e.swing, entry: e, kind: "corridor", target: t, label: `leave ${leave}, ${side}` });
     }
   }
