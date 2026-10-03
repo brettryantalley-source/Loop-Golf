@@ -22,3 +22,40 @@ Brett, Sep 29). This file is the integration decision per item. Constants land i
 
 Version: engine-only change, shipped as v22.10 (bundle rebuilt, no UI change) — the caddie's numbers move, the UI does not. Tests T1–T10
 must stay green with at most fixture-level retuning; any test that flips is a decision to record.
+
+---
+
+# Part 2 — Wicked Smart Golf → engine (Oct 3, 2026)
+
+Source: Michael Leonard, *How to Play Wicked Smart Golf* (notes: `docs/research/wicked-smart-golf-2026-10-03.md`).
+Brett's rule: **where the guide and the Sep 29 research disagree, the guide wins.** The guide gives
+rules, not numbers, so it lands as a rule layer, `src/caddie/strategy.js`, between the simulation and
+SAFE: the simulation still prices every shot, the rules choose which priced shot is SAFE. AGGRESSIVE
+is untouched. Constants live in `STRATEGY` in `src/caddie/config.js`; each rule switches off alone.
+Decision record: D76 (D77 for what was left out).
+
+| Tip | Guide | Decision | Where |
+|---|---|---|---|
+| 1 Track stats | Data over feel | **Already the design** (rule 8, shot log, Shot Pattern import). | — |
+| 2 Warm-up | Routine before the round | **Not engine.** | — |
+| 3a Driver | Don't reach for less club by feel; driver is often smarter | **Tie rule**: on a par-4/5 tee, a tie in expected score (D13's 0.03) goes to the driver. The research's flip threshold still decides real trade-offs (T43 unchanged): both sources agree a computed reason can beat driver. | `plainPick`, T50 |
+| 3b Target off the tee | Identify trouble, pick a specific target | **Already the design**: corridor aim points priced against the hole's hazards. | — |
+| 3c, 5 Stock shape | One shape, trust the pattern | **Already the design**: the engine never recommends shape (rule 6). "Aim accordingly" (aim off for the pattern's lateral bias) **deferred** — D77. | — |
+| 4 Club up | Most trouble is short; choose on the average shot, not the perfect one | **Adopt** inside the pin rule: the club is chosen by where its average carry finishes against the depth target, and a short finish counts double (`clubUpShortWeight` 2). | `pinRulePick`, T47 |
+| 5 Pin position | Front → more club; back → less than the pin yardage; middle → attack with wedges, longer clubs don't chase | **Adopt (overrides research §2.4).** When the best-priced shot goes at the green: front / back pin → depth target = green center and the aim is the center or fat side, never the flag; middle pin → depth target = the pin, and only `attackClubs` (PW, GW, SW, LW) may aim at the flag. Pin thirds along the line for a custom pin. Between equal prices with the chosen club, the center ("simple targets"). | `pinDepthClass`, `pinRulePick`, T44–T46 |
+| 4–5 Guards | — (the guide assumes trouble is short) | Brett's numbers overrule the pin rule only where the hole contradicts it: the rule's pick finds > 5 points more trouble (`maxExtraTrouble`) or costs > ½ stroke (`maxCostStrokes`) than the best-priced shot → the next club in line, else the plain pick. A best-priced layup is never turned into a go at the green. | `pinRulePick`, T48 |
+| 6 No hero golf | 9 out of 10 or punch out | **Adopt (overrides research's pure expected score).** From trees, or a bad / buried lie in the rough, SAFE must stay out of trouble (water, OB, sand, trees) at least 90% of the time; if nothing does, the shot with the least trouble. No cost guard: the guide says punch out. Sand lies are not included (D77). | `pickSafe`, T49 |
+| 7 Routine | Commit to the target | **Not engine.** | — |
+
+What it does on the three mapped courses (Woodmont, Chicopee, the Hampton fixture; 2,043 situations
+at 90 / 120 / 150 / 175 yds, three pins, fairway / rough / trees): the rules move SAFE in about half
+of them — pin-front 374, no-hero 300, pin-back 222, pin-middle 175, driver 3. Priced by the engine,
+the median move costs 0.12 strokes (pin rules 0–0.16, no-hero 0.25) and lowers the trouble rate on
+average (−1 to −2 points for the pin rules, −14 points for no-hero). The engine's price is the
+research's model, which underrates Brett's short misses (research note, last section); the guide is
+the call.
+
+Version: v22.16.9, engine-only (no UI change). The output gains `strategy`: the rules that moved
+SAFE (`pin-front` / `pin-middle` / `pin-back`, `no-hero`, `driver`), also stored with each shot
+record's recommendation. AGGRESSIVE can now show a lower average than SAFE; the rail shows that delta
+as `−0.n`.

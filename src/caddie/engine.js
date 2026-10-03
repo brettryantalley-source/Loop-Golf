@@ -6,7 +6,8 @@
  * not inputs and cannot become inputs without changing this signature (rule 4, T7).
  *
  * Pipeline: context → plays-like → candidates (§3.4, §3.7) → simulation over Brett's dispersion
- * (§3.5) → SAFE / AGGRESSIVE / same-shot (§3.6) → reason strings from profile fields (§3.10).
+ * (§3.5) → SAFE through the course-management rules (strategy.js, D76) / AGGRESSIVE / same-shot
+ * (§3.6) → reason strings from profile fields (§3.10).
  */
 
 import { DEFAULT_CONFIG } from "./config.js";
@@ -14,6 +15,7 @@ import { makeSamples } from "./random.js";
 import { classify, greenDistances, pinPoint, fatSide, corridorAt, waterEntry, pointAlong, dist, ydsToFt } from "./course.js";
 import { candidateEntries, E, Eputt, B } from "./profile.js";
 import { reasonFor } from "./reasons.js";
+import { pickSafe, situationOf } from "./strategy.js";
 
 const DEG = Math.PI / 180;
 
@@ -181,7 +183,12 @@ export function generateCandidates(ctx, hole, P) {
   const push = (c) => {
     const aim = ctx.adjust?.aimYds?.[c.entry.family] || 0;
     if (aim) c.target = { x: c.target.x + aim, y: c.target.y };
-    if (out.some((o) => o.club === c.club && o.swing === c.swing && (sameTarget(o.target, c.target) || (o.kind === "layup" && c.kind === "layup")))) return;
+    const dup = out.find((o) => o.club === c.club && o.swing === c.swing && (sameTarget(o.target, c.target) || (o.kind === "layup" && c.kind === "layup")));
+    if (dup) {
+      // One target can be the pin, the center and the fat side at once; keep every name (strategy.js).
+      if (dup.aims && c.aims) for (const a of c.aims) if (!dup.aims.includes(a)) dup.aims.push(a);
+      return;
+    }
     out.push(c);
   };
 
@@ -196,11 +203,11 @@ export function generateCandidates(ctx, hole, P) {
   for (const e of entries) {
     if (reach.get(e) !== "reaches") continue;
     const targets = [
-      { p: pin, label: `green, ${ctx.pinPos === "middle" ? "center" : typeof ctx.pinPos === "string" ? ctx.pinPos + " pin" : "custom pin"}` },
-      { p: center, label: "green, center" },
-      { p: fat, label: "green, fat side" },
+      { p: pin, aim: "pin", label: `green, ${ctx.pinPos === "middle" ? "center" : typeof ctx.pinPos === "string" ? ctx.pinPos + " pin" : "custom pin"}` },
+      { p: center, aim: "center", label: "green, center" },
+      { p: fat, aim: "fat", label: "green, fat side" },
     ];
-    for (const t of targets) push({ club: e.club, swing: e.swing, entry: e, kind: "approach", target: t.p, label: t.label });
+    for (const t of targets) push({ club: e.club, swing: e.swing, entry: e, kind: "approach", target: t.p, label: t.label, aims: [t.aim] });
   }
 
   // §3.7 layups: leave-distance candidates on the centerline, the nearest club for each.
@@ -363,19 +370,15 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
 
 /* ---------- selection (§3.6) ---------- */
 
-/** Distance between where the club lands on average and where it was aimed — "plays the number". */
-const fit = (c) => Math.abs(c.meanYds - c.distToTarget);
-
-function pickOptions(scored, cfg) {
-  const tol = cfg.EXP_TIE_TOLERANCE ?? 0;
-  const minExp = Math.min(...scored.map((c) => c.expScore));
-  const safe = scored.filter((c) => c.expScore <= minExp + tol).reduce((a, b) => (fit(b) < fit(a) ? b : a));
+/** SAFE through the course-management rules (strategy.js, D76); AGGRESSIVE and same-shot as §3.6. */
+function pickOptions(scored, cfg, sit) {
+  const { safe, rules } = pickSafe(scored, sit, cfg);
   const aggressive = scored.reduce((a, b) =>
     b.birdieProb > a.birdieProb + 1e-12 || (Math.abs(b.birdieProb - a.birdieProb) <= 1e-12 && b.expScore < a.expScore) ? b : a);
   const sameShot =
     aggressive.birdieProb - safe.birdieProb < cfg.SAME_SHOT_BIRDIE_GAIN ||
     (aggressive.club === safe.club && aggressive.swing === safe.swing && dist(aggressive.target, safe.target) <= cfg.SAME_SHOT_TARGET_YDS);
-  return { safe, aggressive, sameShot };
+  return { safe, aggressive, sameShot, rules };
 }
 
 function r2(x) { return Math.round(x * 100) / 100; }
@@ -429,11 +432,11 @@ export function recommend(rawCtx, hole, P) {
     elevFt: ctx.elevFt, altYds: r2(headline.altYds),
   };
   if (!cands.length) {
-    return { context, sameShot: true, safe: null, aggressive: null, message: "No club in the profile reaches a useful target from here.", nudges: [], flags: [], candidates: 0 };
+    return { context, sameShot: true, safe: null, aggressive: null, message: "No club in the profile reaches a useful target from here.", nudges: [], flags: [], strategy: [], candidates: 0 };
   }
   const samples = makeSamples(cfg.SAMPLES, cfg.SEED);
   const scored = cands.map((c) => ({ ...c, ...simulateCandidate(c, ctx, hole, P, samples) }));
-  const { safe, aggressive, sameShot } = pickOptions(scored, cfg);
+  const { safe, aggressive, sameShot, rules } = pickOptions(scored, cfg, situationOf(ctx, hole, g));
   const out = {
     context,
     sameShot,
@@ -442,6 +445,7 @@ export function recommend(rawCtx, hole, P) {
     message: sameShot ? "Same shot both ways." : null,
     nudges: ctx.nudges,   // §5.5 — computed by learning.js, passed in on ctx, echoed here
     flags: ctx.flags,
+    strategy: rules,      // course-management rules that moved SAFE off the plain lowest score (D76)
     candidates: scored.length,
   };
   return out;

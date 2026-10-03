@@ -52,8 +52,16 @@ trouble is 10+ points worse than the recommendation or his club bias leaves the 
 Pages redeploys in about a minute; he fully closes and reopens Loop and reads the build tag top-right
 of Setup.
 
-Engine as of v22.10 follows `docs/CADDIE-BRAIN-INTEGRATION.md` (D43–D46; known gaps in D46).
-`npm test` is 285 tests (v22.16.3). Decisions run D1–D73 in `docs/DECISIONS-caddie.md`.
+Engine as of v22.10 follows `docs/CADDIE-BRAIN-INTEGRATION.md` (D43–D46; known gaps in D46). **v22.16.9
+adds part 2 of that file: Michael Leonard's *How to Play Wicked Smart Golf*** (notes in
+`docs/research/wicked-smart-golf-2026-10-03.md`; Brett: where it disagrees with the Sep 29 research, the
+guide wins). `src/caddie/strategy.js` chooses SAFE from the priced candidates — front / back pin → the
+club whose average finishes mid-green, middle pin → wedges may attack, a short finish counts double;
+from trees or a bad rough lie only a 9-in-10 shot, else punch out; driver on tee ties (D76). Left out on
+purpose: aim-for-the-pattern (fold into v22.17), sand as a no-hero lie, a short-miss tail in the
+simulation (D77). On the course: SAFE now often plays to the middle of the green and AGGRESSIVE can show
+a lower average (`−0.n`) — that is the guide overruling the price, by design.
+`npm test` is 299 tests (v22.16.9). Decisions run D1–D77 in `docs/DECISIONS-caddie.md`.
 
 **Ironwood (Fishers, IN) is not traced in OpenStreetMap.** v22.11's marked-green mode is the
 bridge (satellite on GPS, tap the green, distance-only pricing). First round there (Sep 29, v22.11):

@@ -34,7 +34,7 @@ Shot Pattern is passive (shows dispersion and results). Loop is prescriptive (te
 
 ## 2. Locked rules (non-negotiable)
 
-1. **Two options, every ball.** SAFE = lowest expected score. AGGRESSIVE = highest birdie probability. Recomputed from wherever Brett is standing.
+1. **Two options, every ball.** SAFE = lowest expected score. AGGRESSIVE = highest birdie probability. Recomputed from wherever Brett is standing. *(Amended Oct 3, D76: SAFE = the lowest expected score among the shots the course-management rules in `src/caddie/strategy.js` allow — pin position, club up, no hero shots, driver on ties.)*
 2. **Aggressive is never hidden.** It is always shown with its price: expected-score cost and trouble rate.
 3. **Same shot → say so.** If no alternative materially raises birdie probability, show one line: "Same shot both ways." Never invent a hero option. (Definition in §3.6.)
 4. **Every hole is played for par.** The ghost score, match state, and differential **never** enter the engine. The ghost is a status reminder only. (Acceptance test T7 enforces this.)
@@ -151,7 +151,7 @@ Candidate outputs:
 ### 3.6 Two-option selection and the same-shot rule
 
 ```
-SAFE       = argmin(expScore)
+SAFE       = argmin(expScore)            // over the shots strategy.js allows (D76)
 AGGRESSIVE = argmax(birdieProb)            // ties → lower expScore
 if AGGRESSIVE.birdieProb − SAFE.birdieProb < SAME_SHOT_BIRDIE_GAIN   // default 0.01
    or (same club AND same swingType AND targets within 10 yds):

@@ -399,7 +399,9 @@ test("T2 aggressive always priced: whenever sameShot is false both options carry
     }
     assert.equal(typeof r.aggressive.deltaExp, "number");
     assert.ok(r.aggressive.birdieProb >= r.safe.birdieProb);
-    assert.ok(r.aggressive.expScore >= r.safe.expScore - 1e-9);
+    // Locked rule 1 as restated by D76: SAFE is the lowest expected score unless a course-management
+    // rule (strategy.js) moved it — and then the output names the rule.
+    assert.ok(r.aggressive.expScore >= r.safe.expScore - 1e-9 || r.strategy.length > 0);
   }
   assert.ok(seen >= 1, "at least one fixture produced two options");
 });
