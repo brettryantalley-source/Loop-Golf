@@ -23,7 +23,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 - `fonts/` — bundled woff2, COMMITTED and cached by the service worker. Never fetch a font at runtime.
 - `src/localCards.js` — scorecards Brett verified by hand for clubs the course API gets wrong (Ironwood, v22.12, D55); `src/routing.js` — 27-hole clubs: routings, nine composition, the odd/even stroke index (D54).
 - `src/localGeometry.js`, `src/localGeometry/woodmont.json` — hole geometry traced by hand for a club OSM has no holes for (Woodmont, Canton GA, v22.16.3, D73). `src/localGeometry/chicopee.json` — Chicopee Woods: OSM holes/greens/tees/bunkers plus Village/Mill lines re-routed and woods/fairways segmented from imagery (v22.16.6, D74). The loader expands the file to Overpass JSON and `parseOverpass` reads it; `useCourseMap` prefers it to the cache and to Overpass. Pure; `app.jsx` imports the JSON. `shiftM` moves the whole trace if GPS on the greens shows an offset.
-- `scripts/woodmont-trace/` — how `woodmont.json` was made (Esri imagery → trace → JSON), saved Oct 4 as reference: not bundled, not run by `npm test`; its README gives the order. `docs/HANDOFF-WOODMONT.md` — what is still open for Woodmont.
+- `scripts/woodmont-trace/` — how `woodmont.json` was made (Esri imagery → trace → JSON), saved Oct 4 as reference: not bundled, not run by `npm test`; its README gives the order.
 - `src/holeMap.jsx`, `src/fixtures/` — PARKED. Nothing imports them and they are not bundled, but their tests still run. See "Parked, not deleted".
 - `vendor/` (MapLibre GL) — LIVE again as of v22: lazy-loaded from disk the first time the caddie screen opens, served same-origin, cached by the service worker.
 - `src/caddie/` — the caddie engine, shot log, learning loop and caddie screen (S1–S5, shipped v22.2–v22.16; see "Caddie (v22 build)" below). Pure logic modules have no DOM/storage/network except where noted; storage and fetch are injected. One line each:
@@ -201,7 +201,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   PR #11, merged Oct 1: v22.14 pencil scorecard D58, v22.15 shot log v2 — `docs/SPEC-shotlog-v2.md`,
   D59–D65: test mode with fake GPS by tap, pre-shot intent on the map, GPS-derived results, the hole
   Review sheet, Shots list, manual On the green — and v22.16 Shot Pattern importer + history card fix,
-  D66–D71, with five rounds imported). Queued: v22.17 aim warning, v22.18 breadcrumb trail (§10).
+  D66–D71, with five rounds imported). Open items: `docs/OPEN-ITEMS.md` (merged Oct 4).
   Read `docs/HANDOFF-NEXT.md` first.
 - `Start round` opens the **CaddieScreen** directly at hole 1, pre-tee; `‹ Card` goes to the
   scorecard, whose hole-nav row gains a `Caddie` control. The caddie needs GPS (permission prompt

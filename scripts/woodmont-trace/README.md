@@ -1,6 +1,6 @@
 # scripts/woodmont-trace — how Woodmont's hole map was made
 
-Reference only. Nothing here is bundled, built or run by `npm test`. The app reads one file, `src/localGeometry/woodmont.json` (D73, v22.16.3). This folder is how that file was made on Oct 2 2026 and how to redo it from other imagery. What is still open for Woodmont: `docs/HANDOFF-WOODMONT.md`.
+Reference only. Nothing here is bundled, built or run by `npm test`. The app reads one file, `src/localGeometry/woodmont.json` (D73, v22.16.3). This folder is how that file was made on Oct 2 2026 and how to redo it from other imagery. What is still open for Woodmont: C13 and C15 in `docs/OPEN-ITEMS.md`.
 
 **Set up.** Every script reads and writes `/tmp/woodmont-trace` (the constant `S` in `geo.py`): `mkdir -p` it and copy `overrides.json` in. Python 3 with `numpy opencv-python-headless shapely scikit-image pillow`; Node 18+ for the `.mjs` files; `pw/*.mjs` also need `playwright-core` (`npm i --no-save playwright-core`) and Chromium. `build_data.py`, `woodmont-check.mjs` and the `pw` scripts reach into the repo by absolute path, so it has to sit at `/home/user/Loop-Golf`. Requests send a descriptive `User-Agent`; Overpass answers 406 to a generic client.
 
