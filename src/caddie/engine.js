@@ -6,14 +6,16 @@
  * not inputs and cannot become inputs without changing this signature (rule 4, T7).
  *
  * Pipeline: context → plays-like → candidates (§3.4, §3.7) → simulation over Brett's dispersion
- * (§3.5) → SAFE through the course-management rules (strategy.js, D76) / AGGRESSIVE / same-shot
- * (§3.6) → reason strings from profile fields (§3.10).
+ * (§3.5) → SAFE through the course-management rules (strategy.js, D76), ranked by the chance of
+ * par or better (D78) / AGGRESSIVE / same-shot (§3.6, loosened v22.17) → reason strings from
+ * profile fields (§3.10). Every option carries expScore, parProb, birdieProb, doubleProb and
+ * troubleRate; routeReadout() lays them out per route for the dev readout.
  */
 
 import { DEFAULT_CONFIG } from "./config.js";
 import { makeSamples } from "./random.js";
 import { classify, greenDistances, pinPoint, fatSide, corridorAt, waterEntry, pointAlong, dist, ydsToFt } from "./course.js";
-import { candidateEntries, E, Eputt, B } from "./profile.js";
+import { candidateEntries, E, Eputt, B, makePct, threePuttPct } from "./profile.js";
 import { reasonFor } from "./reasons.js";
 import { pickSafe, situationOf } from "./strategy.js";
 
@@ -87,11 +89,16 @@ export function windEffect(wind, shotBearingDeg, shotYds, cfg, family) {
 }
 
 /**
- * §3.3 temperature: cold plays longer (positive), hot plays shorter (negative), 0 at TEMP_REF_F
- * and whenever tempF is unknown (never a default 70 pretending to be a reading).
+ * §3.3 temperature: cold plays longer (positive), hot plays shorter (negative), 0 at the
+ * temperature the profile's distances were hit in, and whenever tempF is unknown (never a default
+ * pretending to be a reading). D79: that reference is PROFILE_TEMP_F (Brett's numbers are summer
+ * numbers, ~85°F), not the textbook 70°F; TEMP_REF_F is the fallback when PROFILE_TEMP_F is unset.
  */
+export function profileTempF(cfg) {
+  return Number.isFinite(cfg?.PROFILE_TEMP_F) ? cfg.PROFILE_TEMP_F : cfg?.TEMP_REF_F ?? 70;
+}
 function tempEffect(rawYds, tempF, cfg) {
-  return Number.isFinite(tempF) ? rawYds * cfg.TEMP_PCT_PER_10F * (cfg.TEMP_REF_F - tempF) / 10 : 0;
+  return Number.isFinite(tempF) ? rawYds * cfg.TEMP_PCT_PER_10F * (profileTempF(cfg) - tempF) / 10 : 0;
 }
 
 /**
@@ -280,33 +287,101 @@ export function ellipseSampler(ell, qualityMult = 1) {
   };
 }
 
+/* ---------- score distribution (D78) ----------
+ *
+ * expScore needs only the mean strokes to hole out; SAFE = "most likely to make par" (D78) needs
+ * the distribution. Every landing is priced as: this shot + any penalty stroke (deterministic) + X,
+ * where X = strokes still needed to hole out from the landing state.
+ *   On the green  X is Brett's own putting: P(1) = make%, P(3) = three-putt%, P(2) = the rest —
+ *                 exactly the distribution whose mean is Eputt().
+ *   Elsewhere     X = max(1, round(Y)), Y a split (two-piece) normal whose MEAN is E(d, lie), the
+ *                 expected strokes the baseline already gives, with a narrow left side (you rarely
+ *                 hole out early) and a wide right side (blow-ups): σL = a + b·(m−1), σR = c + e·(m−1)
+ *                 (SCORE_DIST in config). Mode μ = m − √(2/π)(σR − σL), so the mean stays m; the
+ *                 rounding moves it by a few hundredths at most.
+ *   Calibration: from a par-4 tee at Brett's 4.62 average (Shot Pattern report, Jun 27–Sep 20) this
+ *   gives par-or-better ≈ 49% and double-or-worse ≈ 13%; his ten rounds read 52.8% and 13.3% across
+ *   all holes. The constants are otherwise uncalibrated.
+ * Per sample: parProb = P(this + pen + X ≤ par), doubleProb = P(… ≥ par + 2); averaged per candidate.
+ */
+
+const SQRT_2_OVER_PI = Math.sqrt(2 / Math.PI);
+
+/** Standard normal CDF (Abramowitz & Stegun 7.1.26, |error| < 1.5e-7). */
+export function phi(z) {
+  const x = Math.abs(z) / Math.SQRT2;
+  const t = 1 / (1 + 0.3275911 * x);
+  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+  return z >= 0 ? 0.5 * (1 + y) : 0.5 * (1 - y);
+}
+
+/**
+ * P(X ≤ j) for X = strokes to hole out from an off-green state whose expected strokes is `m`
+ * (D78: rounded split normal, at least 1). 0 for j < 1.
+ */
+export function holeOutCdf(m, j, cfg = DEFAULT_CONFIG) {
+  if (j < 1) return 0;
+  const D = cfg?.SCORE_DIST || DEFAULT_CONFIG.SCORE_DIST;
+  const ex = Math.max(0, m - 1);
+  const s1 = Math.max(0.05, D.sdLeft[0] + D.sdLeft[1] * ex);
+  const s2 = Math.max(0.05, D.sdRight[0] + D.sdRight[1] * ex);
+  const mu = m - SQRT_2_OVER_PI * (s2 - s1);
+  const x = j + 0.5, w = s1 + s2;
+  return x <= mu ? (2 * s1 / w) * phi((x - mu) / s1) : s1 / w + (2 * s2 / w) * (phi((x - mu) / s2) - 0.5);
+}
+
+/** P(putts ≤ j) from `ft` with Brett's make% and three-putt% (a three-putt counts as exactly 3). */
+export function puttCdf(P, ft, j) {
+  if (j < 1) return 0;
+  if (j === 1) return makePct(P, ft);
+  if (j === 2) return 1 - threePuttPct(P, ft);
+  return 1;
+}
+
+/** { par, double }: P(finish ≤ par) and P(finish ≥ par + 2) for one priced landing `r`. */
+function finishProbs(P, r, ctx, cfg) {
+  const kPar = ctx.par - ctx.shotNo - r.pen;          // strokes left for par after this one
+  const kDbl = ctx.par + 2 - ctx.shotNo - r.pen;      // this many more makes it a double
+  const cdf = r.ft != null ? (j) => puttCdf(P, Math.round(r.ft), j) : (j) => holeOutCdf(r.m, j, cfg);
+  return { par: cdf(kPar), double: 1 - cdf(kDbl - 1) };
+}
+
+/**
+ * One landing priced. strokes = this shot + penalty + expected strokes to hole out; `pen` = penalty
+ * strokes; `m` = expected strokes to hole out off the green, or `ft` = putt length on it (D78).
+ */
 function priceLanding(hole, P, ctx, from, landing, lie, k, pin) {
   switch (lie) {
     case "green": {
       const ft = ydsToFt(dist(landing, pin));
-      return { strokes: 1 + Eputt(P, ft), birdie: B(P, { lie: "green", ft }, k), trouble: false };
+      return { strokes: 1 + Eputt(P, ft), birdie: B(P, { lie: "green", ft }, k), trouble: false, pen: 0, ft };
     }
     case "water": {
       const drop = waterEntry(hole, from, landing, P.config.WATER_DROP_STEP_YDS);
       const d = dist(drop, pin);
-      return { strokes: 2 + E(P, d, "rough"), birdie: B(P, { lie: "rough", d }, k - 1), trouble: true };
+      const m = E(P, d, "rough");
+      return { strokes: 2 + m, birdie: B(P, { lie: "rough", d }, k - 1), trouble: true, pen: 1, m };
     }
     case "ob": {
       const d = dist(from, pin);
-      return { strokes: 2 + E(P, d, ctx.lieType), birdie: B(P, { lie: ctx.lieType, d }, k - 1), trouble: true };
+      const m = E(P, d, ctx.lieType);
+      return { strokes: 2 + m, birdie: B(P, { lie: ctx.lieType, d }, k - 1), trouble: true, pen: 1, m };
     }
     case "trees": {
       const d = dist(landing, pin);
-      return { strokes: 1 + E(P, d, "recovery"), birdie: B(P, { lie: "recovery", d }, k), trouble: true };
+      const m = E(P, d, "recovery");
+      return { strokes: 1 + m, birdie: B(P, { lie: "recovery", d }, k), trouble: true, pen: 0, m };
     }
     case "sand": {
       const d = dist(landing, pin);
-      return { strokes: 1 + E(P, d, "sand"), birdie: B(P, { lie: "sand", d }, k), trouble: true };
+      const m = E(P, d, "sand");
+      return { strokes: 1 + m, birdie: B(P, { lie: "sand", d }, k), trouble: true, pen: 0, m };
     }
     default: {                                   // fairway, rough, tee
       const l = lie === "tee" ? "fairway" : lie;
       const d = dist(landing, pin);
-      return { strokes: 1 + E(P, d, l), birdie: B(P, { lie: l, d }, k), trouble: false };
+      const m = E(P, d, l);
+      return { strokes: 1 + m, birdie: B(P, { lie: l, d }, k), trouble: false, pen: 0, m };
     }
   }
 }
@@ -322,7 +397,7 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
   const sigmaLat = e.lateralSd * lm.sdMult;             // lie-widened in resolveEntry, quality-widened here
   const sigmaD = e.distSd * lm.sdMult;
   const k = ctx.par - 1 - ctx.shotNo;                     // birdie needs this many more after this shot
-  let sumStrokes = 0, sumBirdie = 0, trouble = 0;
+  let sumStrokes = 0, sumBirdie = 0, sumPar = 0, sumDouble = 0, trouble = 0;
   const n = samples.length;
   for (let i = 0; i < n; i++) {
     const s = samples[i];
@@ -356,11 +431,16 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
     const r = priceLanding(hole, P, ctx, ctx.ball, p, lie, k, pin);
     sumStrokes += r.strokes;
     sumBirdie += r.birdie;
+    const f = finishProbs(P, r, ctx, cfg);
+    sumPar += f.par;
+    sumDouble += f.double;
     if (r.trouble) trouble++;
   }
   return {
     expScore: ctx.shotNo - 1 + sumStrokes / n,
     birdieProb: sumBirdie / n,
+    parProb: sumPar / n,
+    doubleProb: sumDouble / n,
     troubleRate: trouble / n,
     meanYds: cand.kind === "approach" ? lm.mean : lm.total,
     distToTarget: dist(ctx.ball, cand.target),
@@ -370,21 +450,41 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
 
 /* ---------- selection (§3.6) ---------- */
 
-/** SAFE through the course-management rules (strategy.js, D76); AGGRESSIVE and same-shot as §3.6. */
-function pickOptions(scored, cfg, sit) {
+/** Higher birdie chance, ties to the lower expected score (AGGRESSIVE's order, locked rule 2). */
+const moreBirdie = (b, a) =>
+  b.birdieProb > a.birdieProb + 1e-12 || (Math.abs(b.birdieProb - a.birdieProb) <= 1e-12 && b.expScore < a.expScore);
+
+/**
+ * SAFE through the course-management rules (strategy.js, D76, D78); AGGRESSIVE = the best birdie
+ * chance. v22.17 (Brett, Oct 4: on a tee SAFE and AGGRESSIVE read "identical", 2-iron 230 leaving
+ * 170):
+ *   - on a par-4/5 tee, when the best birdie chance is SAFE's own club and line, AGGRESSIVE is the
+ *     best birdie chance among the shots that differ from SAFE (another club, or the same club to a
+ *     target more than SAME_SHOT_TARGET_YDS longer) and beat its birdie odds, however marginally;
+ *   - same shot only when the two are the same club + swing within SAME_SHOT_TARGET_YDS, or the
+ *     birdie gain is under SAME_SHOT_BIRDIE_GAIN (0.005) AND the targets are within twice that.
+ */
+export function pickOptions(scored, cfg, sit) {
   const { safe, rules } = pickSafe(scored, sit, cfg);
-  const aggressive = scored.reduce((a, b) =>
-    b.birdieProb > a.birdieProb + 1e-12 || (Math.abs(b.birdieProb - a.birdieProb) <= 1e-12 && b.expScore < a.expScore) ? b : a);
-  const sameShot =
-    aggressive.birdieProb - safe.birdieProb < cfg.SAME_SHOT_BIRDIE_GAIN ||
-    (aggressive.club === safe.club && aggressive.swing === safe.swing && dist(aggressive.target, safe.target) <= cfg.SAME_SHOT_TARGET_YDS);
+  const tgt = cfg.SAME_SHOT_TARGET_YDS;
+  const sameLine = (a, b) => a.club === b.club && a.swing === b.swing && dist(a.target, b.target) <= tgt;
+  let aggressive = scored.reduce((a, b) => (moreBirdie(b, a) ? b : a));
+  if (sit.teeShot && sameLine(aggressive, safe)) {
+    const alts = scored.filter((c) => (c.club !== safe.club || c.swing !== safe.swing || c.distToTarget > safe.distToTarget + tgt) &&
+      c.birdieProb > safe.birdieProb + 1e-12);
+    if (alts.length) aggressive = alts.reduce((a, b) => (moreBirdie(b, a) ? b : a));
+  }
+  const gain = aggressive.birdieProb - safe.birdieProb;
+  const sameShot = aggressive === safe || sameLine(aggressive, safe) ||
+    (gain < cfg.SAME_SHOT_BIRDIE_GAIN && dist(aggressive.target, safe.target) <= 2 * tgt);
   return { safe, aggressive, sameShot, rules };
 }
 
 function r2(x) { return Math.round(x * 100) / 100; }
 function r3(x) { return Math.round(x * 1000) / 1000; }
 
-function formatOption(c, P, safeExp) {
+/** `geo` = { ball, pin } in the hole frame: adds toTargetYds (ball → target) and leaveYds (target → pin). */
+function formatOption(c, P, safeExp, geo) {
   const { text, fields } = reasonFor(c.entry, P);
   const o = {
     club: c.club,
@@ -397,10 +497,14 @@ function formatOption(c, P, safeExp) {
     aimOffsetYds: Math.round(c.aimOffsetYds),
     expScore: r2(c.expScore),
     birdieProb: r3(c.birdieProb),
+    parProb: r3(c.parProb),
+    doubleProb: r3(c.doubleProb),
     troubleRate: r3(c.troubleRate),
     reason: text,
     reasonFields: fields,
   };
+  if (geo?.ball) o.toTargetYds = Math.round(dist(geo.ball, c.target));
+  if (geo?.pin) o.leaveYds = Math.round(dist(c.target, geo.pin));
   if (safeExp != null) o.deltaExp = r2(c.expScore - safeExp);
   return o;
 }
@@ -437,11 +541,12 @@ export function recommend(rawCtx, hole, P) {
   const samples = makeSamples(cfg.SAMPLES, cfg.SEED);
   const scored = cands.map((c) => ({ ...c, ...simulateCandidate(c, ctx, hole, P, samples) }));
   const { safe, aggressive, sameShot, rules } = pickOptions(scored, cfg, situationOf(ctx, hole, g));
+  const geo = { ball: ctx.ball, pin: pinPoint(hole, ctx.ball, ctx.pinPos) };
   const out = {
     context,
     sameShot,
-    safe: formatOption(safe, P, null),
-    aggressive: sameShot ? null : formatOption(aggressive, P, safe.expScore),
+    safe: formatOption(safe, P, null, geo),
+    aggressive: sameShot ? null : formatOption(aggressive, P, safe.expScore, geo),
     message: sameShot ? "Same shot both ways." : null,
     nudges: ctx.nudges,   // §5.5 — computed by learning.js, passed in on ctx, echoed here
     flags: ctx.flags,
@@ -458,8 +563,11 @@ export function recommend(rawCtx, hole, P) {
  * carry when the target is on the green, carry + roll anywhere else — simulated like any candidate,
  * so the club, its dispersion and its numbers follow the marker. Not an option of recommend(): the
  * SAFE / AGGRESSIVE pair is still what the caddie said; this is what Brett chose to aim at.
+ * opts.samples (v22.17): how many draws to price with — the UI uses ~80 while the marker is being
+ * dragged and the full cfg.SAMPLES (500) on drop. Same seed either way, so the first `n` draws are
+ * shared. The result carries toTargetYds (ball → target) and leaveYds (target → pin).
  */
-export function priceTarget(rawCtx, hole, P, target) {
+export function priceTarget(rawCtx, hole, P, target, opts = {}) {
   if (!target || !Number.isFinite(target.x) || !Number.isFinite(target.y)) return null;
   const cfg = P.config || DEFAULT_CONFIG;
   const ctx = normalizeContext(rawCtx, hole);
@@ -472,11 +580,42 @@ export function priceTarget(rawCtx, hole, P, target) {
     if (!best || err < best.err) best = { e, err };
   }
   if (!best) return null;
-  const leave = Math.round(dist(target, pinPoint(hole, ctx.ball, ctx.pinPos)));
+  const pin = pinPoint(hole, ctx.ball, ctx.pinPos);
+  const leave = Math.round(dist(target, pin));
   const cand = { club: best.e.club, swing: best.e.swing, entry: best.e, kind: toGreen ? "approach" : "layup", target: { x: target.x, y: target.y },
     label: toGreen ? "own target" : `leave ${leave}, own target` };
-  const sim = simulateCandidate(cand, ctx, hole, P, makeSamples(cfg.SAMPLES, cfg.SEED));
-  return formatOption({ ...cand, ...sim }, P, null);
+  const n = Number.isFinite(opts?.samples) && opts.samples >= 1 ? Math.round(opts.samples) : cfg.SAMPLES;
+  const sim = simulateCandidate(cand, ctx, hole, P, makeSamples(n, cfg.SEED));
+  return formatOption({ ...cand, ...sim }, P, null, { ball: ctx.ball, pin });
+}
+
+/**
+ * Dev readout (v22.17): one row per route the screen is showing — SAFE, AGGRESSIVE (unless same
+ * shot) and, when passed, Brett's own target (priceTarget's result) as "Custom". Each row:
+ * { route, label, club, targetYds (ball → target), leaveYds (target → pin), expScore, parProb,
+ * birdieProb, doubleProb, troubleRate }. Distances come from the option's own toTargetYds /
+ * leaveYds; an option without them (an older snapshot) falls back to res.context (ball → target;
+ * leave = null). Pure; [] for a null recommendation.
+ */
+export function routeReadout(res, own = null) {
+  const rows = [];
+  const ball = res?.context?.ball;
+  const row = (route, label, o) => {
+    if (!o) return;
+    const targetYds = Number.isFinite(o.toTargetYds) ? o.toTargetYds
+      : ball && o.target && Number.isFinite(o.target.x) ? Math.round(dist(ball, o.target)) : null;
+    rows.push({
+      route, label, club: o.club ?? null,
+      targetYds,
+      leaveYds: Number.isFinite(o.leaveYds) ? o.leaveYds : null,
+      expScore: o.expScore ?? null, parProb: o.parProb ?? null, birdieProb: o.birdieProb ?? null,
+      doubleProb: o.doubleProb ?? null, troubleRate: o.troubleRate ?? null,
+    });
+  };
+  if (res?.safe) row("safe", res.sameShot ? "Safe · same shot" : "Safe", res.safe);
+  if (res?.safe && !res.sameShot) row("aggressive", "Aggressive", res.aggressive);
+  row("custom", "Custom", own);
+  return rows;
 }
 
 function pct(x) { return `${Math.round(x * 100)}%`; }

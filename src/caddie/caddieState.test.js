@@ -436,7 +436,8 @@ test("club-brain: a straight synthetic hole of the entered length, no hazards, p
   const cold = clubBrainContext({ holeNo: 5, par: 4, shotNo: 1, tempF: 50 });
   assert.equal(cold.tempF, 50);
   const coldRes = recommend(cold, syn, P);
-  assert.equal(coldRes.context.tempYds, 2.55, "150 pin yds × 0.85%/10°F × 20°F = +2.55");
+  // D79: the reference is the profile's own temperature (85°F), not 70
+  assert.equal(coldRes.context.tempYds, 4.46, "150 pin yds × 0.85%/10°F × (85 − 50)°F = +4.46");
 });
 
 /* ---------- 27-hole courses (engine §6.4) ---------- */
@@ -741,7 +742,9 @@ test("S5 aggression scorecard model: per round and season counts, paid / cost te
   // A hole 1: (3 − 1) − 3.0 = −1.0 → aggression paid +1.0; B hole 1: 6 − 0 − 4.2 = +1.8 → cost −1.8
   assert.equal(m.rounds.A.text, "Aggression paid +1.0");
   assert.deepEqual([m.rounds.A.word, m.rounds.A.amount], ["Aggression paid", "+1.0"]);
-  assert.deepEqual(m.rounds.A.counts.map((c) => [c.label, c.n]), [["Safe", 1], ["Aggressive", 1], ["Own call", 1]]);
+  // v22.17: the third line reads "Custom" (key still "own"; the stored "own" counts there)
+  assert.deepEqual(m.rounds.A.counts.map((c) => [c.label, c.n]), [["Safe", 1], ["Aggressive", 1], ["Custom", 1]]);
+  assert.equal(m.rounds.A.counts[2].key, "own");
   assert.equal(m.rounds.B.text, "Aggression cost −1.8");
   assert.deepEqual(m.rounds.B.counts.map((c) => c.n), [0, 1, 0], "the skipped shot's line was never confirmed");
   assert.equal(m.rounds.N, undefined, "a round with no logged shots shows nothing");

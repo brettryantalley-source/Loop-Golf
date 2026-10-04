@@ -8,7 +8,8 @@
  *   applyShotLog()       §5.2  per-entry overlays (club|swing|lie), takeover at TAKEOVER_N
  *   entryWithOverlay()   §5.2  the merged entry numbers the engine would use
  *   lieOverrideAt()      §5.6  lie-chip corrections that stick
- *   aggressionScorecard()§5.7  safe / aggressive / own vs. the engine's expScore
+ *   aggressionScorecard()§5.7  safe / aggressive / custom ("own" before v22.17) vs. the engine's expScore
+ *   teeShotGrade()       v22.17 tee shots by line played: Safe · Aggressive · Custom
  *   tendencies()         v22.16 per-club left/right, short/long and big-miss shares (signs only)
  *
  * Source separation (§5.2, T32): `P.raw` is Shot Pattern only and is never written. Everything
@@ -708,6 +709,11 @@ export function lieOverrideAt(overrides, point, courseId, { radiusM = LIE_OVERRI
 /* ---------- §5.7 aggression scorecard ---------- */
 
 const LINES = ["safe", "aggressive", "own"];
+/**
+ * The scorecard's key for a stored linePlayed. v22.17: "custom" (written from now on) and the legacy
+ * "own" are the same line and tally under "own"; the output also carries it as `custom` (same object).
+ */
+const lineKey = (l) => (l === "custom" || l === "own" ? "own" : l);
 
 function holeScore(holeScores, roundId, hole) {
   const r = holeScores?.[roundId];
@@ -720,7 +726,7 @@ function holeScore(holeScores, roundId, hole) {
 function expFor(s) {
   const rec = s.recommendation || {};
   const pick = s.linePlayed === "aggressive" ? rec.aggressive || rec.safe : rec.safe;
-  const v = pick?.expScore ?? (s.linePlayed === "own" ? rec.own?.expScore : undefined) ?? s.expScore;
+  const v = pick?.expScore ?? (lineKey(s.linePlayed) === "own" ? (rec.own ?? rec.custom)?.expScore : undefined) ?? s.expScore;
   return num(v) ? v : null;
 }
 
@@ -728,7 +734,7 @@ function tally(shots, holeScores) {
   const out = {};
   for (const l of LINES) out[l] = { n: 0, scored: 0, delta: 0 };
   for (const s of shots) {
-    const t = out[s.linePlayed];
+    const t = out[lineKey(s.linePlayed)];
     if (!t) continue;
     t.n++;
     const hs = holeScore(holeScores, s.roundId, s.hole);
@@ -743,6 +749,7 @@ function tally(shots, holeScores) {
     const gain = -a.delta;                           // strokes saved vs. the engine's price
     out.text = gain >= 0 ? `Aggression paid +${gain.toFixed(1)}` : `Aggression cost ${MINUS}${Math.abs(gain).toFixed(1)}`;
   } else out.text = null;
+  out.custom = out.own;                              // v22.17: the "Custom" line, same tally
   return out;
 }
 
@@ -757,12 +764,35 @@ function tally(shots, holeScores) {
 export function aggressionScorecard(shots, holeScores) {
   // v22.16: Shot Pattern imports never know the line played or the engine's price — never counted
   // (the importer also writes linePlayed null; this is the belt to that brace).
-  const list = (shots || []).filter((s) => s && LINES.includes(s.linePlayed) && !isShortGameOrPutt(s) && s.source !== "shotpattern");
+  const list = (shots || []).filter((s) => s && LINES.includes(lineKey(s.linePlayed)) && !isShortGameOrPutt(s) && s.source !== "shotpattern");
   const season = tally(list, holeScores);
   const rounds = {};
   const ids = [...new Set(list.map((s) => s.roundId))];
   for (const id of ids) rounds[id] = tally(list.filter((s) => s.roundId === id), holeScores);
   return { ...season, rounds };
+}
+
+/* ---------- v22.17 tee-shot grade ---------- */
+
+/**
+ * How Brett played his tee shots against the caddie: { safe, aggressive, custom, total }, counting
+ * only shot 1 records that are not putts and carry a linePlayed (the legacy "own" counts as custom;
+ * skipped records and Shot Pattern imports, which never know the line, are left out). `records` may
+ * span one round or many — filter by roundId first for a single round. Display only
+ * ("Tee shots: Safe 6 · Aggressive 3 · Custom 5").
+ */
+export function teeShotGrade(records) {
+  const out = { safe: 0, aggressive: 0, custom: 0, total: 0 };
+  for (const r of records || []) {
+    if (!r || r.shotNo !== 1 || r.logged === "skipped" || r.source === "shotpattern") continue;
+    if (r.shotType === "putt" || r.putt) continue;
+    const k = lineKey(r.linePlayed);
+    const key = k === "own" ? "custom" : k;
+    if (!(key in out) || key === "total") continue;
+    out[key]++;
+    out.total++;
+  }
+  return out;
 }
 
 /* ---------- v22.16 per-club tendencies (for the aim warning) ---------- */

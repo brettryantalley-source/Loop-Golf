@@ -19,7 +19,8 @@ import { openPar5, waterLeftPar4, waterRightPar4, noWaterPar4, bunkeredPar3 } fr
 const here = dirname(fileURLToPath(import.meta.url));
 const RAW = JSON.parse(readFileSync(join(here, "../profile.json"), "utf8"));
 const P = loadProfile(RAW);
-const OFF = { STRATEGY: { driverDefault: false, pinRule: false, noHero: false } };
+// v22.17: "rules off" also turns off the par ranking (D78) — the plain lowest expected score.
+const OFF = { SAFE_RANKING: "exp", STRATEGY: { driverDefault: false, pinRule: false, noHero: false } };
 const Poff = loadProfile(RAW, mergeConfig(OFF));
 
 /** A 40-yd-deep green at 540 on the open par 5, a bunker across its front. */
