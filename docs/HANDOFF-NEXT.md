@@ -101,6 +101,7 @@ First round there: stand on the middle of three greens with the caddie open and 
 the middle (should be 0–3 yds); report the offset by hole, and `shiftM` in the file moves everything at
 once. Tee boxes marked `q: est` are ellipses on the pad centre, not outlines (8, 15 and 18 are the least
 certain). No trees and no OB. The permanent fix is the same ways in OSM; the trace converts directly.
+What is still open, item by item: `docs/HANDOFF-WOODMONT.md`. How the trace was made: `scripts/woodmont-trace/`.
 
 ## What each screen does now
 

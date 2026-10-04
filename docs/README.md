@@ -3,6 +3,7 @@
 | File | Use it for | Status |
 |---|---|---|
 | `HANDOFF-NEXT.md` | The start-here for the next thread: where things stand, first commands, what each screen does, on-device verification, open follow-ups. Read first. | current |
+| `HANDOFF-WOODMONT.md` | What is still open for Woodmont's hand-traced hole map: the GPS check and `shiftM`, tee boxes, OB and trees, the empty-OSM retry, the OSM upload. Read after `HANDOFF-NEXT.md` when working on Woodmont or `src/localGeometry*`. | current |
 | `HANDOFF-design-NEXT.md` | The brief to paste into a **UI/UX** thread for a new feature. Carries the full brand, the constraints and what to hand back. Add the feature at the top before pasting. | current |
 | `DEVLOG.md` | Version history, newest first. Append, never rewrite. | living |
 | `../loop-design/` | The design source: `SPEC.md`, the two approved reference screens as standalone HTML + 2× PNGs, the pencil filter, the logo. What v21 was built from. | reference |
