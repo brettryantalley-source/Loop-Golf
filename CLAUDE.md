@@ -200,7 +200,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   PR #11, merged Oct 1: v22.14 pencil scorecard D58, v22.15 shot log v2 — `docs/SPEC-shotlog-v2.md`,
   D59–D65: test mode with fake GPS by tap, pre-shot intent on the map, GPS-derived results, the hole
   Review sheet, Shots list, manual On the green — and v22.16 Shot Pattern importer + history card fix,
-  D66–D71, with five rounds imported). Queued: v22.17 aim warning, v22.18 breadcrumb trail (§10).
+  D66–D71, with five rounds imported). Open items: `docs/OPEN-ITEMS.md` (merged Oct 4).
   Read `docs/HANDOFF-NEXT.md` first.
 - `Start round` opens the **CaddieScreen** directly at hole 1, pre-tee; `‹ Card` goes to the
   scorecard, whose hole-nav row gains a `Caddie` control. The caddie needs GPS (permission prompt
