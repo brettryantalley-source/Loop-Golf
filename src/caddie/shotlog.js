@@ -59,12 +59,27 @@ function defaultClub(recommendation) {
   return recommendation?.safe?.club ?? null;
 }
 
+/**
+ * v22.17 — the line played that is neither option is "custom" (displayed "Custom"). Records written
+ * before v22.17 say "own"; every reader treats the two as the same line, and new records write
+ * "custom".
+ */
+export const CUSTOM_LINE = "custom";
+/** True for "custom" and the legacy "own". */
+export function isCustomLine(line) {
+  return line === "custom" || line === "own";
+}
+/** A stored linePlayed in today's vocabulary: "own" → "custom"; anything else unchanged. */
+export function normLine(line) {
+  return isCustomLine(line) ? CUSTOM_LINE : line;
+}
+
 /** Line played, inferred from a club match against the recommendation snapshot. */
 function inferLinePlayed(club, recommendation) {
-  if (!recommendation || !club) return "own";
+  if (!recommendation || !club) return CUSTOM_LINE;
   if (recommendation.safe && recommendation.safe.club === club) return "safe";
   if (recommendation.aggressive && recommendation.aggressive.club === club) return "aggressive";
-  return "own";
+  return CUSTOM_LINE;
 }
 
 /** The target the club actually played toward, read off whichever recommendation option it matches. */
@@ -112,7 +127,9 @@ export function newShotRecord(input = {}) {
   const club = input.club ?? defaultClub(input.recommendation);
   const intent = normIntent(input.intent);
   // v22.15: with an intent on the map, the line played is read off where Brett aimed (§2)
-  const linePlayed = input.linePlayed ?? (intent ? linePlayedFor(intent, input.recommendation, club) : inferLinePlayed(club, input.recommendation));
+  const linePlayed = input.linePlayed ?? (intent
+    ? linePlayedFor(intent, input.recommendation, club, { ball: input.start?.frame })
+    : inferLinePlayed(club, input.recommendation));
   const target = intent?.target && !input.target
     ? { frame: { x: intent.target.x, y: intent.target.y }, label: intent.targetLabel ?? null }
     : defaultTarget(club, linePlayed, input.recommendation, input.target);
@@ -166,7 +183,7 @@ export function newShotRecord(input = {}) {
  * snapshot, no frame — so its §4.5 closeout has no miss math (derived all null), §5.3 learning
  * (applyShotLog) skips it, and within the round only its contact counts. `gps` = the ball's fix
  * ({ lat, lng, accuracyM }) or null; `distanceToPinYds` = entered yards or the card's yardage, or
- * null; `lie` = the Lie chip or the tee on shot 1, else null. linePlayed reads "own" (spec §4.2's
+ * null; `lie` = the Lie chip or the tee on shot 1, else null. linePlayed reads "custom" ("own" before v22.17; spec §4.2's
  * rule with nothing to match against).
  */
 export function bareShotRecord(input = {}) {
@@ -352,7 +369,7 @@ export function closeOutShot(prev0, { endGps, endLie, endAccuracyM, endFrame, in
 
 /* ---------- v22.15 intent and the derived result (SPEC-shotlog-v2 §2, §3) ---------- */
 
-/** A target within this many yards of an option's target counts as playing that option (§2). */
+/** D61's flat match radius, kept for anything that imports it; linePlayedFor now reads CUSTOM_LINE (v22.17). */
 export const LINE_MATCH_YDS = 5;
 const SHAPES = ["draw", "straight", "fade"];
 const isPt = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.y);
@@ -384,20 +401,30 @@ export function bearingInFrame(from, to) {
 }
 
 /**
- * §2 — `linePlayed` derived from where Brett aimed: `safe` if the target is within 5 yds of the
- * SAFE option's target, `aggressive` within 5 yds of AGGRESSIVE's (the nearer wins when both are),
- * else `own`. An untouched (default) intent keeps the §9.5 club rule too: a club that matches only
- * the other option says that option was played.
+ * §2, v22.17 — `linePlayed` derived from where Brett aimed and what he hit:
+ *   "custom"  the club differs from BOTH options' clubs, or the aim is farther than
+ *             max(CUSTOM_LINE.minYds 15, CUSTOM_LINE.pct 10% × ball → aim) from both option targets;
+ *   else      the nearer of SAFE / AGGRESSIVE (SAFE on a tie).
+ * An untouched (default) intent keeps the §9.5 club rule too: a club that matches only the other
+ * option says that option was played. `opts.ball` = the ball in the hole frame (falls back to the
+ * recommendation's context.ball; unknown → the 15-yd floor alone); `opts.cfg` = the config.
+ * Replaces D61's flat 5 yds ("own" beyond it).
  */
-export function linePlayedFor(intent, recommendation, club) {
+export function linePlayedFor(intent, recommendation, club, opts = {}) {
   const it = normIntent(intent);
-  if (!recommendation) return "own";
+  if (!recommendation) return CUSTOM_LINE;
   const byClub = inferLinePlayed(club, recommendation);
   if (!it?.target) return byClub;
+  const C = { ...DEFAULT_CONFIG.CUSTOM_LINE, ...(opts.cfg?.CUSTOM_LINE || {}) };
+  const ball = isPt(opts.ball) ? opts.ball : isPt(recommendation.context?.ball) ? recommendation.context.ball : null;
+  const reach = ball ? Math.hypot(it.target.x - ball.x, it.target.y - ball.y) : 0;
+  const tol = Math.max(C.minYds, C.pct * reach);
   const d = (o) => (o?.target && isPt(o.target) ? Math.hypot(o.target.x - it.target.x, o.target.y - it.target.y) : Infinity);
   const ds = d(recommendation.safe), da = d(recommendation.aggressive);
-  const byTarget = ds <= LINE_MATCH_YDS || da <= LINE_MATCH_YDS ? (da < ds ? "aggressive" : "safe") : "own";
-  if (it.source !== "set" && byClub !== "own" && byClub !== byTarget) return byClub;
+  const clubs = [recommendation.safe?.club, recommendation.aggressive?.club].filter(Boolean);
+  const otherClub = !!club && clubs.length > 0 && !clubs.includes(club);
+  const byTarget = otherClub || (ds > tol && da > tol) ? CUSTOM_LINE : da < ds ? "aggressive" : "safe";
+  if (it.source !== "set" && byClub !== CUSTOM_LINE && byClub !== byTarget) return byClub;
   return byTarget;
 }
 
@@ -406,7 +433,7 @@ function withIntent(rec, it) {
   const out = { ...rec, intent: it };
   if (it.target) out.target = { frame: { x: it.target.x, y: it.target.y }, label: it.targetLabel ?? rec.target?.label ?? null };
   if (it.shape) out.intendedShape = it.shape;
-  if (rec.recommendation) out.linePlayed = linePlayedFor(it, rec.recommendation, rec.club);
+  if (rec.recommendation) out.linePlayed = linePlayedFor(it, rec.recommendation, rec.club, { ball: rec.start?.frame });
   return out;
 }
 
