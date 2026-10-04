@@ -1,6 +1,7 @@
 # Loop — start-here for the next thread
 
-**Folder to connect: `~/Developer/Loop-Golf`**
+**Where to work:** a Claude Code cloud session on `brettryantalley-source/Loop-Golf`. There is no
+local copy (Brett, Oct 4).
 
 **Open items:** everything unresolved lives in `docs/OPEN-ITEMS.md` (merged Oct 4). It supersedes
 "Queued builds" and "Open follow-ups" below.
