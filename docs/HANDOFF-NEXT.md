@@ -17,10 +17,20 @@ Pattern importer + history card fix D66–D71; before it PR #10 sliders, PR #9 I
 marked-green mode, PR #7 v22.6–v22.10, PR #6 v22.3–v22.5, PR #5 the caddie). The working branch
 `claude/bold-pascal-2s136s` is restarted from `main` after each merge; nothing is unmerged.
 
-**Shot Pattern rounds imported: seven of thirteen** — Ironwood 9/28, Hampton 9/20, Lake Arrowhead 9/12,
+**Stats refresh, Oct 4 (v22.16.11, D78).** `src/profile.json` now builds only from the Oct 4 batch: the Stats
+Report PDF (Casual · Last 10, Jul 26 – Oct 3) + 12 screen recordings transcribed into
+`data/extracted/2026-10-04-screens.json` (stills in `data/raw/2026-10-04/`) + fairway ellipses fitted by
+`scripts/fit-ell80.py`. Fairway distances changed for 2Hy 236 (+12), PW 134 (−6), LW 78 (−7); every approach
+club has a measured pattern except 4Hy. Rough distances and every club's leave zones are stored, **not used** —
+Brett's call. Per-distance buckets are shrunk toward the lie average (SHRINK_K) because raw 6-shot bands sent
+the caddie to an 8-iron off par-4 tees. Full driver and full 2-iron are tee-only (D79, Brett: 2-hybrid is his fairway club); par-5 second
+shots: 310 out 6-iron lay-up, 290 2-hybrid lay-up, 270 2-hybrid at the green. Open: the 41-ft step in
+his three-putt table (70% from 41+ ft on 10 putts) still drives lay-up pricing — Tangent's longer history may fill it.
+
+**Shot Pattern rounds imported: nine of thirteen** (Aug 3 Chicopee Village/Mill added Oct 4, 714 records) — Ironwood 9/28, Hampton 9/20, Lake Arrowhead 9/12,
 Beachwood 9/2, Canongate 8/23, Chicopee Woods Village/School 8/15, Riverpines 8/9: 558 records in
 `src/shotpattern.json` (v22.16.1, Oct 1). Shot Pattern's round history runs back to Jun 17; still to
-transcribe: Chicopee Village/Mill 8/3, Sugar Creek 7/26, Chicopee Mill/School 7/17, Woodmont 6/27,
+transcribe: Sugar Creek 7/26, Chicopee Mill/School 7/17, Woodmont 6/27,
 Riverpines 6/21, Woodmont 6/17 — their cards are already in History (below), only the shot lists are missing.
 **History since June (v22.16.1):** `src/seedRounds.js` holds 12 imported cards, Jun 17 → Sep 20, every
 one reproducing GHIN's differential (GHIN's list: `data/extracted/2026-09-30-ghin-scores.json`). Only the
@@ -61,7 +71,7 @@ from trees or a bad rough lie only a 9-in-10 shot, else punch out; driver on tee
 purpose: aim-for-the-pattern (fold into v22.17), sand as a no-hero lie, a short-miss tail in the
 simulation (D77). On the course: SAFE now often plays to the middle of the green and AGGRESSIVE can show
 a lower average (`−0.n`) — that is the guide overruling the price, by design.
-`npm test` is 299 tests (v22.16.9). Decisions run D1–D77 in `docs/DECISIONS-caddie.md`.
+`npm test` is 299 tests (v22.16.9). Decisions run D1–D79 in `docs/DECISIONS-caddie.md`.
 
 **Ironwood (Fishers, IN) is not traced in OpenStreetMap.** v22.11's marked-green mode is the
 bridge (satellite on GPS, tap the green, distance-only pricing). First round there (Sep 29, v22.11):

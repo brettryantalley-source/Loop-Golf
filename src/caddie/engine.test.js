@@ -148,8 +148,13 @@ test("course: green distances front < center < back, pin thirds, fat side away f
 test("profile: loads v2, every club in clubOrder resolves a usable full or finesse entry from the fairway", () => {
   assert.equal(RAW.version, 2);
   const ids = candidateEntries(P, "fairway").map((e) => `${e.club}/${e.swing}`);
-  assert.ok(ids.includes("7i/full") && ids.includes("SW/finesse") && ids.includes("Dr/full"), ids.join(","));
+  assert.ok(ids.includes("7i/full") && ids.includes("SW/finesse"), ids.join(","));
   assert.ok(!ids.includes("SW/full"), "SW full is a placeholder with no median");
+  // D79: full driver and full 2-iron are tee clubs only — never offered from the fairway, always off the tee
+  assert.ok(!ids.includes("Dr/full") && !ids.includes("2i/full"), "no full driver or 2-iron off the deck");
+  assert.ok(ids.includes("2Hy/full"), "the 2-hybrid is the fairway long club");
+  const tee = candidateEntries(P, "tee").map((e) => `${e.club}/${e.swing}`);
+  assert.ok(tee.includes("Dr/full") && tee.includes("2i/full"), "both off the tee");
 });
 
 test("profile: fallback chain — rough entry with no median uses the fairway median scaled by LIE_DIST_ADJ", () => {
@@ -350,12 +355,11 @@ test("handicap prior (item 2): no bucket → baseline + 0.42 × (0.41 + 0.0025 d
   const e400 = E(Pf, 400, "tee"), b400 = baselineE(400, "tee");
   assert.ok(e400 > b400);
   assert.ok(Math.abs(e400 - b400 - puttingGapAt(Pf, 400, "tee") - 0.42 * (0.41 + 0.0025 * 400)) < 1e-9, `E(400 tee) ${e400}`);
-  // a bucketed distance: exactly what v22.10 returned where Table 9 matches the old table (150
-  // fairway, 165 rough); at 30 yds Table 9 adds a row (2.52 vs the old 20–40 interpolation 2.50),
-  // so there the personal part E − baseline is what stays the same (0.328).
-  assert.ok(Math.abs(E(Pf, 150, "fairway") - 3.6485) < 1e-9, `E(150 fw) ${E(Pf, 150, "fairway")}`);
-  assert.ok(Math.abs(E(Pf, 165, "rough") - 3.547) < 1e-9, `E(165 rough) ${E(Pf, 165, "rough")}`);
-  assert.ok(Math.abs(E(Pf, 30, "fairway") - baselineE(30, "fairway") - (2.828 - 2.50)) < 1e-9, `E(30 fw) ${E(Pf, 30, "fairway")}`);
+  // a bucketed distance prices from its bucket, not the prior. Pinned to the Oct 4 profile (D78:
+  // buckets shrunk toward the lie average): 150 fairway, 165 rough, and the personal part at 30.
+  assert.ok(Math.abs(E(Pf, 150, "fairway") - 3.7585) < 1e-9, `E(150 fw) ${E(Pf, 150, "fairway")}`);
+  assert.ok(Math.abs(E(Pf, 165, "rough") - 3.8161666666666667) < 1e-9, `E(165 rough) ${E(Pf, 165, "rough")}`);
+  assert.ok(Math.abs(E(Pf, 30, "fairway") - baselineE(30, "fairway") - 0.237) < 1e-9, `E(30 fw) ${E(Pf, 30, "fairway")}`);
   // a measured 0 is data, not "no data"
   const P0 = loadProfile(withBucket(RAW, "fairway", 150, { sgPerShot: 0 }));
   assert.equal(personalSg(P0, 155, "fairway"), 0);

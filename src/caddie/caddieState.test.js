@@ -293,7 +293,7 @@ test("details: options table, Aggressive delta / ≈ same, finesse line, dispers
   // dispersion from a real Shot Pattern entry
   const e = resolveEntry(P, "PW", "full", "fairway");
   const opts = withEllipses({ safe: { club: "PW", swingType: "full" }, sameShot: true }, () => e);
-  assert.deepEqual(dispersionLine({ ...opts.safe, label: "Pitching wedge" }), { club: "PW", w: 20, d: 21, source: "Shot Pattern · 80% · Sep 19" });
+  assert.deepEqual(dispersionLine({ ...opts.safe, label: "Pitching wedge" }), { club: "PW", w: 36, d: 51, source: "Shot Pattern · 80% · Oct 4" });
   const bad = withEllipses({ safe: { club: "PW", swingType: "full" }, sameShot: true }, () => e, { lieQuality: "bad" });
   assert.match(dispersionLine(bad.safe).source, / · \+15% bad lie$/);
   assert.equal(clubShort("2Hy"), "2-hybrid"); assert.equal(clubShort("Dr"), "Driver");
@@ -700,7 +700,7 @@ test("S5 dispersion line: Shot Pattern's source before takeover, `Loop · 80% ·
     const opts = ellipsesFor({ safe: { club: "PW", swingType: "full", label: "Pitching wedge" }, sameShot: true }, resolve);
     return dispersionLine(opts.safe);
   };
-  assert.equal(line(pwShots(N - 1)).source, "Shot Pattern · 80% · Sep 19", "below takeover Shot Pattern's ellipse and date stay");
+  assert.equal(line(pwShots(N - 1)).source, "Shot Pattern · 80% · Oct 4", "below takeover Shot Pattern's ellipse and date stay");
   const after = line(pwShots(N + 2));
   assert.equal(after.source, `Loop · 80% · ${N + 2} shots`);
   assert.ok(after.w > 0 && after.d > 0);

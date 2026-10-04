@@ -502,7 +502,7 @@ const signed = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "0");
 
 /**
  * §5.6 — the dispersion line for the drawn ellipse of an option. Before takeover it reads Shot
- * Pattern's source (`Shot Pattern · 80% · Sep 19`, or `Profile spread · 80%` with no ellipse);
+ * Pattern's source (`Shot Pattern · 80% · Oct 4`, or `Profile spread · 80%` with no ellipse);
  * after the §5.2 takeover the ellipse is Loop's own: `Loop · 80% · {n} shots`.
  */
 export function dispersionLine(o) {

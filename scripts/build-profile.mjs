@@ -2,9 +2,10 @@
 /*
  * build-profile.mjs — builds src/profile.json (v2) from data/extracted/*.
  *
- * Every number in the output is parsed from data/extracted/2026-09-27-report.txt (exact PDF text)
- * and data/extracted/2026-09-27-screens.json (screenshot transcriptions), plus the small ell80
- * addendum data/extracted/2026-09-19-ell80.json. See docs/PROFILE-v2.md for the contract.
+ * Every number in the output is parsed from data/extracted/2026-10-04-report.txt (exact PDF text)
+ * and data/extracted/2026-10-04-screens.json (screen-recording transcriptions), plus the measured
+ * ellipses in data/extracted/2026-10-04-ell80.json. See docs/PROFILE-v2.md for the contract.
+ * The Oct 4 batch (Casual · Last 10, Jul 26 – Oct 3) replaces the Sep 27 one entirely (D78).
  *
  * Usage:
  *   node scripts/build-profile.mjs           # writes src/profile.json
@@ -19,12 +20,52 @@ import { DEFAULT_CONFIG, CLUB_FAMILY } from "../src/caddie/config.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 
-const REPORT_PATH = path.join(ROOT, "data/extracted/2026-09-27-report.txt");
-const SCREENS_PATH = path.join(ROOT, "data/extracted/2026-09-27-screens.json");
-const ELL80_PATH = path.join(ROOT, "data/extracted/2026-09-19-ell80.json");
+const BATCH = "2026-10-04";
+const REPORT_REL = `data/extracted/${BATCH}-report.txt`;
+const SCREENS_REL = `data/extracted/${BATCH}-screens.json`;
+const ELL80_REL = `data/extracted/${BATCH}-ell80.json`;
+const REPORT_PATH = path.join(ROOT, REPORT_REL);
+const SCREENS_PATH = path.join(ROOT, SCREENS_REL);
+const ELL80_PATH = path.join(ROOT, ELL80_REL);
 const OUT_PATH = path.join(ROOT, "src/profile.json");
 
 const ROLL_YDS = DEFAULT_CONFIG.ROLL_YDS;
+// Shot Pattern draws no pattern under 5 shots: σ(α) from fewer is not used (D78).
+const MIN_SIGMA_N = 5;
+
+// The per-distance buckets E() and B() price from hold 1–16 shots each. Raw, they made the caddie
+// lay up off par-4 tees (Oct 4 PDF: +0.47 SG from 225–250 on 6 shots, −0.45 from 120–130 on 6).
+// Each bucket's SG, GIR and proximity are shrunk toward its lie's shot-weighted average with the
+// learning loop's own prior weight (SHRINK_K, as learning.js does between rounds):
+//   v = (n·v_bucket + K·v_lie) / (n + K);  proximity is pooled per yard of start distance.
+// Short-game bands shrink the same way toward their distance range's average. The PDF's own
+// numbers stay on `raw` (D78).
+const SHRINK_K = DEFAULT_CONFIG.SHRINK_K;
+function shrinkRows(rows, { mid, stats }) {
+  const has = rows.filter((r) => r.n > 0 && r.sgPerShot != null);
+  const N = has.reduce((a, r) => a + r.n, 0);
+  const mean = {};
+  for (const k of stats) {
+    const perYd = k === "medianProximityFt";
+    mean[k] = has.reduce((a, r) => a + r.n * (perYd ? r[k] / mid(r) : r[k]), 0) / N;
+  }
+  return rows.map((r) => {
+    const out = { ...r, raw: {} };
+    const w = r.n / (r.n + SHRINK_K);
+    for (const k of stats) {
+      out.raw[k] = r[k];
+      const prior = k === "medianProximityFt" ? mean[k] * mid(r) : mean[k];
+      const dec = k === "medianProximityFt" ? 0 : k === "sgPerShot" ? 2 : 3;
+      out[k] = r[k] == null ? round(prior, dec) : round(w * r[k] + (1 - w) * prior, dec);
+    }
+    out.shrink = { k: SHRINK_K, toward: `${r.lie} average over ${N} shots` };
+    return out;
+  });
+}
+const BUCKET_STATS = ["sgPerShot", "girPct", "medianProximityFt"];
+const BAND_STATS = ["sgPerShot", "medianProximityFt"];
+const bucketMid = (r) => (r.fromYds + r.toYds) / 2;
+const bandMid = (r) => (r.fromYds + r.toYds) / 2;
 
 /* ---------------------------------------------------------------------- */
 /* generic helpers                                                        */
@@ -88,14 +129,6 @@ const REPORT_CLUB_NAME = {
   LW: "Lob Wedge • Sub 70 TAIII",
 };
 
-// Shot Pattern's short club label, as printed on screens (case-insensitive).
-const SCREEN_CLUB_ID = {};
-for (const id of CLUB_ORDER) SCREEN_CLUB_ID[id.toLowerCase()] = id;
-
-function screenClubId(label) {
-  return SCREEN_CLUB_ID[String(label).toLowerCase()] || null;
-}
-
 /* ---------------------------------------------------------------------- */
 /* load inputs                                                            */
 /* ---------------------------------------------------------------------- */
@@ -104,14 +137,10 @@ const reportText = fs.readFileSync(REPORT_PATH, "utf8");
 const screensDoc = JSON.parse(fs.readFileSync(SCREENS_PATH, "utf8"));
 const ell80Doc = JSON.parse(fs.readFileSync(ELL80_PATH, "utf8"));
 
-function screen(n) {
-  const id = String(n).padStart(2, "0");
-  return screensDoc.screens.find((s) => s.file.split("_")[0] === id) || null;
-}
-
-function findScreens(pred) {
-  return screensDoc.screens.filter(pred);
-}
+// Transcribed values are keyed by meaning (approach.clubSheets.fairway.5i, putting.direction.4-6 …),
+// never by screen number; the file says which recording and frames each block was read from.
+const sheets = screensDoc.approach.clubSheets;
+const leaveZonesDoc = screensDoc.approach.leaveZones;
 
 /* ---------------------------------------------------------------------- */
 /* report text: sequential section cursor                                 */
@@ -513,7 +542,7 @@ const byParMatches = [...byParBlock.matchAll(/(\d+\.\d+)\s+\+/g)].map((m) => Num
 const byPar = { "3": byParMatches[0], "4": byParMatches[1], "5": byParMatches[2] };
 
 const sgHeadlineBlock = peek("GREEN", "PER ROU N D", reportText.indexOf("STROKES GAINED", 0));
-const sgHeadlineMatch = /^\s*(−[\d.]+)\s+(−[\d.]+)\s+(−[\d.]+)\s+(−[\d.]+)\s*$/m.exec(
+const sgHeadlineMatch = /^\s*([−+][\d.]+)\s+([−+][\d.]+)\s+([−+][\d.]+)\s+([−+][\d.]+)\s*$/m.exec(
   sgHeadlineBlock
 );
 if (!sgHeadlineMatch) throw new Error("build-profile: strokes-gained headline row not found");
@@ -525,191 +554,158 @@ const sgPer18 = {
 };
 
 /* ---------------------------------------------------------------------- */
-/* screens: fairway club-distance medians (Last 10 wins over Last 5)      */
+/* recordings: per-club sheets (Approach → Breakdown → club)               */
 /* ---------------------------------------------------------------------- */
 
-function clubDistanceRows(scr) {
-  const card = scr.cards.find((c) => c.title === "Club Distances");
-  if (!card) return {};
+// Shot Distances on a club sheet = yards the ball travelled (median, 25th, 75th), every swing
+// length mixed. Fairway sheets feed totalMedianYds; rough sheets are stored, not used (D78).
+function sheetFor(lie, id) {
+  return sheets[lie]?.[id] ?? null;
+}
+function sheetSource(lie, id) {
+  const sh = sheetFor(lie, id);
+  return sh ? [`${SCREENS_REL}#approach.clubSheets.${lie}.${id} (${sh.frames})`] : [];
+}
+
+/* ---------------------------------------------------------------------- */
+/* recordings: per-club leave zones (fairway / rough)                      */
+/* ---------------------------------------------------------------------- */
+
+function fracZones(z) {
+  if (!z) return null;
   const out = {};
-  for (const r of card.data.rows) {
-    const id = screenClubId(r.club);
-    if (id) out[id] = Number(r.value);
-  }
+  for (const [k, v] of Object.entries(z)) out[k] = frac(v);
   return out;
 }
+function leaveZonesFor(lie, id) {
+  const z = leaveZonesDoc[lie]?.[id];
+  if (!z) return null;
+  return {
+    n: z.n,
+    proximity: fracZones(z.proximity),
+    leftRight: fracZones(z.leftRight),
+    shortLong: fracZones(z.shortLong),
+  };
+}
 
-const s26 = screen(26);
-const s02 = screen(2);
-const last10FairwayMedians = clubDistanceRows(s26);
-const last5FairwayMedians = clubDistanceRows(s02);
-
-function fairwayMedianFor(id) {
-  if (id in last10FairwayMedians) {
-    return { value: last10FairwayMedians[id], window: "Last 10", screens: [s26.file] };
+// The all-clubs aggregate is the sum of the per-club counts (pct × n, each club rounding to whole
+// shots); a dimension a club never showed alone is left out of that dimension's n.
+function aggregateFrom(lie) {
+  const dims = {
+    proximity: ["pro", "scratch", "fiveIndex", "miss"],
+    leftRight: ["wellLeft", "left", "right", "wellRight"],
+    shortLong: ["wellShort", "short", "long", "wellLong"],
+  };
+  const tot = {};
+  for (const [dim, keys] of Object.entries(dims)) {
+    tot[dim] = { n: 0 };
+    for (const k of keys) tot[dim][k] = 0;
   }
-  if (id in last5FairwayMedians) {
-    return { value: last5FairwayMedians[id], window: "Last 5", screens: [s02.file] };
-  }
-  return { value: null, window: "Last 10", screens: [] };
-}
-
-/* ---------------------------------------------------------------------- */
-/* screens: per-club sheets (Last 10) — extra dispersion detail on tee    */
-/* ---------------------------------------------------------------------- */
-
-function sheetKeyStats(scr) {
-  const shot = scr.cards.find((c) => c.title === "Shot Distances");
-  const key = scr.cards.find((c) => c.title === "Key Stats");
-  const dist = key.data.Distance;
-  const acc = key.data.Accuracy;
-  const val = (arr, label) => Number(String(arr.find((r) => r.label === label).value).replace(/[^\d.]/g, ""));
-  const range = /(\d+)[–-](\d+)/.exec(dist.find((r) => r.label === "25th–75th").value);
-  return {
-    longestYds: val(dist, "Longest"),
-    avgOfflineYds: val(acc, "Avg. Offline"),
-    arc68Yds: val(acc, "68% Arc"),
-    arc95Yds: val(acc, "95% Arc"),
-    p25Sheet: Number(range[1]),
-    p75Sheet: Number(range[2]),
-    file: scr.file,
-  };
-}
-
-const teeSheet = {
-  Dr: sheetKeyStats(screen(17)),
-  "2Hy": sheetKeyStats(screen(18)),
-  "2i": sheetKeyStats(screen(19)),
-  "4Hy": sheetKeyStats(screen(20)),
-};
-
-/* ---------------------------------------------------------------------- */
-/* screens: driver landing zones (tendencies)                              */
-/* ---------------------------------------------------------------------- */
-
-const s12 = screen(12);
-const landingCard = s12.cards.find((c) => c.title === "Landing Zones");
-const lz = landingCard.data.zones;
-const zonePct = (label) => frac(lz.find((z) => z.label === label).pct);
-const zoneHalfWidth = (label) => Number(/±(\d+)/.exec(lz.find((z) => z.label === label).range)[1]);
-const landingZones = {
-  alwaysSafe: zonePct("Always Safe"),
-  oftenPlayable: zonePct("Often Playable"),
-  foul: zonePct("Foul Balls"),
-  safeHalfWidthYds: zoneHalfWidth("Always Safe"),
-  playableHalfWidthYds: zoneHalfWidth("Often Playable"),
-};
-
-/* ---------------------------------------------------------------------- */
-/* screens: approach leave-zone aggregates (screens 21-23 fairway, 27-29 rough) */
-/* ---------------------------------------------------------------------- */
-
-function aggregateFrom(sProx, sLR, sSL) {
-  const n = Number(/(\d+)\s+approach shots/.exec(sProx.filtersVisible.caption)[1]);
-  const proxZones = sProx.cards.find((c) => c.title === "Leave Zones").data.zones;
-  const zp = (label) => frac(proxZones.find((z) => z.label === label).pct);
-  const lrZones = sLR.cards.find((c) => c.title === "Leave Zones").data.zones;
-  const zl = (label) => frac(lrZones.find((z) => z.label === label).pct);
-  const slZones = sSL.cards.find((c) => c.title === "Leave Zones").data.zones;
-  const zs = (label) => frac(slZones.find((z) => z.label === label).pct);
-  return {
-    n,
-    wellLeft: zl("Well Left"),
-    left: zl("Left"),
-    right: zl("Right"),
-    wellRight: zl("Well Right"),
-    wellShort: zs("Well Short"),
-    short: zs("Short"),
-    long: zs("Long"),
-    wellLong: zs("Well Long"),
-    proximityZones: {
-      pro: zp("Pro"),
-      scratch: zp("Scratch"),
-      fiveIndex: zp("5-Index"),
-      miss: zp("Miss"),
-    },
-  };
-}
-const approachAggregateFairway = aggregateFrom(screen(21), screen(22), screen(23));
-const approachAggregateRough = aggregateFrom(screen(27), screen(28), screen(29));
-
-/* ---------------------------------------------------------------------- */
-/* screens: putting direction (miss left/right per bucket)                */
-/* ---------------------------------------------------------------------- */
-
-function puttingDirectionFor(fromFt, toFt) {
-  const label = toFt == null ? `${fromFt}+'` : `${fromFt}-${toFt}'`;
-  const scr = findScreens(
-    (s) =>
-      s.tab === "Putting" &&
-      s.sectionFilters?.segmented?.selected === "Direction" &&
-      s.sectionFilters?.distanceChips?.selected === label
-  )[0];
-  if (!scr) return { missLeftPct: null, missRightPct: null, file: null };
-  const boxes = scr.cards.find((c) => c.title === "Leave Zones").data.summaryBoxes;
-  const left = boxes.find((b) => b.label === "Miss Left");
-  const right = boxes.find((b) => b.label === "Miss Right");
-  return {
-    missLeftPct: left ? frac(left.pct) : null,
-    missRightPct: right ? frac(right.pct) : null,
-    file: scr.file,
-  };
-}
-
-/* ---------------------------------------------------------------------- */
-/* screens: short-game per-lie extras (screens 41/42 = 25-50, 43 = 0-25)   */
-/* ---------------------------------------------------------------------- */
-
-function shortGameExtras(bucket) {
-  const scrs =
-    bucket === "0-25"
-      ? [screen(43)]
-      : [screen(41), screen(42)];
-  const byTitle = {};
-  const filesUsed = [];
-  for (const s of scrs) {
-    if (!s) continue;
-    filesUsed.push(s.file);
-    for (const c of s.cards) {
-      const title = c.title.replace(/\s*\(.*\)$/, "").trim();
-      if (["ALL LIES", "FAIRWAY", "ROUGH", "BUNKER"].includes(title)) {
-        const sgm = /([−+-]?[\d.]+)/.exec(c.data["Strokes Gained (per 18)"]);
-        byTitle[title] = {
-          avgProximityFtIn: ftFromString(c.data["Avg. Proximity"]),
-          sgPer18: round(toNum(sgm[1]), 2),
-        };
-      }
+  for (const z of Object.values(leaveZonesDoc[lie])) {
+    for (const [dim, keys] of Object.entries(dims)) {
+      if (!z[dim]) continue;
+      const counts = keys.map((k) => Math.round((z[dim][k] * z.n) / 100));
+      const sum = counts.reduce((a, b) => a + b, 0);
+      if (sum !== z.n) throw new Error(`build-profile: leave zones ${lie} ${dim} counts ${counts} do not sum to n ${z.n}`);
+      tot[dim].n += z.n;
+      keys.forEach((k, i) => (tot[dim][k] += counts[i]));
     }
   }
-  return { byTitle, filesUsed };
+  const share = (dim, k) => (tot[dim].n ? round(tot[dim][k] / tot[dim].n, 3) : null);
+  return {
+    n: tot.proximity.n,
+    wellLeft: share("leftRight", "wellLeft"),
+    left: share("leftRight", "left"),
+    right: share("leftRight", "right"),
+    wellRight: share("leftRight", "wellRight"),
+    wellShort: share("shortLong", "wellShort"),
+    short: share("shortLong", "short"),
+    long: share("shortLong", "long"),
+    wellLong: share("shortLong", "wellLong"),
+    proximityZones: {
+      pro: share("proximity", "pro"),
+      scratch: share("proximity", "scratch"),
+      fiveIndex: share("proximity", "fiveIndex"),
+      miss: share("proximity", "miss"),
+    },
+    nLeftRight: tot.leftRight.n,
+    nShortLong: tot.shortLong.n,
+    rule: "sum of the per-club Leave Zones counts (pct × n per club)",
+  };
 }
-const sgExtras025 = shortGameExtras("0-25");
-const sgExtras2550 = shortGameExtras("25-50");
+const approachAggregateFairway = aggregateFrom("fairway");
+const approachAggregateRough = aggregateFrom("rough");
 
 /* ---------------------------------------------------------------------- */
-/* ell80 addendum                                                          */
+/* recordings: putting direction + speed per bucket                        */
 /* ---------------------------------------------------------------------- */
 
-const ell80ByClub = {};
+function puttingRecordingFor(fromFt, toFt) {
+  const label = toFt == null ? `${fromFt}+` : `${fromFt}-${toFt}`;
+  const dir = screensDoc.putting.direction[label];
+  const spd = screensDoc.putting.speed[label];
+  return {
+    // share of ALL putts in the bucket, as printed (Miss Left · Make · Miss Right)
+    missLeftPct: dir ? frac(dir.pct[0]) : null,
+    missRightPct: dir ? frac(dir.pct[2]) : null,
+    extra: dir || spd
+      ? {
+          direction: dir ? { missLeft: dir.missLeft, make: dir.make, missRight: dir.missRight } : null,
+          speed: spd ? { short: spd.short, good: spd.good, long: spd.long } : null,
+        }
+      : null,
+  };
+}
+
+/* ---------------------------------------------------------------------- */
+/* recordings: short-game per-lie extras                                   */
+/* ---------------------------------------------------------------------- */
+
+function shortGameExtra(bucket, lie) {
+  const b = screensDoc.shortGame[bucket];
+  const row = b.byLie[lie];
+  const zones = b.leaveZones[lie];
+  if (!row && !zones) return null;
+  const sgm = row ? row.sgPer18 : null;
+  const dc = zones?.distanceControl;
+  return {
+    avgProximityFtIn: row ? ftFromString(row.avgProximity) : null,
+    sgPer18: sgm == null ? null : round(sgm, 2),
+    leaveProximity: zones?.proximity
+      ? { pro: frac(zones.proximity.pro), scratch: frac(zones.proximity.scratch), miss: frac(zones.proximity.miss), bands: zones.proximity.bands ?? null }
+      : null,
+    distanceControl: dc ? { onTarget: frac(dc.onTarget), short: frac(dc.short), long: frac(dc.long), band: dc.band } : null,
+  };
+}
+
+/* ---------------------------------------------------------------------- */
+/* ell80 (measured fairway patterns)                                       */
+/* ---------------------------------------------------------------------- */
+
+// dyYds is set to 0: the ellipse's distance offset is measured against Shot Pattern's target, and
+// the same shots' shortfall is already in totalMedianYds (yards travelled) — applying both would
+// count it twice (2Hy: median 236 to a ~251 target, centre 28 short). The measured value stays on
+// dyMeasuredYds. The lateral offset dx has no such twin and is kept (D78).
+const ell80ByClubLie = {};
 for (const e of ell80Doc.entries) {
-  const obj = {
+  ell80ByClubLie[`${e.club}|${e.lie}`] = {
     wYds: e.wYds,
     hYds: e.hYds,
     tiltDeg: e.tiltDeg,
     dxYds: e.dxYds,
-    dyYds: e.dyYds,
+    dyYds: 0,
+    dyMeasuredYds: e.dyYds,
     bboxWYds: e.bboxWYds,
     bboxDYds: e.bboxDYds,
     source: "shotPattern",
     capturedAt: ell80Doc.batch,
     lies: ell80Doc.resolvedFilters.lies,
+    n: e.n,
     confidence: e.confidence,
   };
-  if (e.note) obj.note = e.note;
-  ell80ByClub[e.club] = obj;
 }
-function ell80For(id) {
-  return ell80ByClub[id] ? ell80ByClub[id] : null;
+function ell80For(id, lie) {
+  return ell80ByClubLie[`${id}|${lie}`] ?? null;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -757,7 +753,6 @@ function buildTeeEntry(id) {
   const disp = dispersionDriving[name] || {};
   const poor = poorDrives[name] || {};
   const sg = sgByClubTee[name] || {};
-  const sheet = teeSheet[id];
 
   const e = baseEntry();
   e.n = bag.n;
@@ -793,20 +788,9 @@ function buildTeeEntry(id) {
   };
   e.width95Yds = bag.width95;
   e.width90Yds = bag.width90;
-  if (sheet) {
-    const extra = {
-      longestYds: sheet.longestYds,
-      avgOfflineYds: sheet.avgOfflineYds,
-      arc68Yds: sheet.arc68Yds,
-      arc95Yds: sheet.arc95Yds,
-    };
-    if (sheet.p25Sheet !== bag.p25 || sheet.p75Sheet !== bag.p75) {
-      extra.p25p75Sheet = [sheet.p25Sheet, sheet.p75Sheet];
-    }
-    e.extra = extra;
-    e.source.screens = [sheet.file];
-  }
-  e.ell80 = ell80For(id);
+  // Shot Pattern's ellipse is an approach measure; a tee shot reads the fairway one only through
+  // resolveEntry's lie chain, as it did with the Sep 19 all-lies ellipses.
+  e.ell80 = null;
   return e;
 }
 
@@ -827,13 +811,19 @@ function buildFairwayEntry(id, { swingType, family, forceNullMedian = false } = 
   if (!byClub) return null; // 0 shots -> null entirely (2i)
 
   const disp = dispersionApproach[name] || {};
-  const medianInfo = forceNullMedian ? { value: null, window: "Last 10", screens: [] } : fairwayMedianFor(id);
+  const sheet = forceNullMedian ? null : sheetFor("fairway", id);
 
   const e = baseEntry();
   e.n = byClub.n;
-  e.totalMedianYds = medianInfo.value;
+  e.totalMedianYds = sheet?.medianYds ?? null;
+  // The sheet's 25th–75th mixes swing lengths and targets, so it is kept as data but never turned
+  // into distSdYds for an approach club (the ellipse depth is the dispersion; D78).
+  e.p25Yds = sheet?.p25Yds ?? null;
+  e.p75Yds = sheet?.p75Yds ?? null;
   fairwayDefaultsInto(e);
-  e.lateralSdDeg = disp.lateralSdDeg ?? null;
+  // σ(α) from fewer than 5 shots is not a spread (4Hy: 0.72° from 3); null lets resolveEntry take
+  // the club's own tee σ through the lie chain (D78).
+  e.lateralSdDeg = disp.n >= MIN_SIGMA_N ? disp.lateralSdDeg ?? null : null;
   e.leftPct = disp.leftPct ?? null;
   e.rightPct = disp.rightPct ?? null;
   e.shortPct = disp.shortPct ?? null;
@@ -848,11 +838,19 @@ function buildFairwayEntry(id, { swingType, family, forceNullMedian = false } = 
   e.carrySource = "derived";
 
   e.source = {
-    window: medianInfo.window,
+    window: "Last 10",
     report: ["§05 FROM TEE & FAIRWAY — BY CLUB", "§05 DISPERSION BIAS — FROM TEE & FAIRWAY"],
-    screens: medianInfo.screens,
+    screens: sheetSource("fairway", id),
   };
-  e.ell80 = ell80For(id);
+  if (disp.n != null && disp.n < MIN_SIGMA_N) {
+    e.source.note = `σ(α) ${disp.lateralSdDeg}° from ${disp.n} shots dropped (< ${MIN_SIGMA_N}); the lie chain supplies it.`;
+  }
+  e.ell80 = ell80For(id, "fairway");
+  e.extra = {
+    sheetN: sheet?.n ?? null,
+    pattern80: sheet?.pattern80 ?? null,
+    leaveZones: leaveZonesFor("fairway", id),
+  };
   return e;
 }
 
@@ -874,9 +872,19 @@ function buildRoughEntry(id) {
   e.source = {
     window: "Last 10",
     report: ["§05 FROM ROUGH — BY CLUB"],
-    screens: [],
+    screens: sheetSource("rough", id),
   };
-  e.ell80 = ell80For(id);
+  e.ell80 = null;
+  const sheet = sheetFor("rough", id);
+  e.extra = {
+    // Stored, not read by the engine until Brett decides (D78): totalMedianYds stays null, so a rough
+    // lie still takes the fairway distance × LIE_DIST_ADJ_FAMILY.
+    shotDistances: sheet && sheet.medianYds != null
+      ? { n: sheet.n, medianYds: sheet.medianYds, p25Yds: sheet.p25Yds, p75Yds: sheet.p75Yds }
+      : null,
+    pattern80: sheet?.pattern80 ?? null,
+    leaveZones: leaveZonesFor("rough", id),
+  };
   return e;
 }
 
@@ -885,7 +893,7 @@ function placeholderFairwayEntry(sourceNote, id) {
   fairwayDefaultsInto(e);
   e.source = { window: "Last 10", report: [], screens: [] };
   e.source.rule = sourceNote;
-  e.ell80 = ell80For(id);
+  e.ell80 = null;
   return e;
 }
 
@@ -976,7 +984,10 @@ const clubs = CLUB_ORDER.map((id) => {
 /* approachBuckets / approachAggregate                                     */
 /* ---------------------------------------------------------------------- */
 
-const approachBuckets = [...approachBucketsFairway, ...approachBucketsRough];
+const approachBuckets = [
+  ...shrinkRows(approachBucketsFairway, { mid: bucketMid, stats: BUCKET_STATS }),
+  ...shrinkRows(approachBucketsRough, { mid: bucketMid, stats: BUCKET_STATS }),
+];
 const approachAggregate = { fairway: approachAggregateFairway, rough: approachAggregateRough };
 
 /* ---------------------------------------------------------------------- */
@@ -984,8 +995,8 @@ const approachAggregate = { fairway: approachAggregateFairway, rough: approachAg
 /* ---------------------------------------------------------------------- */
 
 const putting = puttingRowsRaw.map((r) => {
-  const dir = puttingDirectionFor(r.fromFt, r.toFt);
-  return {
+  const dir = puttingRecordingFor(r.fromFt, r.toFt);
+  const row = {
     fromFt: r.fromFt,
     toFt: r.toFt,
     n: r.n,
@@ -1000,6 +1011,8 @@ const putting = puttingRowsRaw.map((r) => {
     missLeftPct: dir.missLeftPct,
     missRightPct: dir.missRightPct,
   };
+  if (dir.extra) row.extra = dir.extra;
+  return row;
 });
 const puttingSgPer18 = sgPer18.putting;
 
@@ -1007,7 +1020,7 @@ const puttingSgPer18 = sgPer18.putting;
 /* shortGame bands                                                        */
 /* ---------------------------------------------------------------------- */
 
-function buildBand(fromYds, toYds, lie, base, extras) {
+function buildBand(fromYds, toYds, lie, base, bucket) {
   const row = base[lie === "fairway" ? "Fairway" : lie === "rough" ? "Rough" : "Bunker"];
   if (!row) return null;
   const band = {
@@ -1022,19 +1035,27 @@ function buildBand(fromYds, toYds, lie, base, extras) {
     missGreenPct: row.missGreenPct,
     medianProximityFt: row.medianProximityFt,
   };
-  const ex = extras.byTitle[lie === "fairway" ? "FAIRWAY" : lie === "rough" ? "ROUGH" : "BUNKER"];
+  const ex = shortGameExtra(bucket, lie);
   if (ex) band.extra = ex;
   return band;
 }
 
-const shortGameBands = [
-  buildBand(0, 25, "fairway", shortGame025, sgExtras025),
-  buildBand(0, 25, "rough", shortGame025, sgExtras025),
-  buildBand(0, 25, "bunker", shortGame025, sgExtras025),
-  buildBand(25, 50, "fairway", shortGame2550, sgExtras2550),
-  buildBand(25, 50, "rough", shortGame2550, sgExtras2550),
-  buildBand(25, 50, "bunker", shortGame2550, sgExtras2550),
+const shortGameBandsRaw = [
+  buildBand(0, 25, "fairway", shortGame025, "0-25"),
+  buildBand(0, 25, "rough", shortGame025, "0-25"),
+  buildBand(0, 25, "bunker", shortGame025, "0-25"),
+  buildBand(25, 50, "fairway", shortGame2550, "25-50"),
+  buildBand(25, 50, "rough", shortGame2550, "25-50"),
+  buildBand(25, 50, "bunker", shortGame2550, "25-50"),
 ].filter(Boolean);
+// shrink each band toward its distance range's average (every lie in 0–25, every lie in 25–50)
+const shortGameBands = [0, 25].flatMap((from) => {
+  const rows = shortGameBandsRaw.filter((b) => b.fromYds === from);
+  return shrinkRows(rows.map((b) => ({ ...b, lie: b.lie })), { mid: bandMid, stats: BAND_STATS }).map((b) => {
+    b.shrink.toward = `${from}–${from + 25} yds average over ${b.shrink.toward.split(" over ")[1]}`;
+    return b;
+  });
+});
 
 /* ---------------------------------------------------------------------- */
 /* tendencies.driver                                                      */
@@ -1057,7 +1078,7 @@ const tendencies = {
       outside40Pct: drPoor.outside40Pct,
       outside70Pct: drPoor.outside70Pct,
     },
-    landingZones,
+    landingZones: null, // the Driving tab's Landing Zones were not recorded for the Oct 4 batch
     penaltyDrivesInsideCorridor,
   },
 };
@@ -1097,26 +1118,18 @@ const scoring = {
 /* sources                                                                 */
 /* ---------------------------------------------------------------------- */
 
-const last5Screens = screensDoc.screens
-  .filter((s) => s.filterSource === "inferred" && s.resolvedFilters?.window === "Last 5")
-  .map((s) => s.file);
-
 const sources = {
   shotPattern: {
     window: `${screensDoc.companionReport.filters.roundType} · ${screensDoc.companionReport.filters.window}`,
     dateRange: screensDoc.companionReport.filters.dateRange,
     rounds,
     batch: screensDoc.batch,
-    report: "data/extracted/2026-09-27-report.txt",
-    screens: "data/extracted/2026-09-27-screens.json",
-    last5: {
-      window: `${screensDoc.screens[0].resolvedFilters.roundType} · ${screensDoc.screens[0].resolvedFilters.window}`,
-      dateRange: screensDoc.screens[0].resolvedFilters.dateRange,
-      screens: last5Screens,
-    },
+    report: REPORT_REL,
+    screens: SCREENS_REL,
     ell80: {
-      file: "data/extracted/2026-09-19-ell80.json",
+      file: ELL80_REL,
       window: `${ell80Doc.resolvedFilters.roundType} · ${ell80Doc.resolvedFilters.window}`,
+      lies: ell80Doc.resolvedFilters.lies,
       capturedAt: ell80Doc.batch,
     },
   },
@@ -1208,6 +1221,16 @@ function checkEntryShape(entry, where) {
       if (sorted[i - 1].toYds !== sorted[i].fromYds) {
         fail(`approachBuckets ${lie} not contiguous between ${sorted[i - 1].toYds} and ${sorted[i].fromYds}`);
       }
+    }
+  }
+}
+
+// Every approach club Shot Pattern measured from the fairway carries that distance.
+for (const c of profile.clubs) {
+  for (const swingType of ["full", "finesse"]) {
+    const fw = c.entries[swingType]?.fairway;
+    if (fw && fw.n > 0 && fw.source.rule == null && fw.totalMedianYds == null && sheetFor("fairway", c.id)) {
+      fail(`${c.id}.${swingType}.fairway: measured on a sheet but totalMedianYds is null`);
     }
   }
 }
