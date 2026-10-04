@@ -2,6 +2,9 @@
 
 **Folder to connect: `~/Developer/Loop-Golf`**
 
+**Open items:** everything unresolved lives in `docs/OPEN-ITEMS.md` (merged Oct 4). It supersedes
+"Queued builds" and "Open follow-ups" below.
+
 ## First three commands
 ```bash
 git status                 # must be clean
