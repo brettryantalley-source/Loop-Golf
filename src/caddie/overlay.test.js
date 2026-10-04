@@ -84,17 +84,18 @@ test("T33: through a projection — pxPerYdAt reads the zoom back and the size h
   const cam = { center: { x: 0, y: 200 }, pxPerYd: 3.3 };
   const { project } = linearProjector(cam, { width: 375, height: 812 });
   near(pxPerYdAt(project, { x: 5, y: 210 }), 3.3, 1e-9, "px/yd");
-  const e2 = ellipseFromEntry(resolveEntry(P, "2Hy", "full", "fairway"));
+  const ent = resolveEntry(P, "2Hy", "full", "fairway");
+  const e2 = ellipseFromEntry(ent);
   // a dogleg shot (θ = 35°): axes are unchanged, only rotated
   const e = ellipseScreen({ target: project({ x: 60, y: 230 }), ...e2, thetaDeg: 35, pxPerYd: 3.3 });
-  near((2 * e.A) / 3.3, 57.1, 1e-9, "w"); near((2 * e.B) / 3.3, 117.9, 1e-9, "h");
+  near((2 * e.A) / 3.3, ent.ell80.wYds, 1e-9, "w"); near((2 * e.B) / 3.3, ent.ell80.hYds, 1e-9, "h");
 });
 
 /* ---------- T34 ---------- */
 
 test("T34: 10,000 engine samples from an ell80 entry → 80% ± 1% inside the drawn ellipse", () => {
   const S = makeSamples(10000, 20260928);
-  for (const [club, lie, quality] of [["2Hy", "fairway", "standard"], ["PW", "fairway", "standard"], ["9i", "rough", "standard"], ["4Hy", "tee", "bad"]]) {
+  for (const [club, lie, quality] of [["2Hy", "fairway", "standard"], ["PW", "fairway", "standard"], ["9i", "rough", "standard"], ["5i", "tee", "bad"]]) {
     const entry = resolveEntry(P, club, "full", lie);
     assert.ok(entry.ell80, `${club} ${lie} has ell80`);
     const q = P.config.LIE_QUALITY[quality];
@@ -211,7 +212,8 @@ test("cameraPoints: ball + green + both ellipses + layup line; pre-tee frames te
   assert.ok(bb.minX <= eA.minX && bb.maxX >= eA.maxX && bb.maxY >= eA.maxY, "aggressive ellipse inside");
   near(bb.minY, 250, 1e-9, "ball is the low edge");
   // the 2-hybrid ellipse at a straight-up shot: its frame box equals the SP box (x same, y flipped)
-  near(eA.maxX - eA.minX, 68, 1.2, "frame width"); near(eA.maxY - eA.minY, 112, 1.2, "frame depth");
+  const box = resolveEntry(P, "2Hy", "full", "fairway").ell80;
+  near(eA.maxX - eA.minX, box.bboxWYds, 1.2, "frame width"); near(eA.maxY - eA.minY, box.bboxDYds, 1.2, "frame depth");
 });
 
 test("zoomForPxPerYd: MapLibre zoom from px/yd (512-px world)", () => {
@@ -228,7 +230,7 @@ test("zoomForPxPerYd: MapLibre zoom from px/yd (512-px world)", () => {
 
 test("T36: SAFE ↔ AGGRESSIVE changes the drawn shot, never the camera", () => {
   const hole = buildHole(hampton, 5, { par: 5, yards: 540 });
-  const ball = { x: 0, y: 250 };
+  const ball = { x: 0, y: 230 };   // Oct 4 profile + no full Dr / 2i off the deck (D85, D86): a two-option spot
   const res = recommend({ ball, shotNo: 2, lieType: "fairway", par: 5 }, hole, P);
   assert.ok(res && res.safe && res.aggressive, "engine returns two options here");
   const opts = withEllipses(res, (c, s) => resolveEntry(P, c, s, "fairway"));

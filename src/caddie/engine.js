@@ -468,7 +468,9 @@ export function pickOptions(scored, cfg, sit) {
   const { safe, rules } = pickSafe(scored, sit, cfg);
   const tgt = cfg.SAME_SHOT_TARGET_YDS;
   const sameLine = (a, b) => a.club === b.club && a.swing === b.swing && dist(a.target, b.target) <= tgt;
-  let aggressive = scored.reduce((a, b) => (moreBirdie(b, a) ? b : a));
+  // start from SAFE so an exact tie keeps it: two candidates that simulate identically (a driver
+  // "lay-up" aimed past its reach lands where the corridor shot does) are one shot, not two (D85)
+  let aggressive = scored.reduce((a, b) => (moreBirdie(b, a) ? b : a), safe);
   if (sit.teeShot && sameLine(aggressive, safe)) {
     const alts = scored.filter((c) => (c.club !== safe.club || c.swing !== safe.swing || c.distToTarget > safe.distToTarget + tgt) &&
       c.birdieProb > safe.birdieProb + 1e-12);

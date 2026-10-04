@@ -45,7 +45,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
   - `mapLayer.jsx` — the map: MapLibre over MapTiler satellite, hole-up camera, or the flat drawn fallback (§4.3) with no tiles. DOM + MapLibre glue only.
   - `overlay.js` — pure geometry/render model for the map overlay (camera, ellipse projection, fallback map, map-state selection); no DOM.
   - `profile.test.js` — tests for `profile.js`'s overlay/fallback resolution chain.
-- `src/profile.json` — v2, BUILT (never hand-edited) by `scripts/build-profile.mjs` from `data/extracted/`; contract is `docs/PROFILE-v2.md`.
+- `src/profile.json` — v2, BUILT (never hand-edited) by `scripts/build-profile.mjs` from `data/extracted/2026-10-04-*` (the Oct 4 Last-10 batch, D85); contract is `docs/PROFILE-v2.md`. `scripts/fit-ell80.py` — offline tool (numpy/scipy/pillow) that measures Shot Pattern's 80% ellipses from stills into `data/extracted/<batch>-ell80.json`; not part of the build.
 - `src/shotpattern.json` — GENERATED (never hand-edited) by `scripts/import-shotpattern.mjs` (`npm run import:shots`, `--check`) from `data/extracted/rounds/*/shots.json`: Shot Pattern's per-round Shot Lists as Loop shot records, seeded into the shot log on the phone (v22.16, D66–D69). `src/historyFix.js` — rewrites a stored round from a local card and recomputes the ghost by calling the frozen engine (D70).
 - `scripts/build-profile.mjs` — builds `src/profile.json` from `data/extracted/*`; `--check` exits non-zero if the committed file differs from a fresh build. Run via `npm run build:profile`.
 - `docs/SPEC-caddie.md`, `docs/SPEC-caddie-UI.md` — the locked caddie spec and its UI addendum. `docs/PROFILE-v2.md` — the profile schema/build contract. `docs/DECISIONS-caddie.md` — calls made overnight that override the spec where they disagree; read before touching the caddie. `docs/FIELD-TEST-v22.md` — the on-course checklist for the caddie's first real round.
@@ -57,7 +57,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 3. On any deploy that ships user-facing changes, bump BOTH version markers together and keep the numbers in sync:
    - the cache name in `sw.js` (e.g. `loop-golf-v4` -> `-v5`). REQUIRED — without it, Brett's installed PWA keeps serving the old cached bundle.
    - the on-screen build tag: `const BUILD = "vN · <date>"` near the top of `src/app.jsx` (just after the icon definitions). Keep the existing `"vN · <date>"` format (e.g. `"v5 · Aug 2"`) and match `vN` to the new cache version.
-   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers sit at **v22.17 on `main`** (full-screen map, hole navigation + past-hole logging, notes, Safe = most likely par, Custom, summer-temperature profile, breadcrumb trail; D78–D84). The working branch is restarted from `main` after each merge. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
+   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers sit at **v22.17 on `main`** (full-screen map, hole navigation + past-hole logging, notes, Safe = most likely par, Custom, summer-temperature profile, breadcrumb trail; D78–D84); the open branch carries **v22.17.1** (the Oct 4 stats refresh, D85; no full driver / 2-iron off the deck, D86). The working branch is restarted from `main` after each merge. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
 4. Show Brett a diff.
 5. WAIT for his explicit "go" before git commit / git push. Never push without approval.
 6. Pages redeploys the same URL automatically (~1 min); Brett fully closes and reopens the app to load the new service worker.
@@ -185,7 +185,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
 - Handoffs live in `docs/`; `docs/README.md` says which is current. A thread that finishes a phase writes or updates its handoff, and the next thread starts by reading it.
 - Every thread starts with: `git status` (must be clean), `git log --oneline -3`, `npm test`. Every thread ends with its work committed and the push command handed to Brett.
 - `computeGhost` / `evalMatch` byte-identical check before every commit, as before.
-- `npm test` runs 324 tests as of v22.17 (299 at v22.16.9, 290 at v22.16.8, 289 at v22.16.6, 285 at v22.16.3, 274 at v22.16.2; 160 at the end of the Sep 28–29 caddie build (T1–T42 across S1–S5, named
+- `npm test` runs 324 tests as of v22.17.1 (unchanged since v22.17; 299 at v22.16.9, 290 at v22.16.8, 289 at v22.16.6, 285 at v22.16.3, 274 at v22.16.2; 160 at the end of the Sep 28–29 caddie build (T1–T42 across S1–S5, named
   as in `docs/SPEC-caddie.md` §9 and `docs/SPEC-caddie-UI.md` §12, plus units); it globs
   `src/**/*.test.js`, so a later agent adding files under `src/caddie/` picks up new tests
   automatically. If a thread after this one sees a different count, an app-side agent has added or
@@ -221,7 +221,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   → `Fake my location`; every fix becomes a map tap through the real code path.
 - Spec: `docs/SPEC-caddie.md` (locked) + `docs/SPEC-caddie-UI.md` (the UI addendum, §8 states / §13
   flags). Decisions made along the way that override the spec live in `docs/DECISIONS-caddie.md`
-  (D1–D84) — read it, don't copy it into other docs. Course-management sources: `docs/research/`
+  (D1–D86) — read it, don't copy it into other docs. Course-management sources: `docs/research/`
   (the Sep 29 evidence-graded research and the Oct 3 Wicked Smart Golf notes; where they disagree the
   guide wins, Brett Oct 3) → `docs/CADDIE-BRAIN-INTEGRATION.md` parts 1 and 2.
 - Refresh workflow (spec §5.8): after a round, export the shot log or a Shot Pattern export →

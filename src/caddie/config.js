@@ -130,6 +130,12 @@ export const DEFAULT_CONFIG = Object.freeze({
      one whose mean landing is nearest its target. */
   EXP_TIE_TOLERANCE: 0.03,
 
+  /* Clubs whose FULL swing is only ever hit off a tee (D86, Brett Oct 4): driver never off the
+     fairway; 2-iron "yes, but rarely full" — the 2-hybrid is his club from the fairway. From any other
+     lie these clubs' full swing is not a candidate; a finesse entry still is (2i's is pending carries).
+     Off the tee every club is a candidate. */
+  TEE_ONLY_FULL: ["Dr", "2i"],
+
   /* ---- course management (strategy.js; docs/CADDIE-BRAIN-INTEGRATION.md part 2; D76) ----
      Michael Leonard, "How to Play Wicked Smart Golf" (tips 3–6). The guide's rules choose SAFE from
      the priced candidates; Brett's numbers overrule the pin rule only when its pick finds more than
