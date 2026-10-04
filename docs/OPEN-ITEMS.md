@@ -16,10 +16,9 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Today:** reply **"repo"** in the *Woodmont Golf course map* chat (H1).
-2. **Brett:** answer **Q1**, then say **"go with the leans"** or change any **R**.
-3. **Next code chat:** **C1 → C2 → C3 → C4**.
-4. **Next round:** the **F** list.
+1. **Brett:** answer **Q1**, then say **"go with the leans"** or change any **R**.
+2. **Next code chat:** **C1 → C2 → C3 → C4**.
+3. **Next round:** the **F** list.
 
 ---
 
@@ -114,9 +113,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 Details for each are under **Build details** below.
 
 ## Housekeeping (H)
-- **H1.** The Woodmont tracing scripts (39 files, ~150 KB, Python and node; the pipeline is listed
-  under C13) exist only in that chat's workspace. Reply **"repo"** there to save them under
-  `scripts/woodmont-trace/`.
 - **H2.** Close draft PR #26. Its list is folded in here.
 - **H3.** The other five spec sheets were never committed. Nothing to do: this file replaces them.
 - **H4.** Fix with the next code commit: `docs/HANDOFF-NEXT.md` still says 274 tests (now 325) and
@@ -336,9 +332,6 @@ Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/con
   no trees. It was traced from Esri imagery (stated accuracy 8.47 m) and has never been seen on a phone
   or over MapTiler. `shiftM` [east, north] metres moves the whole trace; bump `version` to replace the
   phones' cache entry (stamped `local: "tnw4ghn5@1"`).
-- **Closed by Brett Oct 4; record in D73 with the next push:** 16's tee sits left of the 15th green;
-  the creek costs a stroke, so the penalty-hazard treatment stays; the hole numbering, the 9 → 10
-  walk, and tees 8 and 18 sit where he pointed.
 1. **Offset:** from the round's shot-log export, compare the fixes logged on each green (and tee) with
    the polygons. Take the median east/north offset over the 18 holes, put it in `shiftM`, set
    `version` 2. Check whether History's export includes the trail (`bogeyman-matches:trail:v1:{roundId}`).
@@ -349,10 +342,8 @@ Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/con
 3. **OB and trees:** OB comes only from a `leisure=golf_course` boundary, and OSM's cuts through holes
    4 and 7. `src/localGeometry.test.js` expects the "no boundary — OB off" warning, so adding a
    boundary updates that test. Get Q3 answered before tracing.
-- **The tracing pipeline** (if H1 saved it): `fetch-tiles.mjs`, `fetch-wb.mjs`, `wayback*.mjs`
-  (imagery), `fetch-carts.mjs`, `fetch-water.mjs` (OSM paths and water), `greens2.py`, `detect_pads.py`,
-  `fuse.py`, `solve.py` / `solve2.py`, `trace3.py`, `build_data.py`, `render3.py` (QA overlays),
-  `woodmont-check.mjs`, `pw/*.mjs`. Without it, a retrace starts from scratch.
+- **The tracing pipeline** is saved in `scripts/woodmont-trace/`; its README gives the order, and
+  `register_wayback.py` is the leaf-on step. A retrace starts there.
 
 ### C14. History data (S1–S3, Q2)
 - **Q2, card totals:** if a card is wrong, fix `scores` / `cardTotal` in `src/seedRounds.js` (for
