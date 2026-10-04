@@ -1,9 +1,9 @@
 # Loop — open items (merged Oct 4, 2026)
 
-The one list of everything still unresolved. It merges the ten Loop chats open on Oct 4: six spec
-sheets (five never committed, one in draft PR #26) and four answers given in chat. Duplicates are
-merged and anything already shipped is dropped. State: `main` = **v22.17.3** (PR #29), 329 tests,
-decisions D1–D89; the next decision is **D90**.
+The one list of everything still unresolved. It merges the eleven Loop chats open on Oct 4: seven
+spec sheets and four answers given in chat. Duplicates are merged and anything already shipped is
+dropped. State: `main` = **v22.17.3** (PR #29), 329 tests, decisions D1–D89; the next decision is
+**D90**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -46,12 +46,12 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 | R9 | Native app for a gap-free GPS trail (P1) | **Not now**; live with the gaps | Capacitor wrapper: $99/yr Apple Developer, plus a Mac or a macOS build runner |
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.17.2 · Oct 4**.
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.17.3 · Oct 4**.
 - **F2.** The putting flow, start to finish. It has never been used on a course.
 - **F3.** Log a hole you skipped: Place shot 1 → Place shot 2 → … → Done.
 - **F4.** The GPS trail on a real walk. It records only while the screen is on.
 - **F5.** The full-screen map: nothing sits under the notch or the home bar; the target drag, Line,
-  and the club changing as you drag all work.
+  and the club changing as you drag all work; panning and dragging don't stutter.
 - **F6.** Mark where each shot ends, live or with F3 afterward. The heads-up (C4) and the learning
   loop run on shot ends, and on Oct 3 most shots had none.
 - **F7.** When SAFE feels wrong, tap **Note** and dictate: hole, yards, pin, lie, what SAFE said,
@@ -78,8 +78,8 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 - **S3.** GHIN's hole-by-hole for Bear Slide 6/10 and Cider Ridge 6/6. → C14, after S2.
 - **S4.** 18 Shot Pattern hole screenshots in the plain 2D view: Chicopee Village 1–9 and Mill 1–9.
   The Village 1–8 screenshots sent Oct 3 never reached the repo. Green slope maps are optional. → C12.
-- **S5.** Shot Pattern's tee-shot dispersion screens for Driver, 2-iron and 4-hybrid, plus the
-  Driving tab's landing zones (Casual · Last 10). → a profile rebuild.
+- **S5.** Shot Pattern's tee-shot dispersion screens for Driver, 2-iron and 4-hybrid (or just more
+  4-hybrid shots), plus the Driving tab's landing zones (Casual · Last 10). → a profile rebuild.
 - **S6.** A launch-monitor range session: carry for every club, the 2-iron partial, and wedge ½ and
   ¾ swings. → a profile rebuild.
 - **S7.** Your wedge lofts. → a profile rebuild.
@@ -113,11 +113,11 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 Details for each are under **Build details** below.
 
 ## Housekeeping (H)
-- **H2.** Close draft PR #26. Its list is folded in here.
-- **H3.** The other five spec sheets were never committed. Nothing to do: this file replaces them.
-- **H4.** Fix with the next code commit: `docs/HANDOFF-NEXT.md` still says 274 tests (now 325) and
-  lists the trail as a queued build (it shipped in v22.17; the aim warning is C4).
-  `docs/README.md`'s row for `FIELD-TEST-v22.md` still says `main` is v22.16.
+- **H4.** Fix with the next code commit: `docs/HANDOFF-NEXT.md` gives the test count as 274, 299 and
+  324 in different places (now 329) and lists the trail as a queued build (it shipped in v22.17; the
+  aim warning is C4). `docs/README.md`'s row for `FIELD-TEST-v22.md` still says `main` is v22.16.
+  `HANDOFF-NEXT.md` has also outgrown its job (state, screen reference, import routine, storage
+  keys); consider splitting it.
 
 ## Parked (P): don't start without Brett
 - **P1.** Native wrapper or keep-screen-on toggle for the trail (declined, D84). Revisit only if
@@ -137,9 +137,12 @@ Details for each are under **Build details** below.
 
 ## Never closed from `HANDOFF-NEXT.md` (low priority)
 Broadie baseline checked against the book (D1–D2) · Overpass / Open-Meteo field names and CORS ·
-MapTiler offline-caching terms (D19) · iOS PWA geolocation on first run · pencil-filter performance
-on the phone · D31 target clamp (`Plays` doesn't move on a distance nudge) · finesse carries for
-GW / SW / LW · Ironwood OSM tracing (prompt handed to Brett Sep 29).
+MapTiler offline-caching terms (D19) · iOS PWA geolocation on first run · D31 target clamp (`Plays`
+doesn't move on a distance nudge) · finesse carries for GW / SW / LW · Ironwood OSM tracing (prompt
+handed to Brett Sep 29). Pencil-filter performance on the phone is now checked in F5.
+
+**Presumed closed:** the wrong fonts Brett saw around Sep 28. v21.4 fixed the known cause (the
+service worker answered font requests with `index.html`); reopen only if it comes back.
 
 ---
 
@@ -329,8 +332,9 @@ Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/con
 ### C13. Woodmont calibration (F9, Q3)
 - **State:** `src/localGeometry/woodmont.json` (v22.16.3, D73) holds 18 holes, 18 greens, 58 tee boxes
   (40 are estimated ovals, `q: est`), 17 fairways, 44 bunkers, 2 lakes and 9 creek stretches; no OB,
-  no trees. It was traced from Esri imagery (stated accuracy 8.47 m) and has never been seen on a phone
-  or over MapTiler. `shiftM` [east, north] metres moves the whole trace; bump `version` to replace the
+  no trees. It was traced from Esri imagery (stated accuracy 8.47 m) and has never been checked on a
+  phone; since v22.17.3 the app shows it over that same Esri photo (D88). `shiftM` [east, north]
+  metres moves the whole trace; bump `version` to replace the
   phones' cache entry (stamped `local: "tnw4ghn5@1"`).
 1. **Offset:** from the round's shot-log export, compare the fixes logged on each green (and tee) with
    the polygons. Take the median east/north offset over the 18 holes, put it in `shiftM`, set
@@ -390,7 +394,7 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (325 pass).
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (329 pass).
 > Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C1, the "why" line;
 > if R1 is still open, ask me first. Show me the plan before any code. Delete each item from
 > `docs/OPEN-ITEMS.md` in the commit that closes it.

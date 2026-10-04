@@ -10,7 +10,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
   unchanged (`brettryantalley-source.github.io`), so all of that carried across the URL change —
   round history, saved satellite tiles and cloud sign-in. Renaming any of them is a data migration.
 - Live URL: https://brettryantalley-source.github.io/Loop-Golf/
-- Repo: brettryantalley-source/Loop-Golf (this folder — locally `ClaudeCode/Loop-Golf`)
+- Repo: brettryantalley-source/Loop-Golf, the only copy (no local clone; Brett, Oct 4)
 
 ## File layout
 - `src/app.jsx` — THE SOURCE OF TRUTH. All logic, courses, UI, and the scoring engine live here. Edit this.
@@ -170,7 +170,8 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   the frozen engine (`seedMatch`) — and counts toward the W-L-T (D72).
 
 ## Working across threads (added Sep 26)
-- ONE working copy: `~/Developer/Loop-Golf`. Open every new thread in THIS folder.
+- No local working copy (Brett, Oct 4): every thread is a Claude Code cloud session that clones this
+  repo fresh, so nothing is kept until it's pushed.
 - Naming history: Bogeyman Matches → Ghost Match → **Loop Golf** (Sep 26 2026). The repo, the
   folder and the Pages URL all moved to `Loop-Golf` at the same time. Archived handoffs still say
   the old names; that is deliberate. Any folder called `Bogeyman-Matches` or `Ghost-Match` is not
