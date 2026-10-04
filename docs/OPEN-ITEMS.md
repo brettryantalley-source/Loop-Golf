@@ -2,8 +2,8 @@
 
 The one list of everything still unresolved. It merges the ten Loop chats open on Oct 4: six spec
 sheets (five never committed, one in draft PR #26) and four answers given in chat. Duplicates are
-merged and anything already shipped is dropped. State: `main` = **v22.17.2** (PR #25), 325 tests,
-decisions D1–D87; the next decision is **D88**.
+merged and anything already shipped is dropped. State: `main` = **v22.17.3** (PR #29), 329 tests,
+decisions D1–D89; the next decision is **D90**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -386,7 +386,7 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D88.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D90.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat

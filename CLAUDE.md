@@ -22,7 +22,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 - `loop-design/` — the design SOURCE: `SPEC.md`, the two approved reference screens (standalone HTML + 2x PNGs), the pencil filter and the logo. `theme.jsx` implements it; this is what it implements.
 - `fonts/` — bundled woff2, COMMITTED and cached by the service worker. Never fetch a font at runtime.
 - `src/localCards.js` — scorecards Brett verified by hand for clubs the course API gets wrong (Ironwood, v22.12, D55); `src/routing.js` — 27-hole clubs: routings, nine composition, the odd/even stroke index (D54).
-- `src/localGeometry.js`, `src/localGeometry/woodmont.json` — hole geometry traced by hand for a club OSM has no holes for (Woodmont, Canton GA, v22.16.3, D73). `src/localGeometry/chicopee.json` — Chicopee Woods: OSM holes/greens/tees/bunkers plus Village/Mill lines re-routed and woods/fairways segmented from imagery (v22.16.6, D74). The loader expands the file to Overpass JSON and `parseOverpass` reads it; `useCourseMap` prefers it to the cache and to Overpass. Pure; `app.jsx` imports the JSON. `shiftM` moves the whole trace if GPS on the greens shows an offset.
+- `src/localGeometry.js`, `src/localGeometry/woodmont.json` — hole geometry traced by hand for a club OSM has no holes for (Woodmont, Canton GA, v22.16.3, D73). `src/localGeometry/chicopee.json` — Chicopee Woods: OSM holes/greens/tees/bunkers plus Village/Mill lines re-routed and woods/fairways segmented from imagery (v22.16.6, D74). The loader expands the file to Overpass JSON and `parseOverpass` reads it; `useCourseMap` prefers it to the cache and to Overpass. Pure; `app.jsx` imports the JSON. `shiftM` moves the whole trace if GPS on the greens shows an offset. `src/localGeometry/riverpines.json`, `hampton.json` — OSM snapshots filtered to the club (Riverpines: the 18 only, not its par-3 nine or the club next door), v22.17.3, D89. A file's `imagery` names the satellite photo for that club (Esri Wayback release, picked per course); a way with `outer`/`inner` is a multipolygon.
 - `scripts/woodmont-trace/` — how `woodmont.json` was made (Esri imagery → trace → JSON), saved Oct 4 as reference: not bundled, not run by `npm test`; its README gives the order.
 - `src/holeMap.jsx`, `src/fixtures/` — PARKED. Nothing imports them and they are not bundled, but their tests still run. See "Parked, not deleted".
 - `vendor/` (MapLibre GL) — LIVE again as of v22: lazy-loaded from disk the first time the caddie screen opens, served same-origin, cached by the service worker.
@@ -58,7 +58,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 3. On any deploy that ships user-facing changes, bump BOTH version markers together and keep the numbers in sync:
    - the cache name in `sw.js` (e.g. `loop-golf-v4` -> `-v5`). REQUIRED — without it, Brett's installed PWA keeps serving the old cached bundle.
    - the on-screen build tag: `const BUILD = "vN · <date>"` near the top of `src/app.jsx` (just after the icon definitions). Keep the existing `"vN · <date>"` format (e.g. `"v5 · Aug 2"`) and match `vN` to the new cache version.
-   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers sit at **v22.17.2 on `main`** (v22.17.2: assumed ends never teach the profile, D87; v22.17.1: the Oct 4 stats refresh, D85–D86; v22.17: full-screen map, hole navigation + past-hole logging, notes, Safe = most likely par, Custom, summer-temperature profile, breadcrumb trail; D78–D84). The working branch is restarted from `main` after each merge. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
+   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers sit at **v22.17.3** (v22.17.3: Woodmont on the Esri Oct 2025 photo, D88; Riverpines + Hampton bundled OSM maps and their own Esri photos, D89; v22.17.2: assumed ends never teach the profile, D87; v22.17.1: the Oct 4 stats refresh, D85–D86; v22.17: full-screen map, hole navigation + past-hole logging, notes, Safe = most likely par, Custom, summer-temperature profile, breadcrumb trail; D78–D84). The working branch is restarted from `main` after each merge. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
 4. Show Brett a diff.
 5. WAIT for his explicit "go" before git commit / git push. Never push without approval.
 6. Pages redeploys the same URL automatically (~1 min); Brett fully closes and reopens the app to load the new service worker.
@@ -186,7 +186,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
 - Handoffs live in `docs/`; `docs/README.md` says which is current. A thread that finishes a phase writes or updates its handoff, and the next thread starts by reading it.
 - Every thread starts with: `git status` (must be clean), `git log --oneline -3`, `npm test`. Every thread ends with its work committed and the push command handed to Brett.
 - `computeGhost` / `evalMatch` byte-identical check before every commit, as before.
-- `npm test` runs 325 tests as of v22.17.2 (324 at v22.17.1 and v22.17; 299 at v22.16.9, 290 at v22.16.8, 289 at v22.16.6, 285 at v22.16.3, 274 at v22.16.2; 160 at the end of the Sep 28–29 caddie build (T1–T42 across S1–S5, named
+- `npm test` runs 329 tests as of v22.17.3 (325 at v22.17.2, 324 at v22.17.1 and v22.17; 299 at v22.16.9, 290 at v22.16.8, 289 at v22.16.6, 285 at v22.16.3, 274 at v22.16.2; 160 at the end of the Sep 28–29 caddie build (T1–T42 across S1–S5, named
   as in `docs/SPEC-caddie.md` §9 and `docs/SPEC-caddie-UI.md` §12, plus units); it globs
   `src/**/*.test.js`, so a later agent adding files under `src/caddie/` picks up new tests
   automatically. If a thread after this one sees a different count, an app-side agent has added or
@@ -222,7 +222,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   → `Fake my location`; every fix becomes a map tap through the real code path.
 - Spec: `docs/SPEC-caddie.md` (locked) + `docs/SPEC-caddie-UI.md` (the UI addendum, §8 states / §13
   flags). Decisions made along the way that override the spec live in `docs/DECISIONS-caddie.md`
-  (D1–D87) — read it, don't copy it into other docs. Course-management sources: `docs/research/`
+  (D1–D89) — read it, don't copy it into other docs. Course-management sources: `docs/research/`
   (the Sep 29 evidence-graded research and the Oct 3 Wicked Smart Golf notes; where they disagree the
   guide wins, Brett Oct 3) → `docs/CADDIE-BRAIN-INTEGRATION.md` parts 1 and 2.
 - Refresh workflow (spec §5.8): after a round, export the shot log or a Shot Pattern export →
