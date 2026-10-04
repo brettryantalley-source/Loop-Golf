@@ -26,7 +26,9 @@
  *                        maxCostStrokes, than the best-priced shot. Then the next club in line.
  *
  * Locked rule 1 is restated by this (D76): SAFE = the lowest expected score among the shots these
- * rules allow; with every rule off it is the plain argmin again. AGGRESSIVE (max birdie, rule 2) and
+ * rules allow; with every rule off it is the plain argmin again. v22.17 (D78, SAFE_RANKING "par"):
+ * among the allowed shots SAFE is the one most likely to make par or better (within
+ * PAR_TIE_TOLERANCE), then the lowest expected score; SAFE_RANKING "exp" restores the old order. AGGRESSIVE (max birdie, rule 2) and
  * the same-shot rule (rule 3) are untouched. Pure: no DOM, no storage, no network.
  */
 
@@ -71,11 +73,29 @@ export function situationOf(ctx, hole, g) {
 /** Distance between where the club lands on average and where it was aimed — "plays the number". */
 const fit = (c) => Math.abs(c.meanYds - c.distToTarget);
 
-/** Lowest expected score; ties (EXP_TIE_TOLERANCE, D13) to the driver on a par-4/5 tee, else to fit. */
-function plainPick(pool, sit, cfg, S) {
+/**
+ * D78: SAFE ranks by parProb when SAFE_RANKING is "par" and every candidate carries one (the pure
+ * unit tests' hand-made candidates do not, and keep the expected-score order).
+ */
+function parRanking(pool, cfg) {
+  return (cfg?.SAFE_RANKING ?? DEFAULT_CONFIG.SAFE_RANKING) === "par" && pool.every((c) => Number.isFinite(c.parProb));
+}
+
+/** The candidates within PAR_TIE_TOLERANCE of the best par-or-better chance. */
+function bestPar(pool, cfg) {
+  const tol = cfg?.PAR_TIE_TOLERANCE ?? DEFAULT_CONFIG.PAR_TIE_TOLERANCE;
+  const maxPar = Math.max(...pool.map((c) => c.parProb));
+  return pool.filter((c) => c.parProb >= maxPar - tol - EPS);
+}
+
+/** Lowest expected score (par-ranked first, D78); ties (EXP_TIE_TOLERANCE, D13) to the driver on a par-4/5 tee, else to fit. */
+function plainPick(pool, sit, cfg, S, byPar = parRanking(pool, cfg)) {
   const tol = cfg.EXP_TIE_TOLERANCE ?? 0;
-  const minExp = Math.min(...pool.map((c) => c.expScore));
-  const tied = pool.filter((c) => c.expScore <= minExp + tol);
+  // D78: rank by par-or-better first; the shots within PAR_TIE_TOLERANCE of the best are then
+  // ranked by expected score exactly as before (ties → driver on a tee, else plays the number).
+  const base = byPar ? bestPar(pool, cfg) : pool;
+  const minExp = Math.min(...base.map((c) => c.expScore));
+  const tied = base.filter((c) => c.expScore <= minExp + tol);
   const byFit = tied.reduce((a, b) => (fit(b) < fit(a) ? b : a));
   if (S.driverDefault && sit.teeShot) {
     const dr = tied.filter((c) => c.club === "Dr");
@@ -116,10 +136,12 @@ function pinRulePick(pool, best, sit, cfg, S) {
     const ok = rest.filter((g) => g.k <= k0 + KEY_TIE_YDS).flatMap((g) => g.cs).filter(passes);
     rest = rest.filter((g) => g.k > k0 + KEY_TIE_YDS);
     if (!ok.length) continue;
-    const lowest = ok.reduce((a, b) => (b.expScore < a.expScore ? b : a));
+    // Between them, the SAFE ranking: the best par chance (D78), then the lowest expected score.
+    const top = parRanking(ok, cfg) ? bestPar(ok, cfg) : ok;
+    const lowest = top.reduce((a, b) => (b.expScore < a.expScore ? b : a));
     // "Simple targets": between equally priced aims with that club, the center.
     const tol = cfg.EXP_TIE_TOLERANCE ?? 0;
-    return ok.find((c) => c.club === lowest.club && c.swing === lowest.swing && aimsAt(c, "center") &&
+    return top.find((c) => c.club === lowest.club && c.swing === lowest.swing && aimsAt(c, "center") &&
       c.expScore <= lowest.expScore + tol) || lowest;
   }
   return null;
@@ -127,7 +149,8 @@ function pinRulePick(pool, best, sit, cfg, S) {
 
 /**
  * SAFE from the scored candidates. Returns { safe, rules }: `rules` names each rule that moved SAFE
- * off the plain pick — "no-hero", "driver", "pin-front" / "pin-middle" / "pin-back".
+ * off the plain pick — "par" (D78: the par-or-better ranking chose a different shot than the
+ * expected-score ranking would), "no-hero", "driver", "pin-front" / "pin-middle" / "pin-back".
  */
 export function pickSafe(scored, sit, cfg = DEFAULT_CONFIG) {
   const S = strategyCfg(cfg);
@@ -149,5 +172,7 @@ export function pickSafe(scored, sit, cfg = DEFAULT_CONFIG) {
     const r = pinRulePick(pool, safe, sit, cfg, S);
     if (r && r !== safe) { safe = r; rules.push(`pin-${sit.pin}`); }
   }
+  // D78: name the par ranking when it ends on a different shot than the expected-score ranking would.
+  if (parRanking(scored, cfg) && pickSafe(scored, sit, { ...cfg, SAFE_RANKING: "exp" }).safe !== safe) rules.unshift("par");
   return { safe, rules };
 }

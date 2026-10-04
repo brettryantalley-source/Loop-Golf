@@ -249,9 +249,18 @@ test("wind: lofted clubs lose more %, tailwind returns diminish, crosswind ≈ 2
   assert.ok(Math.abs(xDr - 0.8 * x6) < 1e-9);
 });
 
-test("temperature plays-like: cold plays longer, hot plays shorter, 70°F or unknown is neutral", () => {
-  const cfg = DEFAULT_CONFIG;
+test("temperature plays-like (D79): neutral at the profile's own 85°F; colder plays longer, hotter shorter; unknown is neutral", () => {
   const noWind = { wind: null, elevationDeltaYds: 0 };
+  assert.equal(DEFAULT_CONFIG.PROFILE_TEMP_F, 85);
+  const d = DEFAULT_CONFIG;
+  const at = (t, c = d) => playsLike(150, 0, { ...noWind, tempF: t }, c);
+  assert.equal(at(85).tempYds, 0, "the profile's temperature is neutral");
+  assert.ok(Math.abs(at(65).tempYds - 2.55) < 1e-9, "150 × 0.0085 × 2 = 2.55, 20° below the profile");
+  assert.ok(Math.abs(at(105).tempYds + 2.55) < 1e-9);
+  assert.ok(at(70).tempYds > 0, "a 70° day is colder than Brett's summer numbers: plays longer");
+  assert.equal(at(null).tempYds, 0);
+  // the old 70°F reference still holds when PROFILE_TEMP_F is unset (TEMP_REF_F fallback)
+  const cfg = mergeConfig({ PROFILE_TEMP_F: null });
   const cold = playsLike(150, 0, { ...noWind, tempF: 50 }, cfg);
   const hot = playsLike(150, 0, { ...noWind, tempF: 90 }, cfg);
   const ref = playsLike(150, 0, { ...noWind, tempF: 70 }, cfg);

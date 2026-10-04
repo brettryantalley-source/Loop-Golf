@@ -36,6 +36,12 @@ export const DEFAULT_CONFIG = Object.freeze({
      0.85%/10°F = midpoint of Rice (driver +2 yds/10°F on 250 = 0.8%; PW ~1.3/140 = 0.93%). */
   TEMP_REF_F: 70,
   TEMP_PCT_PER_10F: 0.0085,
+  /* D79: the mean air temperature Brett's profile distances were hit in. The temperature term is
+     rawYds × TEMP_PCT_PER_10F × (PROFILE_TEMP_F − tempF) / 10 — 0 at the profile's own temperature,
+     not at the textbook 70°F (TEMP_REF_F, kept as the fallback when this is unset). 85 = Open-Meteo
+     archive temperature_2m, 2–4 pm local, averaged over his 13 rounds Jun 17 – Sep 28 2026 at each
+     course (84.8°F; the Shot Pattern report's own window Jun 27 – Sep 20 reads 86.4°F). */
+  PROFILE_TEMP_F: 85,
   /* Altitude (integration item 5): +1.16% carry per 1,000 ft (Titleist; Rice's +2.5 yds/1,000 ft on
      a driver agrees). Reference = Brett's home courses (~1,000 ft, north Georgia), where his
      Shot Pattern numbers were gathered: higher than that plays shorter, lower plays longer.
@@ -104,8 +110,20 @@ export const DEFAULT_CONFIG = Object.freeze({
   FLY_TOLERANCE_YDS: 20,        // prune clubs that fly the back edge by more than this (§3.4)
 
   /* ---- selection (§3.6) ---- */
-  SAME_SHOT_BIRDIE_GAIN: 0.01,
+  /* Same shot (v22.17, engine.js pickOptions): the same club + swing within SAME_SHOT_TARGET_YDS, or
+     a birdie gain under SAME_SHOT_BIRDIE_GAIN with the targets within 2 × SAME_SHOT_TARGET_YDS.
+     Was 0.01 on its own (any target), which hid real alternatives off the tee. */
+  SAME_SHOT_BIRDIE_GAIN: 0.005,
   SAME_SHOT_TARGET_YDS: 10,
+  /* SAFE ranking (D78): "par" = the most likely to make par or better among the shots the course-
+     management rules allow, ties (PAR_TIE_TOLERANCE) to the lower expected score; "exp" = the
+     lowest expected score, as before v22.17. */
+  SAFE_RANKING: "par",
+  PAR_TIE_TOLERANCE: 0.01,
+  /* Strokes-to-hole-out distribution off the green (D78, engine.js holeOutCdf): a rounded split
+     normal with mean E(d, lie); σ = [base, per stroke above 1] on each side. Uncalibrated, except
+     that a par-4 tee at 4.62 gives par-or-better ≈ 49% / double+ ≈ 13% (Brett's report: 52.8 / 13.3). */
+  SCORE_DIST: { sdLeft: [0.30, 0.03], sdRight: [0.60, 0.12] },
   SAME_AVG_DELTA: 0.05,         // |Δavg| under this displays as "≈ same avg."
   /* Two candidates whose expScore differ by less than this are a tie (500 samples put the standard
      error near 0.02, and model error is larger). Ties go to the club that plays the number: the
@@ -161,6 +179,14 @@ export const DEFAULT_CONFIG = Object.freeze({
      `derivedLowAcc` (still computed, flagged with the ? on the card). */
   MISS_BANDS: { slightYds: 8, bigYds: 20 },
   LOW_ACC_M: 12,
+  /* Line played (v22.17, shotlog.js linePlayedFor): "custom" when the club differs from both
+     options' clubs, or the aim is farther than max(minYds, pct × ball→target) from both targets;
+     otherwise the nearer of SAFE / AGGRESSIVE. Replaces D61's flat 5 yds. */
+  CUSTOM_LINE: { minYds: 15, pct: 0.10 },
+  /* Breadcrumb trail (SPEC-shotlog-v2 §10, trail.js): points thinned to ≥ thinM apart or ≥ thinSec
+     apart, at most maxPoints per hole; a stop = points within radiusM for ≥ minSec; a stop within
+     matchYds of a recorded shot's start is that shot. */
+  TRAIL_STOP: { radiusM: 6, minSec: 15, thinM: 3, thinSec: 10, maxPoints: 600, matchYds: 8 },
   /* Test mode (spec §1): `Fake my location` turns every GPS fix into a tap on the caddie map.
      Never on by default; toggled from the Setup build tag and kept in bogeyman-matches:config:v1. */
   testMode: { fakeGps: false },

@@ -171,7 +171,7 @@ test("closeOutShot: a miss outside the tolerance ellipse is not onTarget", () =>
 
 test("closeOutShot: missing target frame (an own-call shot) leaves derived misses null", () => {
   const prev = quickLog({ club: "PW", start: { frame: { x: 0, y: 0 }, distanceToPinYds: 100 }, recommendation: null });
-  assert.equal(prev.linePlayed, "own");
+  assert.equal(prev.linePlayed, "custom", "v22.17: written as custom (was own)");
   const closed = closeOutShot(prev, { endGps: {}, endLie: "green", endFrame: { x: 2, y: 98 } });
   assert.equal(closed.derived.distanceMissYds, null);
   assert.equal(closed.derived.onTarget, null);
@@ -379,7 +379,7 @@ test("bareShotRecord: no recommendation, no target, nulls where nothing is known
   assert.equal(r.recommendation, null);
   assert.equal(r.target, null);
   assert.equal(r.club, "7i");
-  assert.equal(r.linePlayed, "own", "nothing to match against");
+  assert.equal(r.linePlayed, "custom", "nothing to match against (v22.17: custom, was own)");
   assert.deepEqual(r.start, { lat: 39.99, lng: -85.98, accuracyM: 4, distanceToPinYds: null, playsLikeYds: null, frame: null });
   assert.deepEqual(r.lie, { inferred: null, confidence: null, confirmed: null, quality: "standard" });
   assert.equal(r.shotType, "full"); assert.equal(r.conditions, "normal"); assert.equal(r.logged, "quick");
@@ -432,7 +432,7 @@ test("T45 intent defaults: an untouched shot aims at the recommendation, starts 
   assert.equal(r.intendedShape, "draw");
   assert.equal(r.linePlayed, "safe", "within 5 yds of SAFE's target");
   assert.equal(linePlayedFor({ target: { x: 8, y: 247 }, source: "set" }, rec, "5i"), "aggressive", "within 5 yds of AGGRESSIVE's");
-  assert.equal(linePlayedFor({ target: { x: -30, y: 200 }, source: "set" }, rec, "5i"), "own");
+  assert.equal(linePlayedFor({ target: { x: -30, y: 200 }, source: "set" }, rec, "5i"), "custom");
   // a default intent keeps the §9.5 club rule: the aggressive club alone says aggressive
   assert.equal(linePlayedFor({ target: { x: 0, y: 238 }, source: "default" }, rec, "2Hy"), "aggressive");
   // no recommendation: shape only
@@ -494,7 +494,10 @@ test("T47 auto-close: a shot nobody logged gets an auto record, reviewed false, 
   assert.equal(again.derived.curveAuto, 2); assert.equal(again.curve, -2); assert.equal(again.curveSource, "hand");
   // a new intent at close time wins over the logged one (Brett moved the target after logging)
   const moved = closeOutShot(auto, { endFrame: { x: 12, y: 226 }, intent: { ...intent, target: { x: 12, y: 226 }, source: "set" } });
-  assert.equal(moved.derived.latMissYds, 0); assert.equal(moved.linePlayed, "own"); assert.deepEqual(moved.target.frame, { x: 12, y: 226 });
+  // v22.17: 17 yds off SAFE's target on a 226-yd shot is inside max(15, 10%) = 22.6 → still SAFE (was own under D61's 5 yds)
+  assert.equal(moved.derived.latMissYds, 0); assert.equal(moved.linePlayed, "safe"); assert.deepEqual(moved.target.frame, { x: 12, y: 226 });
+  const far = closeOutShot(auto, { endFrame: { x: 30, y: 226 }, intent: { ...intent, target: { x: 30, y: 226 }, source: "set" } });
+  assert.equal(far.linePlayed, "custom", "30 right is beyond 22.6 yds of both targets");
   // old records (no intent) close exactly as before: no new fields
   const old = closeOutShot(quickLog({ start: { frame: { x: 0, y: 0 } }, recommendation: rec }), { endFrame: { x: 0, y: 238 } });
   assert.equal("curveAuto" in old.derived, false);
