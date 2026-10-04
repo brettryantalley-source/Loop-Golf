@@ -9,6 +9,18 @@ git log --oneline -6
 npm install && npm test    # 274 tests; must be green
 ```
 
+## v22.17 (Oct 4) — read first
+
+Brett's Oct 3 field test → v22.17: the caddie is a full-screen map (D81, built from his Shot Pattern
+screen recordings), the bottom pill moves between holes and a past hole logs by tapping (D80), a
+notebook button takes dictated notes (D82), the target drag is smooth and shows ball → target and
+target → pin on the map, and Custom when he leaves both routes (D83), Safe is the most-likely-par
+route with Par+/Dbl+ in Details (D78), the profile is treated as an 85°F profile (D79), and the
+breadcrumb trail records while the screen is on (D84). 324 tests. **Untested on a course**: the
+putting flow (never reached in the Oct 3 round), the trail on a real walk, the new layout on the
+phone's safe areas. Summary and History show `Tee shots: Safe · Aggressive · Custom` — more Custom
+than either means the caddie's calls are not landing.
+
 ## Where things stand (Oct 1, after PR #11 merged)
 
 Live at https://brettryantalley-source.github.io/Loop-Golf/ — **`main` is v22.16** (PR #11 merged Oct 1:

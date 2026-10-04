@@ -41,7 +41,7 @@ import { newNote, saveNote, loadNotes } from "./caddie/notes.js";
 import {
   COPY, GPS_TIMEOUT_MS, initialCaddie, caddieReducer, caddieHoleFor, serializeCaddie, restoreCaddie, pinSetting, pinPointFor,
   pinFromMapTap, pickerModel, syntheticHole, clubBrainContext, mapInput, caddieView, defaultNineMap, geometryKeyFor, scorecardOrder, detectedHoleNo,
-  clubShort, ellipsesFor, withinRoundCtx, learningOverlays, aggressionModel, pinFromDrag, fakeFix, intentSet,
+  clubShort, ellipsesFor, withinRoundCtx, learningOverlays, aggressionModel, pinFromDrag, fakeFix, intentSet, DASH,
 } from "./caddie/caddieState.js";
 /* v22.11: marked-green mode — the caddie on a hole OpenStreetMap does not have. */
 import { loadGreens, saveGreen, greenFor, greenSlot, markedGreenHole, markedGreenContext, anchorFrame, toSyntheticFrame, markedEndLie } from "./caddie/greens.js";
@@ -80,7 +80,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.16.9 · Oct 3";
+const BUILD = "v22.17 · Oct 4";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -2548,12 +2548,12 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
       </div>
       <div data-part="hole-switch" style={{ ...card, position: "absolute", left: "50%", transform: "translateX(-50%)", bottom: safe.bottom + 10, height: 44, width: 214, borderRadius: 22, zIndex: 21,
         display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <button aria-label="Previous hole" disabled={n <= 1 || !onHole} onClick={() => leaveTo(n - 1)} style={{ width: 46, height: 44, color: T.ink, opacity: n <= 1 ? 0.3 : 1, ...printed(20) }}>‹</button>
+        <button aria-label="Previous hole" disabled={n <= 1 || !onHole} onClick={() => leaveTo(n - 1)} style={{ width: 46, height: 44, color: T.ink, opacity: n <= 1 ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 2L2 9l7 7" /></svg></button>
         <div style={{ textAlign: "center", lineHeight: 1.15 }}>
           <div style={{ fontSize: 12, color: T.ink }}>Hole <span style={printed(14)}>{n}</span> · Par <span style={printed(13)}>{h.par}</span>{r.unreviewed > 0 && <span data-part="rail-q" style={{ ...printed(13), color: T.bogey }}> ?</span>}</div>
           <div style={{ fontSize: 11, color: T.ink }}>{past ? <span style={{ ...writtenWord(19), lineHeight: 0.8 }}>logging</span> : <><span style={printed(13)}>{h.yards}</span> yds · shot <span style={printed(13)}>{r.shot}</span></>}</div>
         </div>
-        <button aria-label="Next hole" disabled={n >= 18 || !onHole} onClick={() => leaveTo(n + 1)} style={{ width: 46, height: 44, color: T.ink, opacity: n >= 18 ? 0.3 : 1, ...printed(20) }}>›</button>
+        <button aria-label="Next hole" disabled={n >= 18 || !onHole} onClick={() => leaveTo(n + 1)} style={{ width: 46, height: 44, color: T.ink, opacity: n >= 18 ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 2l7 7-7 7" /></svg></button>
       </div>
       {past && liveHole && liveHole !== n && (
         <button data-part="back-live" onClick={() => leaveTo(liveHole)} style={{ ...card, position: "absolute", right: 10, bottom: safe.bottom + 116, height: 34, padding: "0 10px", borderRadius: 17, zIndex: 21, color: T.ink, fontSize: 11 }}>
