@@ -313,12 +313,20 @@ const r1 = (n) => Math.round(n * 10) / 10;
  *   fakeAt        { lat, lon, spanYds, ball } — no hole and no mark view: a north-up frame on this
  *                 point (the course centre) so there is something to tap; drawn when there are no tiles.
  *   testBorder    a thin dashed pencil border round the map: test mode is on.
+ *
+ * v22.17:
+ *   labels        [{ at {x,y}, text, unit, sub }] hole frame — big distance labels beside the shot line
+ *                 (ball → target, target → pin), Shot Pattern style; white on satellite, ink on paper.
+ *   trail         [{x,y}] hole frame — the breadcrumb trail, small dots (SPEC-shotlog-v2 §10)
+ *   stops         [{x,y,matched}] hole frame — stop rings; hollow = a candidate, filled = a recorded shot
+ *   onStopTap(i)  a tap within 22 px of stop i (before anything else but test-mode / armed taps)
  */
 export function MapLayer({
   hole = null, geometry = null, ball = null, accuracyM = null, pin = null, options = null, active = "safe", sameShot = false,
   previousShots = [], insets = {}, fallback = false, onPinTap, onMapTap, onSatelliteFail, recomputing = false, attributionBottom,
   fitBall, fitOptions, markAt = null, onMarkGreen, onRemark, pinView = false, onPinDrag, onPinDrop,
   intentMarker = null, startLineDeg = null, onTargetDrag, onTargetDrop, lineMode = false, onLineTap, onFakeTap = null, fakeAt = null, testBorder = false,
+  labels = [], trail = [], stops = [], onStopTap = null,
 }) {
   const camBall = fitBall !== undefined ? fitBall : ball;
   const camOptions = fitOptions !== undefined ? fitOptions : options;
@@ -490,7 +498,16 @@ export function MapLayer({
     const p = unproject(pt), bp = project(ball);
     onLineTap(Math.hypot(pt.x - bp.x, pt.y - bp.y) <= 20 ? null : p);
   };
+  const stopAt = (pt) => {
+    if (!onStopTap || !project || !stops.length || inPinView || markMode) return -1;
+    let best = -1, bd = 22;
+    stops.forEach((st, i) => { const q = project(st); const d = q ? Math.hypot(q.x - pt.x, q.y - pt.y) : Infinity; if (d <= bd) { bd = d; best = i; } });
+    return best;
+  };
   const tap = (pt) => {
+    // v22.17: a stop ring takes the tap (on a past hole it is where the ball was)
+    const si = stopAt(pt);
+    if (si >= 0) { onStopTap(si); return; }
     // v22.15 test mode: armed, the tap is a fix — wherever it lands, and nothing else happens
     if (onFakeTap) {
       let q = null;
@@ -605,9 +622,39 @@ export function MapLayer({
           {renderNodes(base)}
         </svg>
       )}
+      {project && (trail.length > 0 || stops.length > 0) && !inPinView && !markMode && (
+        <svg data-layer="trail" style={{ ...svgStyle, pointerEvents: "none" }} width={vp.width} height={vp.height} viewBox={`0 0 ${vp.width} ${vp.height}`} aria-hidden="true">
+          {trail.map((p, i) => { const q = project(p); return q ? <circle key={i} cx={q.x} cy={q.y} r={1.6} fill={drawn ? T.pencil : "#fff"} opacity={0.55} /> : null; })}
+          {stops.map((p, i) => {
+            const q = project(p);
+            if (!q) return null;
+            const filled = p.matched != null;
+            return (
+              <g key={`s${i}`}>
+                <circle cx={q.x} cy={q.y} r={8} fill={filled ? (drawn ? T.ink : "#fff") : "none"} stroke={drawn ? T.ink : "#fff"} strokeWidth={1.8} />
+                {filled ? <text x={q.x} y={q.y + 3.5} textAnchor="middle" fontSize="10" fontWeight="700" fill={drawn ? T.paper : T.black} fontFamily={F.num}>{p.matched}</text>
+                  : <path d={`M${q.x - 3.5} ${q.y}h7M${q.x} ${q.y - 3.5}v7`} stroke={drawn ? T.ink : "#fff"} strokeWidth={1.6} />}
+              </g>
+            );
+          })}
+        </svg>
+      )}
       <svg data-layer="overlay" style={{ ...svgStyle, pointerEvents: "none" }} width={vp.width} height={vp.height} viewBox={`0 0 ${vp.width} ${vp.height}`} aria-hidden="true">
         {renderNodes(model)}
       </svg>
+      {project && !inPinView && !markMode && labels.map((l, i) => {
+        const q = l && l.at ? project(l.at) : null;
+        if (!q || !Number.isFinite(q.x) || q.x < -40 || q.x > vp.width + 40) return null;
+        const right = q.x < vp.width * 0.62;
+        return (
+          <div key={i} data-part="map-label" style={{ position: "absolute", top: q.y, ...(right ? { left: q.x + 14 } : { right: vp.width - q.x + 14 }), transform: "translateY(-50%)",
+            pointerEvents: "none", zIndex: 4, whiteSpace: "nowrap", textAlign: right ? "left" : "right", color: drawn ? T.ink : "#fff",
+            textShadow: drawn ? "none" : "0 1px 3px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.55)" }}>
+            <div style={{ fontFamily: F.num, fontWeight: 700, fontSize: 30, lineHeight: 1 }}>{l.text}<span style={{ fontSize: 15, marginLeft: 3 }}>{l.unit}</span></div>
+            {l.sub && <div style={{ fontFamily: F.label, fontWeight: 600, fontSize: 12, marginTop: 2, letterSpacing: "0.03em" }}>{l.sub}</div>}
+          </div>
+        );
+      })}
       {/* v22.15: test mode — a thin dashed pencil border, so a fake round is never mistaken for a live one */}
       {testBorder && <div data-part="test-border" aria-hidden="true" style={{ position: "absolute", inset: 2, border: `1.5px dashed ${T.pencil}`, pointerEvents: "none", zIndex: 5 }} />}
       {(hole || markMode) && (
