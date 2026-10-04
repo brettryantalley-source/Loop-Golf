@@ -87,7 +87,7 @@ function isShortGameOrPutt(s) {
   return t === "shortGame" || t === "putt" || s?.kind === "shortGame" || s?.kind === "putt";
 }
 
-/** v22.17.1 (D85): an end Loop assumed rather than measured — the green's centre standing in for a
+/** v22.17.2 (D87): an end Loop assumed rather than measured — the green's centre standing in for a
     fix nobody took when the hole moved on (§4.5). Flagged `end.assumed` since v22.17.1; before that
     the only mark is a green end with a position but no GPS accuracy (every real or test-mode fix has
     one). Such a shot says nothing about how far the club went: a tee shot "closed" on a 360-yd
@@ -548,7 +548,7 @@ export function applyShotLog(P, allShots, { now, roundIndexById } = {}, config) 
   const N = cfg.TAKEOVER_N ?? DEFAULT_CONFIG.TAKEOVER_N;
   const nowMs = now == null ? null : now instanceof Date ? now.getTime() : typeof now === "number" ? now : Date.parse(now);
 
-  // D85: and never a distance far outside what the club can do — a mis-tapped or mis-closed shot
+  // D87: and never a distance far outside what the club can do — a mis-tapped or mis-closed shot
   // must not stretch the profile (actual > 1.3 × the stored total + 20 yds, or under a third of it)
   const plausible = (s) => {
     const a = actualYds(s), t = profileTotal(P, s.club, swingOf(s), lieOf(s));

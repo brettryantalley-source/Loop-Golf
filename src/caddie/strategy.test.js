@@ -62,7 +62,9 @@ test("T44 front pin → club up to the middle of the green, aimed at the center 
 });
 
 test("T45 back pin → take less than the pin yardage; the average shot finishes in the middle", () => {
-  const raw = { shotNo: 2, ball: { x: 0, y: 390 }, lieType: "fairway", pinPos: "back" };
+  // 137 yds to the middle of a 40-yd-deep green (Oct 4 profile + par ranking, D85/D78: from 390 the
+  // plain pick no longer flew the pin; from 404 the par ranking alone already played the middle)
+  const raw = { shotNo: 2, ball: { x: 0, y: 403 }, lieType: "fairway", pinPos: "back" };
   const r = recommend(raw, deepGreen, P), off = recommend(raw, deepGreen, Poff);
   const g = greenDistances(deepGreen, raw.ball, "back");
   assert.ok(off.safe.meanYds > g.pin, `the plain pick flies the back pin (${off.safe.club} ${off.safe.meanYds} vs ${g.pin})`);
@@ -114,7 +116,8 @@ test("T48 Brett's numbers overrule the pin rule only on more trouble or a big co
 });
 
 test("T49 no hero golf: from the trees SAFE stays out of trouble 9 times in 10; the hero shot is still shown as AGGRESSIVE", () => {
-  const raw = { shotNo: 2, ball: { x: -35, y: 260 }, lieType: "recovery" };
+  // just inside the tree line (Oct 4 profile, D85: from −35, 260 the plain pick was no longer a hero shot)
+  const raw = { shotNo: 2, ball: { x: -32, y: 250 }, lieType: "recovery" };
   const r = recommend(raw, treesLeft, P), off = recommend(raw, treesLeft, Poff);
   assert.ok(off.safe.troubleRate > DEFAULT_CONFIG.STRATEGY.noHeroMaxTrouble, `the plain pick is a hero shot (${off.safe.troubleRate})`);
   assert.ok(r.strategy.includes("no-hero"), JSON.stringify(r.strategy));

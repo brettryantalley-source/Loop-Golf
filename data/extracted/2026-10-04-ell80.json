@@ -1,0 +1,367 @@
+{
+  "batch": "2026-10-04",
+  "source": "Shot Pattern club sheets (Approach → Breakdown By Club → club → Shot Pattern · Dispersion · Coverage 80%), recordings 8:01 pm and 9:32 pm Oct 3; measured by scripts/fit-ell80.py from the stills under data/raw/2026-10-04/.",
+  "method": "Largest bright-green component in the plot = the solid 80% outline; direct least-squares conic fit, refit 4x without outlying pixels; target = the white '+' glyph; pixels → yards from the printed Width × Depth labels (the outline's bounding box). isotropyPct = disagreement of the x and y scales.",
+  "frame": "Shot Pattern club plot: +x right, +y short. wYds is the full axis at tiltDeg clockwise from +x; hYds the perpendicular axis. dx, dy = ellipse centre relative to the target cross.",
+  "resolvedFilters": {
+    "roundType": "Casual",
+    "window": "Last 10",
+    "dateRange": [
+      "2026-07-26",
+      "2026-10-03"
+    ],
+    "startLie": "Tee & Fairway",
+    "lies": "Tee & Fairway",
+    "coverage": 0.8
+  },
+  "filterSource": "seen (sheet chip 'Tee & Fairway'; Casual · Last 10 on the Approach tab in the same recording; 4Hy/6i/8i/9i/LW sheet stats match the Oct 4 PDF FROM TEE & FAIRWAY rows exactly)",
+  "confidenceRule": "medium = n ≥ 8, low = 5–7 (Shot Pattern draws no pattern under 5).",
+  "entries": [
+    {
+      "club": "2Hy",
+      "lie": "fairway",
+      "n": 5,
+      "frame": "data/raw/2026-10-04/rec-200128/0007_006.00s.jpg",
+      "plotYpx": [
+        470,
+        970
+      ],
+      "bboxWYds": 61,
+      "bboxDYds": 135,
+      "wYds": 135.7,
+      "hYds": 60.5,
+      "tiltDeg": 87.7,
+      "dxYds": 0.0,
+      "dyYds": 28.0,
+      "isotropyPct": 1.0,
+      "confidence": "low",
+      "px": {
+        "cx": 294.1,
+        "cy": 769.5,
+        "a": 146.8,
+        "b": 65.5,
+        "cross": [
+          294,
+          709
+        ],
+        "axes": [
+          360,
+          916
+        ],
+        "crossSrc": "plus glyph"
+      }
+    },
+    {
+      "club": "5i",
+      "lie": "fairway",
+      "n": 12,
+      "frame": "data/raw/2026-10-04/rec-200128/0027_031.17s.jpg",
+      "plotYpx": [
+        470,
+        970
+      ],
+      "bboxWYds": 63,
+      "bboxDYds": 43,
+      "wYds": 42.8,
+      "hYds": 63.2,
+      "tiltDeg": 84.7,
+      "dxYds": 5.6,
+      "dyYds": 2.3,
+      "isotropyPct": -0.1,
+      "confidence": "medium",
+      "px": {
+        "cx": 319.4,
+        "cy": 719.4,
+        "a": 97.1,
+        "b": 143.5,
+        "cross": [
+          294,
+          709
+        ],
+        "axes": [
+          463,
+          698
+        ],
+        "crossSrc": "plus glyph"
+      }
+    },
+    {
+      "club": "6i",
+      "lie": "fairway",
+      "n": 11,
+      "frame": "data/raw/2026-10-04/rec-200128/0033_039.83s.jpg",
+      "plotYpx": [
+        470,
+        970
+      ],
+      "bboxWYds": 51,
+      "bboxDYds": 49,
+      "wYds": 36.3,
+      "hYds": 60.7,
+      "tiltDeg": 131.9,
+      "dxYds": -4.1,
+      "dyYds": -3.6,
+      "isotropyPct": -1.1,
+      "confidence": "medium",
+      "px": {
+        "cx": 273.1,
+        "cy": 690.5,
+        "a": 92.2,
+        "b": 153.9,
+        "cross": [
+          294,
+          709
+        ],
+        "axes": [
+          403,
+          567
+        ],
+        "crossSrc": "plus glyph"
+      }
+    },
+    {
+      "club": "7i",
+      "lie": "fairway",
+      "n": 10,
+      "frame": "data/raw/2026-10-04/rec-200128/0040_053.00s.jpg",
+      "plotYpx": [
+        470,
+        970
+      ],
+      "bboxWYds": 56,
+      "bboxDYds": 46,
+      "wYds": 63.6,
+      "hYds": 34.8,
+      "tiltDeg": 34.4,
+      "dxYds": 0.6,
+      "dyYds": 1.3,
+      "isotropyPct": -0.0,
+      "confidence": "medium",
+      "px": {
+        "cx": 297.6,
+        "cy": 715.5,
+        "a": 189.7,
+        "b": 103.9,
+        "cross": [
+          294,
+          708
+        ],
+        "axes": [
+          130,
+          578
+        ],
+        "crossSrc": "plus glyph"
+      }
+    },
+    {
+      "club": "8i",
+      "lie": "fairway",
+      "n": 10,
+      "frame": "data/raw/2026-10-04/rec-213222/0001_001.17s.jpg",
+      "plotYpx": [
+        470,
+        970
+      ],
+      "bboxWYds": 40,
+      "bboxDYds": 31,
+      "wYds": 29.4,
+      "hYds": 41.1,
+      "tiltDeg": 110.6,
+      "dxYds": -10.3,
+      "dyYds": -1.8,
+      "isotropyPct": 0.7,
+      "confidence": "medium",
+      "px": {
+        "cx": 229.5,
+        "cy": 697.8,
+        "a": 92.0,
+        "b": 128.6,
+        "cross": [
+          294,
+          709
+        ],
+        "axes": [
+          354,
+          796
+        ],
+        "crossSrc": "plus glyph"
+      }
+    },
+    {
+      "club": "9i",
+      "lie": "fairway",
+      "n": 12,
+      "frame": "data/raw/2026-10-04/rec-213222/0009_009.33s.jpg",
+      "plotYpx": [
+        470,
+        970
+      ],
+      "bboxWYds": 41,
+      "bboxDYds": 20,
+      "wYds": 19.3,
+      "hYds": 41.3,
+      "tiltDeg": 98.2,
+      "dxYds": 2.2,
+      "dyYds": 2.7,
+      "isotropyPct": 0.2,
+      "confidence": "medium",
+      "px": {
+        "cx": 309.9,
+        "cy": 727.9,
+        "a": 68.3,
+        "b": 145.7,
+        "cross": [
+          294,
+          709
+        ],
+        "axes": [
+          150,
+          693
+        ],
+        "crossSrc": "plus glyph"
+      }
+    },
+    {
+      "club": "PW",
+      "lie": "fairway",
+      "n": 6,
+      "frame": "data/raw/2026-10-04/rec-213222/0016_018.17s.jpg",
+      "plotYpx": [
+        470,
+        970
+      ],
+      "bboxWYds": 36,
+      "bboxDYds": 51,
+      "wYds": 58.7,
+      "hYds": 21.3,
+      "tiltDeg": 58.2,
+      "dxYds": 5.2,
+      "dyYds": 8.3,
+      "isotropyPct": 0.6,
+      "confidence": "low",
+      "px": {
+        "cx": 323.3,
+        "cy": 755.9,
+        "a": 166.3,
+        "b": 60.4,
+        "cross": [
+          294,
+          709
+        ],
+        "axes": [
+          424,
+          611
+        ],
+        "crossSrc": "plus glyph"
+      }
+    },
+    {
+      "club": "GW",
+      "lie": "fairway",
+      "n": 15,
+      "frame": "data/raw/2026-10-04/rec-213222/0021_024.33s.jpg",
+      "plotYpx": [
+        470,
+        970
+      ],
+      "bboxWYds": 33,
+      "bboxDYds": 41,
+      "wYds": 29.2,
+      "hYds": 43.7,
+      "tiltDeg": 151.2,
+      "dxYds": -0.0,
+      "dyYds": 6.0,
+      "isotropyPct": -1.0,
+      "confidence": "medium",
+      "px": {
+        "cx": 293.8,
+        "cy": 740.8,
+        "a": 76.9,
+        "b": 115.0,
+        "cross": [
+          294,
+          709
+        ],
+        "axes": [
+          381,
+          695
+        ],
+        "crossSrc": "plus glyph"
+      }
+    },
+    {
+      "club": "SW",
+      "lie": "fairway",
+      "n": 9,
+      "frame": "data/raw/2026-10-04/rec-213222/0027_032.00s.jpg",
+      "plotYpx": [
+        470,
+        970
+      ],
+      "bboxWYds": 18,
+      "bboxDYds": 24,
+      "wYds": 16.1,
+      "hYds": 25.3,
+      "tiltDeg": 155.2,
+      "dxYds": 2.8,
+      "dyYds": 2.9,
+      "isotropyPct": -0.7,
+      "confidence": "medium",
+      "px": {
+        "cx": 327.1,
+        "cy": 742.5,
+        "a": 94.2,
+        "b": 147.7,
+        "cross": [
+          294,
+          709
+        ],
+        "axes": [
+          221,
+          883
+        ],
+        "crossSrc": "plus glyph"
+      }
+    },
+    {
+      "club": "LW",
+      "lie": "fairway",
+      "n": 14,
+      "frame": "data/raw/2026-10-04/rec-213222/0032_039.33s.jpg",
+      "plotYpx": [
+        470,
+        970
+      ],
+      "bboxWYds": 14,
+      "bboxDYds": 29,
+      "wYds": 11.7,
+      "hYds": 29.7,
+      "tiltDeg": 162.9,
+      "dxYds": 1.7,
+      "dyYds": 0.0,
+      "isotropyPct": -2.6,
+      "confidence": "medium",
+      "px": {
+        "cx": 314.0,
+        "cy": 708.3,
+        "a": 70.1,
+        "b": 178.4,
+        "cross": [
+          294,
+          708
+        ],
+        "axes": [
+          399,
+          693
+        ],
+        "crossSrc": "plus glyph (relaxed threshold)"
+      }
+    }
+  ],
+  "notFitted": {
+    "4Hy": "fairway: 3 shots, Shot Pattern shows 'Need 5+ shots for a pattern'.",
+    "2i": "no approach shots.",
+    "Dr": "driving has no Shot Pattern ellipse.",
+    "rough": "Rough patterns were captured (4Hy 31×78, 5i 70×65, PW 31×93, SW 15×56, LW 16×42 yds, Width × Depth, rec-200407) and are kept in 2026-10-04-screens.json; not fitted and not used (rough distances wait on a separate decision, D85)."
+  }
+}

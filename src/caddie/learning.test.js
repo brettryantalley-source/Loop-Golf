@@ -585,9 +585,9 @@ test("tendencies: signs from Shot Pattern words and drives, Loop yards, putts; b
   assert.deepEqual(Object.keys(tendencies(spRecs(), { shotTypes: ["putt"] })), ["Putter"]);
 });
 
-/* ---------- D85: assumed ends and impossible distances never teach the profile ---------- */
+/* ---------- D87: assumed ends and impossible distances never teach the profile ---------- */
 
-test("D85 a shot closed on the green's centre (no fix) is not a distance; nor is one far past the club", async () => {
+test("D87 a shot closed on the green's centre (no fix) is not a distance; nor is one far past the club", async () => {
   const { assumedEnd } = await import("./learning.js");
   const idx = { a: 1 };
   const greenEnd = (s, flag) => ({ ...s, end: { lat: 34.2, lng: -83.8, accuracyM: null, lie: "green", ...(flag ? { assumed: true } : {}) } });
