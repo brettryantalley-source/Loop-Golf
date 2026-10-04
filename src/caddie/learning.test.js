@@ -584,3 +584,23 @@ test("tendencies: signs from Shot Pattern words and drives, Loop yards, putts; b
   assert.deepEqual(tendencies([]), {});
   assert.deepEqual(Object.keys(tendencies(spRecs(), { shotTypes: ["putt"] })), ["Putter"]);
 });
+
+/* ---------- D87: assumed ends and impossible distances never teach the profile ---------- */
+
+test("D87 a shot closed on the green's centre (no fix) is not a distance; nor is one far past the club", async () => {
+  const { assumedEnd } = await import("./learning.js");
+  const idx = { a: 1 };
+  const greenEnd = (s, flag) => ({ ...s, end: { lat: 34.2, lng: -83.8, accuracyM: null, lie: "green", ...(flag ? { assumed: true } : {}) } });
+  // three 7-irons "carried" 340 because the hole moved on before a fix: old records (no flag) and new ones
+  const bogus = [greenEnd(shot({ round: "a", hole: 1, dist: 170, intended: 170 }), false), greenEnd(shot({ round: "a", hole: 2, dist: 170, intended: 170 }), true)];
+  assert.equal(assumedEnd(bogus[0]), true, "a green end with a position and no accuracy is assumed");
+  assert.equal(assumedEnd(bogus[1]), true, "the v22.17.1 flag");
+  assert.equal(assumedEnd({ end: { lat: 1, lng: 1, accuracyM: 4, lie: "green" } }), false, "a real (or test-mode) fix on the green is a fix");
+  assert.equal(applyShotLog(P, bogus, { roundIndexById: idx }, DEFAULT_CONFIG)[entryKey("7i", "full", "fairway")], undefined);
+  // a measured shot that says the 7-iron went 2× its stored total is a mistake, not a tendency
+  const wild = shot({ round: "a", hole: 3, dist: 200, intended: 170 });
+  assert.equal(applyShotLog(P, [wild], { roundIndexById: idx }, DEFAULT_CONFIG)[entryKey("7i", "full", "fairway")], undefined);
+  const real = shot({ round: "a", hole: 4, dist: -5, intended: 170 });
+  assert.equal(applyShotLog(P, [...bogus, wild, real], { roundIndexById: idx }, DEFAULT_CONFIG)[entryKey("7i", "full", "fairway")].n, 1);
+  assert.deepEqual(Object.keys(tendencies(bogus)), [], "nor does it count as a miss direction");
+});
