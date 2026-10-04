@@ -150,7 +150,7 @@ test("profile: loads v2, every club in clubOrder resolves a usable full or fines
   const ids = candidateEntries(P, "fairway").map((e) => `${e.club}/${e.swing}`);
   assert.ok(ids.includes("7i/full") && ids.includes("SW/finesse"), ids.join(","));
   assert.ok(!ids.includes("SW/full"), "SW full is a placeholder with no median");
-  // D79: full driver and full 2-iron are tee clubs only — never offered from the fairway, always off the tee
+  // D86: full driver and full 2-iron are tee clubs only — never offered from the fairway, always off the tee
   assert.ok(!ids.includes("Dr/full") && !ids.includes("2i/full"), "no full driver or 2-iron off the deck");
   assert.ok(ids.includes("2Hy/full"), "the 2-hybrid is the fairway long club");
   const tee = candidateEntries(P, "tee").map((e) => `${e.club}/${e.swing}`);
@@ -254,9 +254,18 @@ test("wind: lofted clubs lose more %, tailwind returns diminish, crosswind ≈ 2
   assert.ok(Math.abs(xDr - 0.8 * x6) < 1e-9);
 });
 
-test("temperature plays-like: cold plays longer, hot plays shorter, 70°F or unknown is neutral", () => {
-  const cfg = DEFAULT_CONFIG;
+test("temperature plays-like (D79): neutral at the profile's own 85°F; colder plays longer, hotter shorter; unknown is neutral", () => {
   const noWind = { wind: null, elevationDeltaYds: 0 };
+  assert.equal(DEFAULT_CONFIG.PROFILE_TEMP_F, 85);
+  const d = DEFAULT_CONFIG;
+  const at = (t, c = d) => playsLike(150, 0, { ...noWind, tempF: t }, c);
+  assert.equal(at(85).tempYds, 0, "the profile's temperature is neutral");
+  assert.ok(Math.abs(at(65).tempYds - 2.55) < 1e-9, "150 × 0.0085 × 2 = 2.55, 20° below the profile");
+  assert.ok(Math.abs(at(105).tempYds + 2.55) < 1e-9);
+  assert.ok(at(70).tempYds > 0, "a 70° day is colder than Brett's summer numbers: plays longer");
+  assert.equal(at(null).tempYds, 0);
+  // the old 70°F reference still holds when PROFILE_TEMP_F is unset (TEMP_REF_F fallback)
+  const cfg = mergeConfig({ PROFILE_TEMP_F: null });
   const cold = playsLike(150, 0, { ...noWind, tempF: 50 }, cfg);
   const hot = playsLike(150, 0, { ...noWind, tempF: 90 }, cfg);
   const ref = playsLike(150, 0, { ...noWind, tempF: 70 }, cfg);
@@ -355,7 +364,7 @@ test("handicap prior (item 2): no bucket → baseline + 0.42 × (0.41 + 0.0025 d
   const e400 = E(Pf, 400, "tee"), b400 = baselineE(400, "tee");
   assert.ok(e400 > b400);
   assert.ok(Math.abs(e400 - b400 - puttingGapAt(Pf, 400, "tee") - 0.42 * (0.41 + 0.0025 * 400)) < 1e-9, `E(400 tee) ${e400}`);
-  // a bucketed distance prices from its bucket, not the prior. Pinned to the Oct 4 profile (D78:
+  // a bucketed distance prices from its bucket, not the prior. Pinned to the Oct 4 profile (D85:
   // buckets shrunk toward the lie average): 150 fairway, 165 rough, and the personal part at 30.
   assert.ok(Math.abs(E(Pf, 150, "fairway") - 3.7585) < 1e-9, `E(150 fw) ${E(Pf, 150, "fairway")}`);
   assert.ok(Math.abs(E(Pf, 165, "rough") - 3.8161666666666667) < 1e-9, `E(165 rough) ${E(Pf, 165, "rough")}`);

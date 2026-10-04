@@ -295,7 +295,7 @@ export function candidateEntries(P, lie, opts = {}) {
   const teeOnlyFull = P.config?.TEE_ONLY_FULL || [];
   for (const id of P.clubOrder) {
     for (const swing of ["full", "finesse"]) {
-      if (swing === "full" && lie !== "tee" && teeOnlyFull.includes(id)) continue;   // D79: no full Dr / 2i off the deck
+      if (swing === "full" && lie !== "tee" && teeOnlyFull.includes(id)) continue;   // D86: no full Dr / 2i off the deck
       const e = resolveEntry(P, id, swing, lie, opts);
       if (e) out.push(e);
     }

@@ -5,7 +5,7 @@
  * Every number in the output is parsed from data/extracted/2026-10-04-report.txt (exact PDF text)
  * and data/extracted/2026-10-04-screens.json (screen-recording transcriptions), plus the measured
  * ellipses in data/extracted/2026-10-04-ell80.json. See docs/PROFILE-v2.md for the contract.
- * The Oct 4 batch (Casual · Last 10, Jul 26 – Oct 3) replaces the Sep 27 one entirely (D78).
+ * The Oct 4 batch (Casual · Last 10, Jul 26 – Oct 3) replaces the Sep 27 one entirely (D85).
  *
  * Usage:
  *   node scripts/build-profile.mjs           # writes src/profile.json
@@ -30,7 +30,7 @@ const ELL80_PATH = path.join(ROOT, ELL80_REL);
 const OUT_PATH = path.join(ROOT, "src/profile.json");
 
 const ROLL_YDS = DEFAULT_CONFIG.ROLL_YDS;
-// Shot Pattern draws no pattern under 5 shots: σ(α) from fewer is not used (D78).
+// Shot Pattern draws no pattern under 5 shots: σ(α) from fewer is not used (D85).
 const MIN_SIGMA_N = 5;
 
 // The per-distance buckets E() and B() price from hold 1–16 shots each. Raw, they made the caddie
@@ -39,7 +39,7 @@ const MIN_SIGMA_N = 5;
 // learning loop's own prior weight (SHRINK_K, as learning.js does between rounds):
 //   v = (n·v_bucket + K·v_lie) / (n + K);  proximity is pooled per yard of start distance.
 // Short-game bands shrink the same way toward their distance range's average. The PDF's own
-// numbers stay on `raw` (D78).
+// numbers stay on `raw` (D85).
 const SHRINK_K = DEFAULT_CONFIG.SHRINK_K;
 function shrinkRows(rows, { mid, stats }) {
   const has = rows.filter((r) => r.n > 0 && r.sgPerShot != null);
@@ -558,7 +558,7 @@ const sgPer18 = {
 /* ---------------------------------------------------------------------- */
 
 // Shot Distances on a club sheet = yards the ball travelled (median, 25th, 75th), every swing
-// length mixed. Fairway sheets feed totalMedianYds; rough sheets are stored, not used (D78).
+// length mixed. Fairway sheets feed totalMedianYds; rough sheets are stored, not used (D85).
 function sheetFor(lie, id) {
   return sheets[lie]?.[id] ?? null;
 }
@@ -685,7 +685,7 @@ function shortGameExtra(bucket, lie) {
 // dyYds is set to 0: the ellipse's distance offset is measured against Shot Pattern's target, and
 // the same shots' shortfall is already in totalMedianYds (yards travelled) — applying both would
 // count it twice (2Hy: median 236 to a ~251 target, centre 28 short). The measured value stays on
-// dyMeasuredYds. The lateral offset dx has no such twin and is kept (D78).
+// dyMeasuredYds. The lateral offset dx has no such twin and is kept (D85).
 const ell80ByClubLie = {};
 for (const e of ell80Doc.entries) {
   ell80ByClubLie[`${e.club}|${e.lie}`] = {
@@ -817,12 +817,12 @@ function buildFairwayEntry(id, { swingType, family, forceNullMedian = false } = 
   e.n = byClub.n;
   e.totalMedianYds = sheet?.medianYds ?? null;
   // The sheet's 25th–75th mixes swing lengths and targets, so it is kept as data but never turned
-  // into distSdYds for an approach club (the ellipse depth is the dispersion; D78).
+  // into distSdYds for an approach club (the ellipse depth is the dispersion; D85).
   e.p25Yds = sheet?.p25Yds ?? null;
   e.p75Yds = sheet?.p75Yds ?? null;
   fairwayDefaultsInto(e);
   // σ(α) from fewer than 5 shots is not a spread (4Hy: 0.72° from 3); null lets resolveEntry take
-  // the club's own tee σ through the lie chain (D78).
+  // the club's own tee σ through the lie chain (D85).
   e.lateralSdDeg = disp.n >= MIN_SIGMA_N ? disp.lateralSdDeg ?? null : null;
   e.leftPct = disp.leftPct ?? null;
   e.rightPct = disp.rightPct ?? null;
@@ -877,7 +877,7 @@ function buildRoughEntry(id) {
   e.ell80 = null;
   const sheet = sheetFor("rough", id);
   e.extra = {
-    // Stored, not read by the engine until Brett decides (D78): totalMedianYds stays null, so a rough
+    // Stored, not read by the engine until Brett decides (D85): totalMedianYds stays null, so a rough
     // lie still takes the fairway distance × LIE_DIST_ADJ_FAMILY.
     shotDistances: sheet && sheet.medianYds != null
       ? { n: sheet.n, medianYds: sheet.medianYds, p25Yds: sheet.p25Yds, p75Yds: sheet.p75Yds }

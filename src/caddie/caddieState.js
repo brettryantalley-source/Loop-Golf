@@ -569,12 +569,20 @@ export function todayLines(res) {
   return [...(res.nudges || []), ...(res.flags || [])].map((x) => String(x?.text || "")).filter(Boolean);
 }
 
-const LINE_LABELS = [["safe", "Safe"], ["aggressive", "Aggressive"], ["own", "Own call"]];
+/* v22.17: the line that is neither option reads "Custom". Records store "custom" from v22.17 and
+   "own" before it; the scorecard tallies both under the `own` key (and mirrors it as `custom`). */
+const LINE_LABELS = [["safe", "Safe"], ["aggressive", "Aggressive"], ["own", "Custom"]];
+const LINE_LABEL = { safe: "Safe", aggressive: "Aggressive", own: "Custom", custom: "Custom" };
+
+/** The display word for a stored linePlayed: Safe / Aggressive / Custom ("own" and "custom" alike); null when unknown. */
+export function lineLabel(line) {
+  return LINE_LABEL[line] ?? null;
+}
 
 /** One tally (learning.js aggressionScorecard, season or a round) → what Summary / History print. null when no shots. */
 export function aggressionView(t) {
   if (!t) return null;
-  const counts = LINE_LABELS.map(([k, label]) => ({ key: k, label, n: t[k]?.n || 0 }));
+  const counts = LINE_LABELS.map(([k, label]) => ({ key: k, label, n: (k === "own" ? t.own ?? t.custom : t[k])?.n || 0 }));
   if (!counts.some((c) => c.n > 0)) return null;
   const m = t.text ? /^(.*) ([+−-]\d+(?:\.\d+)?)$/.exec(t.text) : null;
   return { text: t.text || null, word: m ? m[1] : null, amount: m ? m[2] : null, counts };

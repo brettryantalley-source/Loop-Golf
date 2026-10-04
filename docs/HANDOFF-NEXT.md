@@ -9,6 +9,18 @@ git log --oneline -6
 npm install && npm test    # 274 tests; must be green
 ```
 
+## v22.17 (Oct 4) — read first
+
+Brett's Oct 3 field test → v22.17: the caddie is a full-screen map (D81, built from his Shot Pattern
+screen recordings), the bottom pill moves between holes and a past hole logs by tapping (D80), a
+notebook button takes dictated notes (D82), the target drag is smooth and shows ball → target and
+target → pin on the map, and Custom when he leaves both routes (D83), Safe is the most-likely-par
+route with Par+/Dbl+ in Details (D78), the profile is treated as an 85°F profile (D79), and the
+breadcrumb trail records while the screen is on (D84). 324 tests. **Untested on a course**: the
+putting flow (never reached in the Oct 3 round), the trail on a real walk, the new layout on the
+phone's safe areas. Summary and History show `Tee shots: Safe · Aggressive · Custom` — more Custom
+than either means the caddie's calls are not landing.
+
 ## Where things stand (Oct 1, after PR #11 merged)
 
 Live at https://brettryantalley-source.github.io/Loop-Golf/ — **`main` is v22.16** (PR #11 merged Oct 1:
@@ -17,13 +29,13 @@ Pattern importer + history card fix D66–D71; before it PR #10 sliders, PR #9 I
 marked-green mode, PR #7 v22.6–v22.10, PR #6 v22.3–v22.5, PR #5 the caddie). The working branch
 `claude/bold-pascal-2s136s` is restarted from `main` after each merge; nothing is unmerged.
 
-**Stats refresh, Oct 4 (v22.16.11, D78).** `src/profile.json` now builds only from the Oct 4 batch: the Stats
+**Stats refresh, Oct 4 (v22.17.1, D85).** `src/profile.json` now builds only from the Oct 4 batch: the Stats
 Report PDF (Casual · Last 10, Jul 26 – Oct 3) + 12 screen recordings transcribed into
 `data/extracted/2026-10-04-screens.json` (stills in `data/raw/2026-10-04/`) + fairway ellipses fitted by
 `scripts/fit-ell80.py`. Fairway distances changed for 2Hy 236 (+12), PW 134 (−6), LW 78 (−7); every approach
 club has a measured pattern except 4Hy. Rough distances and every club's leave zones are stored, **not used** —
 Brett's call. Per-distance buckets are shrunk toward the lie average (SHRINK_K) because raw 6-shot bands sent
-the caddie to an 8-iron off par-4 tees. Full driver and full 2-iron are tee-only (D79, Brett: 2-hybrid is his fairway club); par-5 second
+the caddie to an 8-iron off par-4 tees. Full driver and full 2-iron are tee-only (D86, Brett: 2-hybrid is his fairway club); par-5 second
 shots: 310 out 6-iron lay-up, 290 2-hybrid lay-up, 270 2-hybrid at the green. Open: the 41-ft step in
 his three-putt table (70% from 41+ ft on 10 putts) still drives lay-up pricing — Tangent's longer history may fill it.
 
@@ -71,7 +83,7 @@ from trees or a bad rough lie only a 9-in-10 shot, else punch out; driver on tee
 purpose: aim-for-the-pattern (fold into v22.17), sand as a no-hero lie, a short-miss tail in the
 simulation (D77). On the course: SAFE now often plays to the middle of the green and AGGRESSIVE can show
 a lower average (`−0.n`) — that is the guide overruling the price, by design.
-`npm test` is 299 tests (v22.16.9). Decisions run D1–D79 in `docs/DECISIONS-caddie.md`.
+`npm test` is 299 tests (v22.16.9). Decisions run D1–D86 in `docs/DECISIONS-caddie.md`.
 
 **Ironwood (Fishers, IN) is not traced in OpenStreetMap.** v22.11's marked-green mode is the
 bridge (satellite on GPS, tap the green, distance-only pricing). First round there (Sep 29, v22.11):

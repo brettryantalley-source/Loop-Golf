@@ -1,7 +1,7 @@
 # Tangent gap-fill — Oct 4 2026 (record only; NOT read by scripts/build-profile.mjs)
 
 Source: the Golf project chat's read of Brett's Tangent screenshots (the ones behind the 6/18/26
-dossier), returned Oct 4 in answer to the gap list in D78. Tangent prints no dates, round counts or
+dossier), returned Oct 4 in answer to the gap list in D85. Tangent prints no dates, round counts or
 filters, so none of it can be placed against the Shot Pattern window (Jul 26 – Oct 3) beyond "all
 earlier". Verdict (Oct 4): it fills none of the profile's gaps — no carry (GPS total only), no
 fairway/rough split, no distance bands, putting bands named rather than in feet, no counts — so

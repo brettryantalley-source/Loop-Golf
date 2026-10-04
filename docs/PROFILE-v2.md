@@ -15,7 +15,7 @@ the seed source is the Last 10 batch (`data/README.md`), not the spec's Appendix
 | `data/extracted/2026-10-04-screens.json` | Transcribed screen recordings, keyed by meaning (`approach.clubSheets.fairway.5i`, `approach.leaveZones.rough.PW`, `putting.direction.4-6`, `shortGame.0-25.byLie.rough` …). Each block names its recording, filters and frames. |
 | `data/extracted/2026-10-04-ell80.json` | Shot Pattern's fairway 80% patterns, fitted from the stills by `scripts/fit-ell80.py`. |
 
-The Oct 4 batch replaces Sep 27 / Sep 19 entirely (D78); those files stay on disk as history.
+The Oct 4 batch replaces Sep 27 / Sep 19 entirely (D85); those files stay on disk as history.
 
 The script must read both files and parse the report text (fixed column tables); it must not
 carry any transcribed number as a literal. Every number in the output is traceable to a line of
@@ -125,7 +125,7 @@ feet as integers as printed; degrees to 2 decimals.
 - `girPct`, `medianProximityFt`, `shortPct`, `bigMissPct` → `null`.
 - No tee-club sheets were recorded for Oct 4: tee entries carry no `extra`, and `ell80: null` (a tee shot reaches the club's fairway pattern through `resolveEntry`'s lie chain).
 
-**Fairway entries (`*.fairway`) — every club except Dr.** Report §05 FROM TEE & FAIRWAY — BY CLUB → `n`, `girPct`, `sgPerShot`, `bigMissPct`, `medianProximityFt`. DISPERSION BIAS — FROM TEE & FAIRWAY → `leftPct`, `rightPct`, `shortPct`, `lateralSdDeg`. `totalMedianYds` = the club sheet's Shot Distances median (`approach.clubSheets.fairway.<club>`, yards travelled); its 25th / 75th go on `p25Yds` / `p75Yds` and are **not** turned into `distSdYds` (they mix swing lengths and targets). `lateralSdDeg` is `null` when the dispersion row has < 5 shots (the lie chain then supplies the club's tee σ; `source.note` says so). `ell80` = the fitted fairway pattern with `dyYds: 0` and the measured offset on `dyMeasuredYds` (the shortfall to target is already in the travelled median; D78); `null` for 4Hy (3 shots). `extra = { sheetN, pattern80, leaveZones }` (leave-zone shares as fractions). 2i fairway entry is `null` entirely (0 shots).
+**Fairway entries (`*.fairway`) — every club except Dr.** Report §05 FROM TEE & FAIRWAY — BY CLUB → `n`, `girPct`, `sgPerShot`, `bigMissPct`, `medianProximityFt`. DISPERSION BIAS — FROM TEE & FAIRWAY → `leftPct`, `rightPct`, `shortPct`, `lateralSdDeg`. `totalMedianYds` = the club sheet's Shot Distances median (`approach.clubSheets.fairway.<club>`, yards travelled); its 25th / 75th go on `p25Yds` / `p75Yds` and are **not** turned into `distSdYds` (they mix swing lengths and targets). `lateralSdDeg` is `null` when the dispersion row has < 5 shots (the lie chain then supplies the club's tee σ; `source.note` says so). `ell80` = the fitted fairway pattern with `dyYds: 0` and the measured offset on `dyMeasuredYds` (the shortfall to target is already in the travelled median; D85); `null` for 4Hy (3 shots). `extra = { sheetN, pattern80, leaveZones }` (leave-zone shares as fractions). 2i fairway entry is `null` entirely (0 shots).
 
 Swing-type assignment (Brett's notes, spec §3.8 / Appendix A). Shot Pattern does not split swing types, so:
 - PW and longer → `full.fairway`. `finesse` = `{ tee: null, fairway: null, rough: null }` for 2i (placeholder — Brett plays it as a finesse club at times; carries pending) and `null` for the others.
@@ -134,7 +134,7 @@ Swing-type assignment (Brett's notes, spec §3.8 / Appendix A). Shot Pattern doe
 - `carryMedianYds = totalMedianYds − ROLL_YDS[swingType][family]` (import `DEFAULT_CONFIG` from `src/caddie/config.js`; do not copy the numbers), rounded to an integer; `null` when the total is null. `carrySource: "derived"`.
 - `bigMiss: { left: 0, right: 0, latYds: null }`, `penaltyPct: 0, recoveryPct: 0, penaltyCount: 0`, `mishitPct: null`, `distSdYds: null`.
 
-**Rough entries (`*.rough`).** Report §05 FROM ROUGH — BY CLUB → `n`, `girPct`, `sgPerShot`, `bigMissPct`, `medianProximityFt`. `totalMedianYds`, `carryMedianYds`, `lateralSdDeg`, `leftPct`, `rightPct`, `shortPct`, `ell80` stay `null`: the rough sheet's measured distance and pattern are stored as `extra = { shotDistances: { n, medianYds, p25Yds, p75Yds }, pattern80, leaveZones }` and **not read by the engine** until Brett decides (D78). Clubs absent from the rough table (6i, 2i) → `rough: null`.
+**Rough entries (`*.rough`).** Report §05 FROM ROUGH — BY CLUB → `n`, `girPct`, `sgPerShot`, `bigMissPct`, `medianProximityFt`. `totalMedianYds`, `carryMedianYds`, `lateralSdDeg`, `leftPct`, `rightPct`, `shortPct`, `ell80` stay `null`: the rough sheet's measured distance and pattern are stored as `extra = { shotDistances: { n, medianYds, p25Yds, p75Yds }, pattern80, leaveZones }` and **not read by the engine** until Brett decides (D85). Clubs absent from the rough table (6i, 2i) → `rough: null`.
 
 **Tee entries for non-tee clubs** → `null` (Shot Pattern pools tee & fairway for approach clubs; the engine falls back to the fairway entry).
 
@@ -142,7 +142,7 @@ Swing-type assignment (Brett's notes, spec §3.8 / Appendix A). Shot Pattern doe
 
 One per row of FROM TEE & FAIRWAY — BY DISTANCE (`lie: "fairway"`) and FROM ROUGH — BY DISTANCE (`lie: "rough"`). Half-open `[fromYds, toYds)`; "200-225" → 200/225, "225-250" → 225/250.
 
-**Shrinkage (D78).** `sgPerShot`, `girPct` and `medianProximityFt` are what E() / B() price from, and a
+**Shrinkage (D85).** `sgPerShot`, `girPct` and `medianProximityFt` are what E() / B() price from, and a
 bucket holds 1–16 shots. Each is shrunk toward its lie's shot-weighted average with `SHRINK_K` from
 `src/caddie/config.js` (the learning loop's prior weight): `v = (n·v_bucket + K·v_lie) / (n + K)`;
 proximity is pooled per yard of the bucket's midpoint. The PDF's values stay on `raw`, and
