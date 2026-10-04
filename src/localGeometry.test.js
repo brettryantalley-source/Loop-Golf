@@ -174,9 +174,59 @@ test("chicopee: every routing id finds the trace; keys match the Overpass geomet
   assert.ok(geometry.features.some((f) => f.kind === "trees") && geometry.features.some((f) => f.kind === "fairway"));
 });
 
-test("chicopee: names its own imagery (Wayback, 256-px tiles); other clubs keep MapTiler", () => {
-  const img = imageryFor([woodmont, chicopee], "rp4r4x8z");
-  assert.ok(img && /wayback\.maptiles\.arcgis\.com/.test(img.url) && img.url.includes("{z}/{y}/{x}"));
-  assert.equal(img.tileSize, 256);
-  assert.equal(imageryFor([woodmont, chicopee], woodmont.apiId), null);
+test("chicopee and woodmont name their own imagery (Wayback, 256-px tiles); other clubs keep MapTiler", () => {
+  for (const id of ["rp4r4x8z", woodmont.apiId]) {
+    const img = imageryFor([woodmont, chicopee], id);
+    assert.ok(img && /wayback\.maptiles\.arcgis\.com/.test(img.url) && img.url.includes("{z}/{y}/{x}"), id);
+    assert.equal(img.tileSize, 256);
+  }
+  assert.ok(imageryFor([woodmont, chicopee], woodmont.apiId).url.includes("/tile/64001/"), "woodmont: the Oct 10 2025 capture");
+  assert.equal(imageryFor([woodmont, chicopee], "not-a-local-club"), null);
+});
+
+/* v22.17.3 (D88–D89): Riverpines and Hampton ride their own OSM snapshot + Esri photo. */
+const riverpines = JSON.parse(readFileSync(join(here, "localGeometry", "riverpines.json"), "utf8"));
+const hampton = JSON.parse(readFileSync(join(here, "localGeometry", "hampton.json"), "utf8"));
+const OSM_CLUBS = [
+  { data: riverpines, id: "n5n1n2f7", par: [4, 4, 3, 4, 3, 4, 4, 5, 4, 4, 4, 4, 4, 3, 4, 3, 5, 4], release: "/tile/22869/" },
+  { data: hampton, id: "xa17vk0a", par: [4, 3, 4, 4, 5, 4, 5, 3, 4, 4, 3, 4, 5, 3, 5, 4, 3, 4], release: "/tile/64001/" },
+];
+
+test("riverpines and hampton: 18 holes keyed 1–18, every hole has its green and a tee, the caddie advances hole to hole", () => {
+  for (const { data, id, par } of OSM_CLUBS) {
+    const g = localGeometryFor([woodmont, riverpines, hampton], id).geometry;
+    assert.deepEqual(Object.keys(g.holes).map(Number).sort((a, b) => a - b), Array.from({ length: 18 }, (_, i) => i + 1), data.name);
+    for (let n = 1; n <= 18; n++) {
+      const h = g.holes[n];
+      assert.ok(h.green, `${data.name} ${n} green`);
+      assert.equal(h.par, par[n - 1], `${data.name} ${n} par`);
+      assert.ok(featuresForHole(g, h.key).tees.length > 0, `${data.name} ${n} tee`);
+      const r = detectHole(g, h.line[0], n === 1 ? 18 : n - 1);
+      assert.equal(r.hole, n, `${data.name} ${n} detect`);
+    }
+    assert.ok(g.features.filter((f) => f.kind === "fairway").length >= 18, `${data.name} fairways (multipolygons kept)`);
+  }
+});
+
+test("riverpines: only the 18 — the par-3 nine and Country Club of the South next door are left out", () => {
+  const ids = riverpines.ways.filter((w) => w.tags.golf === "hole").map((w) => w.id);
+  assert.equal(ids.length, 18);
+  assert.ok(ids.every((i) => i >= 1231764097 && i <= 1231764114), "the OSM ways tagged golf:course:name=18 Hole");
+});
+
+test("a multipolygon in a local file keeps its inner rings: a fairway with a bunker cut out", () => {
+  const sq = (d) => [[34, -84], [34 + d, -84], [34 + d, -84 + d], [34, -84 + d], [34, -84]];
+  const el = toOverpass({ ways: [{ tags: { golf: "fairway" }, outer: [sq(0.001)], inner: [sq(0.0002).map(([a, b]) => [a + 0.0004, b + 0.0004])] }] }).elements[0];
+  assert.equal(el.type, "relation");
+  assert.deepEqual(el.members.map((m) => m.role), ["outer", "inner"]);
+  const f = parseOverpass({ elements: [el] }).features[0];
+  assert.equal(f.kind, "fairway");
+  assert.equal(f.inner.length, 1);
+});
+
+test("riverpines and hampton fly their own Esri photo", () => {
+  for (const { id, release } of OSM_CLUBS) {
+    const img = imageryFor([woodmont, riverpines, hampton], id);
+    assert.ok(img && img.url.includes(release) && img.tileSize === 256, id);
+  }
 });

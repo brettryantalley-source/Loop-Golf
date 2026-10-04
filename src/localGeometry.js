@@ -23,7 +23,12 @@ export function toOverpass(data) {
     if (dE) q = destination(q, dE > 0 ? 90 : 270, Math.abs(dE));
     return q;
   };
-  return { elements: data.ways.map((w, i) => ({ type: "way", id: Number.isInteger(w.id) ? w.id : -(i + 1), tags: w.tags, geometry: w.pts.map(at) })) };
+  const id = (w, i) => (Number.isInteger(w.id) ? w.id : -(i + 1));
+  // a multipolygon (an OSM fairway with bunkers cut out) keeps its rings: `outer` / `inner` = arrays of point lists
+  const member = (role) => (pts) => ({ type: "way", role, geometry: pts.map(at) });
+  return { elements: data.ways.map((w, i) => (Array.isArray(w.outer)
+    ? { type: "relation", id: id(w, i), tags: w.tags, members: [...w.outer.map(member("outer")), ...(w.inner || []).map(member("inner"))] }
+    : { type: "way", id: id(w, i), tags: w.tags, geometry: w.pts.map(at) })) };
 }
 
 const PARSED = new WeakMap();
