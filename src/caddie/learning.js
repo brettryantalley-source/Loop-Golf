@@ -87,8 +87,19 @@ function isShortGameOrPutt(s) {
   return t === "shortGame" || t === "putt" || s?.kind === "shortGame" || s?.kind === "putt";
 }
 
+/** v22.17.1 (D85): an end Loop assumed rather than measured — the green's centre standing in for a
+    fix nobody took when the hole moved on (§4.5). Flagged `end.assumed` since v22.17.1; before that
+    the only mark is a green end with a position but no GPS accuracy (every real or test-mode fix has
+    one). Such a shot says nothing about how far the club went: a tee shot "closed" on a 360-yd
+    hole's green read as a 340-yd drive and taught the caddie Brett hits driver 340. */
+export function assumedEnd(s) {
+  const e = s?.end;
+  if (!e) return false;
+  if (e.assumed === true) return true;
+  return e.lie === "green" && e.accuracyM == null && Number.isFinite(e.lat) && s?.source !== "shotpattern";
+}
 function hasMisses(s) {
-  return num(s?.derived?.distanceMissYds) && num(s?.derived?.lateralMissYds);
+  return !assumedEnd(s) && num(s?.derived?.distanceMissYds) && num(s?.derived?.lateralMissYds);
 }
 
 function intendedYds(s) {
@@ -537,8 +548,14 @@ export function applyShotLog(P, allShots, { now, roundIndexById } = {}, config) 
   const N = cfg.TAKEOVER_N ?? DEFAULT_CONFIG.TAKEOVER_N;
   const nowMs = now == null ? null : now instanceof Date ? now.getTime() : typeof now === "number" ? now : Date.parse(now);
 
+  // D85: and never a distance far outside what the club can do — a mis-tapped or mis-closed shot
+  // must not stretch the profile (actual > 1.3 × the stored total + 20 yds, or under a third of it)
+  const plausible = (s) => {
+    const a = actualYds(s), t = profileTotal(P, s.club, swingOf(s), lieOf(s));
+    return a == null || t == null || (a <= t * (cfg.LEARN_MAX_RATIO ?? 1.3) + 20 && a >= t / 3);
+  };
   const eligible = (allShots || []).filter((s) =>
-    s && s.logged !== "skipped" && !isShortGameOrPutt(s) && SWINGS.has(swingOf(s)) && s.club && lieOf(s) && hasMisses(s));
+    s && s.logged !== "skipped" && !isShortGameOrPutt(s) && SWINGS.has(swingOf(s)) && s.club && lieOf(s) && hasMisses(s) && plausible(s));
   const idx = roundIndexById || roundIndexFrom(eligible);
   const roundTime = new Map();
   for (const s of eligible) {
@@ -843,7 +860,7 @@ export function tendencies(records, { shotTypes = ["full", "finesse", "putt"], b
   const want = new Set(shotTypes);
   const acc = new Map();
   for (const r of records || []) {
-    if (!r || r.logged === "skipped") continue;
+    if (!r || r.logged === "skipped" || assumedEnd(r)) continue;
     const putt = r.shotType === "putt" || !!r.putt;
     const type = putt ? "putt" : swingOf(r);
     if (!want.has(type)) continue;
