@@ -2,6 +2,9 @@
 
 **Folder to connect: `~/Developer/Loop-Golf`**
 
+**Open items:** everything unresolved lives in `docs/OPEN-ITEMS.md` (merged Oct 4). It supersedes
+"Queued builds" and "Open follow-ups" below.
+
 ## First three commands
 ```bash
 git status                 # must be clean
@@ -101,6 +104,7 @@ First round there: stand on the middle of three greens with the caddie open and 
 the middle (should be 0–3 yds); report the offset by hole, and `shiftM` in the file moves everything at
 once. Tee boxes marked `q: est` are ellipses on the pad centre, not outlines (8, 15 and 18 are the least
 certain). No trees and no OB. The permanent fix is the same ways in OSM; the trace converts directly.
+Open items for Woodmont: C13 and C15 in `docs/OPEN-ITEMS.md`. How the trace was made: `scripts/woodmont-trace/`.
 
 ## What each screen does now
 
