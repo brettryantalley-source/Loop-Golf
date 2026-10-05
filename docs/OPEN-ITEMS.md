@@ -2,9 +2,9 @@
 
 The one list of everything still unresolved. It merges the eleven Loop chats open on Oct 4: seven
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
-morning of Oct 4 (C16–C18, R10–R11, and an addition to C3). Duplicates are merged and anything already shipped is
-dropped. State: `main` = **v22.17.3** (PR #29), 329 tests, decisions D1–D89; the next decision is
-**D90**.
+morning of Oct 4 (C17–C19 and an addition to C3). Duplicates are merged and anything already shipped is
+dropped. State: **v22.17.4** (C16, D90) on the working branch, 336 tests, decisions D1–D90; the next
+decision is **D91**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -18,9 +18,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** answer **Q1**, then say **"go with the leans"** or change any **R**.
-2. **Next code chat:** **C16 → C1 → C17 → C2 → C3 → C4**. C16 comes first: the Oct 4 test
-   round showed a driver aimed off the fairway on Chicopee Village 1, and a "why" line on a call
-   like that would only explain a wrong call.
+2. **Next code chat:** **C1 → C17 → C2 → C3 → C4**, then **C19**.
 3. **Next round:** the **F** list.
 
 ---
@@ -46,11 +44,9 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 | R7 | Retry when OSM had no holes for a club (C6) | **Yes** | Leave it |
 | R8 | Upload the Woodmont trace to OSM (C15) | **Later**, after C13 | Now |
 | R9 | Native app for a gap-free GPS trail (P1) | **Not now**; live with the gaps | Capacitor wrapper: $99/yr Apple Developer, plus a Mac or a macOS build runner |
-| R10 | `Enter yards` on a mapped hole (Brett, Oct 4: "what is it?") | **Move it into Details** when the map and GPS are working; keep it on screen only when there is no fix or no map | Leave it in the right column · rename it `Type yards` |
-| R11 | Shots more than 20 yds off a club's distance (C17) | **Split them out:** the drawn rings and the club's distance come from the good shots; the engine still plays the rest at their real rate, so a topped 7-iron still costs what it costs | Ignore them entirely (tighter rings and bolder calls, but the trouble odds read low) |
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.17.3 · Oct 4**.
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.17.4 · Oct 5** (once merged).
 - **F2.** The putting flow, start to finish. It has never been used on a course.
 - **F3.** Log a hole you skipped: Place shot 1 → Place shot 2 → … → Done.
 - **F4.** The GPS trail on a real walk. It records only while the screen is on.
@@ -113,18 +109,11 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | C13 | Woodmont calibration | F9, Q3 | Sonnet |
 | C14 | History data | S1–S3, Q2 | Sonnet |
 | C15 | Woodmont trace → OSM | C13, R8 | Sonnet |
-| C16 | Tee targets off the fairway (Chicopee Village 1) | nothing | Opus |
-| C17 | Smaller rings: 80% + best 30%, good shots only | R11 | Opus |
+| C17 | Smaller rings: 80% + best 30%, good shots only | nothing (R11 answered: split) | Opus |
 | C18 | Pinch to zoom on the caddie map | nothing | Opus |
+| C19 | Remove `Enter yards` | nothing (R10 answered: remove) | Sonnet |
 
 Details for each are under **Build details** below.
-
-## Housekeeping (H)
-- **H4.** Fix with the next code commit: `docs/HANDOFF-NEXT.md` gives the test count as 274, 299 and
-  324 in different places (now 329) and lists the trail as a queued build (it shipped in v22.17; the
-  aim warning is C4). `docs/README.md`'s row for `FIELD-TEST-v22.md` still says `main` is v22.16.
-  `HANDOFF-NEXT.md` has also outgrown its job (state, screen reference, import routine, storage
-  keys); consider splitting it.
 
 ## Parked (P): don't start without Brett
 - **P1.** Native wrapper or keep-screen-on toggle for the trail (declined, D84). Revisit only if
@@ -389,29 +378,7 @@ The trace converts to OSM ways (`golf=hole`, `green`, `tee`, `fairway`, `bunker`
 for tracing from Esri imagery and its import and automated-edit guidelines, and review each feature by
 hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY`.
 
-### C16. Tee targets off the fairway (Brett, Oct 4 test round)
-- **Brett saw:** Chicopee Village 1, driver: the suggested target sat on the far right side of the
-  fairway.
-- **Reproduced in node** (Village 1–9 from the middle of the tee, today's profile): hole 1 SAFE is
-  Driver, `leave 76, fairway center`, and that point classifies as **trees** (49% trouble). Hole 6
-  Driver aims 40 yds right of centre; hole 8's 2-iron 31 right. Every Village driver call carries
-  44–59% trouble.
-- **Suspects, in order:**
-  1. Lay-ups aim at the **hole line** (`pointBackFromEnd(bend, L)` in `generateCandidates`), not the
-     middle of the fairway. On Chicopee the line was re-routed automatically and Village 1 was placed
-     by hand (D74), so the line can run along one edge of the real fairway.
-  2. `corridorAt` (`src/caddie/course.js`) takes the outer edges of every fairway piece at that
-     distance, neighbouring holes' included, so "N right of center" can reach the next fairway over.
-  3. The trees layer is automatic segmentation (C12), and the driver's 80% pattern is ~114 yds
-     wide (C17). With trouble near 50% everywhere, small differences pick odd aims.
-- **Do:** the lay-up and corridor "center" = the middle of THIS hole's fairway at that distance; the
-  corridor limited to the fairway piece the hole line crosses. Record the D-number.
-- **Tests:** on Chicopee Village 1–9, Woodmont and the Hampton fixture, every tee target that
-  isn't on the green lands on fairway; Village 1's driver target sits mid-fairway.
-- **Done when:** Brett opens Village 1 in test mode and the target sits in the middle of the
-  fairway.
-
-### C17. Smaller rings: 80% + best 30%, good shots only (Brett, Oct 4; R11)
+### C17. Smaller rings: 80% + best 30%, good shots only (Brett, Oct 4; R11: split, Brett Oct 5)
 - **Brett, Oct 4:** "The dispersion circles are just too crazy. Too big & oddly shaped." Two rings:
   the 80% ring, and an inner ring for his best 30%. "The caddy [should] automatically ignore any
   shots that are not within 20 yards of the iron's target distance," and the distance should be
@@ -419,7 +386,7 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 - **Today:** the 7-iron's 80% ellipse is 64 × 35 yds, tilted 34° (Shot Pattern's fit, n 10);
   the others tilt 58–151°. The driver has no fitted ellipse; its 6.3° spread gives an 80% ring
   ~114 yds wide. The tilts are what make the rings look odd.
-- **Build (R11's lean):**
+- **Build** (R11, Brett Oct 5: split them out, not ignore them):
   1. Per club, split the shots: **good** = within 20 yds of the club's distance; the rest are
      mishits. The Shot Pattern stills show each shot as a dot, so `scripts/fit-ell80.py` can read
      the dots, drop the mishits, and refit the ring on the good shots. Loop's own logged shots add
@@ -427,8 +394,8 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   2. The club's distance = the median of the good shots. Mishits pull today's median down, so this
      lands slightly above it, which is Brett's "skewed toward above average".
   3. The engine draws from the good-shot pattern, plus a mishit at its measured rate (a new
-     `mishitRate` per club, built by `scripts/build-profile.mjs`). R11's other option drops the
-     mishit draw.
+     `mishitRate` per club, built by `scripts/build-profile.mjs`), so a topped 7-iron still costs
+     what it costs.
   4. Draw two rings: 80% (outer) and 30% (inner, √(−2 ln 0.7)σ ≈ 0.47× the 80% ring), from the
      good-shot fit.
 - Profile rebuild: `npm run build:profile`, `--check`. Engine change: a D-number. Bump BUILD and
@@ -444,6 +411,18 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   button returns to the hole view; the overlay re-projects on every move; a new ball resets the
   camera as today (T36). Test that the target drag, Line taps and pin drag still work at any zoom.
   Bump BUILD and CACHE.
+
+### C19. Remove `Enter yards` (R10: Brett, Oct 5, "remove it entirely")
+- `Enter yards` lets Brett type the distance when GPS is off or wrong; the caddie then picks a club
+  from the profile alone, with no map (club-brain mode, the `yards` view, §8). Brett: remove it
+  everywhere.
+- **Do:** drop the rail's `Enter yards` (`rail.action` in `caddieView`, `src/caddie/caddieState.js`),
+  the `nofix` / `locationoff` bar's secondary, the yards sheet in `src/app.jsx`, and the `yards`
+  view. Keep any saved round in the `yards` phase loading (it falls back to pre-tee). Update the
+  tests that expect it.
+- **What he gives up:** with no GPS fix, or GPS off, the caddie has no club call at all; `Retry`
+  is the only action. Marked-green mode (no map, GPS working) is unaffected.
+- Bump BUILD and CACHE.
 
 ---
 
@@ -461,7 +440,7 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D90.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D91.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat

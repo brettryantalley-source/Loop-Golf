@@ -10,8 +10,14 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 274 tests; must be green
+npm install && npm test    # 336 tests (v22.17.4); must be green
 ```
+
+## v22.17.4 (Oct 5)
+
+Lay-ups and the corridor's "center" aim at the middle of the hole's own fairway, not the hole line
+(D90, C16): on Chicopee Village 1 the line runs along the tree edge, and the caddie had called Driver
+into the trees beside it. 336 tests.
 
 ## v22.17 (Oct 4) — read first
 
@@ -63,7 +69,7 @@ Short Game, Putting) scrolled slowly top to bottom — and drops the recording i
 extracts frames (`ffmpeg -vf "fps=2,scale=460:-1"`, dedupe near-identical frames, 4-up contact sheets),
 reads them, writes `data/extracted/rounds/{date}-{course}/shots.json` (schema 1; the five existing files
 are the contract), reconciles every hole — drives + approaches + short game + putts + penalty strokes
-must equal the card score — then `npm run import:shots`, `npm test` (274), the frozen check, `./build.sh`,
+must equal the card score — then `npm run import:shots`, `npm test` (all green), the frozen check, `./build.sh`,
 commit, push, PR, merge on Brett's "merge". Conventions learned: Shot Pattern's "(+2)" on a tee shot to a
 penalty is one penalty stroke plus the re-tee (store `penalty: 1`, note it); "Unknown Club" → `null`;
 clubs Dr, 2i, 2Hy, 4Hy, 5i–9i, PW, GW, SW, LW, putter; lies tee / fairway / rough / bunker / recovery /
@@ -71,10 +77,8 @@ penalty / green. Data-only commits do not bump the build tag.
 Cloud containers block unpkg.com, which `./build.sh` uses for React: `npm pack react@18.3.1 react-dom@18.3.1`
 and copy each `package/umd/*.production.min.js` to `build/react.min.js` / `build/react-dom.min.js` (byte-identical).
 
-Queued builds: **v22.17 aim warning** (re-run the dispersion sim at Brett's target and line; warn when
-trouble is 10+ points worse than the recommendation or his club bias leaves the green; n ≥ 10; reads
-`tendencies()` in `learning.js`, which the imported rounds feed) and **v22.18 breadcrumb trail + stops**
-(`SPEC-shotlog-v2.md` §10). Brett merges a PR from his phone (GitHub app or "merge" in the Claude app);
+Queued builds live in `docs/OPEN-ITEMS.md` (the aim warning is C4; the breadcrumb trail shipped in
+v22.17, D84). Brett merges a PR from his phone (GitHub app or "merge" in the Claude app);
 Pages redeploys in about a minute; he fully closes and reopens Loop and reads the build tag top-right
 of Setup.
 
