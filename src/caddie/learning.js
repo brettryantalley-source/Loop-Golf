@@ -373,16 +373,24 @@ export function withinRound(shotsThisRound, config, opts = {}) {
       .filter(Boolean).join("-");
     const head = word.charAt(0).toUpperCase() + word.slice(1);
     const fixes = [];
+    let shownShift = null, shownGap = null;
     if (dist) {
       const f = group.kind === "family" ? group.key : null;
       const shift = f ? dist.shiftYds[f] : dist.rawShiftYds;
       const gap = f ? gaps[f] ?? DEFAULT_GAP_YDS : mean(FAMILIES.map((x) => gaps[x] ?? DEFAULT_GAP_YDS));
-      fixes.push(clubText(Math.max(-gap * capClubs, Math.min(gap * capClubs, shift)), gap));
+      shownShift = Math.max(-gap * capClubs, Math.min(gap * capClubs, shift));
+      shownGap = gap;
+      fixes.push(clubText(shownShift, gap));
     }
     if (dirn) fixes.push(dirn.dir === "left" ? "aim right-center" : "aim left-center");
     nudges.push({
       axis: dist && dirn ? "distance+direction" : dist ? "distance" : "direction",
       text: `${head} ${timesWord(ordered.length)} ${groupPhrase(group)} (${holeList(ordered)}) → ${fixes.join(", ")}`,
+      // v22.18 (C1, D91): the same facts as fields, for the map's "why" line (reasons.js whyLine)
+      group: { ...group }, phrase: groupPhrase(group), times: ordered.length,
+      holes: [...new Set(ordered.map((s) => s.hole).filter((h) => h != null))],
+      dist: dist ? dist.dir : null, dirn: dirn ? dirn.dir : null,
+      shiftYds: shownShift == null ? null : r1(shownShift), gapYds: shownGap,
     });
   }
 

@@ -3,8 +3,8 @@
 The one list of everything still unresolved. It merges the eleven Loop chats open on Oct 4: seven
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19 and an addition to C3). Duplicates are merged and anything already shipped is
-dropped. State: **v22.17.4** (C16, D90) on the working branch, 336 tests, decisions D1–D90; the next
-decision is **D91**.
+dropped. State: **v22.18** (C1, D91; v22.17.4 = C16, D90), 349 tests, decisions D1–D91; the next
+decision is **D92**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -18,7 +18,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** answer **Q1**, then say **"go with the leans"** or change any **R**.
-2. **Next code chat:** **C1 → C17 → C2 → C3 → C4**, then **C19**.
+2. **Next code chat:** **C17 → C2 → C3 → C4**, then **C19**.
 3. **Next round:** the **F** list.
 
 ---
@@ -46,7 +46,9 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 | R9 | Native app for a gap-free GPS trail (P1) | **Not now**; live with the gaps | Capacitor wrapper: $99/yr Apple Developer, plus a Mac or a macOS build runner |
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.17.4 · Oct 5** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.18 · Oct 5** (once merged).
+- **F11.** Read the new line above the action button on every call. When it says something that
+  doesn't match what you'd do, dictate a Note (F7) with the line's exact words.
 - **F2.** The putting flow, start to finish. It has never been used on a course.
 - **F3.** Log a hole you skipped: Place shot 1 → Place shot 2 → … → Done.
 - **F4.** The GPS trail on a real walk. It records only while the screen is on.
@@ -94,7 +96,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C1 | The "why" line on the map | nothing (R1 answered: Full) | Opus |
 | C2 | Course shapes on the satellite map | R2 | Sonnet |
 | C3 | Aim for the pattern, and the Line drawn on its own | R3 | Opus |
 | C4 | Heads-up + aim warning | C3 | Opus |
@@ -144,24 +145,6 @@ service worker answered font requests with `index.html`); reopen only if it come
 
 ## Build details
 
-### C1. The "why" line on the map (R1: Full, Brett Oct 4)
-- **What exists:** every recommendation carries `strategy`, the rules that moved SAFE (`par`,
-  `no-hero`, `driver`, `pin-front`, `pin-middle`, `pin-back`). The shot log stores it; no screen
-  shows it. Details shows one stat line per club from `reasons.js` ("7i: 4.2° spread, 22% short
-  (n 18)"), which describes the club, not the decision. `withinRound()` (`learning.js`) writes
-  today's adjustments ("Short 2× with irons (4, 7) → club up"), shown only in Details.
-- **Build:** one printed line under the club card on the map, always visible; full detail stays in
-  Details. Built only from resolved fields in the `reasons.js` style, never free text. C4's heads-up
-  later becomes this line's last clause, not a second line.
-- **Drafts to react to:** "7-iron to the middle: back pin, and you finish short 1 in 3." ·
-  "Driver: the 2-hybrid finds trouble just as often and leaves 30 yds more." · "Punch out: from
-  the trees, nothing reaches the green 9 times in 10." · "Clubbed up: short with irons on 4 and 7
-  today."
-- UI change: `src/theme.jsx` only; `docs/HANDOFF-design-NEXT.md` if a design thread is wanted.
-  Bump BUILD and CACHE.
-- **Done when:** every SAFE with a non-empty `strategy` shows its line, and tests in `src/caddie/`
-  pin the wording per rule.
-
 ### C2. Course shapes on the satellite map (R2; about a day)
 - Every hole's fairway, green, tee, bunker, water, rough and tree outlines are already loaded. Only
   the no-tiles paper map draws them. Draw them as tinted layers over the satellite in
@@ -204,7 +187,7 @@ service worker answered font requests with `index.html`); reopen only if it come
 ### C4. Heads-up + aim warning (after C3)
 Write a one-page spec first (when each one fires, the wording, the shot counts) and get Brett's
 reaction before any code.
-- **Heads-up:** for SAFE's club, one clause on the C1 line when a pattern is strong: "Driver: 3 of 4
+- **Heads-up:** for SAFE's club, one clause on the map's "why" line (v22.18, D91: `whyLine` in `reasons.js`) when a pattern is strong: "Driver: 3 of 4
   left today, aim right-center" · "From 100: you finish short 34% of the time". Silent otherwise.
   Today's pattern speaks only after 2–3 shots agree; otherwise the 10-round history does, and only
   with ≥ 10 shots for that club. It never contradicts SAFE: "aim right" means the map aims right (C3).
@@ -440,11 +423,11 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D91.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D92.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (329 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C1, the "why" line;
-> if R1 is still open, ask me first. Show me the plan before any code. Delete each item from
-> `docs/OPEN-ITEMS.md` in the commit that closes it.
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (349 pass).
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C17, the smaller
+> rings. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> item from `docs/OPEN-ITEMS.md` in the commit that closes it.

@@ -546,7 +546,8 @@ export function recommend(rawCtx, hole, P) {
   }
   const samples = makeSamples(cfg.SAMPLES, cfg.SEED);
   const scored = cands.map((c) => ({ ...c, ...simulateCandidate(c, ctx, hole, P, samples) }));
-  const { safe, aggressive, sameShot, rules } = pickOptions(scored, cfg, situationOf(ctx, hole, g));
+  const sit = situationOf(ctx, hole, g);
+  const { safe, aggressive, sameShot, rules } = pickOptions(scored, cfg, sit);
   const geo = { ball: ctx.ball, pin: pinPoint(hole, ctx.ball, ctx.pinPos) };
   const out = {
     context,
@@ -557,9 +558,45 @@ export function recommend(rawCtx, hole, P) {
     nudges: ctx.nudges,   // §5.5 — computed by learning.js, passed in on ctx, echoed here
     flags: ctx.flags,
     strategy: rules,      // course-management rules that moved SAFE off the plain lowest score (D76)
+    why: whyFacts(scored, sit, cfg, safe, rules, ctx, P, geo),   // v22.18 (C1, D91): the map's "why" line
     candidates: scored.length,
   };
   return out;
+}
+
+/* ---------- v22.18 (C1, D91): the facts behind the "why" line ---------- */
+
+/** The rule that names SAFE's reason, most specific first; null when SAFE is the plain pick. */
+const WHY_ORDER = ["no-hero", "pin-front", "pin-back", "pin-middle", "driver", "par"];
+
+/** The config with one rule switched off: what SAFE would have been without it. */
+function withoutRule(cfg, rule) {
+  const S = { ...DEFAULT_CONFIG.STRATEGY, ...(cfg.STRATEGY || {}) };
+  if (rule === "no-hero") return { ...cfg, STRATEGY: { ...S, noHero: false } };
+  if (rule === "driver") return { ...cfg, STRATEGY: { ...S, driverDefault: false } };
+  if (rule.startsWith("pin-")) return { ...cfg, STRATEGY: { ...S, pinRule: false } };
+  return { ...cfg, SAFE_RANKING: "exp" };   // "par"
+}
+
+/**
+ * Everything reasons.js whyLine needs, as resolved fields: the deciding rule, the shot SAFE would
+ * have been without it (formatted like an option), whether a no-hero call is a punch-out, the lie,
+ * the pin third, SAFE's club's short rate, and the rule thresholds the words quote.
+ */
+function whyFacts(scored, sit, cfg, safe, rules, ctx, P, geo) {
+  const S = { ...DEFAULT_CONFIG.STRATEGY, ...(cfg.STRATEGY || {}) };
+  const rule = WHY_ORDER.find((r) => rules.includes(r)) || null;
+  const other = rule ? pickSafe(scored, sit, withoutRule(cfg, rule)).safe : null;
+  return {
+    rule,
+    alt: other && other !== safe ? formatOption(other, P, safe.expScore, geo) : null,
+    punchOut: rule === "no-hero" && safe.troubleRate > S.noHeroMaxTrouble + 1e-9,
+    lieType: ctx.lieType ?? null, lieQuality: ctx.lieQuality ?? null,
+    pin: sit.pin,
+    shortPct: Number.isFinite(safe.entry?.fields?.shortPct) ? safe.entry.fields.shortPct : null,
+    noHeroMaxTrouble: S.noHeroMaxTrouble,
+    attack: (S.attackClubs || []).includes(safe.club),
+  };
 }
 
 /* ---------- §3.10 display strings ---------- */

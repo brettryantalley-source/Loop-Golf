@@ -20,7 +20,8 @@ import { parseLieChip } from "./context.js";
 import { bboxYds, withEllipses, NOTICE_MARK_GREEN } from "./overlay.js";
 import { markedPinPoint, NOTE_NO_HAZARDS } from "./greens.js";
 import { DEFAULT_CONFIG } from "./config.js";
-import { withinRound, applyShotLog, aggressionScorecard } from "./learning.js";
+import { withinRound, applyShotLog, aggressionScorecard, familyOf } from "./learning.js";
+import { whyLine } from "./reasons.js";
 
 export const CADDIE_SCHEMA = 1;
 export const PHASES = Object.freeze(["pretee", "locating", "ready", "nofix", "locationoff", "yards"]);
@@ -880,6 +881,8 @@ export function caddieView({
     }
   }
   const reasons = hasRec ? (sameShot ? [opts.safe] : [opts.safe, opts.aggressive]).filter(Boolean).map((o) => o.reason).filter(Boolean) : [];
+  // v22.18 (C1, D91): one printed line for the option on screen; the caller hides it on Custom
+  const why = hasRec ? whyLine(res, { opt: activeKey, family: familyOf, sameAvgDelta: cfg.SAME_AVG_DELTA ?? 0.05 }) : null;
   const today = hasRec ? todayLines(res) : [];
 
   const details = {
@@ -928,7 +931,7 @@ export function caddieView({
   // v22.11 B.2: in the pin view the notice tag reads the yards to the pin (live while dragging)
   const pinNotice = s.pinView && Number.isFinite(pinYds) ? COPY.pinYds(Math.round(pinYds)) : null;
 
-  return { view, rail, details, bar: { primary, secondary }, notice: pinNotice || notice, sameShot };
+  return { view, rail, details, bar: { primary, secondary }, notice: pinNotice || notice, sameShot, why };
 }
 
 /* ---------- 3g. 27-hole courses (engine §6.4) ---------- */
