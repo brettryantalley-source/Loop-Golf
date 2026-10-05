@@ -1,7 +1,8 @@
 # Loop — open items (merged Oct 4, 2026)
 
 The one list of everything still unresolved. It merges the eleven Loop chats open on Oct 4: seven
-spec sheets and four answers given in chat. Duplicates are merged and anything already shipped is
+spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
+morning of Oct 4 (C16–C18, R10–R11, and an addition to C3). Duplicates are merged and anything already shipped is
 dropped. State: `main` = **v22.17.3** (PR #29), 329 tests, decisions D1–D89; the next decision is
 **D90**.
 
@@ -17,7 +18,9 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** answer **Q1**, then say **"go with the leans"** or change any **R**.
-2. **Next code chat:** **C1 → C2 → C3 → C4**.
+2. **Next code chat:** **C16 → C1 → C17 → C2 → C3 → C4**. C16 comes first: the Oct 4 test
+   round showed a driver aimed off the fairway on Chicopee Village 1, and a "why" line on a call
+   like that would only explain a wrong call.
 3. **Next round:** the **F** list.
 
 ---
@@ -35,7 +38,6 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 | # | Decision | Lean | Other options |
 |---|---|---|---|
-| R1 | The caddie's "why" line (C1) | **Full:** the main reason, plus today's adjustment when there is one. The heads-up shows only when a pattern is strong (e.g. 3 of the last 4) | Short: the biggest factor only |
 | R2 | Course shapes on the satellite map (C2) | **Muted** paper tints, plus a Shapes toggle | Bold, Tangent-style |
 | R3 | Aim-off for your pattern includes wind (C3) | **Yes** | Pattern only |
 | R4 | Chicopee imagery (C11) | **A:** leaf-off (Wayback 49059), fewest shadows | B: leaf-on (64001), live now |
@@ -44,6 +46,8 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 | R7 | Retry when OSM had no holes for a club (C6) | **Yes** | Leave it |
 | R8 | Upload the Woodmont trace to OSM (C15) | **Later**, after C13 | Now |
 | R9 | Native app for a gap-free GPS trail (P1) | **Not now**; live with the gaps | Capacitor wrapper: $99/yr Apple Developer, plus a Mac or a macOS build runner |
+| R10 | `Enter yards` on a mapped hole (Brett, Oct 4: "what is it?") | **Move it into Details** when the map and GPS are working; keep it on screen only when there is no fix or no map | Leave it in the right column · rename it `Type yards` |
+| R11 | Shots more than 20 yds off a club's distance (C17) | **Split them out:** the drawn rings and the club's distance come from the good shots; the engine still plays the rest at their real rate, so a topped 7-iron still costs what it costs | Ignore them entirely (tighter rings and bolder calls, but the trouble odds read low) |
 
 ### On the next round (F)
 - **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.17.3 · Oct 4**.
@@ -94,9 +98,9 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C1 | The "why" line on the map | R1 | Opus |
+| C1 | The "why" line on the map | nothing (R1 answered: Full) | Opus |
 | C2 | Course shapes on the satellite map | R2 | Sonnet |
-| C3 | Aim for the pattern | R3 | Opus |
+| C3 | Aim for the pattern, and the Line drawn on its own | R3 | Opus |
 | C4 | Heads-up + aim warning | C3 | Opus |
 | C5 | Ironwood test-mode dead end | nothing | Sonnet |
 | C6 | Retry an empty OSM answer | R7 | Opus |
@@ -109,6 +113,9 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | C13 | Woodmont calibration | F9, Q3 | Sonnet |
 | C14 | History data | S1–S3, Q2 | Sonnet |
 | C15 | Woodmont trace → OSM | C13, R8 | Sonnet |
+| C16 | Tee targets off the fairway (Chicopee Village 1) | nothing | Opus |
+| C17 | Smaller rings: 80% + best 30%, good shots only | R11 | Opus |
+| C18 | Pinch to zoom on the caddie map | nothing | Opus |
 
 Details for each are under **Build details** below.
 
@@ -148,7 +155,7 @@ service worker answered font requests with `index.html`); reopen only if it come
 
 ## Build details
 
-### C1. The "why" line on the map (R1)
+### C1. The "why" line on the map (R1: Full, Brett Oct 4)
 - **What exists:** every recommendation carries `strategy`, the rules that moved SAFE (`par`,
   `no-hero`, `driver`, `pin-front`, `pin-middle`, `pin-back`). The shot log stores it; no screen
   shows it. Details shows one stat line per club from `reasons.js` ("7i: 4.2° spread, 22% short
@@ -194,8 +201,16 @@ service worker answered font requests with `index.html`); reopen only if it come
   4. Wind (R3): the simulation pushes the ball by the crosswind and the engine outputs
      `aimOffsetYds = −crossYds`, but no screen reads it and the drawn ellipse leaves wind out. With
      wind in, the overlay needs the cross drift too.
+  5. **The Line on its own** (Brett, Oct 4: "a way for the target line to automatically appear at
+     the suggested target line based on my data and stats"). The map already draws ball → target
+     and target → pin. The `Line` tool (the start-line ray, D60) only appears when he taps it. With
+     a recommendation showing, draw the start line from the ball through the aim point (pattern +
+     wind offset from steps 1 and 4), lighter than a line he sets. Tapping `Line` still moves it.
+     An untouched auto line is NOT logged as his intent (`startLine` stays null), so the learning
+     loop never reads the caddie's line as his.
 - **Tests:** an 8-iron to a centre target aims ~10 yds right and its mean landing sits within 2 yds
-  of centre; an on-pattern shot logs a ~0 lateral miss; the ellipse is centred on the finish target.
+  of centre; an on-pattern shot logs a ~0 lateral miss; the ellipse is centred on the finish target;
+  the auto line runs through the aim point and an untouched one logs `startLine: null`.
 
 ### C4. Heads-up + aim warning (after C3)
 Write a one-page spec first (when each one fires, the wording, the shot counts) and get Brett's
@@ -373,6 +388,62 @@ Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/con
 The trace converts to OSM ways (`golf=hole`, `green`, `tee`, `fairway`, `bunker`). Check OSM's terms
 for tracing from Esri imagery and its import and automated-edit guidelines, and review each feature by
 hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY`.
+
+### C16. Tee targets off the fairway (Brett, Oct 4 test round)
+- **Brett saw:** Chicopee Village 1, driver: the suggested target sat on the far right side of the
+  fairway.
+- **Reproduced in node** (Village 1–9 from the middle of the tee, today's profile): hole 1 SAFE is
+  Driver, `leave 76, fairway center`, and that point classifies as **trees** (49% trouble). Hole 6
+  Driver aims 40 yds right of centre; hole 8's 2-iron 31 right. Every Village driver call carries
+  44–59% trouble.
+- **Suspects, in order:**
+  1. Lay-ups aim at the **hole line** (`pointBackFromEnd(bend, L)` in `generateCandidates`), not the
+     middle of the fairway. On Chicopee the line was re-routed automatically and Village 1 was placed
+     by hand (D74), so the line can run along one edge of the real fairway.
+  2. `corridorAt` (`src/caddie/course.js`) takes the outer edges of every fairway piece at that
+     distance, neighbouring holes' included, so "N right of center" can reach the next fairway over.
+  3. The trees layer is automatic segmentation (C12), and the driver's 80% pattern is ~114 yds
+     wide (C17). With trouble near 50% everywhere, small differences pick odd aims.
+- **Do:** the lay-up and corridor "center" = the middle of THIS hole's fairway at that distance; the
+  corridor limited to the fairway piece the hole line crosses. Record the D-number.
+- **Tests:** on Chicopee Village 1–9, Woodmont and the Hampton fixture, every tee target that
+  isn't on the green lands on fairway; Village 1's driver target sits mid-fairway.
+- **Done when:** Brett opens Village 1 in test mode and the target sits in the middle of the
+  fairway.
+
+### C17. Smaller rings: 80% + best 30%, good shots only (Brett, Oct 4; R11)
+- **Brett, Oct 4:** "The dispersion circles are just too crazy. Too big & oddly shaped." Two rings:
+  the 80% ring, and an inner ring for his best 30%. "The caddy [should] automatically ignore any
+  shots that are not within 20 yards of the iron's target distance," and the distance should be
+  "based on accurate data, but slightly skewed toward above average."
+- **Today:** the 7-iron's 80% ellipse is 64 × 35 yds, tilted 34° (Shot Pattern's fit, n 10);
+  the others tilt 58–151°. The driver has no fitted ellipse; its 6.3° spread gives an 80% ring
+  ~114 yds wide. The tilts are what make the rings look odd.
+- **Build (R11's lean):**
+  1. Per club, split the shots: **good** = within 20 yds of the club's distance; the rest are
+     mishits. The Shot Pattern stills show each shot as a dot, so `scripts/fit-ell80.py` can read
+     the dots, drop the mishits, and refit the ring on the good shots. Loop's own logged shots add
+     to it later.
+  2. The club's distance = the median of the good shots. Mishits pull today's median down, so this
+     lands slightly above it, which is Brett's "skewed toward above average".
+  3. The engine draws from the good-shot pattern, plus a mishit at its measured rate (a new
+     `mishitRate` per club, built by `scripts/build-profile.mjs`). R11's other option drops the
+     mishit draw.
+  4. Draw two rings: 80% (outer) and 30% (inner, √(−2 ln 0.7)σ ≈ 0.47× the 80% ring), from the
+     good-shot fit.
+- Profile rebuild: `npm run build:profile`, `--check`. Engine change: a D-number. Bump BUILD and
+  CACHE.
+- **Check first:** whether the stills' dots can be read reliably at the batch's resolution. If
+  not, S5/S6-style data (per-shot carries) is the fallback.
+
+### C18. Pinch to zoom on the caddie map (Brett, Oct 4)
+- Gestures are off on purpose (`interactive: false`, `src/caddie/mapLayer.jsx`; addendum §4.1),
+  so one finger drags the target and the pin without moving the map. Only marked-green mode turns
+  them on.
+- **Build:** two-finger pinch zooms (rotation and one-finger pan stay off); a double-tap or a `Fit`
+  button returns to the hole view; the overlay re-projects on every move; a new ball resets the
+  camera as today (T36). Test that the target drag, Line taps and pin drag still work at any zoom.
+  Bump BUILD and CACHE.
 
 ---
 
