@@ -13,7 +13,7 @@
 | `DECISIONS-caddie.md` | Calls made during the overnight caddie build that override the spec. Read before touching `src/caddie/`. | current |
 | `HANDOFF-design-caddie-LATER.md` | Caddie + Hole View content and copy, from when the Caddie left the UI at v21. Superseded by `SPEC-caddie-UI.md` for anything it also covers; keep for copy not in the addendum. | superseded |
 | `HANDOFF-caddie.md` | Context for the parked v1 Caddie build (deleted overnight — see `DECISIONS-caddie.md` D9). Keep for the MapTiler key table (§4.3); the engine content is superseded by `SPEC-caddie.md`. | superseded |
-| `FIELD-TEST-v22.md` | On-course checklist for the v22 Caddie build (shipped; `main` is v22.16) — Brett's walkthrough. Modelled on `FIELD-TEST-v19.md`. | current |
+| `FIELD-TEST-v22.md` | On-course checklist for the v22 Caddie build (shipped; v22.17.4 as of Oct 5) — Brett's walkthrough. Modelled on `FIELD-TEST-v19.md`. | current |
 | `FIELD-TEST-v19.md` | On-course checklist for the v1 Caddie + Hole View, which is gone. Superseded by `FIELD-TEST-v22.md`; kept for its shape and any copy not carried forward. | history |
 | `archive/` | Handoffs for work that has shipped. `HANDOFF-v6.md` → v6 · `HANDOFF-auto-differential.md` → v14 · `HANDOFF-design.md` and `HANDOFF-redesign.md` → the v21 paper redesign. | history |
 

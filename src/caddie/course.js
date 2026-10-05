@@ -196,6 +196,41 @@ export function corridorAt(hole, y) {
 }
 
 /**
+ * v22.17.4 (D90): the middle of this hole's own fairway on the cross-line through `p`, square to
+ * the shot direction `dir` ({x, y}, any length). The hole line (golf=hole) can run along one edge of the fairway — on Chicopee Village 1
+ * it sits against the trees on the right — so lay-ups and the corridor's "center" aim here instead.
+ * The fairway piece containing p wins, else the nearest one whose edge is within `maxYds`; the move
+ * is capped at `maxYds`, which keeps it inside that piece. p unchanged when no piece qualifies
+ * (no fairway mapped at that distance: a par 3, short of the fairway, a marked green).
+ */
+export function fairwayCenterOn(hole, p, dir, maxYds = 40) {
+  const L = Math.hypot(dir.x, dir.y);
+  if (!(L > 0) || !(hole.fairways || []).length) return { ...p };
+  const ux = dir.y / L, uy = -dir.x / L;               // the cross-line: + is right of the shot
+  const spans = [];
+  for (const ring of hole.fairways) {
+    const ts = [];
+    for (let i = 0; i < ring.length; i++) {
+      const [ax, ay] = ring[i], [bx, by] = ring[(i + 1) % ring.length];
+      const ex = bx - ax, ey = by - ay;
+      const den = ux * ey - uy * ex;
+      if (Math.abs(den) < 1e-12) continue;
+      const s = (uy * (ax - p.x) - ux * (ay - p.y)) / den;   // where on the edge
+      if (s < 0 || s >= 1) continue;
+      ts.push(((ax - p.x) * ey - (ay - p.y) * ex) / den);   // where on the cross-line
+    }
+    ts.sort((a, b) => a - b);
+    for (let i = 0; i + 1 < ts.length; i += 2) spans.push([ts[i], ts[i + 1]]);
+  }
+  const gap = (s) => (s[0] <= 0 && s[1] >= 0 ? 0 : Math.min(Math.abs(s[0]), Math.abs(s[1])));
+  const near = spans.filter((s) => gap(s) <= maxYds).sort((a, b) => gap(a) - gap(b));
+  if (!near.length) return { ...p };
+  const mid = (near[0][0] + near[0][1]) / 2;
+  const t = Math.max(-maxYds, Math.min(maxYds, mid));
+  return { x: p.x + t * ux, y: p.y + t * uy };
+}
+
+/**
  * §3.5 water drop point: walk back from the landing point toward the ball until the point is no
  * longer water. Approximates the edge where the ball crossed into the hazard.
  */

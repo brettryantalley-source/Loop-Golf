@@ -103,6 +103,9 @@ export const DEFAULT_CONFIG = Object.freeze({
 
   /* ---- candidates (§3.4, §3.7) ---- */
   CORRIDOR_STEP_YDS: 5,         // aim points across the fairway at the club's distance
+  /* v22.17.4 (D90): lay-ups and the corridor's "center" move from the hole line to the middle of
+     the hole's own fairway, by at most this much. Uncalibrated. */
+  FAIRWAY_SNAP_YDS: 40,
   LAYUP_MIN_YDS: 50,
   LAYUP_MAX_YDS: 150,
   LAYUP_STEP_YDS: 5,

@@ -14,7 +14,7 @@
 
 import { DEFAULT_CONFIG } from "./config.js";
 import { makeSamples } from "./random.js";
-import { classify, greenDistances, pinPoint, fatSide, corridorAt, waterEntry, pointAlong, dist, ydsToFt } from "./course.js";
+import { classify, greenDistances, pinPoint, fatSide, corridorAt, fairwayCenterOn, waterEntry, pointAlong, dist, ydsToFt } from "./course.js";
 import { candidateEntries, E, Eputt, B, makePct, threePuttPct } from "./profile.js";
 import { reasonFor } from "./reasons.js";
 import { pickSafe, situationOf } from "./strategy.js";
@@ -217,13 +217,16 @@ export function generateCandidates(ctx, hole, P) {
     for (const t of targets) push({ club: e.club, swing: e.swing, entry: e, kind: "approach", target: t.p, label: t.label, aims: [t.aim] });
   }
 
-  // §3.7 layups: leave-distance candidates on the centerline, the nearest club for each.
+  // §3.7 layups: leave-distance candidates, the nearest club for each. D90: each one sits in the
+  // middle of the hole's fairway, not on the hole line (which can run along the fairway's edge).
   const nonReaching = entries.filter((e) => reach.get(e) === "short");
   const dPin = dist(ctx.ball, pin);
+  const snap = cfg.FAIRWAY_SNAP_YDS ?? 40;
   const layups = new Map();                            // one layup candidate per club × swing: its best-fit leave
   for (let L = cfg.LAYUP_MIN_YDS; L <= cfg.LAYUP_MAX_YDS; L += cfg.LAYUP_STEP_YDS) {
     if (dPin - L < 20) break;
-    const q = bend ? pointBackFromEnd(bend, L) : pointAlong(center, ctx.ball, L); // L short of the green center, on the line
+    const onLine = bend ? pointBackFromEnd(bend, L) : pointAlong(center, ctx.ball, L); // L short of the green center, on the line
+    const q = fairwayCenterOn(hole, onLine, { x: onLine.x - ctx.ball.x, y: onLine.y - ctx.ball.y }, snap);
     const need = dist(ctx.ball, q);
     let best = null;
     for (const e of nonReaching) {
@@ -248,7 +251,8 @@ export function generateCandidates(ctx, hole, P) {
     // On a dogleg the center is the hole's line at this club's reach, not the tee→green chord.
     const on = bend ? pointAtReach(bend, lm.total) : null;
     const yLand = on ? on.y : ctx.ball.y + lm.total;
-    const cx = on ? Math.round(on.x) : 0;
+    // D90: the center is the middle of the fairway across that line (corridorAt's cut), not the hole line
+    const cx = Math.round(fairwayCenterOn(hole, { x: on ? on.x : 0, y: yLand }, { x: 0, y: 1 }, snap).x);
     const corr = e.family === "long" ? corridorAt(hole, yLand) : null;
     const xs = [cx];
     if (corr) for (let x = Math.ceil(corr[0]); x <= corr[1]; x += cfg.CORRIDOR_STEP_YDS) xs.push(x);
