@@ -82,7 +82,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.17.4 · Oct 5";
+const BUILD = "v22.18 · Oct 5";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -2180,7 +2180,8 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     ? (cs.ball ? { lat: cs.ball.lat, lon: cs.ball.lng, spanYds: 400, ball: true } : (courseLL ? { ...courseLL, spanYds: 400, ball: false } : null)) : null;
   const markGreen = (q) => { setGreens(saveGreen(safeStorage(), slot.courseId, slot.holeKey, q)); dispatch({ type: "greenMarked" }); };
   // v22.17 full-screen map: the camera frames the hole between the floating cards
-  const insets = useMemo(() => ({ top: safe.top + 72, right: 92, bottom: safe.bottom + 118, left: 64 }), [safe.top, safe.bottom]);
+  // v22.18: the bottom inset also clears the "why" line above the action bar (C1)
+  const insets = useMemo(() => ({ top: safe.top + 72, right: 92, bottom: safe.bottom + 166, left: 64 }), [safe.top, safe.bottom]);
 
   /* weather: at round start and on I'm on the tee when 15 minutes have passed (§6.5); silent when unreachable */
   const refreshWeather = () => {
@@ -2350,6 +2351,10 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     const clubs = keys.map((k) => o[k]?.club).filter(Boolean);
     return !near || (own?.club && !clubs.includes(own.club));
   })();
+  /* v22.18 (C1, D91): the "why" line — why this call, plus today's adjustment — above the action bar.
+     Not on Custom (C4's aim warning will speak there) and not in the pin view. */
+  const whyText = v.why && !routeCustom && !pinView ? v.why.text : null;
+  const lift = whyText ? 48 : 0;
   const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
   const mapLabels = [];
   if (tgtYds != null && tgtYds >= 8) mapLabels.push({ at: mid(ballXY, shownTarget), text: String(tgtYds), unit: "yd", sub: `${v.rail.club || ""}${routeCustom ? " · Custom" : v.sameShot ? "" : cs.opt === "aggressive" ? " · Aggressive" : " · Safe"}` });
@@ -2523,7 +2528,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
 
       {pinView && (
         <button data-part="pin-done" onClick={() => dispatch({ type: "pinView", on: false })}
-          style={{ ...card, position: "absolute", left: 10, bottom: safe.bottom + 116, height: 34, padding: "0 14px", borderRadius: 17, color: T.ink, fontFamily: F.label, fontSize: 12, zIndex: 15 }}>
+          style={{ ...card, position: "absolute", left: 10, bottom: safe.bottom + 116 + lift, height: 34, padding: "0 14px", borderRadius: 17, color: T.ink, fontFamily: F.label, fontSize: 12, zIndex: 15 }}>
           {COPY.done}{pinYds != null ? ` · ${Math.round(pinYds)} yds` : ""}
         </button>
       )}
@@ -2531,13 +2536,20 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
       {/* v22.12 Mark green here — no imagery needed: the fix Brett is standing on becomes this hole's green */}
       {noGeo && cs.ball && (v.view === "nomap" || v.view === "markgreen") && (
         <button data-part="mark-here" onClick={() => { if (tapFix) { dispatch({ type: "awaitMark" }); return; } setMarkHereAt(null); setMarkHereOpen(true); }}
-          style={{ ...card, position: "absolute", left: 10, bottom: safe.bottom + 116, height: 36, padding: "0 12px", display: "flex", alignItems: "center", gap: 8, zIndex: 15,
+          style={{ ...card, position: "absolute", left: 10, bottom: safe.bottom + 116 + lift, height: 36, padding: "0 12px", display: "flex", alignItems: "center", gap: 8, zIndex: 15,
             borderRadius: 18, color: T.ink, fontFamily: F.label, fontSize: 12, whiteSpace: "nowrap" }}>
           <svg width="11" height="15" viewBox="0 0 14 18" fill="none" stroke={T.ink} strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
             <path d="M3 17 V2" /><path d="M3 2 L13 6 L3 10 Z" fill={T.ink} />
           </svg>
           {COPY.markHere}
         </button>
+      )}
+
+      {whyText && (
+        <div role="note" data-part="why" data-rule={v.why.rule || "none"} style={{ ...card, position: "absolute", left: 10, right: 10, bottom: safe.bottom + 114, padding: "6px 12px", borderRadius: 12, zIndex: 16,
+          color: T.ink, fontFamily: F.label, fontSize: 12, lineHeight: "15px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          {whyText}
+        </div>
       )}
 
       {/* bottom: the action (Shot Pattern's + Target), then the hole switcher */}
@@ -2560,7 +2572,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
         <button aria-label="Next hole" disabled={n >= 18 || !onHole} onClick={() => leaveTo(n + 1)} style={{ width: 46, height: 44, color: T.ink, opacity: n >= 18 ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 2l7 7-7 7" /></svg></button>
       </div>
       {past && liveHole && liveHole !== n && (
-        <button data-part="back-live" onClick={() => leaveTo(liveHole)} style={{ ...card, position: "absolute", right: 10, bottom: safe.bottom + 116, height: 34, padding: "0 10px", borderRadius: 17, zIndex: 21, color: T.ink, fontSize: 11 }}>
+        <button data-part="back-live" onClick={() => leaveTo(liveHole)} style={{ ...card, position: "absolute", right: 10, bottom: safe.bottom + 116 + lift, height: 34, padding: "0 10px", borderRadius: 17, zIndex: 21, color: T.ink, fontSize: 11 }}>
           Hole <span style={printed(13)}>{liveHole}</span> ›
         </button>
       )}

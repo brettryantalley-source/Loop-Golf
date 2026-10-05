@@ -126,6 +126,10 @@ test("T22 two short misses, same family → distance nudge with holes cited", ()
   assert.equal(r.nudges.length, 1);
   assert.equal(r.nudges[0].axis, "distance");
   assert.equal(r.nudges[0].text, "Short twice with mid irons (H4, H9) → +½ club");
+  // v22.18 (C1): the same facts as fields, for the map's "why" line
+  const { group, phrase, times, holes, dist, dirn, shiftYds, gapYds } = r.nudges[0];
+  assert.deepEqual({ group, phrase, times, holes, dist, dirn, shiftYds, gapYds },
+    { group: { kind: "family", key: "mid" }, phrase: "with mid irons", times: 2, holes: [4, 9], dist: "short", dirn: null, shiftYds: 5.5, gapYds: 10 });
   assert.equal(r.adjust.distYds.mid, 5.5, "50% of the mean miss (−11) → plays 5.5 longer");
   assert.deepEqual(r.adjust.aimYds, {});
   assert.equal(r.adjust.distYds.short, undefined, "other families untouched");
@@ -138,6 +142,8 @@ test("T23 two short-left misses → distance AND direction, one combined line", 
   ], DEFAULT_CONFIG, opts);
   assert.equal(r.nudges.length, 1, "one combined line (the fairway-lie reading of the same shots is not repeated)");
   assert.equal(r.nudges[0].text, "Short-left twice with mid irons (H4, H9) → +½ club, aim right-center");
+  assert.equal(r.nudges[0].dist, "short");
+  assert.equal(r.nudges[0].dirn, "left");
   assert.equal(r.nudges[0].axis, "distance+direction");
   assert.equal(r.adjust.distYds.mid, 5.5);
   assert.equal(r.adjust.aimYds.mid, 6.5, "aim right by 50% of the mean left miss (−13)");

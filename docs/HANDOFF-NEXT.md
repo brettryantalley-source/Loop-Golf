@@ -10,8 +10,16 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 336 tests (v22.17.4); must be green
+npm install && npm test    # 349 tests (v22.18); must be green
 ```
+
+## v22.18 (Oct 5)
+
+A printed "why" line sits above the action button on every call (C1, D91; R1 "Full"): the rule that
+decided SAFE (no hero, pin, driver, par chance) or the best par chance, plus today's adjustment for
+that club ("· clubbed up: short with mid irons on 4 and 7 today"). Aggressive shows its birdie
+chance; Custom shows nothing (C4's aim warning will). Built in `reasons.js` `whyLine` from
+`recommend().why` (engine.js `whyFacts`) and the nudges' new fields (learning.js). 349 tests.
 
 ## v22.17.4 (Oct 5)
 
