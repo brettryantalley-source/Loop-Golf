@@ -3,7 +3,7 @@
    filled by the Setup prefetch and while playing. Its name stays bogeyman-tiles-v1 (the
    Sep 28 storage-key decision), so tiles saved by v19 carry over. MapLibre is served
    same-origin from vendor/ and is in the shell so the map starts with no signal. */
-const CACHE = 'loop-golf-v22-18';
+const CACHE = 'loop-golf-v22-19';
 const TILES = 'bogeyman-tiles-v1';          // survives app-version bumps; only its own name is kept below
 const SHELL = [
   './',
