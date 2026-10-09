@@ -53,8 +53,8 @@ html = f"""<!doctype html>
 <meta name="apple-mobile-web-app-title" content="Loop" />
 <meta name="mobile-web-app-capable" content="yes" />
 <link rel="manifest" href="./manifest.webmanifest" />
-<link rel="apple-touch-icon" href="./icon-512.png" />
-<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon-180.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="./icon-loop-512.png" />
 <!-- Fetch the faces the first screen needs up front. crossorigin is required even
      same-origin for fonts, or the preload is discarded and fetched again. -->
 <link rel="preload" href="./fonts/bitter-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
