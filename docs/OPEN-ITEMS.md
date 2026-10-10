@@ -38,12 +38,15 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.42 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.43 · Oct 10** (once merged).
 - **F18.** From the rough (v22.33, D104): the caddie now plays your rough totals, not the fairway
   ones plus extra roll. A 5-iron finishes ~192, the 4-hybrid ~207, a 7-iron ~175, a PW ~136. Note any
   rough call that feels a club off.
 - **F19.** From a fairway bunker (v22.34, D105; sand more than 40 yds from the green's front): the
   caddie now stays out of trouble 9 times in 10, so expect more lay-ups. Say if one feels too timid.
+- **F26.** Bradshaw Farm (v22.43, D114): pick the club, then the two nines the starter gives you (any order).
+  The caddie should open on hole 1 with no `Course holes` screen. On White 3 and White 4 (traced from the photo,
+  not OSM), check the green's front / back numbers against a sprinkler head or the pin sheet.
 - **F25.** Tee rings (v22.42, D113): the driver, 2-iron and the hybrids draw their good shots now —
   wide and shallow (the driver 92 × 35), not ~100 yds deep. Say whether they look like your tee shots.
 - **F24.** In-round nudges (v22.41, D112): the why line still says "short with mid irons on 3 and 6

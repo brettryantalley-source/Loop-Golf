@@ -12,7 +12,9 @@ import { fileURLToPath } from "node:url";
 
 import { toOverpass, localGeometryFor, imageryFor } from "./localGeometry.js";
 import { parseOverpass, featuresForHole, yardsBetween, haversineM, pointInRing } from "./geometry.js";
-import { coverageCheck, buildHole, detectHole, saveGeometryCache, loadGeometryCache } from "./caddie/geo.js";
+import { coverageCheck, buildHole, detectHole, saveGeometryCache, loadGeometryCache, nineMapFromRouting, playingOrder } from "./caddie/geo.js";
+import { LOCAL_CLUBS } from "./localCards.js";
+import { localCardHoles } from "./routing.js";
 import { classify } from "./caddie/course.js";
 import { loadProfile } from "./caddie/profile.js";
 import { recommend } from "./caddie/engine.js";
@@ -231,4 +233,50 @@ test("riverpines and hampton fly their own Esri photo", () => {
     const img = imageryFor([woodmont, riverpines, hampton], id);
     assert.ok(img && img.url.includes(release) && img.tileSize === 256, id);
   }
+});
+
+/* v22.43 (D114): Bradshaw Farm — OSM's 26 holes named for their nines, White 4 and White 3's green traced. */
+const bradshaw = JSON.parse(readFileSync(join(here, "localGeometry", "bradshaw.json"), "utf8"));
+const BRADSHAW_CARD = LOCAL_CLUBS.find((c) => c.key === "bradshaw-woodstock");
+
+test("bradshaw: every routing id finds the map; 27 holes keyed 1–27, named for their nine, each with a green and the card's par", () => {
+  for (const id of ["0d614xe6", "pr605r02", "xs7ypdb7"]) assert.ok(localGeometryFor([woodmont, bradshaw], id), id);
+  const g = localGeometryFor([bradshaw], "xs7ypdb7").geometry;
+  assert.deepEqual(g.warnings, []);
+  assert.deepEqual(Object.keys(g.holes).map(Number).sort((a, b) => a - b), Array.from({ length: 27 }, (_, i) => i + 1));
+  assert.ok(coverageCheck(g).complete);
+  BRADSHAW_CARD.nines.forEach((nine, i) => nine.pars.forEach((par, h) => {
+    const hole = g.holes[i * 9 + h + 1];
+    assert.equal(hole.name, `${nine.label} ${h + 1}`);
+    assert.equal(hole.par, par, hole.name);
+    assert.ok(hole.green, `${hole.name} green`);
+  }));
+  // the two pieces OSM is missing: White 3's green and all of White 4
+  assert.ok(pointInRing(g.holes[12].greenEnd, g.holes[12].green.ring), "White 3's line ends on its green");
+  const w4 = Math.round(yardsBetween(g.holes[13].line[0], g.holes[13].green.center));
+  assert.ok(w4 > 170 && w4 < 225, `White 4 is ${w4} yds (card Blue 190, Gold 219)`);
+  assert.equal(featuresForHole(g, 13).tees.length, 3);
+});
+
+test("bradshaw: any two nines in either order read their nine map off the names — the Course holes screen never asks", () => {
+  const g = localGeometryFor([bradshaw], "0d614xe6").geometry;
+  const club = BRADSHAW_CARD.nines.map((n) => n.label);
+  for (const [i, j] of [[0, 1], [1, 0], [0, 2], [2, 0], [1, 2], [2, 1]]) {
+    const play = [club[i], club[j]];
+    const m = nineMapFromRouting(g, { play, club, ordered: true });
+    assert.ok(m, play.join("/"));
+    const order = playingOrder(m, m._play);
+    assert.deepEqual(order.map((k) => g.holes[k].name), [...Array(18)].map((_, n) => `${play[n < 9 ? 0 : 1]} ${(n % 9) + 1}`), play.join("/"));
+    // pars on the map = the card's for that routing
+    assert.deepEqual(order.map((k) => g.holes[k].par), localCardHoles(BRADSHAW_CARD, [i, j], "Blue").map((h) => h.par));
+    for (let n = 1; n < 18; n++) assert.equal(String(detectHole(g, g.holes[order[n]].line[0], order[n - 1], { order }).hole), String(order[n]), `${play.join("/")} ${n + 1}`);
+  }
+  // the API's own routing names (club nines in search order) read the same holes
+  const api = nineMapFromRouting(g, { play: ["Blue", "Red"], club: ["Red", "White", "Blue"], ordered: false });
+  assert.deepEqual(playingOrder(api, api._play).map((k) => g.holes[k].name).slice(0, 2), ["Blue 1", "Blue 2"]);
+});
+
+test("bradshaw flies the Esri photo its traced shapes were drawn on", () => {
+  const img = imageryFor([woodmont, bradshaw], "pr605r02");
+  assert.ok(img && img.url.includes("/tile/63116/") && img.tileSize === 256);
 });

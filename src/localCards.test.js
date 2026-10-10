@@ -35,3 +35,25 @@ test("localClubFor: matches on club name + city/state, tolerates a missing locat
   assert.equal(localClubFor("", fishers), null);
   assert.equal(localClubFor(null, null), null);
 });
+
+test("Bradshaw Farm card (v22.43): Red / White / Blue, the card's OUT totals, and the API's pars and handicaps", () => {
+  const c = LOCAL_CLUBS.find((x) => x.key === "bradshaw-woodstock");
+  assert.deepEqual(c.nines.map((n) => n.label), ["Red", "White", "Blue"]);
+  assert.deepEqual(c.tees, ["Gold", "Blue", "White", "Red"]);
+  c.tees.forEach((t) => c.nines.forEach((n, i) => assert.equal(n.yards[t].reduce((a, b) => a + b, 0), c.check[t][i], `${n.label} ${t}`)));
+  // golfcourseapi's Red/White, White/Blue and Blue/Red (Oct 10) carry the same pars, and handicaps that
+  // halve (odd front, even back) to the card's 1–9
+  const api = {
+    "Red/White": { par: [4, 5, 4, 4, 3, 4, 5, 3, 4, 4, 5, 4, 3, 4, 3, 5, 4, 4], si: [5, 13, 11, 9, 17, 3, 7, 15, 1, 10, 16, 4, 12, 6, 18, 8, 2, 14] },
+    "White/Blue": { par: [4, 5, 4, 3, 4, 3, 5, 4, 4, 4, 4, 5, 4, 3, 4, 3, 5, 4], si: [9, 15, 3, 11, 5, 17, 7, 1, 13, 4, 16, 8, 12, 18, 2, 10, 6, 14] },
+    "Blue/Red": { par: [4, 4, 5, 4, 3, 4, 3, 5, 4, 4, 5, 4, 4, 3, 4, 5, 3, 4], si: [3, 15, 7, 11, 17, 1, 9, 5, 13, 6, 14, 12, 10, 18, 4, 8, 16, 2] },
+  };
+  for (const [name, { par, si }] of Object.entries(api)) {
+    const [a, b] = name.split("/").map((l) => c.nines.find((n) => n.label === l));
+    assert.deepEqual([...a.pars, ...b.pars], par, name);
+    assert.deepEqual([...a.si.map((s) => 2 * s - 1), ...b.si.map((s) => 2 * s)], si, name);
+  }
+  assert.equal(localClubFor("Bradshaw Farm Golf Club", { city: "Woodstock", state: "GA" })?.key, "bradshaw-woodstock");
+  assert.equal(localClubFor("The Golf Club at Bradshaw Farm", null)?.key, "bradshaw-woodstock");
+  assert.equal(localClubFor("Bradshaw Farm Golf Club", { city: "Woodstock", state: "VA" }), null);
+});
