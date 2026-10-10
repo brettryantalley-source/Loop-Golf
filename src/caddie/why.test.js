@@ -111,12 +111,25 @@ test("today's clause: under half a club says the yards; another family's nudge s
 
 const chicopee = parseOverpass(toOverpass(JSON.parse(readFileSync(join(here, "../localGeometry/chicopee.json"), "utf8"))));
 const village1 = (() => { const k = Object.keys(chicopee.holes).find((x) => chicopee.holes[x].name === "Village 1"); return buildHole(chicopee, k, { par: 4 }); })();
-// v22.33 (D104): with the 41+ ft three-putt rate at 52%, Village 1's tee shot is the 2-hybrid on price
-// alone; Mill 3 is a tee shot the par ranking still decides
-const mill3 = (() => { const k = Object.keys(chicopee.holes).find((x) => chicopee.holes[x].name === "Mill #3"); return buildHole(chicopee, k, { par: 4 }); })();
+// The tee shot the par ranking decides moves as the profile does (Chicopee Village 1 until v22.33, D104;
+// Mill 3 until v22.42, C22 / D113): take the first par-4/5 tee shot on the bundled maps where it decides.
+const parTee = (() => {
+  for (const n of ["chicopee", "woodmont", "riverpines", "hampton"]) for (const [k, g] of (() => {
+    const geo = parseOverpass(toOverpass(JSON.parse(readFileSync(join(here, "../localGeometry", `${n}.json`), "utf8"))));
+    return Object.keys(geo.holes).map((key) => [key, geo]);
+  })()) {
+    const par = Number(g.holes[k].par) || 4;
+    if (par < 4) continue;
+    const h = buildHole(g, k, { par });
+    const r = h && recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee", par }, h, P);
+    if (r?.strategy?.length === 1 && r.strategy[0] === "par" && r.why?.alt && r.why.alt.club !== r.safe.club) return { h, par };
+  }
+  return null;
+})();
 
 test("recommend(): `why` names the deciding rule and the shot SAFE would have been without it", () => {
-  const tee = recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee", par: 4 }, mill3, P);
+  assert.ok(parTee, "some tee shot on the bundled maps is decided by the par ranking");
+  const tee = recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee", par: parTee.par }, parTee.h, P);
   assert.deepEqual(tee.strategy, ["par"]);
   assert.equal(tee.why.rule, "par");
   assert.ok(tee.why.alt && tee.why.alt.club !== tee.safe.club, `without the par ranking: ${tee.why.alt?.club}`);

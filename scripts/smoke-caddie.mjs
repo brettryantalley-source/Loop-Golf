@@ -17,7 +17,11 @@ import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join, extname, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 import { initialCaddie, serializeCaddie } from "../src/caddie/caddieState.js";
+import { parseOverpass } from "../src/geometry.js";
+import { toOverpass } from "../src/localGeometry.js";
+import { buildHole, frameOf } from "../src/caddie/geo.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const shotsDir = process.argv.includes("--shots") ? process.argv[process.argv.indexOf("--shots") + 1] : null;
@@ -53,7 +57,7 @@ await ctx.addInitScript(([s]) => {
 }, [JSON.stringify(state)]);
 // A weak signal (D109): Open-Meteo (weather, elevation) answers after 30 s. A bundled map must not wait for it.
 await ctx.route(/open-meteo\.com/, (route) => setTimeout(() => route.abort().catch(() => {}), 30000));
-const page = await ctx.newPage();
+let page = await ctx.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
 page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource|net::ERR/.test(m.text())) errors.push(`console: ${m.text().slice(0, 200)}`); });
@@ -106,15 +110,27 @@ await step("next-ball tap", async () => {
 });
 await page.waitForTimeout(2500);
 await shot("4-next-ball");
-// v22.40 (C29, D111): log shot 2 and drop the ball just short of the green, inside 30 yds: no club
-// call, his short-game numbers instead, and the log card's Chip · Pitch · Bunker · Wedge row.
-await step("shot 2 → by the green", async () => {
-  await logGood();
-  await page.getByText(/^Test mode ·/).first().waitFor({ timeout: 5000 }).catch(() => null);
-  await page.waitForTimeout(300);
-  await tapMap(0.44, 0.165);
-  await page.getByText(/up and down/).first().waitFor({ timeout: 12000 });
-});
+
+// v22.40 (C29, D111): a ball 22 yds short of hole 1's green — restored, so the camera's framing of the
+// shot before cannot move it: no club call, his short-game numbers instead, and the log card's
+// Chip · Pitch · Bunker · Wedge row.
+const wm = parseOverpass(toOverpass(JSON.parse(readFileSync(join(root, "src/localGeometry/woodmont.json"), "utf8"))));
+const h1 = buildHole(wm, "1", { par: 4 });
+const near = frameOf(h1).toLatLng({ x: h1.green.center.x, y: h1.green.center.y - 22 });
+const byGreen = { ...state, caddie: serializeCaddie({ ...initialCaddie(1), phase: "ready", trigger: "ball", shotNo: 3, ball: { lat: near.lat, lng: near.lon, accuracyM: 4 } }) };
+const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+await ctx2.route(/open-meteo\.com/, (route) => setTimeout(() => route.abort().catch(() => {}), 30000));
+await ctx2.addInitScript(([s]) => {
+  if (sessionStorage.getItem("smoke-seeded")) return;
+  sessionStorage.setItem("smoke-seeded", "1");
+  localStorage.setItem("bogeyman-matches:v1", s);
+  localStorage.setItem("bogeyman-matches:config:v1", JSON.stringify({ testMode: { fakeGps: true } }));
+}, [JSON.stringify(byGreen)]);
+page = await ctx2.newPage();
+page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
+page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource|net::ERR/.test(m.text())) errors.push(`console: ${m.text().slice(0, 200)}`); });
+await page.goto(base, { waitUntil: "load" });
+await step("by the green: his numbers", async () => { await page.getByText(/up and down/).first().waitFor({ timeout: 15000 }); });
 await shot("5-short-game");
 await step("short-game card", () => logGood(async () => {
   await page.locator('[data-part="short-kind"]').first().waitFor({ timeout: 3000 });

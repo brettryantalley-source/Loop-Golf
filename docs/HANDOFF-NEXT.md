@@ -10,9 +10,15 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 394 tests (v22.41); must be green
+npm install && npm test    # 394 tests (v22.42); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.42 (Oct 10)
+
+Tee rings from good shots (C22, D113): the Oct 10 Driving stills fitted by D92's method into
+`data/extracted/2026-10-10-ell80.json`; the driver gets a fitted ring, the hybrids' rings go from
+~100 yds deep to ~35. The fitting scripts take per-still bar rows and coverage. 394 tests.
 
 ## v22.41 (Oct 10)
 

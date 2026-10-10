@@ -24,9 +24,9 @@ WEDGE_WINDOW_PCT = 0.10     # wedges: 10% of the median, so a deliberate partial
 WEDGES = ('PW', 'GW', 'SW', 'LW')
 BAR_ROWS = (1236, 1246)
 
-def read_bar(path, lo, hi):
+def read_bar(path, lo, hi, bar_rows=BAR_ROWS):
     im = np.array(Image.open(path).convert('RGB')).astype(float)
-    rows = im[BAR_ROWS[0]:BAR_ROWS[1]]
+    rows = im[bar_rows[0]:bar_rows[1]]
     lum = rows.mean(axis=(0, 2))
     green = ((abs(rows[..., 0] - 60) < 30) & (abs(rows[..., 1] - 180) < 30)).mean(axis=0) > 0.8
     xs = np.where(green)[0]
@@ -62,7 +62,8 @@ def club_stats(n, bar, club):
 
 def entry_stats(e, root='.'):
     lo, hi = e['barLabels']
-    return club_stats(e['n'], read_bar(os.path.join(root, e['frame']), lo, hi), e['club'])
+    # C22 (D113): a screenshot scrolls the bar to its own rows; the recording frames share BAR_ROWS
+    return club_stats(e['n'], read_bar(os.path.join(root, e['frame']), lo, hi, tuple(e.get('barRows', BAR_ROWS))), e['club'])
 
 if __name__ == '__main__':
     doc = json.load(open(sys.argv[1]))

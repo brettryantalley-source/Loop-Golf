@@ -24,6 +24,8 @@ const BATCH = "2026-10-04";
 const REPORT_REL = `data/extracted/${BATCH}-report.txt`;
 const SCREENS_REL = `data/extracted/${BATCH}-screens.json`;
 const ELL80_REL = `data/extracted/${BATCH}-ell80.json`;
+// C22 (D113): the Oct 10 tee rings (Driver, 2-iron, 2-hybrid, 4-hybrid) and the 2-hybrid's fairway still
+const ELL80_TEE_REL = "data/extracted/2026-10-10-ell80.json";
 const REPORT_PATH = path.join(ROOT, REPORT_REL);
 const SCREENS_PATH = path.join(ROOT, SCREENS_REL);
 const ELL80_PATH = path.join(ROOT, ELL80_REL);
@@ -138,6 +140,7 @@ const REPORT_CLUB_NAME = {
 const reportText = fs.readFileSync(REPORT_PATH, "utf8");
 const screensDoc = JSON.parse(fs.readFileSync(SCREENS_PATH, "utf8"));
 const ell80Doc = JSON.parse(fs.readFileSync(ELL80_PATH, "utf8"));
+const ell80TeeDoc = JSON.parse(fs.readFileSync(path.join(ROOT, ELL80_TEE_REL), "utf8"));
 
 // Transcribed values are keyed by meaning (approach.clubSheets.fairway.5i, putting.direction.4-6 …),
 // never by screen number; the file says which recording and frames each block was read from.
@@ -689,7 +692,9 @@ function shortGameExtra(bucket, lie) {
 // count it twice (2Hy: median 236 to a ~251 target, centre 28 short). The measured value stays on
 // dyMeasuredYds. The lateral offset dx has no such twin and is kept (D85).
 const ell80ByClubLie = {};
-for (const e of ell80Doc.entries) {
+const K80_OF = (c) => Math.sqrt(-2 * Math.log(0.2)) / Math.sqrt(-2 * Math.log(1 - c));   // a c-coverage ring → the 80% one
+// A later batch replaces an earlier one for the same club and lie (C22, D113: the Oct 10 stills).
+for (const [doc, e] of [...ell80Doc.entries.map((x) => [ell80Doc, x]), ...ell80TeeDoc.entries.map((x) => [ell80TeeDoc, x])]) {
   // C17 (D92): wYds/hYds/tiltDeg/dxYds are the GOOD-shot 80% ring (what the engine draws from and the
   // map draws); the ring Shot Pattern printed, all shots, rides on allW/H/Tilt/Dx and is where the
   // engine draws a mishit (mishitRate of the time) from. A club with too few good dots keeps one ring.
@@ -702,14 +707,25 @@ for (const e of ell80Doc.entries) {
     ...(split ? { allWYds: e.wYds, allHYds: e.hYds, allTiltDeg: e.tiltDeg, allDxYds: e.dxYds, mishitRate: e.mishitRate, goodWindowYds: e.goodWindowYds, goodDots: e.goodDots } : {}),
     dyYds: 0,
     dyMeasuredYds: e.dyYds,
-    bboxWYds: e.bboxWYds,
-    bboxDYds: e.bboxDYds,
+    // a ring printed at another coverage (C22: the 2-hybrid's tee screen at 60%) carries its box scaled to 80%
+    ...(e.coverage && Math.abs(e.coverage - 0.8) > 1e-9
+      ? { bboxWYds: round(e.bboxWYds * K80_OF(e.coverage), 1), bboxDYds: round(e.bboxDYds * K80_OF(e.coverage), 1), printedCoverage: e.coverage, printedBboxYds: [e.bboxWYds, e.bboxDYds] }
+      : { bboxWYds: e.bboxWYds, bboxDYds: e.bboxDYds }),
     source: "shotPattern",
-    capturedAt: ell80Doc.batch,
-    lies: ell80Doc.resolvedFilters.lies,
+    capturedAt: doc.batch,
+    lies: e.lies ?? doc.resolvedFilters.lies,
     n: e.n,
     confidence: e.confidence,
+    ...(e.goodDots != null ? { goodDots: e.goodDots } : {}),
   };
+}
+// C22 (D113): a fairway ring with fewer than MIN_GOOD_DOTS good shots (one ring, mishits and all — the
+// 2-hybrid's was 135 yds deep) gives way to the club's tee ring when that one has the good shots; the
+// lie chain then reads the tee ring from the fairway.
+for (const key of Object.keys(ell80ByClubLie)) {
+  const [club, lie] = key.split("|");
+  const tee = ell80ByClubLie[`${club}|tee`];
+  if (lie === "fairway" && (ell80ByClubLie[key].goodDots ?? 0) < MIN_SIGMA_N && (tee?.goodDots ?? 0) >= MIN_SIGMA_N) delete ell80ByClubLie[key];
 }
 function ell80For(id, lie) {
   return ell80ByClubLie[`${id}|${lie}`] ?? null;
@@ -795,9 +811,9 @@ function buildTeeEntry(id) {
   };
   e.width95Yds = bag.width95;
   e.width90Yds = bag.width90;
-  // Shot Pattern's ellipse is an approach measure; a tee shot reads the fairway one only through
-  // resolveEntry's lie chain, as it did with the Sep 19 all-lies ellipses.
-  e.ell80 = null;
+  // C22 (D113): the tee ring from the Oct 10 Driving stills (good shots, mishits from the printed ring).
+  // Before, a tee shot read the fairway ring through resolveEntry's lie chain, or none (the driver).
+  e.ell80 = ell80For(id, "tee");
   return e;
 }
 

@@ -18,10 +18,9 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Next code chat:** nothing is left that needs nothing from Brett; see **Brett** below (S9 → C22,
-   F7 notes → C10, S4 → C12, F9 + Q3 → C13, S1–S3 + Q2 → C14) and C33 once chips are logged.
-2. **Brett:** send **S9** (the tee stills as files).
-3. **Next round:** the **F** list.
+1. **Next code chat:** nothing is left that needs nothing from Brett; see **Brett** below (F7 notes → C10,
+   S4 → C12, F9 + Q3 → C13, S1–S3 + Q2 → C14) and C33 once chips are logged.
+2. **Next round:** the **F** list.
 
 ---
 
@@ -39,12 +38,14 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.41 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.42 · Oct 10** (once merged).
 - **F18.** From the rough (v22.33, D104): the caddie now plays your rough totals, not the fairway
   ones plus extra roll. A 5-iron finishes ~192, the 4-hybrid ~207, a 7-iron ~175, a PW ~136. Note any
   rough call that feels a club off.
 - **F19.** From a fairway bunker (v22.34, D105; sand more than 40 yds from the green's front): the
   caddie now stays out of trouble 9 times in 10, so expect more lay-ups. Say if one feels too timid.
+- **F25.** Tee rings (v22.42, D113): the driver, 2-iron and the hybrids draw their good shots now —
+  wide and shallow (the driver 92 × 35), not ~100 yds deep. Say whether they look like your tee shots.
 - **F24.** In-round nudges (v22.41, D112): the why line still says "short with mid irons on 3 and 6
   today", but the club, target and line no longer move for it. Say if you miss the old club-ups.
 - **F23.** The short-game card (v22.40, D111): just off a green the why line shows your up-and-down
@@ -116,12 +117,6 @@ after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 - **S6.** A launch-monitor range session: carry for every club, the 2-iron partial, and wedge ½ and
   ¾ swings. → a profile rebuild.
 - **S7.** Your wedge lofts. → a profile rebuild.
-- **S9.** The Oct 10 tee stills (Driver, 2-iron, 2-hybrid, 4-hybrid: the dispersion plot and the
-  Shot Distances bar for each) again, attached in a code chat so they land as files for
-  `scripts/read-carries.py` and `scripts/fit-ell80.py`. Send them in a message of their own, after
-  Claude's reply has finished: ones sent while Claude is still working arrive as pictures only. The
-  first eight (and their re-send) came through as pictures only;
-  their numbers are under C22. The two sent after them are in `data/raw/2026-10-10/`. → C22.
 - **S8.** Optional: fix two Shot Pattern mis-tags at the source. Lake Arrowhead 9/12 hole 8 reads
   "9i · 287 yds"; Hampton 9/20 hole 6 reads "Unknown Club · 86 yds".
 
@@ -138,7 +133,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | C13 | Woodmont calibration | F9, Q3 | Sonnet |
 | C14 | History data | S1–S3, Q2 | Sonnet |
 | C15 | Woodmont trace → OSM | C13 (R8: later) | Sonnet |
-| C22 | Tee rings from good shots (2-hybrid ~100 yds deep) | S9 | Sonnet |
 | C33 | Short-game bands learn from Loop's chips | a few rounds of chips + putts logged | Sonnet |
 
 Details for each are under **Build details** below.
@@ -260,26 +254,6 @@ The trace converts to OSM ways (`golf=hole`, `green`, `tee`, `fairway`, `bunker`
 for tracing from Esri imagery and its import and automated-edit guidelines, and review each feature by
 hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY`.
 
-### C22. Tee rings from good shots (S9; Brett, Oct 10)
-- The 2-hybrid's ring is ~100 yds deep: "mishits should be outliers"; the ring should run from
-  "slightly below average to above average". Shot Pattern's own 80% ring off the tee is just as deep;
-  its bar shows a few mishits at 150–200 yds stretching it.
-- **Oct 10 tee screens** (Shot Pattern, Driving, 80% coverage):
-
-  | Club | Shots | Ring W × D | Median | 25th–75th | Longest | Avg offline | 68% / 95% arc | Big miss |
-  |---|---|---|---|---|---|---|---|---|
-  | Dr | 117 | 105 × 98 | 289 | 275–303 | 378 | 23 | 59 / 108 | 19% |
-  | 2i | 26 | 88 × 90 | 255 | 240–261 | 277 | 21 | 51 / 93 | 15% |
-  | 2Hy | 12 | 80 × 96 | 253 | 236–264 (bar 243–265) | 268 | 17 | 36 / 72 | 25% |
-  | 4Hy | 16 | 87 × 69 | 232 | 223–245 (bar 223–246) | 284 | 22 | 46 / 75 | 31% |
-
-- **2-hybrid from the fairway, Oct 10** (`data/raw/2026-10-10/sp-2hy-approach-pattern.webp`): 7 shots,
-  ring 66 × 112 yds, median 233, 25th–75th 214–243. Too deep the same way.
-- **Do:** with the stills as files (S9), run D92's method on the tee clubs and the 2-hybrid: carries off the bar,
-  good shots within the 20-yd window, the good ring from those dots, mishits drawn from the printed
-  ring at `mishitRate`. The driver gets a fitted ring for the first time (today it is drawn from its
-  σs, capped at 70 yds). Rebuild the profile (`npm run build:profile`, `--check`). Record a D-number.
-
 ### C33. Short-game bands learn from Loop's chips (C29, D111)
 - Since v22.40 chips, pitches and bunker shots are logged as `shotType: "shortGame"` with a
   `shortKind`, and never teach a club's distances. Nothing learns the bands from them yet (the
@@ -308,7 +282,7 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D113.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D114.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat

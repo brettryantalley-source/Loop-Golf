@@ -63,11 +63,13 @@ test("C3 / R3: the aim-off includes the crosswind; a drift under 2 yds is aimed 
 });
 
 test("C3: every shot aims off — off the tee only the wind moves it; Brett's own target carries the aim-off for its club", () => {
+  // C22 (D113): the tee clubs have measured rings now; the driver's good drives finish ~5 yds right
   const calm = recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee" }, openPar5, P);
-  assert.equal(calm.safe.aimOffsetYds, 0, "no tee club has a measured lateral pattern");
+  const teeDx = resolveEntry(P, calm.safe.club, "full", "tee").ell80?.dxYds ?? 0;
+  assert.equal(calm.safe.aimOffsetYds, Math.abs(teeDx) >= 2 ? -teeDx : 0, `${calm.safe.club}: aims off its own pattern`);
   const windy = recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee", wind: LEFT_WIND }, openPar5, P);
   assert.ok(windy.safe.windYds > 2, `tee shot drift ${windy.safe.windYds}`);
-  assert.equal(windy.safe.aimOffsetYds, -windy.safe.windYds, `${windy.safe.club} ${windy.safe.kind}: aims into the wind`);
+  assert.ok(Math.abs(windy.safe.aimOffsetYds + windy.safe.patternYds + windy.safe.windYds) < 0.11, `${windy.safe.club} ${windy.safe.kind}: aims into the wind and off the pattern`);
   const own = priceTarget({ shotNo: 2, ball: { x: 0, y: 540 - 165 }, lieType: "fairway" }, openPar5, P, { x: 3, y: 540 });
   const pat = resolveEntry(P, own.club, "full", "fairway").ell80?.dxYds ?? 0;
   assert.equal(own.aimOffsetYds, Math.abs(pat) >= 2 ? -pat : 0, `${own.club}: the marker is where it finishes`);

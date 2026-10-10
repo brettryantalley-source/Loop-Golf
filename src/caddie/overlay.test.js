@@ -127,8 +127,8 @@ test("T34: 10,000 engine samples from an ell80 entry → 80% ± 1% inside the dr
 });
 
 test("ellipseFromEntry: σ fallback (no ell80) covers 80% of the engine's normal draws", () => {
-  const entry = resolveEntry(P, "Dr", "full", "tee");
-  assert.equal(entry.ell80, null, "driver has no measured ellipse yet");
+  // C22 (D113): the driver has a measured ring now; the σ fallback is checked on its σs without it
+  const entry = { ...resolveEntry(P, "Dr", "full", "tee"), ell80: null };
   const ell = ellipseFromEntry(entry, { config: { ...DEFAULT_CONFIG, RING_DRAW_CAP_YDS: Infinity } });
   assert.equal(ell.tiltDeg, 90); assert.equal(ell.source, "profile");
   const sLat = entry.carry * Math.tan(entry.lateralSdDeg * Math.PI / 180);
@@ -225,8 +225,9 @@ test("cameraPoints (C20, v22.27): ball + SAFE's ellipse, target and lay-up pin +
   assert.ok(ap.maxY >= 556, "an approach frames the whole green");
   near(fitBounds(cameraPoints({ hole, ball, pin: null, options: null })).maxY, 556, 1e-9);
   // the 2-hybrid ellipse at a straight-up shot: its frame box equals the SP box (x same, y flipped)
-  const box = resolveEntry(P, "2Hy", "full", "fairway").ell80;
-  near(eA.maxX - eA.minX, box.bboxWYds, 1.2, "frame width"); near(eA.maxY - eA.minY, box.bboxDYds, 1.2, "frame depth");
+  // (C22, D113: the 2-hybrid's good-shot ring, not Shot Pattern's printed box)
+  const box = bboxYds(aggressive.ell);
+  near(eA.maxX - eA.minX, box.w, 1.2, "frame width"); near(eA.maxY - eA.minY, box.d, 1.2, "frame depth");
 });
 
 test("zoomForPxPerYd: MapLibre zoom from px/yd (512-px world)", () => {
@@ -515,10 +516,12 @@ test("C17: the inner ring is the best 30% (0.471 of the 80%); the 30% contour of
   assert.ok(Math.abs(inside / S.length - 0.3) <= 0.015, `${inside / 100}% inside the inner ring`);
 });
 
-test("C17: the driver's drawn ring is capped; the fitted irons are not", () => {
-  const dr = ellipseFromEntry(resolveEntry(P, "Dr", "full", "tee"));
-  assert.ok(dr.w <= DEFAULT_CONFIG.RING_DRAW_CAP_YDS && dr.h <= DEFAULT_CONFIG.RING_DRAW_CAP_YDS, `${dr.w} × ${dr.h}`);
-  assert.ok(Math.max(dr.w, dr.h) === DEFAULT_CONFIG.RING_DRAW_CAP_YDS, "the wide axis sits on the cap");
+test("C17: a ring drawn from σs is capped; a fitted ring (the irons, and the tee clubs since C22) is not", () => {
+  const sigma = ellipseFromEntry({ ...resolveEntry(P, "Dr", "full", "tee"), ell80: null });
+  assert.ok(sigma.w <= DEFAULT_CONFIG.RING_DRAW_CAP_YDS && sigma.h <= DEFAULT_CONFIG.RING_DRAW_CAP_YDS, `${sigma.w} × ${sigma.h}`);
+  assert.ok(Math.max(sigma.w, sigma.h) === DEFAULT_CONFIG.RING_DRAW_CAP_YDS, "the wide axis sits on the cap");
+  const dr = resolveEntry(P, "Dr", "full", "tee");
+  assert.deepEqual(ellipseFromEntry(dr), ellipseFromEntry(dr, { config: { ...DEFAULT_CONFIG, RING_DRAW_CAP_YDS: Infinity } }), "the driver's fitted ring is drawn as measured");
   const iron = resolveEntry(P, "5i", "full", "fairway");
   const uncapped = ellipseFromEntry(iron, { config: { ...DEFAULT_CONFIG, RING_DRAW_CAP_YDS: Infinity } });
   assert.deepEqual(ellipseFromEntry(iron), uncapped);
@@ -526,7 +529,12 @@ test("C17: the driver's drawn ring is capped; the fitted irons are not", () => {
 
 test("C17: a club whose good dots are too few keeps Shot Pattern's ring and draws no mishits; the rest are split", () => {
   const ring = (id) => Object.values(RAW.clubs.find((c) => c.id === id).entries).map((l) => l?.fairway?.ell80).find(Boolean);
-  for (const id of ["2Hy", "PW"]) { const r = ring(id); assert.equal(r.mishitRate, 0, id); assert.equal(r.allWYds, r.wYds, id); assert.equal(r.allHYds, r.hYds, id); }
+  for (const id of ["PW"]) { const r = ring(id); assert.equal(r.mishitRate, 0, id); assert.equal(r.allWYds, r.wYds, id); assert.equal(r.allHYds, r.hYds, id); }
+  // C22 (D113): the 2-hybrid's thin fairway ring gives way to its tee ring, which has the good shots
+  assert.equal(ring("2Hy"), undefined);
+  const hy = resolveEntry(P, "2Hy", "full", "fairway");
+  assert.ok(hy.ell80.goodDots >= 5 && hy.ell80.mishitRate > 0, "the fairway reads the tee ring");
+  assert.ok(hy.ell80.hYds < 40, `depth ${hy.ell80.hYds} (was 135)`);
   for (const id of ["5i", "6i", "7i", "8i", "9i", "GW", "SW", "LW"]) {
     const r = ring(id);
     assert.ok(r.goodDots >= 5, id);
