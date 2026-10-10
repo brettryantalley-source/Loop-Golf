@@ -83,6 +83,9 @@ test("C3: both rings centre on the target; the drift shows only when it is under
   assert.equal(windy.ell.dx, 0, "with the wind in the aim too");
   const six = withEllipses({ safe: opt("6i", { aimOffsetYds: 0, patternYds: -1.2, windYds: 0 }), sameShot: true }, resolve).safe;
   assert.equal(six.ell.dx, -1.2, "6-iron: under the floor, the ring keeps its 1.2 yds left");
+  // v22.29 (C21, D100): along the line, the rings sit where the club's average shot finishes
+  const long = withEllipses({ safe: opt("8i", { aimOffsetYds: 7.1, patternYds: -7.1, windYds: 0, meanYds: 169, toTargetYds: 162 }), sameShot: true }, resolve).safe;
+  assert.equal(long.ell.dy, -7, "finishes 7 past the target: the ring moves 7 long (SP +y = short)");
   const { project } = linearProjector({ center: { x: 0, y: 460 }, pxPerYd: 2 }, { width: 375, height: 812 });
   const se = screenEllipseFor(on, ball, project), T = project(GREEN);
   assert.ok(Math.hypot(se.e.cx - T.x, se.e.cy - T.y) < 0.01, "the drawn centre is the target");

@@ -41,3 +41,17 @@ test("C23: Brett's own target on the green picks the club by its total", () => {
   assert.equal(o.club, "6i");
   assert.equal(o.meanYds, total("6i"));
 });
+
+test("C21 (v22.29): the ring's dots are the simulation's own finishes — 40, fixed, centred on the target, moving with it", async () => {
+  const { landingDots } = await import("./engine.js");
+  const ctx = from(160);
+  const opt = { club: "8i", swingType: "full", kind: "approach", target: { x: 0, y: noWaterPar4.green.center.y } };
+  const a = landingDots(ctx, noWaterPar4, P, opt), b = landingDots(ctx, noWaterPar4, P, opt);
+  assert.equal(a.length, 40);
+  assert.deepEqual(a, b, "same seed: the dots hold still");
+  const med = (xs) => xs.slice().sort((p, q) => p - q)[Math.floor(xs.length / 2)];
+  assert.ok(Math.abs(med(a.map((d) => d.x))) < 6, "across: around the target (the aim-off carries them back)");
+  const moved = landingDots(ctx, noWaterPar4, P, { ...opt, target: { x: 15, y: opt.target.y } });
+  assert.ok(med(moved.map((d) => d.x)) - med(a.map((d) => d.x)) > 10, "they follow the target");
+  assert.deepEqual(landingDots(ctx, noWaterPar4, P, { ...opt, club: "nope" }), []);
+});

@@ -331,7 +331,7 @@ export function MapLayer({
   previousShots = [], insets = {}, fallback = false, onPinTap, onMapTap, onSatelliteFail, recomputing = false, attributionBottom,
   fitBall, fitOptions, markAt = null, onMarkGreen, onRemark, pinView = false, onPinDrag, onPinDrop,
   intentMarker = null, startLineDeg = null, onTargetDrag, onTargetDrop, lineMode = false, onLineTap, onFakeTap = null, fakeAt = null, testBorder = false,
-  labels = [], trail = [], stops = [], onStopTap = null,
+  labels = [], trail = [], stops = [], onStopTap = null, dots = [],
 }) {
   const camBall = fitBall !== undefined ? fitBall : ball;
   const camOptions = fitOptions !== undefined ? fitOptions : options;
@@ -507,6 +507,7 @@ export function MapLayer({
     active: inPinView ? null : opt, other: inPinView ? null : other, previousShots: inPinView ? [] : previousShots,
     palette: drawn ? "paper" : "satellite", idPrefix, redrawKey, recomputing, pinMarker: inPinView, pinDragging: inPinView && !!drag,
     intent: inPinView || markMode ? null : { marker: markerDrawn, lineDeg: startLineDeg, dragging: !!tdrag },
+    dots: inPinView || markMode ? [] : dots,
   }) : [];
   const base = hole && drawn && project ? fallbackMapModel({ hole, project }) : [];
   const shapes = hole && satellite && shapesOn && project && !markMode ? satShapesModel({ hole, project }) : [];

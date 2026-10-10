@@ -183,14 +183,19 @@ export function withEllipses(res, resolve, { lieQuality = "standard", config = D
 }
 
 /**
- * v22.22 (C3, D93): the rings sit where the shot finishes. The ring's own lateral offset plus the
- * crosswind drift, less the aim-off (engine.js aimFor): 0 when the aim cancels the drift, so both
+ * v22.22 (C3, D93): the rings sit where the shot finishes. Across: the ring's own lateral offset plus
+ * the crosswind drift, less the aim-off (engine.js aimFor): 0 when the aim cancels the drift, so both
  * rings centre on the target; the drift itself when it is under PATTERN_AIM_MIN_YDS.
+ * v22.29 (C21, D100): along the line too: a club whose average shot (meanYds) finishes past or short
+ * of the target (toTargetYds) moves its rings there; the dots showed the 8-iron finishing 7 yds past a
+ * 162-yd middle while its rings sat on it. The yellow target stays where Brett wants it to finish.
  */
 function onFinish(ell, o) {
   if (!ell) return ell;
   const dx = ell.dx + (Number.isFinite(o?.windYds) ? o.windYds : 0) + (Number.isFinite(o?.aimOffsetYds) ? o.aimOffsetYds : 0);
-  return { ...ell, dx: Math.abs(dx) < 0.15 ? 0 : f1(dx) };
+  const long = Number.isFinite(o?.meanYds) && Number.isFinite(o?.toTargetYds) ? o.meanYds - o.toTargetYds : 0;
+  const dy = ell.dy - long;                                 // SP frame: +y = short
+  return { ...ell, dx: Math.abs(dx) < 0.15 ? 0 : f1(dx), dy: Math.abs(dy) < 0.15 ? 0 : f1(dy) };
 }
 
 /**
@@ -520,7 +525,7 @@ export function troubleRings(hole) {
  *          pin, active (option with target/kind/ell), other (the ghosted option; null when sameShot),
  *          previousShots [{from, to}], palette "satellite"|"paper", idPrefix, redrawKey, recomputing }
  * Draw order (§4.2): pin · [cur: previous shots · other option · the caddie's start line (C3) ·
- * corridor · leave line · ellipse · trouble hatch · target ring] · intent · ball. The `cur` group
+ * corridor · leave line · ellipse · dots (C21) · trouble hatch · target ring] · intent · ball. The `cur` group
  * carries the redraw fade.
  */
 export function overlayModel(input) {
@@ -528,7 +533,7 @@ export function overlayModel(input) {
     project, viewport = { width: 375, height: 812 }, hole = null, ball = null, accuracyM = null, pin = null,
     active = null, other = null, previousShots = [], palette = "satellite", idPrefix = "ovl", redrawKey = "", recomputing = false,
     pinMarker = false, pinDragging = false,
-    intent = null,
+    intent = null, dots = [],
   } = input;
   const P = PALETTES[palette] || PALETTES.satellite;
   const hatchId = `${idPrefix}-hatch`, clipId = `${idPrefix}-trouble`;
@@ -609,6 +614,13 @@ export function overlayModel(input) {
       const ei = ellipseScreen({ target: T, ...active.ell, w: active.ell.w * active.ell.innerFrac, h: active.ell.h * active.ell.innerFrac,
         thetaDeg: thetaDeg(B, T), pxPerYd: pxPerYdAt(project, active.target) });
       cur.push(el("ellipse", { "data-part": "ellipse-inner", ...ellipseAttrs(ei), fill: "none", stroke: P.line, strokeWidth: 1.2, strokeDasharray: "4 3" }));
+    }
+    // 6c. v22.29 (C21, D100): dots — where the simulation's draws finish (engine.js landingDots)
+    if (dots && dots.length) {
+      cur.push(el("g", { "data-part": "dots" }, dots.filter((d) => d && Number.isFinite(d.x)).map((d) => {
+        const q = project(d);
+        return el("circle", { cx: f1(q.x), cy: f1(q.y), r: 2, fill: P.line, opacity: 0.85, ...(P.halo ? { stroke: P.halo, strokeWidth: 0.6 } : {}) });
+      })));
     }
     // 7. trouble hatch: the same ellipse, hatched, clipped to water / bunkers / trees / outside OB
     const clip = troubleClip(hole, project, viewport);

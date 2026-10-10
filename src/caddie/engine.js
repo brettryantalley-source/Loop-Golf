@@ -411,7 +411,7 @@ export function aimFor(entry, crossYds, cfg) {
   return { patternYds, windYds, aimOffsetYds };
 }
 
-export function simulateCandidate(cand, ctx, hole, P, samples) {
+export function simulateCandidate(cand, ctx, hole, P, samples, trace = null) {
   const cfg = P.config;
   const e = cand.entry;
   const pin = pinPoint(hole, ctx.ball, ctx.pinPos);
@@ -464,6 +464,7 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
         if (ql === "sand" || ql === "water" || ql === "trees") break;
       }
     }
+    if (trace) trace.push({ x: p.x, y: p.y });         // v22.29 (C21): where each draw finished
     const r = priceLanding(hole, P, ctx, ctx.ball, p, lie, k, pin);
     sumStrokes += r.strokes;
     sumBirdie += r.birdie;
@@ -670,6 +671,24 @@ export function priceTarget(rawCtx, hole, P, target, opts = {}) {
   const n = Number.isFinite(opts?.samples) && opts.samples >= 1 ? Math.round(opts.samples) : cfg.SAMPLES;
   const sim = simulateCandidate(cand, ctx, hole, P, makeSamples(n, cfg.SEED));
   return formatOption({ ...cand, ...sim }, P, null, { ball: ctx.ball, pin });
+}
+
+/**
+ * v22.29 (C21, D100): the dots inside the ring — where `n` of the simulation's own draws finish for
+ * an option on screen (recommend()'s or priceTarget's), mishits, big misses and roll included. Same
+ * seed, so the dots only move when the shot does. Kept out of recommend() so the shot record's
+ * recommendation snapshot stays small. [] when the club isn't in the profile.
+ */
+export function landingDots(rawCtx, hole, P, option, n) {
+  if (!option?.target || !Number.isFinite(option.target.x)) return [];
+  const cfg = P.config || DEFAULT_CONFIG;
+  const ctx = normalizeContext(rawCtx, hole);
+  const e = candidateEntries(P, ctx.lieType, { conditions: ctx.conditions }).find((x) => x.club === option.club && x.swing === (option.swingType || "full"));
+  if (!e) return [];
+  const cand = { club: e.club, swing: e.swing, entry: e, kind: option.kind || "approach", target: { x: option.target.x, y: option.target.y } };
+  const out = [];
+  simulateCandidate(cand, ctx, hole, P, makeSamples(Number.isFinite(n) ? n : cfg.RING_DOTS ?? DEFAULT_CONFIG.RING_DOTS, cfg.SEED), out);
+  return out;
 }
 
 /**

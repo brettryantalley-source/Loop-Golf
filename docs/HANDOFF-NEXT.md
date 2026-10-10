@@ -10,8 +10,13 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 369 tests (v22.28); must be green
+npm install && npm test    # 370 tests (v22.29); must be green
 ```
+
+## v22.29 (Oct 10)
+
+Dots inside the ring: 40 of the simulation's own finishes for the shot on screen (C21), and the rings
+moved along the line to where the club's average shot finishes (D100). 370 tests.
 
 ## v22.28 (Oct 10)
 

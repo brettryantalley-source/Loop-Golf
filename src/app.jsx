@@ -24,7 +24,7 @@ import { loadProfile, resolveEntry } from "./caddie/profile.js";
 import { MapLayer, useSatellite, prefetchTiles, satelliteCheck, setImagery, TILE_PREFETCH_ENABLED, renderNodes } from "./caddie/mapLayer.jsx";
 /* Caddie (S3b, v22): the engine, its inputs and the screen's state + render model. */
 import { assembleShotContext, frameBearing } from "./caddie/context.js";
-import { recommend, windEffect, priceTarget } from "./caddie/engine.js";
+import { recommend, windEffect, priceTarget, landingDots } from "./caddie/engine.js";
 import { classify } from "./caddie/course.js";
 import { ownLine } from "./caddie/reasons.js";
 import { fetchWeather, weatherRefreshDue, weatherTempF } from "./caddie/sensors.js";
@@ -84,7 +84,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.28 · Oct 10";
+const BUILD = "v22.29 · Oct 10";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -2183,6 +2183,12 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   const optKey = v.sameShot ? "safe" : cs.opt;
   const drawnOptions = mi.options && mapMarks && (dragTarget || marks.target) && mi.options[optKey]
     ? { ...mi.options, [optKey]: { ...mi.options[optKey], target: { ...(dragTarget || marks.target), label: "own target" } } } : mi.options;
+  // v22.29 (C21, D100): the dots inside the ring for the option drawn (its own target when moved)
+  const dotsOpt = drawnOptions?.[optKey] || null;
+  const ringDots = useMemo(() => {
+    if (!dotsOpt || !engine?.ctx || !built || !profile || pinView) return [];
+    try { return landingDots(engine.ctx, built, profile, dotsOpt); } catch (e) { return []; }
+  }, [engine, built, profile, pinView, dotsOpt?.club, dotsOpt?.swingType, dotsOpt?.kind, dotsOpt?.target?.x, dotsOpt?.target?.y]);
   const toLLxy = (p) => { if (!Fr || !p) return null; const q = Fr.toLatLng(p); return { lat: q.lat, lng: q.lon }; };
   const setTarget = (p) => { if (dragRaf.current) { cancelAnimationFrame(dragRaf.current); dragRaf.current = null; } dragNext.current = null; setDragTarget(null); if (p) dispatch({ type: "intent", patch: { target: { x: p.x, y: p.y }, targetLabel: "own target", targetLL: toLLxy(p) } }); };
   const setLine = (p) => {
@@ -2466,7 +2472,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
         onTargetDrag={onTargetDragLive} onTargetDrop={setTarget}
         lineMode={!!cs.lineMode && mapMarks} onLineTap={setLine}
         onFakeTap={cs.awaitingTap ? onFakeTap : null} fakeAt={fakeAt} testBorder={testMode}
-        labels={mapLabels} trail={trailXY} stops={stopRings} onStopTap={past ? onStopTap : null} attributionBottom={safe.bottom + 4} />
+        labels={mapLabels} trail={trailXY} stops={stopRings} onStopTap={past ? onStopTap : null} attributionBottom={safe.bottom + 4} dots={ringDots} />
 
       {/* top-left: to the pin (Shot Pattern's To Hole) */}
       <div data-part="to-pin" style={{ ...card, position: "absolute", left: 10, top: safe.top + 8, minWidth: 74, padding: "5px 11px 6px", borderRadius: 16, zIndex: 15, textAlign: "center" }}>

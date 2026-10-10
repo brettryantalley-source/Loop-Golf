@@ -265,7 +265,7 @@ test("T36: SAFE ↔ AGGRESSIVE changes the drawn shot, never the camera", () => 
 
 /* ---------- T37 ---------- */
 
-function fullModel(palette) {
+function fullModel(palette, extra = {}) {
   const hole = buildHole(hampton, 18, { par: 4 });
   const ball = { x: 2, y: 150 };
   const pin = distances(hole, ball, "back").pinPoint;
@@ -277,7 +277,7 @@ function fullModel(palette) {
   return {
     hole, project,
     model: overlayModel({ project, viewport: vp, hole, ball, accuracyM: 12, pin, active: safe, other: aggressive,
-      previousShots: [{ from: { x: 0, y: 0 }, to: ball }], palette, idPrefix: "t37", redrawKey: "k" }),
+      previousShots: [{ from: { x: 0, y: 0 }, to: ball }], palette, idPrefix: "t37", redrawKey: "k", ...extra }),
   };
 }
 
@@ -297,6 +297,12 @@ test("overlay draw order (§4.2) and palettes (§4.3)", () => {
   assert.deepEqual(parts, ["defs", "pin", "cur", "ball"]);
   const cur = model.find((n) => n.attrs?.["data-part"] === "cur");
   assert.deepEqual(cur.children.map((n) => n.attrs["data-part"]), ["previous", "other", "aim-line", "corridor", "leave", "ellipse", "ellipse-inner", "hatch", "target"]);
+  // v22.29 (C21): with dots, they sit on the ellipse, under the hatch and the target ring
+  const withDots = fullModel("satellite", { dots: [{ x: 0, y: 300 }, { x: 5, y: 305 }] }).model.find((n) => n.attrs?.["data-part"] === "cur");
+  {
+    const parts = withDots.children.map((n) => n.attrs["data-part"]);
+    assert.ok(parts.indexOf("dots") > parts.indexOf("ellipse-inner") && parts.indexOf("dots") < parts.indexOf("hatch"), parts.join(","));
+  }
   assert.ok(model.find((n) => n.attrs?.["data-part"] === "ball").children.some((c) => c.attrs["data-part"] === "accuracy"), "accuracy ring > 8 m");
   const json = JSON.stringify(model);
   assert.ok(!json.includes("#1E6B3A"), "no ink green on satellite");

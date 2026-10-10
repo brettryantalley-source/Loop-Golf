@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 and Brett's test notes of Oct 10 (C20–C29). Duplicates are merged and anything already shipped is
-dropped. State: **v22.28** (C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 369 tests, decisions D1–D99; the next
-decision is **D100**.
+dropped. State: **v22.29** (C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 370 tests, decisions D1–D100; the next
+decision is **D101**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -19,7 +19,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** send **S9** (the tee stills as files).
-2. **Next code chat:** **C21** (dots in the ring), then the table's order. Then the table's order.
+2. **Next code chat:** the table's order (C19, C5, C6, C7, C9, C25 need nothing from Brett). Then the table's order.
 3. **Next round:** the **F** list.
 
 ---
@@ -38,7 +38,7 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.28 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.29 · Oct 10** (once merged).
 - **F14.** Approach clubs (v22.23, D94): every shot now finishes at its total. From 195 on a warm day
   the call should be a 6-iron; from 207 a 5-iron. Note any call that still feels a club off.
 - **F13.** The caddie's line (v22.22): a dashed line from the ball through where to aim; the yellow
@@ -55,6 +55,9 @@ after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
   length from your ball to the pin). It has never been used on a course.
 - **F3.** Log a hole you skipped: Place shot 1 → Place shot 2 → … → Done.
 - **F4.** The GPS trail on a real walk. It records only while the screen is on.
+- **F17.** The dots in the ring (v22.29, D100): where 40 of the caddie's simulated shots finish.
+  The rings now sit where the club's average shot finishes, which can be a few yards past or short
+  of the yellow target. Say whether the dots match where your shots go.
 - **F16.** Course shapes (v22.28, D99): muted tints over the photo; `Shapes` turns them off. Where a
   tint disagrees with the photo (trees over a fairway, a bunker in the wrong place), that is what the
   caddie believes: note the hole. Chicopee is on its leaf-off photo now.
@@ -122,7 +125,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | C14 | History data | S1–S3, Q2 | Sonnet |
 | C15 | Woodmont trace → OSM | C13 (R8: later) | Sonnet |
 | C19 | Remove `Enter yards` | nothing (R10 answered: remove) | Sonnet |
-| C21 | Dots inside the ring | nothing | Sonnet |
 | C22 | Tee rings from good shots (2-hybrid ~100 yds deep) | S9 | Sonnet |
 | C24 | Start line follows the shot shape | nothing | Opus |
 | C25 | Per-club miss summary | nothing | Sonnet |
@@ -350,12 +352,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   is the only action. Marked-green mode (no map, GPS working) is unaffected.
 - Bump BUILD and CACHE.
 
-### C21. Dots inside the ring (Brett, Oct 10)
-- "Dots inside the dispersion circle to give a better idea of what part is more likely to be hit."
-- **Do:** draw a fixed sample of the simulation's own landings (e.g. 40 of the 500 draws, same seed,
-  so the dots don't jump) as small printed dots under the rings, mishits included. Shapes only (T37).
-  Bump BUILD and CACHE.
-
 ### C22. Tee rings from good shots (S9; Brett, Oct 10)
 - The 2-hybrid's ring is ~100 yds deep: "mishits should be outliers"; the ring should run from
   "slightly below average to above average". Shot Pattern's own 80% ring off the tee is just as deep;
@@ -421,6 +417,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 
 ## Paste into the next chat
 > Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (360 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C21, the dots inside
-> the ring. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C19, removing Enter
+> yards. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.

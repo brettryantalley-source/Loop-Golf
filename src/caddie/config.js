@@ -86,6 +86,9 @@ export const DEFAULT_CONFIG = Object.freeze({
   /* A club with no fitted ring (the driver) is drawn from its σs; its full 80% axes are capped here so
      the ring stays readable. DISPLAY ONLY — the simulation still uses the uncapped σs. */
   RING_DRAW_CAP_YDS: 70,
+  /* v22.29 (C21, D100): dots inside the ring — this many of the simulation's own draws (the first ones
+     of the fixed seed, so they hold still until the shot moves). */
+  RING_DOTS: 40,
   /* Widening when the lie chip says bad / buried: +15% σ, −5 yds (spec default). */
   LIE_QUALITY: {
     good:     { sdMult: 1.0,  distYds: 0 },
