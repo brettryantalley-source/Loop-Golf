@@ -25,6 +25,7 @@ import { MapLayer, useSatellite, prefetchTiles, satelliteCheck, setImagery, TILE
 /* Caddie (S3b, v22): the engine, its inputs and the screen's state + render model. */
 import { assembleShotContext, frameBearing } from "./caddie/context.js";
 import { recommend, windEffect, priceTarget } from "./caddie/engine.js";
+import { classify } from "./caddie/course.js";
 import { fetchWeather, weatherRefreshDue, weatherTempF } from "./caddie/sensors.js";
 import {
   loadLieOverrides, recordLieOverride, routeShot, newShotRecord, quickLog, detailLog, skipShot, closeOutShot,
@@ -82,7 +83,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.24 · Oct 10";
+const BUILD = "v22.25 · Oct 10";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -1497,6 +1498,7 @@ function withLearning(base, history) {
   } catch (e) { console.warn("learning overlays failed", e); return base; }
 }
 
+const NEXT_PUTT_FT = 3;                                   // v22.25 (C28, D96): the stepper's start for the putt after a miss
 const DRAG_SAMPLES = 80;                                   // v22.17: own-target pricing while the finger is still moving
 /* v22.17 breadcrumb trail: bogeyman-matches:trail:v1:{roundId} = { [hole]: [{ t, lat, lng, acc }] } (§10).
    Only the current round's trail is kept — a new round's first write drops the others. */
@@ -1761,11 +1763,12 @@ function LongCardSheet({ record, clubOrder, onQuick, onSave, onSkip, onClose }) 
 
 /**
  * Putt capture (Sep 28 spec, addendum §3.4 / §8 "On the green"). `Made ✓` is the quick path
- * (writes nothing but the distance); `Save` grades the miss on the three §PUTT_AXES sliders,
+ * (writes nothing but the distance); a miss is graded on the three §PUTT_AXES sliders,
  * each a 5-stop ScaleSlider (v22.13) with 0 ("Good") at the centre; the ends and centre carry the
- * `short` copy, the read-back line carries the full `options` copy.
+ * `short` copy, the read-back line carries the full `options` copy. v22.25 (C28, D96): the card is
+ * numbered (`Putt 2`), and `Missed · next putt` (was `Save`) saves the miss and opens the next putt.
  */
-function PuttSheet({ initialFt, onMade, onSave, onSkip }) {
+function PuttSheet({ puttNo = 1, initialFt, onMade, onMissed, onSkip }) {
   const [ft, setFt] = useState(Math.max(1, Math.round(initialFt || 20)));
   const [axes, setAxes] = useState({ speed: 0, breakRead: 0, line: 0 });
   const step = (d) => setFt((v) => Math.min(200, Math.max(1, v + d)));
@@ -1774,7 +1777,7 @@ function PuttSheet({ initialFt, onMade, onSave, onSkip }) {
     <div data-part="sheet" data-log="putt" onClick={onSkip} style={{ position: "fixed", inset: 0, background: "rgba(31,31,31,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 65 }}>
       <div role="dialog" aria-label="Putt" onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "88vh", overflowY: "auto",
         background: T.paper, borderTop: `4px double ${T.ink}`, padding: "20px 22px calc(env(safe-area-inset-bottom) + 20px)" }}>
-        <div style={{ ...caps(12), marginBottom: 10 }}>Putt</div>
+        <div style={{ ...caps(12), marginBottom: 10 }}>Putt {puttNo}</div>
         <div style={{ ...caps(9), marginBottom: 4 }}>From</div>
         <div data-part="putt-ft" style={{ ...written(44), textAlign: "center", lineHeight: "56px", margin: "2px 0 10px" }}>{ft}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 16 }}>
@@ -1785,7 +1788,7 @@ function PuttSheet({ initialFt, onMade, onSave, onSkip }) {
           <ScaleSlider key={axis.key} title={axis.label} options={axis.short.map((label, i) => [i - 2, label, axis.options[i]])} value={axes[axis.key]} onChange={(v) => setAxis(axis.key, v)} />
         ))}
         <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
-          <button onClick={() => onSave({ distanceFt: ft, ...axes })} style={{ ...outlinedPill, flex: 1, height: 52 }}>Save</button>
+          <button data-part="putt-missed" onClick={() => onMissed({ distanceFt: ft, ...axes })} style={{ ...outlinedPill, flex: 1, height: 52 }}>Missed · next putt</button>
           <button onClick={onSkip} style={{ ...outlinedPill, flex: 1, height: 52 }}>Skip</button>
         </div>
       </div>
@@ -1988,6 +1991,9 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   const pinXY = useMemo(() => (built ? pinPointFor(built, (cs.phase === "ready" && ballXY) || built.tee, pinSet) : null), [built, cs.phase, ballXY?.x, ballXY?.y, pinSet]);
   const pinFrom = (cs.phase === "ready" && ballXY) || built?.tee || null;
   const pinYds = pinView && pinFrom && (dragPin || pinXY) ? Math.hypot((dragPin || pinXY).x - pinFrom.x, (dragPin || pinXY).y - pinFrom.y) : null;
+  // v22.25 (C28, D96): the first putt's length is the ball (the fix on the green) → the pin, in feet
+  const greenPin = built && ballXY ? pinPointFor(built, ballXY, pinSet) : null;
+  const firstPuttFt = greenPin && ballXY && classify(built, ballXY) === "green" ? Math.max(1, Math.round(Math.hypot(greenPin.x - ballXY.x, greenPin.y - ballXY.y) * 3)) : null;
 
   // v22.15: this hole's records (the rail's ? count, the Shots list)
   const holeRecords = useMemo(() => (roundId ? loadShots(safeStorage(), roundId).filter((r) => r.hole === n) : []), [roundId, n, shotsRev]);
@@ -2107,9 +2113,18 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     saveShotHere(record);
     if (!logSheet.closed) dispatch({ type: record.logged === "skipped" ? "logSkip" : "logSave", record });
     else dispatch({ type: "logDismiss" });
+    // v22.25 (C26, D96): in test mode, straight on to "tap where the ball finished" (the effect below,
+    // once the logged shot is the open one)
+    if (testMode && !logSheet.closed && record.logged !== "skipped" && record.hole === n && record.shotNo === cs.shotNo) autoNextRef.current = record.id;
     setLogSheet(null);
   };
+  const autoNextRef = React.useRef(null);
   const cancelLogSheet = () => { setLogSheet(null); dispatch({ type: "logDismiss" }); };
+  useEffect(() => {
+    if (!autoNextRef.current || cs.logCard || cs.openShot?.id !== autoNextRef.current || cs.phase !== "ready") return;
+    autoNextRef.current = null;
+    locate("ball");
+  }, [cs.openShot?.id, cs.logCard, cs.phase]);
   // Reopen a restored logCard (e.g. after a reload mid-hole, §9.8) once the engine has recomputed.
   useEffect(() => {
     // v22.13: "putt" is the PuttSheet's own card — restoring it here opened a stray bare long card under it (v22.12)
@@ -2707,18 +2722,20 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
         );
       })()}
       {cs.logCard === "putt" && (
-        <PuttSheet initialFt={cs.lastPuttFt ?? 20}
+        <PuttSheet key={`${n}-${(cs.putts[n] || 0) + 1}`} puttNo={(cs.putts[n] || 0) + 1}
+          initialFt={(cs.putts[n] || 0) === 0 && firstPuttFt != null ? firstPuttFt : cs.lastPuttFt ?? 20}
           onMade={(distanceFt) => {
             const record = quickMade({ roundId, courseId, hole: n, shotNo: (cs.putts[n] || 0) + 1, distanceFt,
               gps: cs.ball ? { lat: cs.ball.lat, lng: cs.ball.lng, accuracyM: cs.ball.accuracyM } : null });
             saveShotHere(record);
             dispatch({ type: "puttSave", record });
           }}
-          onSave={({ distanceFt, speed, breakRead, line }) => {
+          onMissed={({ distanceFt, speed, breakRead, line }) => {
             const record = newPuttRecord({ roundId, courseId, hole: n, shotNo: (cs.putts[n] || 0) + 1, distanceFt, made: false, speed, breakRead, line,
               gps: cs.ball ? { lat: cs.ball.lat, lng: cs.ball.lng, accuracyM: cs.ball.accuracyM } : null });
             saveShotHere(record);
-            dispatch({ type: "puttSave", record });
+            // v22.25 (C28): straight on to the next putt, its stepper starting at NEXT_PUTT_FT
+            dispatch({ type: "puttSave", record, next: true, nextFt: NEXT_PUTT_FT });
           }}
           onSkip={() => dispatch({ type: "puttDismiss" })} />
       )}

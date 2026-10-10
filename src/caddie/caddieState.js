@@ -85,6 +85,9 @@ export const NOTICES = Object.freeze({
   noSatellite: (why) => `Satellite: ${why}. Enter yards for a club.`,
   /* v22.15 test mode (SPEC-shotlog-v2 §1) */
   testTap: "Test mode · tap the map where you are",
+  /* v22.25 (C26, C27, D96): after Log shot */
+  testTapBall: "Test mode · tap where the ball finished",
+  nextShot: "Shot logged · at your ball, tap I'm at my ball",
 });
 
 /* ---------- 1. state ---------- */
@@ -252,14 +255,15 @@ export function caddieReducer(s, a) {
       return { ...s, logCard: "putt" };
     /* puttSave: a.record is already built (newPuttRecord / quickMade) and already written to
        storage by the caller. Increments that hole's putt count and remembers the distance for the
-       stepper's next starting point. */
+       stepper's next starting point. v22.25 (C28, D96): a.next (Missed) keeps the card open for the
+       next putt, its stepper starting at a.nextFt. */
     case "puttSave": {
       if (!a.record) return s;
       const hole = Number.isInteger(a.record.hole) ? a.record.hole : s.hole;
       const putts = { ...s.putts, [hole]: (s.putts[hole] || 0) + 1 };
       const ft = a.record.putt?.distanceFt;
-      const lastPuttFt = Number.isFinite(ft) ? ft : s.lastPuttFt;
-      return { ...s, logCard: null, putts, lastPuttFt };
+      const lastPuttFt = a.next && Number.isFinite(a.nextFt) ? a.nextFt : Number.isFinite(ft) ? ft : s.lastPuttFt;
+      return { ...s, logCard: a.next ? "putt" : null, putts, lastPuttFt };
     }
     /* puttDismiss: Skip, or the scrim — closes the card, writes nothing. */
     case "puttDismiss":
@@ -906,7 +910,7 @@ export function caddieView({
   else if (view === "pretee" && markable && !mapOk) { primary = { label: COPY.tee, action: "tee" }; secondary = { label: COPY.logShot, action: "logshot" }; }
   else if (view === "nofix" || view === "locationoff") { primary = { label: COPY.retry, action: "retry" }; secondary = { label: COPY.yards, action: "yards" }; }
   else if (view === "pretee") { primary = { label: COPY.tee, action: "tee" }; secondary = { label: COPY.logShot, action: "logshot" }; }   // v22.15 §8
-  else if (view === "green") { primary = { label: COPY.score(holeNo), action: "score" }; secondary = { label: COPY.logPutt, action: "logputt" }; }
+  else if (view === "green") { primary = { label: COPY.score(holeNo), action: "score" }; secondary = { label: `${COPY.logPutt} ${(s.putts?.[holeNo] || 0) + 1}`, action: "logputt" }; }   // v22.25 (C28): numbered
   else { primary = { label: COPY.ball, action: "ball" }; secondary = { label: COPY.logShot, action: "logshot" }; }
 
   // v22.15 §6: where the green cannot be detected, On the green takes the secondary after the tee shot
@@ -921,7 +925,11 @@ export function caddieView({
     rail.shapes = false; rail.line = false; rail.action = null;
   }
 
-  const notice = s.awaitingTap ? NOTICES.testTap : view === "noprofile" ? NOTICES.noprofile
+  // v22.25 (C27): a logged shot not yet closed is the walk to the ball; say what comes next
+  const loggedHere = !!s.openShot && s.openShot.hole === s.hole && s.openShot.shotNo === s.shotNo && (view === "ready" || view === "sameshot");
+  const notice = s.awaitingTap ? (s.awaitingTap.trigger === "ball" && s.openShot ? NOTICES.testTapBall : NOTICES.testTap)
+    : loggedHere ? NOTICES.nextShot
+    : view === "noprofile" ? NOTICES.noprofile
     : view === "nomap" ? (satFailure && s.ball ? NOTICES.noSatellite(satFailure) : NOTICES.nomap(holeNo))
     : view === "nofix" ? NOTICES.nofix
     : view === "locationoff" ? NOTICES.locationoff

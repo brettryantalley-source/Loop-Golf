@@ -244,7 +244,7 @@ test("§8: every state's rail aim, bar labels and notice", () => {
     locating:    ["Locating", ["Locating", null, true], null],
     ready:       ["Center", ["I'm at my ball", "Log shot", false], null],
     sameshot:    ["Center", ["I'm at my ball", "Log shot", false], null],
-    green:       ["On the green", ["Score hole 7", "Log putt", false], null],
+    green:       ["On the green", ["Score hole 7", "Log putt 1", false], null],
     nofix:       ["No GPS fix", ["Try again", "Enter yards", false], "No GPS fix. Step into the open and tap Try again."],
     locationoff: ["Location off", ["Try again", "Enter yards", false], "Location is off for Loop. Turn it on in Settings, then tap Try again."],
     yards:       ["Club only", ["I'm at my ball", "Log shot", false], null],
@@ -567,7 +567,7 @@ test("On the green shows Score hole N + Log putt and nothing else", () => {
   const v = caddieView({ state: ready, par: 5, res: null, onGreen: true, ballXY: { x: 0, y: 170 } });
   assert.equal(v.view, "green");
   assert.equal(v.bar.primary.label, "Score hole 7");
-  assert.equal(v.bar.secondary.label, "Log putt");
+  assert.equal(v.bar.secondary.label, "Log putt 1", "v22.25 (C28): numbered");
   assert.equal(v.bar.secondary.action, "logputt");
   assert.equal(Object.keys(v.bar).length, 2, "primary and secondary, nothing else");
 });
@@ -602,6 +602,30 @@ test("puttOpen / puttSave / puttDismiss: a per-hole putt count and the last dist
   assert.equal(s.logCard, null);
   assert.equal(s.putts[6] ?? 0, 0, "Skip never counts as a putt");
   assert.equal(s.lastPuttFt, null, "Skip never moves the stepper's default either");
+});
+
+test("C27 (v22.25): after Log shot, until the shot closes, the notice says what comes next", () => {
+  let s = run(initialCaddie(1), { type: "tee" }, { type: "fix", fix: fix(), point: { x: 0, y: 0 } });
+  const res = fakeRes();
+  assert.notEqual(caddieView({ state: s, par: 4, res, mapOk: true, profileOk: true, ballXY: { x: 0, y: 0 } }).notice, "Shot logged · at your ball, tap I'm at my ball");
+  s = caddieReducer(s, { type: "logSave", record: quickLog(draftFor(s, { targetFrame: { x: 0, y: 150 } })) });
+  const v = caddieView({ state: s, par: 4, res, mapOk: true, profileOk: true, ballXY: { x: 0, y: 0 } });
+  assert.equal(v.notice, "Shot logged · at your ball, tap I'm at my ball");
+  assert.equal(v.bar.primary.label, "I'm at my ball");
+});
+
+test("C28 (v22.25): Missed keeps the card open for the next putt, its stepper at nextFt; the button counts on", () => {
+  let s = caddieReducer(initialCaddie(4), { type: "puttOpen" });
+  const miss = newPuttRecord({ roundId: "r1", hole: 4, shotNo: 1, distanceFt: 24, made: false, speed: 1, breakRead: 0, line: 0 });
+  s = caddieReducer(s, { type: "puttSave", record: miss, next: true, nextFt: 3 });
+  assert.equal(s.logCard, "putt", "straight on to putt 2");
+  assert.equal(s.putts[4], 1);
+  assert.equal(s.lastPuttFt, 3);
+  s = caddieReducer(s, { type: "puttSave", record: quickMade({ roundId: "r1", hole: 4, shotNo: 2, distanceFt: 3 }) });
+  assert.equal(s.logCard, null, "Made closes it");
+  assert.equal(s.putts[4], 2);
+  const v = caddieView({ state: { ...s, phase: "ready", ball: { lat: 0, lng: 0 } }, par: 4, res: null, onGreen: true, ballXY: { x: 0, y: 170 } });
+  assert.equal(v.bar.secondary.label, "Log putt 3");
 });
 
 test("puttSave with no record is a no-op; puttDismiss on a different open card is a no-op", () => {
@@ -923,7 +947,9 @@ test("T44 fake GPS: arm → tap → fix goes through closeOutShot and hole detec
   assert.deepEqual(s.awaitingTap, { action: "ball", trigger: "ball" });
   const v = caddieView({ state: s, par: 4 });
   assert.equal(v.bar.primary.label, "Tap the map…"); assert.equal(v.bar.primary.disabled, true); assert.equal(v.bar.secondary, null);
-  assert.equal(v.notice, "Test mode · tap the map where you are"); assert.equal(v.rail.aim, "Tap the map");
+  assert.equal(v.notice, "Test mode · tap where the ball finished", "v22.25 (C26): a logged shot waits for its end"); assert.equal(v.rail.aim, "Tap the map");
+  // with no logged shot waiting, the plain words
+  assert.equal(caddieView({ state: { ...s, openShot: null }, par: 4 }).notice, "Test mode · tap the map where you are");
   // the tap is a fix of the real shape
   const tap = { lat: 34.3012, lon: -84.0601 };
   const f = fakeFix(tap);
@@ -999,7 +1025,7 @@ test("T49 On the green with no map → the green state → putt card → score",
   s = caddieReducer(s, { type: "fix", fix: fix(34.302), point: { x: 0, y: 380 } });
   assert.equal(s.greenHole, 5); assert.equal(s.shotNo, 3); assert.equal(s.trigger, "ball");
   v = caddieView({ state: s, par: 4, mapOk: false, greenManual: true });
-  assert.equal(v.view, "green"); assert.deepEqual([v.bar.primary.label, v.bar.primary.action, v.bar.secondary.label], ["Score hole 5", "score", "Log putt"]);
+  assert.equal(v.view, "green"); assert.deepEqual([v.bar.primary.label, v.bar.primary.action, v.bar.secondary.label], ["Score hole 5", "score", "Log putt 1"]);
   assert.equal(v.rail.aim, "On the green"); assert.equal(v.rail.showClub, false);
   // the putt card as on a detected green
   s = run(s, { type: "puttOpen" }, { type: "puttSave", record: newPuttRecord({ hole: 5, shotNo: 1, distanceFt: 18 }) }, { type: "puttSave", record: quickMade({ hole: 5, shotNo: 2, distanceFt: 2 }) });

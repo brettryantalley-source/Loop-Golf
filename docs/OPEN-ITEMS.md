@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 and Brett's test notes of Oct 10 (C20–C29). Duplicates are merged and anything already shipped is
-dropped. State: **v22.24** (C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 365 tests, decisions D1–D95; the next
-decision is **D96**.
+dropped. State: **v22.25** (C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 368 tests, decisions D1–D96; the next
+decision is **D97**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -19,7 +19,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** send **S9** (the tee stills as files).
-2. **Next code chat:** **C26–C28** (the logging flow) → **C18 + C20** (the
+2. **Next code chat:** **C30** (live par chance) → **C18 + C20** (the
    map camera) → **C2 + C11** (course shapes). Then the table's order.
 3. **Next round:** the **F** list.
 
@@ -39,7 +39,7 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.24 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.25 · Oct 10** (once merged).
 - **F14.** Approach clubs (v22.23, D94): every shot now finishes at its total. From 195 on a warm day
   the call should be a 6-iron; from 207 a 5-iron. Note any call that still feels a club off.
 - **F13.** The caddie's line (v22.22): a dashed line from the ball through where to aim; the yellow
@@ -52,7 +52,8 @@ after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
   cautious or too bold. SAFE attempts more from the trees (D92).
 - **F11.** Read the new line above the action button on every call. When it says something that
   doesn't match what you'd do, dictate a Note (F7) with the line's exact words.
-- **F2.** The putting flow, start to finish. It has never been used on a course.
+- **F2.** The putting flow, start to finish (v22.25, D96: `Missed · next putt`; the first putt's
+  length from your ball to the pin). It has never been used on a course.
 - **F3.** Log a hole you skipped: Place shot 1 → Place shot 2 → … → Done.
 - **F4.** The GPS trail on a real walk. It records only while the screen is on.
 - **F5.** The full-screen map: nothing sits under the notch or the home bar; the target drag, Line,
@@ -125,9 +126,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | C22 | Tee rings from good shots (2-hybrid ~100 yds deep) | S9 | Sonnet |
 | C24 | Start line follows the shot shape | nothing | Opus |
 | C25 | Per-club miss summary | nothing | Sonnet |
-| C26 | Test mode: tap the next ball after each log | nothing | Sonnet |
-| C27 | After Log shot, move on to the next shot | nothing | Opus |
-| C28 | Putting: Missed → next putt; putt length from the ball | nothing | Sonnet |
 | C29 | A short-game card inside 100 yds | a one-page spec, Brett's OK | Opus |
 | C30 | The par chance stays live as the target moves | nothing | Sonnet |
 
@@ -429,28 +427,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 - **Do:** on History, per club: shots, average miss long/short and left/right from the target, and
   the pattern from the start line (`tendencies`, `patternLatYds`). Only shots with a real end (D87).
 
-### C26. Test mode: tap the next ball after each log (Brett, Oct 10)
-- "After every logged shot, automatically ask me where to place the GPS for the next shot."
-- **Do:** in test mode, after Log shot (Good shot or Save), arm `Fake my location` straight away with
-  a one-line prompt ("Tap where the ball finished"); the tap closes the shot and starts the next.
-  Bump BUILD and CACHE.
-
-### C27. After Log shot, move on to the next shot (Brett, Oct 10)
-- "After I log a shot, there needs to be some mechanism that prompts me to my next shot."
-- **Do:** after Log shot the screen shows one primary action for the next step: `I'm at my ball`
-  (next shot), or the green flow when the ball is on the green. Spec the states with Brett before
-  coding (it changes `caddieState.js`'s flow). Bump BUILD and CACHE.
-
-### C28. Putting: Missed → next putt (Brett, Oct 10; F2)
-- "After I log the first putt, the only options are Score hole or Log putt. There is a Made button
-  but no Missed." Today a miss is `Save` (with the speed / break / line sliders); the card closes and
-  `Log putt` reopens it for the next one, which reads as no way forward.
-- **Do:** `Missed` beside `Made`; Missed saves the putt and opens putt 2 at once, its length from the
-  leave (or the stepper). "Is there a way to have the putt distance register from where I tap my
-  first putt and where the pin is?": yes, it can be built: the first putt's length = the ball (the
-  GPS fix on the green, or the tap in test mode) → the pin, in feet, as the stepper's start; check
-  what `lastPuttFt` is seeded from today. Bump BUILD and CACHE.
-
 ### C30. The par chance stays live as the target moves (Brett, Oct 10)
 - "I would love for the '__% chance at par' to continue to be dynamic and update as I move the
   target location." The "why" line (D91) shows it for Safe and Aggressive and hides on Custom; the
@@ -487,6 +463,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 
 ## Paste into the next chat
 > Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (360 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C26–C28, the logging
-> flow. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C30, the live par
+> chance. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.
