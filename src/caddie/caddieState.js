@@ -75,14 +75,14 @@ export const NOTICES = Object.freeze({
   nofix: "No GPS fix. Step into the open and tap Try again.",
   locationoff: "Location is off for Loop. Turn it on in Settings, then tap Try again.",
   noprofile: "Profile didn't load. Reconnect and tap Try again.",
-  nomap: (n) => `No course map for hole ${n}. Enter yards for a club.`,
+  nomap: (n) => `No course map for hole ${n}.`,   // v22.30 (C19): no Enter yards
   /* v22.11 marked-green mode (no OSM geometry for the hole) */
   markPreTee: (n) => `No course map for hole ${n}. Tap I'm on the tee for satellite.`,
   markedPreTee: (n) => `Hole ${n}: green marked. Tap I'm on the tee for satellite.`,
   mark: NOTICE_MARK_GREEN,
   noHazards: NOTE_NO_HAZARDS,
   /* v22.12: an unmapped hole with a fix but no satellite says which part failed (overlay.js satelliteFailure) */
-  noSatellite: (why) => `Satellite: ${why}. Enter yards for a club.`,
+  noSatellite: (why) => `Satellite: ${why}.`,
   /* v22.15 test mode (SPEC-shotlog-v2 §1) */
   testTap: "Test mode · tap the map where you are",
   /* v22.25 (C26, C27, D96): after Log shot */
@@ -356,7 +356,9 @@ export function restoreCaddie(raw) {
   let phase = PHASES.includes(raw.phase) ? raw.phase : "pretee";
   if (phase === "locating") phase = PHASES.includes(raw.prevPhase) && raw.prevPhase !== "locating" ? raw.prevPhase : s.ball ? "ready" : s.yards ? "yards" : "pretee";
   if (phase === "ready" && !s.ball) phase = "pretee";
-  if (phase === "yards" && !s.yards) phase = "pretee";
+  // v22.30 (C19, D101): Enter yards is gone; a round saved in club-brain mode comes back before the
+  // ball (Ready with its fix, else pre-tee)
+  if (phase === "yards") { phase = s.ball ? "ready" : "pretee"; s.yards = null; }
   s.phase = phase;
   s.trigger = raw.trigger === "tee" || raw.trigger === "ball" ? raw.trigger : null;
   s.opt = raw.opt === "aggressive" ? "aggressive" : "safe";
@@ -848,7 +850,7 @@ export function caddieView({
     // v22.12: on a hole with no map the bar carries I'm at my ball + Log shot, so Enter yards (for
     // the ball Brett is at) moves here as a text button under the aim. v22.15 (SPEC-shotlog-v2 §8):
     // on a mapped Ready too — yards for this ball.
-    action: bare || view === "ready" || view === "sameshot" ? { label: COPY.yards, action: "yardsSame" } : null,
+    action: null,   // v22.30 (C19, D101): Enter yards removed (R10, Brett Oct 5)
     // v22.15 §2 / §8 rail extras: shape pills wherever a shot is about to be hit, Line only where
     // the map can take a mark (Ready and Same shot — §2 says Same shot takes the shape only, but an
     // approach is usually Same shot and its one option has a target to move; yards: shape only),
@@ -908,7 +910,7 @@ export function caddieView({
   else if (view === "nomap") { primary = s.phase === "pretee" ? { label: COPY.tee, action: "tee" } : { label: COPY.ball, action: "ball" }; secondary = { label: COPY.logShot, action: "logshot" }; }
   else if (view === "markgreen") { primary = { label: COPY.ball, action: "ball" }; secondary = { label: COPY.logShot, action: "logshot" }; }
   else if (view === "pretee" && markable && !mapOk) { primary = { label: COPY.tee, action: "tee" }; secondary = { label: COPY.logShot, action: "logshot" }; }
-  else if (view === "nofix" || view === "locationoff") { primary = { label: COPY.retry, action: "retry" }; secondary = { label: COPY.yards, action: "yards" }; }
+  else if (view === "nofix" || view === "locationoff") { primary = { label: COPY.retry, action: "retry" }; }   // v22.30 (C19): Retry only
   else if (view === "pretee") { primary = { label: COPY.tee, action: "tee" }; secondary = { label: COPY.logShot, action: "logshot" }; }   // v22.15 §8
   else if (view === "green") { primary = { label: COPY.score(holeNo), action: "score" }; secondary = { label: `${COPY.logPutt} ${(s.putts?.[holeNo] || 0) + 1}`, action: "logputt" }; }   // v22.25 (C28): numbered
   else { primary = { label: COPY.ball, action: "ball" }; secondary = { label: COPY.logShot, action: "logshot" }; }

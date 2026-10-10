@@ -336,7 +336,7 @@ test("T39: network blocked and no cached tiles → the drawn map and its notice"
   assert.equal(mapModeFor({ hasHole: true, tilesCached: true, online: false }).mode, "satellite", "cached tiles work offline");
   assert.equal(mapModeFor({ hasHole: true, online: true, probeOk: null }).mode, "checking");
   assert.equal(mapModeFor({ hasHole: true, tilesCached: true, libFailed: true }).mode, "fallback", "no MapLibre → drawn map");
-  assert.deepEqual(mapModeFor({ hasHole: false, holeNo: 7 }), { mode: "none", notice: "No course map for hole 7. Enter yards for a club." });
+  assert.deepEqual(mapModeFor({ hasHole: false, holeNo: 7 }), { mode: "none", notice: "No course map for hole 7." });
   assert.equal(NOTICE_NO_SATELLITE, "No satellite here. Map drawn from course data.");
 });
 
@@ -353,7 +353,7 @@ test("fallback map model: flat polygons with ink outlines in §4.3 order", () =>
 /* ---------- v22.11: marked-green mode and the pin view ---------- */
 
 test("mapModeFor, no geometry: no GPS → paper as before; GPS + unmarked → the mark view; GPS + marked → satellite / drawn", () => {
-  const nm = "No course map for hole 7. Enter yards for a club.";
+  const nm = "No course map for hole 7.";
   // unchanged without a fix
   assert.deepEqual(mapModeFor({ hasHole: false, holeNo: 7, probeOk: true, greenMarked: true }), { mode: "none", notice: nm });
   // a fix, no green yet: satellite north-up on the ball, and the notice asking for the tap

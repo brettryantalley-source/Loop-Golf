@@ -10,8 +10,13 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 370 tests (v22.29); must be green
+npm install && npm test    # 371 tests (v22.30); must be green
 ```
+
+## v22.30 (Oct 10)
+
+`Enter yards` removed everywhere (C19, R10, D101): no-GPS states offer `Try again` alone; a round
+saved in yards mode reopens before the ball. 371 tests.
 
 ## v22.29 (Oct 10)
 

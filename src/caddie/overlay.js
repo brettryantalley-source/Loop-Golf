@@ -341,7 +341,7 @@ export function cameraKey({ hole, ball, options, viewport, insets }) {
 export const NOTICE_NO_SATELLITE = "No satellite here. Map drawn from course data.";
 export const NOTICE_NO_SATELLITE_MARKED = "No satellite here. Map drawn from the marked green.";
 export const NOTICE_MARK_GREEN = "No course map. Satellite on GPS — tap the green to mark it.";
-export const noticeNoCourseMap = (holeNo) => `No course map for hole ${holeNo}. Enter yards for a club.`;
+export const noticeNoCourseMap = (holeNo) => `No course map for hole ${holeNo}.`;   // v22.30 (C19): no Enter yards
 
 /**
  * T39. { hasHole, libFailed, tilesCached, online, probeOk } → { mode, notice }.
