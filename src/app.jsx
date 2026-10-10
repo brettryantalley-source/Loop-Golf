@@ -84,7 +84,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.30 · Oct 10";
+const BUILD = "v22.31 · Oct 10";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -171,6 +171,9 @@ function buildCourse(fullCourse, teeOpt, club) {
     apiId: fullCourse.id,
     lat: typeof loc.latitude === "number" ? loc.latitude : undefined,
     lon: typeof loc.longitude === "number" ? loc.longitude : undefined,
+    // v22.31 (C5): kept so a local card's location can stand in when the API entry has none
+    state: typeof loc.state === "string" ? loc.state : undefined,
+    city: typeof loc.city === "string" ? loc.city : undefined,
     name,
     tee: t.tee_name || teeOpt.gender,
     rating: t.course_rating,
@@ -215,6 +218,10 @@ function courseAnchor(course) {
     const loc = full && full.location;
     if (loc && typeof loc.latitude === "number" && typeof loc.longitude === "number") return { lat: loc.latitude, lon: loc.longitude };
   } catch (e) { /* ignore */ }
+  // v22.31 (C5, D102): a club whose API routing entries carry no location (Ironwood) falls back to
+  // its local card's
+  const card = localClubFor(course.name, { state: course.state, city: course.city });
+  if (card?.location && Number.isFinite(card.location.lat) && Number.isFinite(card.location.lon)) return { lat: card.location.lat, lon: card.location.lon };
   return null;
 }
 const safeStorage = () => { try { return window.localStorage; } catch (e) { return null; } };
@@ -2175,7 +2182,8 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   else if (v.view === "pretee" || v.view === "green") lastFit.current = { hole: n, ball: mi.fitBall, options: null };
   const keepCam = ["locating", "nofix", "locationoff", "yards"].includes(v.view) && lastFit.current.hole === n;
   const fitBall = keepCam ? lastFit.current.ball : mi.fitBall, fitOptions = keepCam ? lastFit.current.options : mi.fitOptions;
-  const notice = v.notice || (built ? sat.notice : null);
+  // v22.31 (C5): test mode with nothing to frame and no course location says so instead of a dead tap
+  const notice = v.notice || (built ? sat.notice : null) || (testMode && !built && !cs.ball && !courseLL ? "No course location · test on a mapped course" : null);
   const markAt = noGeo && !built && v.view === "markgreen" && cs.ball ? { lat: cs.ball.lat, lon: cs.ball.lng } : null;
   /* v22.15 §2: the target marker and the start line on Ready; the ellipse follows a moved target
      (the recommendation does not — it is what Brett was told, the marker is where he aims) */

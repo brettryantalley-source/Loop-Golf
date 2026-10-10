@@ -10,8 +10,15 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 371 tests (v22.30); must be green
+npm install && npm test    # 371 tests (v22.31); must be green
+node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.31 (Oct 10)
+
+Ironwood has a course location (its local card), so test mode and the weather work there (C5);
+`scripts/smoke-caddie.mjs` renders the caddie screen in headless Chromium and fails on page errors
+(D102). 371 tests.
 
 ## v22.30 (Oct 10)
 
