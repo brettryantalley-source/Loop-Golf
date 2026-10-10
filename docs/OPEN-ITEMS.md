@@ -18,7 +18,8 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Next code chat:** C32 (the in-round nudges).
+1. **Next code chat:** nothing is left that needs nothing from Brett; see **Brett** below (S9 → C22,
+   F7 notes → C10, S4 → C12, F9 + Q3 → C13, S1–S3 + Q2 → C14) and C33 once chips are logged.
 2. **Brett:** send **S9** (the tee stills as files).
 3. **Next round:** the **F** list.
 
@@ -38,12 +39,14 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.40 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.41 · Oct 10** (once merged).
 - **F18.** From the rough (v22.33, D104): the caddie now plays your rough totals, not the fairway
   ones plus extra roll. A 5-iron finishes ~192, the 4-hybrid ~207, a 7-iron ~175, a PW ~136. Note any
   rough call that feels a club off.
 - **F19.** From a fairway bunker (v22.34, D105; sand more than 40 yds from the green's front): the
   caddie now stays out of trouble 9 times in 10, so expect more lay-ups. Say if one feels too timid.
+- **F24.** In-round nudges (v22.41, D112): the why line still says "short with mid irons on 3 and 6
+  today", but the club, target and line no longer move for it. Say if you miss the old club-ups.
 - **F23.** The short-game card (v22.40, D111): just off a green the why line shows your up-and-down
   and leave for the lie; log the shot as Chip, Pitch, Bunker or Wedge, and log the putts after it
   (C33 needs them).
@@ -136,7 +139,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | C14 | History data | S1–S3, Q2 | Sonnet |
 | C15 | Woodmont trace → OSM | C13 (R8: later) | Sonnet |
 | C22 | Tee rings from good shots (2-hybrid ~100 yds deep) | S9 | Sonnet |
-| C32 | Do the in-round nudges help? | nothing | Opus |
 | C33 | Short-game bands learn from Loop's chips | a few rounds of chips + putts logged | Sonnet |
 
 Details for each are under **Build details** below.
@@ -278,16 +280,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   ring at `mishitRate`. The driver gets a fitted ring for the first time (today it is drawn from its
   σs, capped at 70 yds). Rebuild the profile (`npm run build:profile`, `--check`). Record a D-number.
 
-### C32. Do the in-round nudges help? (C4 replay, Oct 10)
-- The why line's "today" nudges (D91; `withinRound` in `src/caddie/learning.js`) club up or aim off
-  after 2–3 shots of a family agree. The C4 replay (D110) checked the same kind of streak on all nine
-  imported rounds: 99 streaks, and the next shot with that club went the same way 44% of the time
-  against a 53% base rate. A same-day streak did not predict the next shot.
-- **Do:** replay the nudges themselves on the imported rounds plus Loop's own logged rounds: for
-  each shot a nudge would have moved, did the moved call price better against what happened? Then
-  one of: keep them, raise the bar (more shots, bigger misses), or switch them off. Bring Brett the
-  numbers and a recommendation before changing anything. Brett, Oct 10: "add as an item".
-
 ### C33. Short-game bands learn from Loop's chips (C29, D111)
 - Since v22.40 chips, pitches and bunker shots are logged as `shotType: "shortGame"` with a
   `shortKind`, and never teach a club's distances. Nothing learns the bands from them yet (the
@@ -316,11 +308,11 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D112.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D113.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
 > Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (394 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C32, the in-round nudges:
-> bring me the numbers and a recommendation first. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with whichever item
+> I've sent what it waits on (OPEN-ITEMS, the Waits on column). Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.

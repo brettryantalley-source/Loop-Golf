@@ -91,6 +91,12 @@ export const DEFAULT_CONFIG = Object.freeze({
      Aim warning, on his own target or Line: trouble `troubleGap` more often than SAFE, or his club's
      average miss (at least `minN` Loop-measured shots) carries the ring's centre off the green. */
   HEADS_UP: { todayOf: 4, todayHit: 3, histMinN: 10, histShare: 0.3, overPct: 0.10 },
+  /* C32 (v22.41, D112; Brett Oct 10: "i don't want the targets or suggested start lines to shift,
+     but i do want the caddie to mention it to me"). The within-round nudges (§5.5) still read the
+     round and the why line names the pattern; with false they no longer move the club, the target
+     or the start line. Replaying the nine imported rounds, the trigger fired 381 times and the next
+     shot went the same way about half the time, no better than any shot. */
+  NUDGES_MOVE_CALL: false,
   AIM_WARN: { troubleGap: 0.10, minN: 10 },
   /* Roll by ground conditions, by club family (integration item 6; research §3.1, §3.4). Replaces
      "wet → roll 0 everywhere". Wet ground kills a long club's release (tour driver −4.5 yds medium

@@ -546,7 +546,13 @@ export function ellipsesFor(res, resolve, opts = {}) {
  */
 export function withinRoundCtx(ctx, shotsThisRound, P, config) {
   if (!ctx || !P) return ctx;
-  const w = withinRound(shotsThisRound || [], config || P.config, { P, lie: ctx.lieType });
+  const cfg = config || P.config;
+  const w = withinRound(shotsThisRound || [], cfg, { P, lie: ctx.lieType });
+  // C32 (v22.41, D112): the nudges are said, not applied — the call stays where the profile puts it
+  if ((cfg?.NUDGES_MOVE_CALL ?? DEFAULT_CONFIG.NUDGES_MOVE_CALL) === false) {
+    const said = w.nudges.map((n) => ({ ...n, moved: false, text: String(n.text || "").replace(/ → .*$/, "") }));
+    return { ...ctx, adjust: { distYds: {}, aimYds: {} }, nudges: said, flags: w.flags };
+  }
   return { ...ctx, adjust: w.adjust, nudges: w.nudges, flags: w.flags };
 }
 

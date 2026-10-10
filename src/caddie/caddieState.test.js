@@ -30,7 +30,7 @@ import { withEllipses, overlayModel, linearProjector } from "./overlay.js";
 import { bunkeredPar3, openPar5, waterLeftPar4 } from "../fixtures/synthetic-holes.js";
 import { routeShot, quickLog, detailLog, skipShot, closeOutShot, missCauseSample, newShotRecord, newPuttRecord, quickMade } from "./shotlog.js";
 import { applyShotLog } from "./learning.js";
-import { DEFAULT_CONFIG } from "./config.js";
+import { DEFAULT_CONFIG, mergeConfig } from "./config.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const P = loadProfile(JSON.parse(readFileSync(join(here, "../profile.json"), "utf8")));
@@ -683,7 +683,9 @@ function readyAt(ball) {
 test("S5 nudge line: two short mid-iron misses this round → one `Today` line, on the engine ctx and in the rail", () => {
   const shots = [closedShot({ club: "7i", hole: 3, dist: -12 }), closedShot({ club: "6i", hole: 6, intended: 180, dist: -10 })];
   const base = { hole: 7, par: 4, shotNo: 2, ball: { x: 0, y: 230 }, lieType: "fairway" };
-  const ctx = withinRoundCtx(base, shots, P);
+  // the mechanism, with the nudges allowed to move the call (off by default since v22.41, C32, D112)
+  const MOVE = mergeConfig({ NUDGES_MOVE_CALL: true });
+  const ctx = withinRoundCtx(base, shots, P, MOVE);
   assert.ok(ctx.adjust.distYds.mid > 0, "short misses → the mid family plays longer");
   assert.equal(ctx.nudges.length, 1);
   assert.equal(base.adjust, undefined, "the caller's ctx is not mutated");
@@ -692,12 +694,21 @@ test("S5 nudge line: two short mid-iron misses this round → one `Today` line, 
   const v = caddieView({ state: readyAt({ x: 0, y: 230 }), par: 4, res, ballXY: { x: 0, y: 230 }, green: waterLeftPar4.green });
   assert.equal(v.details.today.length, 1);
   assert.match(v.details.today[0], /^Short twice with mid irons \(H3, H6\) → \+(½|1) club/);
+  // C32 (D112), the default: the same round is said, and the call does not move
+  const said = withinRoundCtx(base, shots, P);
+  assert.deepEqual(said.adjust, { distYds: {}, aimYds: {} });
+  assert.equal(said.nudges[0].moved, false);
+  const resSaid = recommend(said, waterLeftPar4, P), plain = recommend(base, waterLeftPar4, P);
+  assert.equal(resSaid.safe.club, plain.safe.club); assert.deepEqual(resSaid.safe.target, plain.safe.target);
+  const vSaid = caddieView({ state: readyAt({ x: 0, y: 230 }), par: 4, res: resSaid, ballXY: { x: 0, y: 230 }, green: waterLeftPar4.green });
+  assert.deepEqual(vSaid.details.today, ["Short twice with mid irons (H3, H6)"]);
+  assert.match(vSaid.why.text, / · short with mid irons on 3 and 6 today\.$/);
 });
 
 test("S5 nudge line: nothing without evidence; one miss, skipped shots and other families do not fire; flags get their own line", () => {
   const base = { hole: 7, par: 4, shotNo: 2, ball: { x: 0, y: 230 }, lieType: "fairway" };
   const view = (shots) => {
-    const res = recommend(withinRoundCtx(base, shots, P), waterLeftPar4, P);
+    const res = recommend(withinRoundCtx(base, shots, P, mergeConfig({ NUDGES_MOVE_CALL: true })), waterLeftPar4, P);
     return caddieView({ state: readyAt({ x: 0, y: 230 }), par: 4, res, ballXY: { x: 0, y: 230 }, green: waterLeftPar4.green }).details.today;
   };
   assert.deepEqual(view([]), []);

@@ -10,9 +10,14 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 394 tests (v22.40); must be green
+npm install && npm test    # 394 tests (v22.41); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.41 (Oct 10)
+
+In-round nudges are said, not applied (C32, D112): the why line names the pattern, the club, target
+and start line stay put (`NUDGES_MOVE_CALL: false`). 394 tests.
 
 ## v22.40 (Oct 10)
 

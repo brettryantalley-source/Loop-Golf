@@ -99,6 +99,10 @@ export function todayClause(nudges, club, family) {
   const list = (nudges || []).filter((n) => n && n.group && (n.dist || n.dirn));
   const n = list.find((x) => x.group.kind === "family" && x.group.key === family) || list.find((x) => x.group.kind === "lie");
   if (!n) return null;
+  const word0 = [n.dist, n.dirn].filter(Boolean).join("-");
+  const where0 = n.holes?.length ? ` on ${holeWords(n.holes)}` : "";
+  // C32 (D112): a nudge that no longer moves the call only names the pattern
+  if (n.moved === false) return { text: `${word0} ${n.phrase}${where0} today`, fields: { group: n.group, dist: n.dist, dirn: n.dirn, holes: n.holes, shiftYds: 0, moved: false } };
   const fix = [];
   if (n.dist) {
     const steps = Number.isFinite(n.shiftYds) && n.gapYds > 0 ? Math.round((Math.abs(n.shiftYds) / n.gapYds) * 2) / 2 : 0;
