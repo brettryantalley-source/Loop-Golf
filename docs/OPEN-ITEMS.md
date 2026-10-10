@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 and Brett's test notes of Oct 10 (C20–C29). Duplicates are merged and anything already shipped is
-dropped. State: **v22.22** (C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 360 tests, decisions D1–D93; the next
-decision is **D94**.
+dropped. State: **v22.23** (C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 363 tests, decisions D1–D94; the next
+decision is **D95**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -19,7 +19,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** send **S9** (the tee stills as files).
-2. **Next code chat:** **C23** (club calls) → **C26–C28** (the logging flow) → **C18 + C20** (the
+2. **Next code chat:** **C31** (shot 1 off the tee box) → **C26–C28** (the logging flow) → **C18 + C20** (the
    map camera) → **C2 + C11** (course shapes). Then the table's order.
 3. **Next round:** the **F** list.
 
@@ -39,7 +39,9 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.22 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.23 · Oct 10** (once merged).
+- **F14.** Approach clubs (v22.23, D94): every shot now finishes at its total. From 195 on a warm day
+  the call should be a 6-iron; from 207 a 5-iron. Note any call that still feels a club off.
 - **F13.** The caddie's line (v22.22): a dashed line from the ball through where to aim; the yellow
   ring and both rings are where the ball should finish. Start the ball on the dashed line, or tap
   `Line` and draw your own; Loop learns from whichever you used. Report whether the 8-iron (aims
@@ -121,7 +123,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | C20 | The map frames the suggested shot | nothing | Opus, with C18 |
 | C21 | Dots inside the ring | nothing | Sonnet |
 | C22 | Tee rings from good shots (2-hybrid ~100 yds deep) | S9 | Sonnet |
-| C23 | Approach club calls a club long | nothing | Opus |
 | C24 | Start line follows the shot shape | nothing | Opus |
 | C25 | Per-club miss summary | nothing | Sonnet |
 | C26 | Test mode: tap the next ball after each log | nothing | Sonnet |
@@ -290,6 +291,8 @@ Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/con
 49059), plus a `version` bump. Ride along with C2.
 
 ### C12. Chicopee hand-trace, Village + Mill (S4)
+- **Village 1's 6% par** (Brett, Oct 10; D94): points on its line 150 and 200 yds out classify as
+  trees, so SAFE punches out at a 10% par chance. Re-run that check after the trace.
 - The current trace is automatic segmentation (D74 v2): rough and cart paths show as trees inside the
   ellipse.
 - **Method learned Oct 3:**
@@ -411,28 +414,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   ring at `mishitRate`. The driver gets a fitted ring for the first time (today it is drawn from its
   σs, capped at 70 yds). Rebuild the profile (`npm run build:profile`, `--check`). Record a D-number.
 
-### C23. Approach club calls run a club long (Brett, Oct 10)
-- "My 4-hybrid was suggested from 185 to 207 yards. That should not be the club." Brett, from 195 in
-  the fairway to a middle pin: "when it's hot, a 6-iron; trouble long, a 6; trouble short, maybe a 5."
-- The profile: 6i carry 185 + roll 9 = 194 · 5i 197 + 10 = 207 · 4Hy 215 + 12 = 227 (fairway). A
-  green-bound shot is judged on carry, and a ball that lands on the green **never rolls** in
-  `simulateCandidate` (`if (lie !== "green" && roll > 0)`), so from 195 the 6-iron lands 10 yds short
-  of the middle and stays there, and the caddie prefers the 5-iron or more, where Brett plays the
-  6-iron's 194 total. Below 85°F (D79's profile
-  temperature) every shot plays longer still, which pushes the call up to the 4-hybrid.
-- **Shot Pattern's Approach tab, Oct 10** (`data/raw/2026-10-10/sp-approach-club-distances.webp`;
-  Brett: "a great example of club distance medians to use"): 2Hy 233 · 5i 204 · 6i 197 · 7i 181 ·
-  8i 168 · 9i 153 · PW 136 · GW 120 · SW 98 · LW 84. These match the profile's fairway totals within
-  3 yds except LW (84 vs 78), so the gap is the carry / no-roll treatment, not the medians: Brett plays
-  the median as where the ball finishes.
-- **Village 1, 6% chance of par** (Brett, Oct 10; the screen can't be recovered): run `recommend`
-  from Village 1's tee and from 250 / 200 / 150 / 100 yds on its line and fairway, and explain any
-  par chance under 15%. Likely the false trees from shadows (C12).
-- **Do:** price an approach on where it finishes, at these medians: let a ball that lands on the
-  green roll (a green-roll share of the club's roll, checked against these totals), re-run the sweep, and confirm 195 → 6-iron at 85°F and
-  5-iron when the trouble is short. Check D79's temperature step against what he hits in October.
-  Record a D-number. Bump BUILD and CACHE.
-
 ### C24. The start line follows the shot shape (Brett, Oct 10)
 - "If fade is the shot I choose from the tee with a driver, the line should be left of the target."
   The dashed line (v22.22, D93) allows for the pattern and the wind, but not the shape chosen on the
@@ -521,6 +502,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 
 ## Paste into the next chat
 > Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (360 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C23, the approach
-> club calls. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C31, shot 1 beside
+> the tee box. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.

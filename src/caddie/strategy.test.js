@@ -50,7 +50,8 @@ test("pinDepthClass: presets as given; a custom pin falls in a third of the gree
 });
 
 test("T44 front pin → club up to the middle of the green, aimed at the center or fat side, never the flag", () => {
-  const raw = { shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee", pinPos: "front" };
+  // v22.23 (D94: a shot finishes at its total): from 4 yds back on the tee, 178 to the middle
+  const raw = { shotNo: 1, ball: { x: 0, y: -4 }, lieType: "tee", pinPos: "front" };
   const r = recommend(raw, bunkeredPar3, P), off = recommend(raw, bunkeredPar3, Poff);
   const g = greenDistances(bunkeredPar3, raw.ball, "front");
   assert.deepEqual(r.strategy, ["pin-front"]);
@@ -61,23 +62,18 @@ test("T44 front pin → club up to the middle of the green, aimed at the center 
   assert.deepEqual(off.strategy, [], "with the rules off nothing is named");
 });
 
-test("T45 back pin → take less than the pin yardage; the average shot finishes in the middle", () => {
-  // 137 yds to the middle of a 40-yd-deep green (Oct 4 profile + par ranking, D85/D78: from 390 the
-  // plain pick no longer flew the pin; from 404 the par ranking alone already played the middle).
-  // v22.22 (C3, D93): with the aim-off on, the PW's 5 yds right is aimed out and the par ranking alone
-  // plays it to the middle here, so the rule itself is checked with the aim-off off.
-  const raw = { shotNo: 2, ball: { x: 0, y: 403 }, lieType: "fairway", pinPos: "back" };
-  const noAim = { PATTERN_AIM_MIN_YDS: Infinity };
-  const r = recommend(raw, deepGreen, loadProfile(RAW, mergeConfig(noAim))), off = recommend(raw, deepGreen, loadProfile(RAW, mergeConfig({ ...OFF, ...noAim })));
+test("T45 back pin → never at the flag; the average shot finishes in the middle, short of the pin", () => {
+  // 130 yds to the middle of a 40-yd-deep green, 137 to a back pin. v22.23 (D94): every club now
+  // finishes at its total, so the plain pick no longer flies the pin on this green; it aims the PW
+  // at the flag, and the rule moves the same club to the middle (before D94 the rule changed the club).
+  const raw = { shotNo: 2, ball: { x: 0, y: 410 }, lieType: "fairway", pinPos: "back" };
+  const r = recommend(raw, deepGreen, P), off = recommend(raw, deepGreen, Poff);
   const g = greenDistances(deepGreen, raw.ball, "back");
-  assert.ok(off.safe.meanYds > g.pin, `the plain pick flies the back pin (${off.safe.club} ${off.safe.meanYds} vs ${g.pin})`);
+  assert.equal(off.safe.target.label, "green, back pin", `the plain pick goes at the flag (${off.safe.club})`);
   assert.deepEqual(r.strategy, ["pin-back"]);
+  assert.notEqual(r.safe.target.label, "green, back pin");
   assert.ok(r.safe.meanYds < g.pin, `${r.safe.club} ${r.safe.meanYds} is less than the pin yardage ${g.pin}`);
   assert.ok(Math.abs(r.safe.meanYds - g.center) <= 5, `${r.safe.meanYds} vs center ${g.center}`);
-  // and as shipped: SAFE still finishes in the middle, short of the back pin
-  const c3 = recommend(raw, deepGreen, P);
-  assert.ok(c3.safe.meanYds < g.pin && Math.abs(c3.safe.meanYds - g.center) <= 5, `${c3.safe.club} ${c3.safe.meanYds} (${c3.safe.target.label})`);
-  assert.equal(c3.safe.target.label, "green, center");
 });
 
 test("T46 middle pin: only the wedges aim at the flag; front pin: nobody does", () => {
@@ -88,9 +84,10 @@ test("T46 middle pin: only the wedges aim at the flag; front pin: nobody does", 
   assert.equal(pickSafe([flagWedge, centerWedge], approachSit()).safe, flagWedge, "middle pin, wedge → may attack");
   assert.equal(pickSafe([flag7, center7], approachSit()).safe, center7, "middle pin, 7-iron → center");
   assert.equal(pickSafe([flagWedge, centerWedge], approachSit({ pin: "front" })).safe, centerWedge, "front pin, wedge → center");
-  // and on a hole: a middle pin 7 yds left of center from 170 yds is never the 7-iron's SAFE target
+  // and on a hole: a middle pin 7 yds left of center from 175 yds is never the 7-iron's SAFE target
+  // (175, not 170, since v22.23: D94 plays the 7-iron to its 182 total)
   const pin = { x: -7, y: 540 };
-  const r = recommend({ shotNo: 2, ball: { x: 0, y: 370 }, lieType: "fairway", pinPos: pin }, deepGreen, P);
+  const r = recommend({ shotNo: 2, ball: { x: 0, y: 365 }, lieType: "fairway", pinPos: pin }, deepGreen, P);
   assert.equal(r.safe.kind, "approach");
   assert.ok(!DEFAULT_CONFIG.STRATEGY.attackClubs.includes(r.safe.club), r.safe.club);
   assert.ok(dist(r.safe.target, pin) > 3, `${r.safe.club} aims at ${r.safe.target.label}`);
@@ -123,8 +120,9 @@ test("T48 Brett's numbers overrule the pin rule only on more trouble or a big co
 });
 
 test("T49 no hero golf: from the trees SAFE stays out of trouble 9 times in 10; the hero shot is still shown as AGGRESSIVE", () => {
-  // just inside the tree line (Oct 4 profile, D85: from −35, 260 the plain pick was no longer a hero shot)
-  const raw = { shotNo: 2, ball: { x: -32, y: 250 }, lieType: "recovery" };
+  // just inside the tree line (Oct 4 profile, D85: from −35, 260 the plain pick was no longer a hero shot;
+  // v22.23, D94: from −32, 250 the plain pick is a clean wedge, so 30 yds farther back)
+  const raw = { shotNo: 2, ball: { x: -32, y: 280 }, lieType: "recovery" };
   const r = recommend(raw, treesLeft, P), off = recommend(raw, treesLeft, Poff);
   assert.ok(off.safe.troubleRate > DEFAULT_CONFIG.STRATEGY.noHeroMaxTrouble, `the plain pick is a hero shot (${off.safe.troubleRate})`);
   assert.ok(r.strategy.includes("no-hero"), JSON.stringify(r.strategy));

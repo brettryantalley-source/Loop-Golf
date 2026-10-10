@@ -61,6 +61,10 @@ export const DEFAULT_CONFIG = Object.freeze({
     tee: 0,                                            // driver / tee shots use total directly
   },
   ROLL_LIE_MULT: { tee: 1, fairway: 1, rough: 3, sand: 1, recovery: 3 },
+  /* v22.23 (C23, D94): a ball that lands on the green rolls this share of its roll-out too. Brett's
+     roll figures are roll-outs wherever the ball lands, and Shot Pattern's medians (totals) are where
+     his approaches finish, so 1 makes an approach's average finish its median. Uncalibrated. */
+  GREEN_ROLL_SHARE: 1,
   /* Roll by ground conditions, by club family (integration item 6; research §3.1, §3.4). Replaces
      "wet → roll 0 everywhere". Wet ground kills a long club's release (tour driver −4.5 yds medium
      / −9.8 soft vs firm, USGA/R&A 2023) but a wet wedge loses 15–20% spin and releases MORE (Rice,
@@ -120,8 +124,8 @@ export const DEFAULT_CONFIG = Object.freeze({
   LAYUP_MIN_YDS: 50,
   LAYUP_MAX_YDS: 150,
   LAYUP_STEP_YDS: 5,
-  REACH_SHORT_TOLERANCE_YDS: 8, // a club "reaches" if carry ≥ front − this
-  FLY_TOLERANCE_YDS: 20,        // prune clubs that fly the back edge by more than this (§3.4)
+  REACH_SHORT_TOLERANCE_YDS: 8, // a club "reaches" if its finish (carry + green roll, D94) ≥ front − this
+  FLY_TOLERANCE_YDS: 20,        // prune clubs that finish past the back edge by more than this (§3.4)
 
   /* ---- selection (§3.6) ---- */
   /* Same shot (v22.17, engine.js pickOptions): the same club + swing within SAME_SHOT_TARGET_YDS, or

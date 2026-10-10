@@ -10,8 +10,15 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 360 tests (v22.22); must be green
+npm install && npm test    # 363 tests (v22.23); must be green
 ```
+
+## v22.23 (Oct 10)
+
+Every shot finishes at its total, approaches included (C23, D94; Brett: "treat my club numbers as
+total"). A ball that lands on the green now rolls its roll-out (`GREEN_ROLL_SHARE` 1); before, it
+stopped at the derived carry and the caddie called a club long (195 → 5-iron, 207 → 4-hybrid; now
+6-iron and 5-iron). Brett's Oct 10 test notes are C20–C31 in `docs/OPEN-ITEMS.md`. 363 tests.
 
 ## v22.22 (Oct 10)
 

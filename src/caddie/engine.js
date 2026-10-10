@@ -141,8 +141,10 @@ function landingModel(entry, ball, target, ctx, cfg) {
   const roll = entry.roll;                               // ground conditions already applied (ROLL_COND_MULT)
   const dir = { x: Math.sin(b * DEG), y: Math.cos(b * DEG) };
   const perp = { x: dir.y, y: -dir.x };                // +x when heading up the hole → right
-  // mean = carry (what a green-bound shot is judged on); total = where a fairway-bound shot stops.
-  return { mean, total: mean + roll, roll, dir, perp, bearing: b, wind: pl.wind, sdMult: q.sdMult };
+  // mean = carry; total = where a fairway-bound shot stops; greenTotal (D94) = where a green-bound
+  // shot stops: it rolls GREEN_ROLL_SHARE of its roll-out on the green too.
+  const greenRoll = roll * (cfg.GREEN_ROLL_SHARE ?? DEFAULT_CONFIG.GREEN_ROLL_SHARE);
+  return { mean, total: mean + roll, greenTotal: mean + greenRoll, roll, greenRoll, dir, perp, bearing: b, wind: pl.wind, sdMult: q.sdMult };
 }
 
 /**
@@ -204,8 +206,10 @@ export function generateCandidates(ctx, hole, P) {
   const reach = new Map();
   for (const e of entries) {
     const lm = landingModel(e, ctx.ball, center, ctx, cfg);
-    reach.set(e, lm.mean >= g.front - cfg.REACH_SHORT_TOLERANCE_YDS && lm.mean <= g.back + cfg.FLY_TOLERANCE_YDS
-      ? "reaches" : lm.mean > g.back + cfg.FLY_TOLERANCE_YDS ? "flies" : "short");
+    // D94: judged on where it finishes (carry + its roll on the green), not on carry alone
+    const fin = lm.greenTotal;
+    reach.set(e, fin >= g.front - cfg.REACH_SHORT_TOLERANCE_YDS && fin <= g.back + cfg.FLY_TOLERANCE_YDS
+      ? "reaches" : fin > g.back + cfg.FLY_TOLERANCE_YDS ? "flies" : "short");
   }
 
   // Green-reachable approach: pin, center, fat side (§3.4).
@@ -444,13 +448,16 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
     sumLat += lat;
     let p = { x: ctx.ball.x + lm.dir.x * along + lm.perp.x * lat, y: ctx.ball.y + lm.dir.y * along + lm.perp.y * lat };
     let lie = classify(hole, p);
-    if (lie !== "green" && roll > 0) {
+    // D94: a ball that lands on the green rolls too (GREEN_ROLL_SHARE of its roll-out), and can
+    // roll off it; before v22.23 it stopped where it landed.
+    const rollHere = lie === "green" ? lm.greenRoll : roll;
+    if (rollHere > 0) {
       // Roll along the line of flight in short steps; the ball stops in the first bunker, water
       // or trees it runs into (it never rolls through a hazard onto the green).
       const step = 2;
       let rolled = 0;
-      while (rolled < roll) {
-        const d = Math.min(step, roll - rolled);
+      while (rolled < rollHere) {
+        const d = Math.min(step, rollHere - rolled);
         const q = { x: p.x + lm.dir.x * d, y: p.y + lm.dir.y * d };
         const ql = classify(hole, q);
         p = q; lie = ql; rolled += d;
@@ -471,7 +478,7 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
     parProb: sumPar / n,
     doubleProb: sumDouble / n,
     troubleRate: trouble / n,
-    meanYds: cand.kind === "approach" ? lm.mean : lm.total,
+    meanYds: cand.kind === "approach" ? lm.greenTotal : lm.total,   // where it finishes on average (D94)
     distToTarget: dist(ctx.ball, cand.target),
     aimOffsetYds: aim.aimOffsetYds,
     patternYds: aim.patternYds,
@@ -636,7 +643,7 @@ function whyFacts(scored, sit, cfg, safe, rules, ctx, P, geo) {
 
 /**
  * Brett's own target (v22.16.5): the club whose average shot best fits the distance to `target` —
- * carry when the target is on the green, carry + roll anywhere else — simulated like any candidate,
+ * carry + its green roll when the target is on the green (D94), carry + roll anywhere else — simulated like any candidate,
  * so the club, its dispersion and its numbers follow the marker. Not an option of recommend(): the
  * SAFE / AGGRESSIVE pair is still what the caddie said; this is what Brett chose to aim at.
  * opts.samples (v22.17): how many draws to price with — the UI uses ~80 while the marker is being
@@ -652,7 +659,7 @@ export function priceTarget(rawCtx, hole, P, target, opts = {}) {
   let best = null;
   for (const e of candidateEntries(P, ctx.lieType, { conditions: ctx.conditions })) {
     const lm = landingModel(e, ctx.ball, target, ctx, cfg);
-    const err = Math.abs((toGreen ? lm.mean : lm.total) - need);
+    const err = Math.abs((toGreen ? lm.greenTotal : lm.total) - need);
     if (!best || err < best.err) best = { e, err };
   }
   if (!best) return null;
