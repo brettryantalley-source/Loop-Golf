@@ -10,9 +10,14 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 384 tests (v22.37); must be green
+npm install && npm test    # 384 tests (v22.38); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.38 (Oct 10)
+
+A course's map shows before its elevation arrives (D109); the smoke test holds Open-Meteo 30 s to
+keep it that way. 384 tests.
 
 ## v22.37 (Oct 10)
 

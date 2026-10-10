@@ -9,7 +9,8 @@
  *   node scripts/smoke-caddie.mjs [--shots out-dir]
  *
  * Exit 0 = no page errors; 1 = errors (printed). Network is not needed: Woodmont's map is bundled,
- * and with no satellite tiles the caddie draws the paper map.
+ * and with no satellite tiles the caddie draws the paper map. Open-Meteo is held 30 s, as on a weak
+ * signal (D109).
  */
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
@@ -50,6 +51,8 @@ await ctx.addInitScript(([s]) => {
   localStorage.setItem("bogeyman-matches:v1", s);
   localStorage.setItem("bogeyman-matches:config:v1", JSON.stringify({ testMode: { fakeGps: true } }));
 }, [JSON.stringify(state)]);
+// A weak signal (D109): Open-Meteo (weather, elevation) answers after 30 s. A bundled map must not wait for it.
+await ctx.route(/open-meteo\.com/, (route) => setTimeout(() => route.abort().catch(() => {}), 30000));
 const page = await ctx.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
