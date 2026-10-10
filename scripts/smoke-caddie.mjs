@@ -61,24 +61,44 @@ const tapMap = (fx, fy) => page.mouse.click(390 * fx, 844 * fy);
 await page.goto(base, { waitUntil: "load" });
 await page.waitForTimeout(2500);
 await shot("1-pretee");
-await step("I'm on the tee", async () => { await page.getByText("I'm on the tee", { exact: false }).first().click({ timeout: 5000 }); });
-await page.waitForTimeout(500);
-await step("tee tap", async () => { await tapMap(0.5, 0.75); });
-await page.waitForTimeout(2500);
-await shot("2-ready");
-// the call is on screen (the strip above the action button) before Log shot; the sheet before Good shot
-await step("call on screen", async () => { await page.getByText(/chance at par|birdie chance|Punch out/).first().waitFor({ timeout: 15000 }); });
-await step("Log shot", async () => {
-  for (let i = 0; i < 3; i++) {
-    await page.getByText("Log shot", { exact: false }).first().click({ timeout: 5000 });
-    try { await page.getByText("Good shot", { exact: false }).first().waitFor({ timeout: 3000 }); return; } catch (e) { /* the screen was still settling: once more */ }
+// I'm on the tee → tap the ball → the call is on screen (the strip above the action button). Twice at
+// most: on a slow start the first click can land before the screen is ready.
+const CALL = /chance at par|birdie chance|Punch out/;
+await step("call on screen", async () => {
+  for (let i = 0; i < 2; i++) {
+    const tee = page.getByText("I'm on the tee", { exact: false }).first();
+    if (await tee.isVisible().catch(() => false)) await tee.click({ timeout: 5000 });
+    // test mode asks for the tap; tapping before it shows is ignored
+    await page.getByText(/^Test mode ·/).first().waitFor({ timeout: 5000 }).catch(() => null);
+    await page.waitForTimeout(300);
+    await tapMap(0.5, 0.75);
+    try { await page.getByText(CALL).first().waitFor({ timeout: 12000 }); return; } catch (e) { /* once more */ }
   }
-  throw new Error("the log card never opened");
+  throw new Error("no call after I'm on the tee and a tap");
 });
-await step("Good shot", async () => { await page.getByText("Good shot", { exact: false }).first().click({ timeout: 8000 }); });
+await shot("2-ready");
+// Log shot → Good shot. Three tries: the screen can still be settling, and a re-render can close the
+// card between the two clicks.
+await step("Log shot → Good shot", async () => {
+  for (let i = 0; i < 3; i++) {
+    const good = page.getByText("Good shot", { exact: false }).first();
+    if (!(await good.isVisible().catch(() => false))) {
+      await page.getByText("Log shot", { exact: false }).first().click({ timeout: 5000 });
+      try { await good.waitFor({ timeout: 3000 }); } catch (e) { continue; }
+    }
+    try { await good.click({ timeout: 4000 }); return; } catch (e) { /* once more */ }
+  }
+  await shot("fail-log");
+  const t = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " ").slice(0, 300)).catch(() => "");
+  throw new Error(`Log shot → Good shot never went through · screen: ${t}`);
+});
 await page.waitForTimeout(1200);
 await shot("3-after-log");
-await step("next-ball tap", async () => { await tapMap(0.5, 0.45); });
+await step("next-ball tap", async () => {
+  await page.getByText(/^Test mode ·/).first().waitFor({ timeout: 5000 }).catch(() => null);
+  await page.waitForTimeout(300);
+  await tapMap(0.5, 0.45);
+});
 await page.waitForTimeout(2500);
 await shot("4-next-ball");
 const text = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " ").slice(0, 400));

@@ -1,6 +1,6 @@
-# C29: a short-game card inside 100 yds (spec for Brett's OK)
+# C29: a short-game card inside 100 yds
 
-Draft, Oct 10. No code until Brett says OK. Item: `docs/OPEN-ITEMS.md` C29. Brett, Oct 10: "a chip
+OK'd by Brett Oct 10, with the recommended choices. Item: `docs/OPEN-ITEMS.md` C29. Brett, Oct 10: "a chip
 screen from 100 yards and in, so we don't confuse chip and finesse shots with full-shot data".
 
 ## Today

@@ -1,6 +1,6 @@
-# C4: heads-up + aim warning (spec for Brett's OK)
+# C4: heads-up + aim warning
 
-Draft, Oct 10. No code until Brett says OK. Item: `docs/OPEN-ITEMS.md` C4.
+OK'd by Brett Oct 10, with the recommended choices. Item: `docs/OPEN-ITEMS.md` C4.
 
 ## What already shows
 - **The why line** (v22.18, D91), above the action button: the main reason, plus a "today" clause

@@ -71,6 +71,20 @@ export const DEFAULT_CONFIG = Object.freeze({
      shrunk by the club's n with SHRINK_K, is drawn as extra shots that finish `depthMin`–`depthMax`
      of the distance short. Depths uncalibrated (C8: "10–20% of carry"); `on: false` → none. */
   SHORT_TAIL: { on: true, overPct: 0.10, depthMin: 0.10, depthMax: 0.20 },
+  /* C24 (v22.37, D108): Brett's usual shape per club and how far it curves, yards (Oct 10: "the two
+     and four hybrid are about a 10 yard fade. The 5-8 iron is about a 7 yard draw. Nine and pitching
+     wedge a 5 yard draw. Gap wedge 3 yard draw. Sand wedge and lob wedge straight"; the driver a
+     15-yd fade, never a draw). Shot Pattern measures the finish against his target, which already
+     allows for the curve, so the start line sits the curve's width to the other side of the finish.
+     A shape he picks that isn't his usual one curves `yds` the other way; a straight club (or one not
+     listed, the 2-iron) curves CURVE_DEFAULT_YDS when he picks one. */
+  SHOT_SHAPE: {
+    Dr: { usual: "fade", yds: 15 }, "2Hy": { usual: "fade", yds: 10 }, "4Hy": { usual: "fade", yds: 10 },
+    "5i": { usual: "draw", yds: 7 }, "6i": { usual: "draw", yds: 7 }, "7i": { usual: "draw", yds: 7 }, "8i": { usual: "draw", yds: 7 },
+    "9i": { usual: "draw", yds: 5 }, PW: { usual: "draw", yds: 5 }, GW: { usual: "draw", yds: 3 },
+    SW: { usual: "straight", yds: 0 }, LW: { usual: "straight", yds: 0 },
+  },
+  CURVE_DEFAULT_YDS: 5,
   /* Roll by ground conditions, by club family (integration item 6; research §3.1, §3.4). Replaces
      "wet → roll 0 everywhere". Wet ground kills a long club's release (tour driver −4.5 yds medium
      / −9.8 soft vs firm, USGA/R&A 2023) but a wet wedge loses 15–20% spin and releases MORE (Rice,
@@ -277,6 +291,23 @@ export function lieDistAdj(cfg, lie, family) {
   const v = cfg?.LIE_DIST_ADJ?.[lie];
   if (v && typeof v === "object") return Number.isFinite(v[family]) ? v[family] : 0;
   return Number.isFinite(v) ? v : 0;
+}
+
+/** C24 (D108): Brett's usual shape for a club ("straight" when not listed). */
+export function usualShape(club, cfg = DEFAULT_CONFIG) {
+  const s = (cfg?.SHOT_SHAPE || DEFAULT_CONFIG.SHOT_SHAPE)?.[club]?.usual;
+  return s === "draw" || s === "fade" || s === "straight" ? s : "straight";
+}
+
+/**
+ * C24 (D108): how far a shot of this shape curves in the air, yards, + = to the right (a fade for a
+ * right-hander), − = to the left (a draw); 0 straight. The start line sits this far the other way.
+ */
+export function curveYds(club, shape, cfg = DEFAULT_CONFIG) {
+  if (shape !== "draw" && shape !== "fade") return 0;
+  const yds = (cfg?.SHOT_SHAPE || DEFAULT_CONFIG.SHOT_SHAPE)?.[club]?.yds;
+  const amt = Number.isFinite(yds) && yds > 0 ? yds : (cfg?.CURVE_DEFAULT_YDS ?? DEFAULT_CONFIG.CURVE_DEFAULT_YDS);
+  return shape === "fade" ? amt : -amt;
 }
 
 /** Club families (§5.5). Hybrids and the 2-iron are `long`. */

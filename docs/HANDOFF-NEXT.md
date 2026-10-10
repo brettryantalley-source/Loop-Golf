@@ -10,9 +10,15 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 382 tests (v22.36); must be green
+npm install && npm test    # 384 tests (v22.37); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.37 (Oct 10)
+
+The start line follows the shot shape: Brett's usual shape and curve per club (driver a 15-yd fade,
+5–8 iron a 7-yd draw …); the dashed line starts the curve's width to the other side, the ring stays
+(C24, D108). 384 tests.
 
 ## v22.36 (Oct 10)
 

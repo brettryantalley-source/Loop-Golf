@@ -84,7 +84,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.36 · Oct 10";
+const BUILD = "v22.37 · Oct 10";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -2194,8 +2194,11 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
      (the recommendation does not — it is what Brett was told, the marker is where he aims) */
   const shownTarget = mapMarks && !pinView ? dragTarget || marks.target || activeOpt?.target || null : null;
   const optKey = v.sameShot ? "safe" : cs.opt;
-  const drawnOptions = mi.options && mapMarks && (dragTarget || marks.target) && mi.options[optKey]
+  const movedOptions = mi.options && mapMarks && (dragTarget || marks.target) && mi.options[optKey]
     ? { ...mi.options, [optKey]: { ...mi.options[optKey], target: { ...(dragTarget || marks.target), label: "own target" } } } : mi.options;
+  // v22.37 (C24, D108): the start line allows for the shape on screen (his usual one unless he picked another)
+  const activeCurve = movedOptions?.[optKey] ? (intentNow(movedOptions[optKey]).curveYds || 0) : 0;
+  const drawnOptions = activeCurve ? { ...movedOptions, [optKey]: { ...movedOptions[optKey], curveYds: activeCurve } } : movedOptions;
   // v22.29 (C21, D100): the dots inside the ring for the option drawn (its own target when moved)
   const dotsOpt = drawnOptions?.[optKey] || null;
   const ringDots = useMemo(() => {

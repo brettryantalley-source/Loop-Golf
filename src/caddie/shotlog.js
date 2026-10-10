@@ -16,7 +16,7 @@
  * math without re-deriving it from lat/lng every time.
  */
 
-import { DEFAULT_CONFIG } from "./config.js";
+import { DEFAULT_CONFIG, usualShape, curveYds } from "./config.js";
 
 export const SHOT_SCHEMA = 1;
 export const SHOTS_KEY = "bogeyman-matches:shots:v1";
@@ -96,9 +96,11 @@ function defaultShotType(club, startDistanceYds) {
   return "full";
 }
 
-/** Brett's most common intended shape for this club from prior records; "straight" with no history
- *  (also the tie-break when two shapes are equally common). */
-export function defaultIntendedShape(club, history) {
+/** Brett's usual shape for the club as he stated it (C24, D108: SHOT_SHAPE); for a club not listed,
+ *  his most common intended shape from prior records, "straight" with no history (also the tie-break
+ *  when two shapes are equally common). */
+export function defaultIntendedShape(club, history, cfg = DEFAULT_CONFIG) {
+  if (club && (cfg?.SHOT_SHAPE || DEFAULT_CONFIG.SHOT_SHAPE)?.[club]) return usualShape(club, cfg);
   if (!Array.isArray(history) || !history.length || !club) return "straight";
   const counts = { draw: 0, straight: 0, fade: 0 };
   for (const rec of history) {
@@ -391,6 +393,8 @@ export function normIntent(it) {
     source: it.source === "set" ? "set" : "default",
     // v22.22 (C3, D93): the caddie's aim-off for this target and the crosswind drift it allowed for
     ...(Number.isFinite(it.aimOffsetYds) ? { aimOffsetYds: it.aimOffsetYds, windYds: Number.isFinite(it.windYds) ? it.windYds : 0 } : {}),
+    // v22.37 (C24, D108): how far the chosen shape curves (+ right); the start line sat that far the other way
+    ...(Number.isFinite(it.curveYds) && it.curveYds !== 0 ? { curveYds: it.curveYds } : {}),
   };
 }
 
@@ -457,12 +461,13 @@ export function shotIntent({ set = {}, option = null, ball = null, history = nul
   const aim = target && Number.isFinite(option?.aimOffsetYds)
     ? { aimOffsetYds: option.aimOffsetYds, windYds: Number.isFinite(option.windYds) ? option.windYds : 0 } : {};
   const shape = SHAPES.includes(mine.shape) ? mine.shape : defaultIntendedShape(club, history);
+  const curve = club ? curveYds(club, shape) : 0;
   const source = isPt(mine.target) || Number.isFinite(mine.startLineDeg) || SHAPES.includes(mine.shape) ? "set" : "default";
   let targetLL = null;
   if (target && frame && typeof frame.toLatLng === "function") { const q = frame.toLatLng(target); targetLL = { lat: q.lat, lng: q.lon ?? q.lng }; }
   const ll0 = mine.lineLL;
   const lineLL = Number.isFinite(mine.startLineDeg) && ll0 && Number.isFinite(ll0.lat) && Number.isFinite(ll0.lng ?? ll0.lon) ? { lat: ll0.lat, lng: ll0.lng ?? ll0.lon } : null;
-  return { target, targetLabel, targetLL, startLineDeg, shape, source, ...(lineLL ? { lineLL } : {}), ...aim };
+  return { target, targetLabel, targetLL, startLineDeg, shape, source, ...(lineLL ? { lineLL } : {}), ...aim, ...(curve ? { curveYds: curve } : {}) };
 }
 
 /** A miss in yards → 0 / ±1 / ±2 by the §3 bands: |v| < slight → 0, slight … big → ±1, > big → ±2. */

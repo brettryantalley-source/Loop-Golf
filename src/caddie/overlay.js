@@ -205,7 +205,8 @@ function onFinish(ell, o) {
 export function aimPointFor(option, ball) {
   const T = option?.target;
   if (!T || !ball || !Number.isFinite(T.x) || !Number.isFinite(ball.x)) return null;
-  const o = Number.isFinite(option.aimOffsetYds) ? option.aimOffsetYds : 0;
+  // v22.37 (C24, D108): a shot that curves starts the curve's width to the other side (a fade, left)
+  const o = (Number.isFinite(option.aimOffsetYds) ? option.aimOffsetYds : 0) - (Number.isFinite(option.curveYds) ? option.curveYds : 0);
   const dx = T.x - ball.x, dy = T.y - ball.y, L = Math.hypot(dx, dy);
   if (!o || L < 1e-9) return { x: T.x, y: T.y };
   return { x: T.x + (dy / L) * o, y: T.y - (dx / L) * o };

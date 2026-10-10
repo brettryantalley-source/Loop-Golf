@@ -493,7 +493,7 @@ test("T17 (quick path via the reducer): Good shot writes the §4.3 defaults and 
   assert.equal(s.logCard, null, "the sheet closes once saved");
   assert.equal(s.openShot.logged, "quick"); assert.equal(s.openShot.reviewed, true);
   assert.equal(s.openShot.contact, 0); assert.equal(s.openShot.strike, "center"); assert.equal(s.openShot.startLine, "on");
-  assert.equal(s.openShot.curve, 0, "matches the default (straight) intended shape");
+  assert.equal(s.openShot.curve, -1, "matches the default intended shape: his PW draw (C24, D108)");
   assert.equal(s.openShot.club, "PW", "the toggled (SAFE) option's club");
 });
 

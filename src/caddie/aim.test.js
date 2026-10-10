@@ -130,10 +130,14 @@ test("C3: an untouched line is not logged as his; an on-pattern shot reads ~0 fr
   assert.equal(onPattern.derived.lateralMissYds, 0, "measured from the target: on target");
   assert.equal(onPattern.derived.latMissYds, 0);
   assert.equal(patternLatYds(onPattern), -7.1, "from the line it started on: the 8-iron's 7 yds left");
-  // his own Line, straight at the target: the same 7 yds left is a miss from the target and the pattern from his line
-  const own = shot({ x: -7.1, y: 540 }, shotIntent({ option, ball, set: { startLineDeg: 0 } }));
+  // his own Line, straight at the target, hit straight: the same 7 yds left is a miss from the target and the pattern from his line
+  const own = shot({ x: -7.1, y: 540 }, shotIntent({ option, ball, set: { startLineDeg: 0, shape: "straight" } }));
   assert.equal(own.derived.lateralMissYds, -7.1);
   assert.equal(patternLatYds(own), -7.1);
+  // C24 (D108): the same Line with his usual 8-iron draw (7 yds left): finishing 7 left is the draw, not the pattern
+  const drawn = shot({ x: -7.1, y: 540 }, shotIntent({ option, ball, set: { startLineDeg: 0 } }));
+  assert.equal(drawn.intent.curveYds, -7);
+  assert.equal(patternLatYds(drawn), -0.1);
   // with the wind in the aim: the drift the caddie allowed for comes back out
   const windIt = shotIntent({ option: { ...option, aimOffsetYds: 2.1, windYds: 5 }, ball });
   assert.equal(patternLatYds(shot({ x: 0, y: 540 }, windIt)), -7.1);

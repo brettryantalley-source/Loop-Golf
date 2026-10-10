@@ -125,7 +125,9 @@ export function patternLatYds(s) {
     const L = Math.hypot(t.x - a.x, t.y - a.y);
     let d = it.startLineDeg - Math.atan2(t.x - a.x, t.y - a.y) / DEG;
     d = ((d + 540) % 360) - 180;                       // (−180, 180]: + = his line runs right of the target
-    if (L > 1e-9 && Math.abs(d) < 90) offset = L * Math.tan(d * DEG);
+    // v22.37 (C24, D108): from his own line the ball also curved by the shape he chose; the caddie's
+    // line already allowed for it (the curve cancels between the start line and the flight)
+    if (L > 1e-9 && Math.abs(d) < 90) offset = L * Math.tan(d * DEG) + (num(it.curveYds) ? it.curveYds : 0);
   }
   return Math.round((lat - offset - (num(it.windYds) ? it.windYds : 0)) * 10) / 10;
 }

@@ -18,8 +18,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Brett:** OK (or change) the two drafted specs, `docs/SPEC-C4-headsup.md` and
-   `docs/SPEC-C29-shortgame.md`, and give C24's curve amounts. Then the next code chat builds them.
+1. **Next code chat:** C4 and C29, from their specs (both OK'd Oct 10 with the leans).
 2. **Brett:** send **S9** (the tee stills as files).
 3. **Next round:** the **F** list.
 
@@ -39,12 +38,15 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.36 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.37 · Oct 10** (once merged).
 - **F18.** From the rough (v22.33, D104): the caddie now plays your rough totals, not the fairway
   ones plus extra roll. A 5-iron finishes ~192, the 4-hybrid ~207, a 7-iron ~175, a PW ~136. Note any
   rough call that feels a club off.
 - **F19.** From a fairway bunker (v22.34, D105; sand more than 40 yds from the green's front): the
   caddie now stays out of trouble 9 times in 10, so expect more lay-ups. Say if one feels too timid.
+- **F21.** The start line (v22.37, D108): the shape chips open on your usual shape (driver Fade, 5–8
+  iron Draw …) and the dashed line starts the curve's width to the other side (driver 15 yds left).
+  Say whether each club's line looks like where you'd start it.
 - **F20.** History → `Misses by club` (v22.35, D106): after a round with marked ends, check each
   club's "2 short · 3 R · off by 7" against how the round felt.
 - **F14.** Approach clubs (v22.23, D94): every shot now finishes at its total. From 195 on a warm day
@@ -121,15 +123,14 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C4 | Heads-up + aim warning | Brett's OK on `docs/SPEC-C4-headsup.md` | Opus |
+| C4 | Heads-up + aim warning | nothing (spec OK'd Oct 10, the leans) | Opus |
 | C10 | Re-tune the `STRATEGY` thresholds | a round of F7 notes | Opus |
 | C12 | Chicopee hand-trace, Village + Mill | S4 | Opus |
 | C13 | Woodmont calibration | F9, Q3 | Sonnet |
 | C14 | History data | S1–S3, Q2 | Sonnet |
 | C15 | Woodmont trace → OSM | C13 (R8: later) | Sonnet |
 | C22 | Tee rings from good shots (2-hybrid ~100 yds deep) | S9 | Sonnet |
-| C24 | Start line follows the shot shape | Brett's curve amounts | Opus |
-| C29 | A short-game card inside 100 yds | Brett's OK on `docs/SPEC-C29-shortgame.md` | Opus |
+| C29 | A short-game card inside 100 yds | nothing (spec OK'd Oct 10, the leans) | Opus |
 
 Details for each are under **Build details** below.
 
@@ -163,8 +164,8 @@ service worker answered font requests with `index.html`); reopen only if it come
 ## Build details
 
 ### C4. Heads-up + aim warning (C3 shipped in v22.22, D93)
-**Spec drafted Oct 10: `docs/SPEC-C4-headsup.md`.** Waits on Brett's OK and its three choices; the
-notes below are what it was drafted from.
+**Spec: `docs/SPEC-C4-headsup.md`, OK'd Oct 10 with the leans** (3 of 4 today, +10 points, the
+history clause on). The notes below are what it was drafted from.
 - **Heads-up:** for SAFE's club, one clause on the map's "why" line (v22.18, D91: `whyLine` in `reasons.js`) when a pattern is strong: "Driver: 3 of 4
   left today, aim right-center" · "From 100: you finish short 34% of the time". Silent otherwise.
   Today's pattern speaks only after 2–3 shots agree; otherwise the 10-round history does, and only
@@ -286,15 +287,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   ring at `mishitRate`. The driver gets a fitted ring for the first time (today it is drawn from its
   σs, capped at 70 yds). Rebuild the profile (`npm run build:profile`, `--check`). Record a D-number.
 
-### C24. The start line follows the shot shape (Brett, Oct 10)
-- "If fade is the shot I choose from the tee with a driver, the line should be left of the target."
-  The dashed line (v22.22, D93) allows for the pattern and the wind, but not the shape chosen on the
-  map (Draw · Straight · Fade).
-- **Do:** a curve allowance per club and shape (uncalibrated config: e.g. a driver fade starts ~10
-  yds left; straight 0; his usual shape is already inside the pattern, so only a change from it
-  moves the line). The line starts on that side; the finish (the yellow ring) stays where it was.
-  Ask Brett for his curve amounts first. Bump BUILD and CACHE.
-
 ### C29. A short-game card inside 100 yds (Brett, Oct 10)
 - "Didn't we talk about a chip screen from 100 yards and in, so we don't confuse chip and finesse
   shots with full-shot data?" Not in the repo's notes. Today: a wedge from 120 yds in logs as
@@ -303,7 +295,8 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 - Found Oct 10 (C9 build): from just off the green (about 5–15 yds from its edge, any lie, sand
   included) `recommend()` has no candidate and the caddie says "No club in the profile reaches a
   useful target from here." The card should cover that range too.
-- **Spec drafted Oct 10: `docs/SPEC-C29-shortgame.md`.** Waits on Brett's OK and its three choices.
+- **Spec: `docs/SPEC-C29-shortgame.md`, OK'd Oct 10 with the leans** (100 yds, his numbers only
+  inside 30, Chip · Pitch · Bunker · Wedge).
 
 ---
 
@@ -322,11 +315,11 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D108.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D109.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (382 pass).
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (384 pass).
 > Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C4, built from
 > `docs/SPEC-C4-headsup.md` as I OK'd it. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.
