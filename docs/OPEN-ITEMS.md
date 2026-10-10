@@ -19,8 +19,8 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** send **S9** (the tee stills as files).
-2. **Next code chat:** C8 needs nothing from Brett. C4 and C29 start with a one-page spec for his
-   OK; C24 needs his curve amounts. Then the table's order.
+2. **Next code chat:** C4 and C29 start with a one-page spec for Brett's OK; C24 needs his curve
+   amounts. Then the table's order.
 3. **Next round:** the **F** list.
 
 ---
@@ -39,7 +39,7 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.35 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.36 · Oct 10** (once merged).
 - **F18.** From the rough (v22.33, D104): the caddie now plays your rough totals, not the fairway
   ones plus extra roll. A 5-iron finishes ~192, the 4-hybrid ~207, a 7-iron ~175, a PW ~136. Note any
   rough call that feels a club off.
@@ -122,7 +122,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | # | Build | Waits on | Model |
 |---|---|---|---|
 | C4 | Heads-up + aim warning | nothing (C3 shipped, D93) | Opus |
-| C8 | Short / long miss model | nothing (Q1 answered) | Opus |
 | C10 | Re-tune the `STRATEGY` thresholds | a round of F7 notes | Opus |
 | C12 | Chicopee hand-trace, Village + Mill | S4 | Opus |
 | C13 | Woodmont calibration | F9, Q3 | Sonnet |
@@ -178,29 +177,6 @@ reaction before any code.
 - Both read logged shot ends, never assumed ones (D87). F6 is what feeds them.
 - **Tests:** replay the Oct 3 Chicopee round and check each heads-up against what happened. Bump
   BUILD and CACHE.
-
-### C8. Short / long miss model (D77 item 3; Q1 answered Oct 10)
-- **Q1 (Brett, Oct 10):** "the target is always where I want the ball to end up": on the hole for a
-  middle pin, or inside 75 yds when it's safe; toward the safe side of the green otherwise (left of a
-  right pin with trouble right). So Shot Pattern's misses are measured against where he meant to
-  finish, and the first branch below applies.
-- Shot Pattern measures approach proximity and leave zones against **its target, not the hole**:
-  130 of 159 approaches across 8 rounds finish a different distance from each (Oct 3 hole 14: 7 ft
-  from the target, 42 ft from the hole). D77 assumed the pin, which is wrong.
-- **Leave zones**, short / long share of misses (`data/extracted/2026-10-04-screens.json` →
-  `approach.leaveZones`): 9i 75/25 · PW 83/17 · GW 80/20 · SW 78/22 · LW 64/36 (short irons and
-  wedges miss short); 6i 27/73 · 7i 33/67 · 8i 30/70 (mid irons miss long); 5i 58/41; 2Hy and 4Hy
-  have too few shots.
-- **`shortPct`** (finishing > 10% short): 2Hy 50% · 4Hy 33% · PW 29% · GW 19% · 5i–6i 8–9% ·
-  7i–9i 0%. The engine's symmetric normal (5–6% of carry) gives ~2–5%. D85 zeroed `dy` because the
-  centre's shortfall is already in the travelled-yards median, so the centre is handled; the tail
-  may not be.
-- **If Q1 = "I put the target where I aim":** per club, compare the model's P(> 10% short) with the
-  observed rate. Where the gap holds (likely PW, GW, 2Hy), add a short/long tail in
-  `simulateCandidate` (`src/caddie/engine.js:389`): probability = observed − modelled, depth 10–20% of
-  carry, both config values marked uncalibrated. Then see whether the pin rule's ½-stroke guard can
-  tighten.
-- **If Q1 = "the app places it":** the split is contaminated. Park C8.
 
 ### C10. Re-tune the `STRATEGY` thresholds (after a round of F7 notes)
 Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/config.js`):
@@ -347,11 +323,11 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D107.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D108.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (379 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C8, the short / long miss
-> model. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (382 pass).
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C4: write its one-page
+> spec (heads-up + aim warning) for my OK. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.

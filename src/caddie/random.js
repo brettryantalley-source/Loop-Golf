@@ -26,13 +26,14 @@ export function mulberry32(seed) {
 export function makeSamples(n, seed) {
   const rnd = mulberry32(seed);
   const rndV = mulberry32((seed ^ 0x9e3779b9) >>> 0);
+  const rndT = mulberry32((seed ^ 0x85ebca6b) >>> 0);   // C8 (v22.36): the short tail's own stream, so the others hold still
   const out = new Array(n);
   for (let i = 0; i < n; i++) {
     let u1 = rnd();
     if (u1 < 1e-12) u1 = 1e-12;
     const u2 = rnd();
     const r = Math.sqrt(-2 * Math.log(u1));
-    out[i] = { z1: r * Math.cos(2 * Math.PI * u2), z2: r * Math.sin(2 * Math.PI * u2), u: rnd(), v: rndV() };
+    out[i] = { z1: r * Math.cos(2 * Math.PI * u2), z2: r * Math.sin(2 * Math.PI * u2), u: rnd(), v: rndV(), t: rndT() };
   }
   return out;
 }

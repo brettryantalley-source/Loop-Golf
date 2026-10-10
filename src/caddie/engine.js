@@ -411,6 +411,37 @@ export function aimFor(entry, crossYds, cfg) {
   return { patternYds, windYds, aimOffsetYds };
 }
 
+/**
+ * C8 (v22.36, D107): the share of draws that finish 10–20% short on top of the ellipse — Brett's
+ * observed P(finish > overPct short), shrunk toward the model's own by n/(n + SHRINK_K), less what
+ * the model already gives, as a share of the draws that aren't already that short. The model's rate
+ * is the ellipse's (good ring and mishit ring, D92) along the line, at the lie the data came from
+ * (sdMult 1), or σ-distance without one. 0 with no shortPct, or when the model is already as short.
+ */
+export function shortTailPct(e, cfg = DEFAULT_CONFIG) {
+  const T = cfg.SHORT_TAIL || DEFAULT_CONFIG.SHORT_TAIL;
+  const obs = e?.fields?.shortPct, n = e?.shortN;
+  if (!T.on || !Number.isFinite(obs) || !Number.isFinite(n) || n <= 0) return 0;
+  const total = e.carry + e.roll, over = T.overPct * total;
+  const along = (ell) => {
+    const sw = ell.wYds / 2 / ELL80_K, sh = ell.hYds / 2 / ELL80_K, t = ell.tiltDeg * DEG;
+    const sd = Math.hypot(sw * Math.sin(t), sh * Math.cos(t));
+    return sd > 0 ? 1 - phi((over - (ell.dyYds || 0)) / sd) : 0;     // y + = short
+  };
+  let model;
+  if (e.ell80) {
+    const m = e.ell80.mishitRate > 0 && e.ell80.allWYds > 0 ? e.ell80.mishitRate : 0;
+    const all = { ...e.ell80, wYds: e.ell80.allWYds, hYds: e.ell80.allHYds, tiltDeg: e.ell80.allTiltDeg };
+    model = (1 - m) * along(e.ell80) + (m ? m * along(all) : 0);
+  } else {
+    const sd = e.distSd / (e.lieSdMult || 1);
+    model = sd > 0 ? phi(-over / sd) : 0;
+  }
+  const K = cfg.SHRINK_K ?? DEFAULT_CONFIG.SHRINK_K;
+  const target = (n * obs + K * model) / (n + K);
+  return model < 1 && target > model ? (target - model) / (1 - model) : 0;
+}
+
 export function simulateCandidate(cand, ctx, hole, P, samples, trace = null) {
   const cfg = P.config;
   const e = cand.entry;
@@ -428,6 +459,9 @@ export function simulateCandidate(cand, ctx, hole, P, samples, trace = null) {
   const sigmaLat = e.lateralSd * lm.sdMult;             // lie-widened in resolveEntry, quality-widened here
   const sigmaD = e.distSd * lm.sdMult;
   const k = ctx.par - 1 - ctx.shotNo;                     // birdie needs this many more after this shot
+  // C8 (D107): the short tail. Not on a par-4/5 tee shot: shortPct is measured on approaches.
+  const tail = ctx.lieType === "tee" && ctx.par >= 4 ? 0 : shortTailPct(e, cfg);
+  const T = cfg.SHORT_TAIL || DEFAULT_CONFIG.SHORT_TAIL;
   let sumStrokes = 0, sumBirdie = 0, sumPar = 0, sumDouble = 0, trouble = 0, sumLat = 0;
   const n = samples.length;
   for (let i = 0; i < n; i++) {
@@ -440,6 +474,10 @@ export function simulateCandidate(cand, ctx, hole, P, samples, trace = null) {
     } else {
       along = lm.mean + sigmaD * s.z1;
       lat = e.biasLat + lm.wind.crossYds + sigmaLat * s.z2;
+    }
+    if (tail > 0 && s.t < tail) {
+      const depth = T.depthMin + (T.depthMax - T.depthMin) * (s.t / tail);
+      along = lm.mean - (ell ? e.biasDist : 0) - depth * lm.total;
     }
     const tailLat = Math.abs(sigmaLat * s.z2) * 0.5;
     if (s.u < e.bigMiss.left) lat = -e.bigMiss.latYds - tailLat;

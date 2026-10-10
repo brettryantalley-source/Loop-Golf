@@ -65,6 +65,12 @@ export const DEFAULT_CONFIG = Object.freeze({
      roll figures are roll-outs wherever the ball lands, and Shot Pattern's medians (totals) are where
      his approaches finish, so 1 makes an approach's average finish its median. Uncalibrated. */
   GREEN_ROLL_SHARE: 1,
+  /* C8 (v22.36, D107): the short tail. Shot Pattern's shortPct is the share of a club's shots that
+     finish more than `overPct` short of where Brett meant to finish (Q1, Oct 10: the target is where
+     he wants the ball to end up); the simulation's ellipse gives fewer for most clubs. The gap,
+     shrunk by the club's n with SHRINK_K, is drawn as extra shots that finish `depthMin`–`depthMax`
+     of the distance short. Depths uncalibrated (C8: "10–20% of carry"); `on: false` → none. */
+  SHORT_TAIL: { on: true, overPct: 0.10, depthMin: 0.10, depthMax: 0.20 },
   /* Roll by ground conditions, by club family (integration item 6; research §3.1, §3.4). Replaces
      "wet → roll 0 everywhere". Wet ground kills a long club's release (tour driver −4.5 yds medium
      / −9.8 soft vs firm, USGA/R&A 2023) but a wet wedge loses 15–20% spin and releases MORE (Rice,

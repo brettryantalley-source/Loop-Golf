@@ -10,9 +10,14 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 379 tests (v22.35); must be green
+npm install && npm test    # 382 tests (v22.36); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.36 (Oct 10)
+
+The simulation comes up short as often as Brett does: a short tail per club from Shot Pattern's
+`shortPct`, shrunk by n (C8, D107). 382 tests.
 
 ## v22.35 (Oct 10)
 

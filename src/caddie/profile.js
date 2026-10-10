@@ -284,7 +284,16 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
     ell80,
     fields,
     provenance,
+    // C8 (D107): the shots behind shortPct (its own entry's n, or the loop's), for the short tail's shrink
+    shortN: shortNOf(P, provenance.shortPct),
   };
+}
+
+function shortNOf(P, prov) {
+  if (!prov) return null;
+  if (prov.source === "loop" && Number.isFinite(prov.n)) return prov.n;
+  const n = entryAt(P, P.clubs.get(prov.club), prov.swing, prov.lie)?.n;
+  return Number.isFinite(n) ? n : null;
 }
 
 /** Clubs adjacent to `clubId` in clubOrder, nearest first. */
