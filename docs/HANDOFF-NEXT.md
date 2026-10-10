@@ -10,9 +10,15 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 390 tests (v22.39); must be green
+npm install && npm test    # 394 tests (v22.40); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.40 (Oct 10)
+
+The short-game card: off the green within 100 yds the log card's row is Chip · Pitch · Bunker · Wedge;
+with no call off the green the why line gives Brett's own up-and-down and leave (C29, D111). Band
+learning from chips is C33. 394 tests.
 
 ## v22.39 (Oct 10)
 

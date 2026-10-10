@@ -9,7 +9,7 @@
 | `../loop-design/` | The design source: `SPEC.md`, the two approved reference screens as standalone HTML + 2× PNGs, the pencil filter, the logo. What v21 was built from. | reference |
 | `SPEC-caddie.md` | The locked spec for the caddie engine, shot log and learning loop (S1–S5). What the overnight Sep 28–29 build implements. | current |
 | `SPEC-C4-headsup.md` | C4 spec: the heads-up clause and the aim warning. Built in v22.39 (D110). | done |
-| `SPEC-C29-shortgame.md` | C29 spec: the short-game card inside 100 yds. OK'd Oct 10 (the leans). | current |
+| `SPEC-C29-shortgame.md` | C29 spec: the short-game card inside 100 yds. Built in v22.40 (D111); band learning is C33. | done |
 | `SPEC-caddie-UI.md` | UI addendum v1 to the caddie spec — the caddie screen, shot-log capture flow, dispersion ellipse data (§5.4). | current |
 | `PROFILE-v2.md` | Schema and build contract for `src/profile.json` v2, built by `scripts/build-profile.mjs`. Never hand-edit the JSON. | current |
 | `DECISIONS-caddie.md` | Calls made during the overnight caddie build that override the spec. Read before touching `src/caddie/`. | current |

@@ -90,6 +90,21 @@ function defaultTarget(club, linePlayed, recommendation, explicit) {
   return { frame: { x: opt.target.x, y: opt.target.y }, label: opt.target.label ?? null };
 }
 
+/* v22.40 (C29, D111; docs/SPEC-C29-shortgame.md): the short-game card off the green within
+   SHORT_CARD_YDS of the pin. Chip, Pitch and Bunker are shotType "shortGame" with a `shortKind`:
+   they never teach a club's distances (learning.js isShortGameOrPutt). Wedge is the finesse (or full)
+   swing it always was. */
+export const SHORT_KINDS = ["chip", "pitch", "bunker"];
+export const SHORT_CARD_YDS = 100;
+export const CHIP_YDS = 30;
+
+/** The card's pre-set kind: "wedge" from 30 to 100 yds, "chip" inside 30 ("bunker" from sand); null past 100, on the green or with no distance. */
+export function defaultShortKind(startDistanceYds, lie) {
+  if (!Number.isFinite(startDistanceYds) || startDistanceYds > SHORT_CARD_YDS || lie === "green") return null;
+  if (startDistanceYds >= CHIP_YDS) return "wedge";
+  return lie === "sand" ? "bunker" : "chip";
+}
+
 /** finesse if the club is a wedge and the start distance is ≤ 120, else full. */
 function defaultShotType(club, startDistanceYds) {
   if (WEDGES.includes(club) && typeof startDistanceYds === "number" && startDistanceYds <= 120) return "finesse";
@@ -136,7 +151,12 @@ export function newShotRecord(input = {}) {
     ? { frame: { x: intent.target.x, y: intent.target.y }, label: intent.targetLabel ?? null }
     : defaultTarget(club, linePlayed, input.recommendation, input.target);
   const startDistance = input.start?.distanceToPinYds;
-  const shotType = input.shotType ?? defaultShotType(club, startDistance);
+  // C29 (D111): a short-game kind given, or pre-set inside 30 yds, makes the shot "shortGame"
+  const lieNow = input.lie?.confirmed ?? input.lie?.inferred ?? null;
+  const kindIn = SHORT_KINDS.includes(input.shortKind) ? input.shortKind : null;
+  const kindDefault = input.shotType == null && input.shortKind === undefined ? defaultShortKind(startDistance, lieNow) : null;
+  const shortKind = kindIn ?? (SHORT_KINDS.includes(kindDefault) ? kindDefault : null);
+  const shotType = input.shotType ?? (shortKind ? "shortGame" : defaultShotType(club, startDistance));
   const intendedShape = input.intendedShape ?? intent?.shape ?? defaultIntendedShape(club, input.history);
   const curve = input.curve ?? curveForShape(intendedShape);
   const logged = input.logged ?? "quick";
@@ -161,6 +181,7 @@ export function newShotRecord(input = {}) {
     club,
     linePlayed,
     shotType,
+    ...(shotType === "shortGame" && shortKind ? { shortKind } : {}),
     contact: orDefault(input.contact, 0),
     strike: orDefault(input.strike, "center"),
     intendedShape,
@@ -199,7 +220,8 @@ export function bareShotRecord(input = {}) {
       distanceToPinYds: yds, playsLikeYds: null, frame: null,
     },
     target: null,
-    lie: { inferred: null, confidence: null, confirmed: input.lie ?? null, quality: input.quality ?? "standard" },
+    // v22.40 (C29, D111): a mapped hole where the engine had no call still knows the lie it inferred
+    lie: { inferred: input.lieInferred ?? null, confidence: null, confirmed: input.lie ?? null, quality: input.quality ?? "standard" },
     conditions: input.conditions ?? "normal",
     wind: null,
     recommendation: null,

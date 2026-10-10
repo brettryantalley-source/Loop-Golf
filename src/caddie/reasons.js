@@ -175,6 +175,20 @@ export function headsUpClause(h) {
   return null;
 }
 
+/**
+ * v22.40 (C29, D111): the line where the caddie has no call off the green (inside ~30 yds): Brett's
+ * own short-game numbers for the lie and distance, from the profile's band (shortBandFor). Null
+ * without a band. "Rough, 18 yds: up and down 43% · you leave it 7 ft"; under 10 shots it says so.
+ */
+export function shortGameLine(band, yds) {
+  if (!band || !Number.isFinite(yds)) return null;
+  const lie = { fairway: "Fairway", rough: "Rough", bunker: "Bunker" }[band.lie] || "From here";
+  const parts = [];
+  if (Number.isFinite(band.upDownPct)) parts.push(`up and down ${pctText(band.upDownPct)}${Number.isFinite(band.n) && band.n < 10 ? ` (${band.n} shots)` : ""}`);
+  if (Number.isFinite(band.medianProximityFt)) parts.push(`you leave it ${Math.round(band.medianProximityFt)} ft`);
+  return parts.length ? `${lie}, ${Math.round(yds)} yds: ${parts.join(" · ")}` : null;
+}
+
 const HAZARD_WORDS = { water: "water", sand: "sand", trees: "trees", ob: "out of bounds" };
 
 /**

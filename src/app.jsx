@@ -20,18 +20,19 @@ import RIVERPINES_GEOMETRY from "./localGeometry/riverpines.json";
 import HAMPTON_GEOMETRY from "./localGeometry/hampton.json";
 /* v22.16: finished rounds re-read from a verified card (Ironwood 2026-09-28, the API's pars / indexes). */
 import { fixHistoryFromLocalCards, matchResult } from "./historyFix.js";
-import { loadProfile, resolveEntry } from "./caddie/profile.js";
+import { loadProfile, resolveEntry, shortBandFor } from "./caddie/profile.js";
 import { MapLayer, useSatellite, prefetchTiles, satelliteCheck, setImagery, TILE_PREFETCH_ENABLED, renderNodes } from "./caddie/mapLayer.jsx";
 /* Caddie (S3b, v22): the engine, its inputs and the screen's state + render model. */
 import { assembleShotContext, frameBearing } from "./caddie/context.js";
 import { recommend, windEffect, priceTarget, landingDots, aimWarning } from "./caddie/engine.js";
 import { classify } from "./caddie/course.js";
-import { ownLine, aimWarningText } from "./caddie/reasons.js";
+import { ownLine, aimWarningText, shortGameLine } from "./caddie/reasons.js";
 import { fetchWeather, weatherRefreshDue, weatherTempF } from "./caddie/sensors.js";
 import {
   loadLieOverrides, recordLieOverride, routeShot, newShotRecord, quickLog, detailLog, skipShot, closeOutShot,
   saveShot, loadShots, allShots, exportShots, importShots, newPuttRecord, quickMade, PUTT_AXES, bareShotRecord,
   autoShotRecord, shotIntent, curveReadback, resultText, deleteShot, bearingInFrame, normIntent, seedShotPatternRecords, SHOTPATTERN_SOURCE,
+  defaultShortKind,
 } from "./caddie/shotlog.js";
 /* v22.15 shot log v2: the hole's story at the score (docs/SPEC-shotlog-v2.md §4, §5). */
 import { holeReview, reviewNeeded, splitHole, placeShot, recomputeChain, setShotIntent, lineFromTap, deleteStroke, renumber, inferredPutts, reviewAll } from "./caddie/review.js";
@@ -84,7 +85,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.39 · Oct 10";
+const BUILD = "v22.40 · Oct 10";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -1630,6 +1631,9 @@ const capWord = (s) => (s ? String(s).charAt(0).toUpperCase() + String(s).slice(
 const CONTACT_OPTS = [[-2, "−2 super fat"], [-1, "−1 chunky"], [0, "0 pure"], [1, "+1 thin"], [2, "+2 v. thin"]];
 const CURVE_OPTS = [[-2, "−2 big draw"], [-1, "−1 draw"], [0, "0 straight"], [1, "+1 fade"], [2, "+2 big fade"]];
 const SHOTTYPE_OPTS = [["full", "Full"], ["finesse", "Finesse"], ["recovery", "Recovery"]];
+/* v22.40 (C29, D111): the short-game card's row, off the green within 100 yds of the pin */
+const SHORTKIND_OPTS = [["chip", "Chip"], ["pitch", "Pitch"], ["bunker", "Bunker"], ["wedge", "Wedge"]];
+const CARD_WEDGES = new Set(["PW", "GW", "SW", "LW"]);
 const wordOpts = (words) => words.map((w) => [w, capWord(w)]);
 
 const SegPill = ({ label, current, onClick, fontSize = 11 }) => (
@@ -1740,8 +1744,15 @@ function LongCardSheet({ record, clubOrder, onQuick, onSave, onSkip, onClose }) 
   const off = needClub ? { opacity: 0.45 } : null;
   const lowAcc = !!record.derived?.derivedLowAcc;
   const word = curveReadback(record.derived?.curveAuto, draft.intendedShape);
+  // C29 (D111): within 100 yds of the pin, off the green, the shot type row is Chip · Pitch · Bunker · Wedge
+  const shortCard = defaultShortKind(record.start?.distanceToPinYds, record.lie?.confirmed ?? record.lie?.inferred ?? null) != null;
+  const kindNow = draft.shotType === "shortGame" ? (draft.shortKind || "chip") : "wedge";
+  const setKind = (k) => setDraft((d) => (k === "wedge"
+    ? { ...d, shotType: d.shotType && d.shotType !== "shortGame" ? d.shotType : CARD_WEDGES.has(d.club) ? "finesse" : "full", shortKind: null }
+    : { ...d, shotType: "shortGame", shortKind: k }));
   // the fields the card owns; linePlayed: undefined re-derives it for the club picked (§2)
-  const fields = () => ({ club: draft.club, shotType: draft.shotType, contact: draft.contact, strike: draft.strike, intendedShape: draft.intendedShape,
+  const fields = () => ({ club: draft.club, shotType: draft.shotType, shortKind: draft.shotType === "shortGame" ? draft.shortKind ?? null : null,
+    contact: draft.contact, strike: draft.strike, intendedShape: draft.intendedShape,
     startLine: draft.startLine, curve: draft.curve, curveSource: draft.curveSource, linePlayed: undefined });
   return (
     <div data-part="sheet" data-log="full" onClick={onClose}
@@ -1761,7 +1772,9 @@ function LongCardSheet({ record, clubOrder, onQuick, onSave, onSkip, onClose }) 
             {clubOrder.map((id) => <SegPill key={id} label={clubShort(id)} current={id === draft.club} onClick={() => set("club", id)} />)}
           </div>
         </SegField>
-        <SegField title="Shot type"><SegGrid cols={3} options={SHOTTYPE_OPTS} value={draft.shotType} onChange={(val) => set("shotType", val)} /></SegField>
+        {shortCard
+          ? <SegField title="Shot"><div data-part="short-kind"><SegGrid cols={4} options={SHORTKIND_OPTS} value={kindNow} onChange={setKind} /></div></SegField>
+          : <SegField title="Shot type"><SegGrid cols={3} options={SHOTTYPE_OPTS} value={draft.shotType} onChange={(val) => set("shotType", val)} /></SegField>}
         <ScaleSlider title="Contact" options={CONTACT_OPTS} value={draft.contact} onChange={(val) => set("contact", val)} />
         <ScaleSlider title="Strike" options={wordOpts(["heel", "center", "toe"])} value={draft.strike} onChange={(val) => set("strike", val)} />
         <ScaleSlider title="Intended shape" options={wordOpts(["draw", "straight", "fade"])} value={draft.intendedShape} onChange={(val) => set("intendedShape", val)} />
@@ -2126,8 +2139,9 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     roundId: roundId ?? null, courseId, nine: n <= 9 ? "front" : "back", hole: n, shotNo: cs.shotNo,
     gps: cs.ball || null,
     // shot 1 is from the tee, so the card's yardage is the honest start distance with nothing better
-    distanceToPinYds: cs.phase === "yards" ? cs.yards : engine?.inferred?.distances?.pin ?? (cs.shotNo <= 1 && cs.trigger !== "ball" ? h.yards : null),
+    distanceToPinYds: cs.phase === "yards" ? cs.yards : engine?.res?.context?.distances?.pin ?? engine?.inferred?.distances?.pin ?? (cs.shotNo <= 1 && cs.trigger !== "ball" ? h.yards : null),
     lie: cs.chips.lie ?? (cs.shotNo <= 1 ? "tee" : null), quality: cs.chips.quality ?? "standard",
+    lieInferred: engine?.res?.context?.lieType ?? engine?.inferred?.lieType ?? null,
     conditions: cs.conditionsOverride ?? "normal",
     history: allShots(safeStorage()),
   });
@@ -2423,7 +2437,11 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
      On his own target or Line it is his shot's par chance and the aim warning (C4, D110); not in the pin view. */
   // v22.26 (C30, D97): a moved target shows its own par chance, live while it is dragged
   const ownWhy = !pinView && mine && (dragTarget || marks.target || lineDeg != null) ? ownLine(mine) : null;
-  const whyText = ownWhy ? `${ownWhy.text}${warnText ? ` · ${warnText}` : ""}` : v.why && !routeCustom && !pinView ? v.why.text : null;
+  // v22.40 (C29, D111): where the caddie has no call off the green, his own short-game numbers
+  const noCallShort = !ownWhy && !pinView && profile && engine?.res && !engine.res.safe && (v.view === "ready" || v.view === "sameshot")
+    ? (() => { const c = engine.res.context; const yds = c?.distances?.pin; try { return shortGameLine(shortBandFor(profile, yds, c?.lieType || "fairway"), yds); } catch (e) { return null; } })()
+    : null;
+  const whyText = ownWhy ? `${ownWhy.text}${warnText ? ` · ${warnText}` : ""}` : v.why && !routeCustom && !pinView ? v.why.text : noCallShort;
   const lift = whyText ? 48 : 0;
   const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
   const mapLabels = [];

@@ -862,7 +862,9 @@ export function caddieView({
   };
 
   /* details column */
-  const dctx = hasRec || view === "green" ? res?.context?.distances || inferred?.distances || null : null;
+  // v22.40 (C29, D111): with no call (just off a green) the distances still show
+  const noCall = (view === "ready" || view === "sameshot") && !!res?.context && !res?.safe;
+  const dctx = hasRec || view === "green" || noCall ? res?.context?.distances || inferred?.distances || null : null;
   const num = (v) => (Number.isFinite(v) ? String(Math.round(v)) : DASH);
   const distancesStrip = [
     { k: "Front", v: num(dctx?.front) },

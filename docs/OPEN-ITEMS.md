@@ -18,7 +18,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Next code chat:** C29 from its spec (OK'd Oct 10 with the leans), then C32.
+1. **Next code chat:** C32 (the in-round nudges).
 2. **Brett:** send **S9** (the tee stills as files).
 3. **Next round:** the **F** list.
 
@@ -38,12 +38,15 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.39 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.40 · Oct 10** (once merged).
 - **F18.** From the rough (v22.33, D104): the caddie now plays your rough totals, not the fairway
   ones plus extra roll. A 5-iron finishes ~192, the 4-hybrid ~207, a 7-iron ~175, a PW ~136. Note any
   rough call that feels a club off.
 - **F19.** From a fairway bunker (v22.34, D105; sand more than 40 yds from the green's front): the
   caddie now stays out of trouble 9 times in 10, so expect more lay-ups. Say if one feels too timid.
+- **F23.** The short-game card (v22.40, D111): just off a green the why line shows your up-and-down
+  and leave for the lie; log the shot as Chip, Pitch, Bunker or Wedge, and log the putts after it
+  (C33 needs them).
 - **F22.** The heads-up and the aim warning (v22.39, D110): when a club misses the same way 3 of its
   last 4 today, the why line says so; move the target or draw a Line toward trouble and it says how
   often ("water 1 in 4 (Loop's call: 1 in 12)"). Tap the line to hide that for the shot. Say
@@ -133,8 +136,8 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | C14 | History data | S1–S3, Q2 | Sonnet |
 | C15 | Woodmont trace → OSM | C13 (R8: later) | Sonnet |
 | C22 | Tee rings from good shots (2-hybrid ~100 yds deep) | S9 | Sonnet |
-| C29 | A short-game card inside 100 yds | nothing (spec OK'd Oct 10, the leans) | Opus |
 | C32 | Do the in-round nudges help? | nothing | Opus |
+| C33 | Short-game bands learn from Loop's chips | a few rounds of chips + putts logged | Sonnet |
 
 Details for each are under **Build details** below.
 
@@ -285,16 +288,16 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   one of: keep them, raise the bar (more shots, bigger misses), or switch them off. Bring Brett the
   numbers and a recommendation before changing anything. Brett, Oct 10: "add as an item".
 
-### C29. A short-game card inside 100 yds (Brett, Oct 10)
-- "Didn't we talk about a chip screen from 100 yards and in, so we don't confuse chip and finesse
-  shots with full-shot data?" Not in the repo's notes. Today: a wedge from 120 yds in logs as
-  `finesse` (`defaultShotType`, `shotlog.js`), finesse is learned apart from full swings, and
-  `shortGame` / putts never reach the full-swing learning (`isShortGameOrPutt`).
-- Found Oct 10 (C9 build): from just off the green (about 5–15 yds from its edge, any lie, sand
-  included) `recommend()` has no candidate and the caddie says "No club in the profile reaches a
-  useful target from here." The card should cover that range too.
-- **Spec: `docs/SPEC-C29-shortgame.md`, OK'd Oct 10 with the leans** (100 yds, his numbers only
-  inside 30, Chip · Pitch · Bunker · Wedge).
+### C33. Short-game bands learn from Loop's chips (C29, D111)
+- Since v22.40 chips, pitches and bunker shots are logged as `shotType: "shortGame"` with a
+  `shortKind`, and never teach a club's distances. Nothing learns the bands from them yet (the
+  profile's 0–25 / 25–50 bands are Shot Pattern's).
+- **Do:** once a few rounds of chips are logged with their putts, overlay the bands the way D85
+  shrinks the approach buckets: leave (the end's feet to the hole) and up-and-down (holed in two from
+  the chip, from the putt records that follow it), shrunk toward the band with `SHRINK_K`. Check
+  first how often the putts after a chip are actually logged; a missing putt must not read as an
+  up-and-down.
+
 
 ---
 
@@ -313,11 +316,11 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D111.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D112.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (390 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C29, built from
-> `docs/SPEC-C29-shortgame.md` as I OK'd it. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (394 pass).
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C32, the in-round nudges:
+> bring me the numbers and a recommendation first. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.
