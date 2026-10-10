@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 and Brett's test notes of Oct 10 (C20–C29). Duplicates are merged and anything already shipped is
-dropped. State: **v22.23** (C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 363 tests, decisions D1–D94; the next
-decision is **D95**.
+dropped. State: **v22.24** (C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 365 tests, decisions D1–D95; the next
+decision is **D96**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -19,7 +19,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** send **S9** (the tee stills as files).
-2. **Next code chat:** **C31** (shot 1 off the tee box) → **C26–C28** (the logging flow) → **C18 + C20** (the
+2. **Next code chat:** **C26–C28** (the logging flow) → **C18 + C20** (the
    map camera) → **C2 + C11** (course shapes). Then the table's order.
 3. **Next round:** the **F** list.
 
@@ -39,7 +39,7 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.23 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.24 · Oct 10** (once merged).
 - **F14.** Approach clubs (v22.23, D94): every shot now finishes at its total. From 195 on a warm day
   the call should be a 6-iron; from 207 a 5-iron. Note any call that still feels a club off.
 - **F13.** The caddie's line (v22.22): a dashed line from the ball through where to aim; the yellow
@@ -130,7 +130,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | C28 | Putting: Missed → next putt; putt length from the ball | nothing | Sonnet |
 | C29 | A short-game card inside 100 yds | a one-page spec, Brett's OK | Opus |
 | C30 | The par chance stays live as the target moves | nothing | Sonnet |
-| C31 | Shot 1 beside the tee box reads rough, so no driver | nothing | Sonnet |
 
 Details for each are under **Build details** below.
 
@@ -459,20 +458,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 - **Do:** on Custom, the strip reads `6-iron: 48% chance at par` from the dragged target's own price,
   updated while dragging (80 draws) and settled on release (500). Bump BUILD and CACHE.
 
-### C31. Shot 1 beside the tee box reads rough (Brett's screenshot, Oct 10)
-- Hole 3, par 4, 422 yds, shot 1, 20 mph into-left, 59°F: SAFE `2-hybrid`, 163 to target, 261 to pin,
-  26% chance of par; Plays 529.
-- Cause (likely): the ball was placed with `I'm at my ball` (trigger "ball", not "tee"), just off the
-  tee box polygon, so `assembleShotContext` (`src/caddie/context.js`) inferred **rough**. From rough
-  the full driver and 2-iron are tee-only (D86), and the 2-hybrid from rough (carry 206) into 20 mph
-  (−16.5% for the long family, +2% for 59°F) finishes ~163, which matches.
-- **Do:** on shot 1, a ball within ~15 yds of the hole's tee boxes (or of `hole.tee`) is a tee lie
-  whatever the trigger; the Lie chip still overrides. Test: a shot-1 fix 8 yds off the tee box gets
-  the driver back. Bump BUILD and CACHE.
-- Also check: the wind is Open-Meteo's `wind_speed_10m` (10 m up). 20 mph into the wind makes a
-  424-yd hole play 529 (−22% at 20 mph, D-integration item 3). Confirm with Brett that it was that
-  windy before changing anything.
-
 ### C29. A short-game card inside 100 yds (Brett, Oct 10)
 - "Didn't we talk about a chip screen from 100 yards and in, so we don't confuse chip and finesse
   shots with full-shot data?" Not in the repo's notes. Today: a wedge from 120 yds in logs as
@@ -502,6 +487,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 
 ## Paste into the next chat
 > Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (360 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C31, shot 1 beside
-> the tee box. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C26–C28, the logging
+> flow. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.

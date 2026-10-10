@@ -10,8 +10,13 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 363 tests (v22.23); must be green
+npm install && npm test    # 365 tests (v22.24); must be green
 ```
+
+## v22.24 (Oct 10)
+
+Shot 1 within 15 yds of a tee box is a tee lie whatever the trigger (C31, D95): a ball placed with
+`I'm at my ball` just off the box read rough and lost the driver. 365 tests.
 
 ## v22.23 (Oct 10)
 

@@ -124,6 +124,10 @@ export const DEFAULT_CONFIG = Object.freeze({
   LAYUP_MIN_YDS: 50,
   LAYUP_MAX_YDS: 150,
   LAYUP_STEP_YDS: 5,
+  /* v22.24 (C31, D95): on shot 1, a ball this close to one of the hole's tee boxes is a tee lie even
+     when it was placed with "I'm at my ball" (a fix a few yards off the mapped box read rough, and
+     rough takes the full driver and 2-iron away, D86). The Lie chip still wins. */
+  TEE_SNAP_YDS: 15,
   REACH_SHORT_TOLERANCE_YDS: 8, // a club "reaches" if its finish (carry + green roll, D94) ≥ front − this
   FLY_TOLERANCE_YDS: 20,        // prune clubs that finish past the back edge by more than this (§3.4)
 
