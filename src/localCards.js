@@ -67,6 +67,55 @@ export const LOCAL_CLUBS = [
       Green: [2581, 2724, 2525], Red: [2501, 2583, 2298], Family: [1844, 1873, 1839],
     },
   },
+  {
+    /* v22.43 (D114): The Golf Club at Bradshaw Farm (Woodstock, GA), 27 holes, from the printed card
+       (rev. 4/23) Brett sent Oct 10. The API has the same pars and handicaps but older yardages, and
+       only three routings in one order each (Red/White, White/Blue, Blue/Red); the card plays any
+       two nines in either order. Ratings and slopes come from the API routing with both nines
+       (they match the card's). "Red" is the forward tee (the card's women's row). */
+    key: "bradshaw-woodstock",
+    name: "The Golf Club at Bradshaw Farm",
+    match: { name: /bradshaw/i, state: /^(GA|Georgia)$/i, city: /woodstock/i },
+    tees: ["Gold", "Blue", "White", "Red"],
+    nines: [
+      {
+        label: "Red",
+        pars: [4, 5, 4, 4, 3, 4, 5, 3, 4],
+        si:   [3, 7, 6, 5, 9, 2, 4, 8, 1],
+        yards: {
+          Gold:  [435, 498, 409, 361, 150, 410, 495, 154, 428],
+          Blue:  [409, 460, 393, 343, 133, 381, 471, 132, 406],
+          White: [361, 425, 372, 334, 111, 304, 432, 115, 379],
+          Red:   [295, 342, 290, 265,  96, 265, 392,  95, 279],
+        },
+      },
+      {
+        label: "White",
+        pars: [4, 5, 4, 3, 4, 3, 5, 4, 4],
+        si:   [5, 8, 2, 6, 3, 9, 4, 1, 7],
+        yards: {
+          Gold:  [396, 509, 394, 219, 422, 178, 573, 425, 382],
+          Blue:  [368, 484, 381, 190, 396, 163, 549, 400, 355],
+          White: [332, 460, 368, 155, 360, 140, 482, 388, 294],
+          Red:   [253, 387, 326, 119, 303, 102, 442, 240, 264],
+        },
+      },
+      {
+        label: "Blue",
+        pars: [4, 4, 5, 4, 3, 4, 3, 5, 4],
+        si:   [2, 8, 4, 6, 9, 1, 5, 3, 7],
+        yards: {
+          Gold:  [415, 387, 547, 408, 162, 418, 214, 509, 378],
+          Blue:  [381, 337, 512, 362, 143, 389, 196, 475, 358],
+          White: [351, 306, 473, 326, 129, 353, 163, 430, 334],
+          Red:   [276, 279, 432, 274, 106, 305, 100, 370, 283],
+        },
+      },
+    ],
+    check: {
+      Gold: [3340, 3498, 3438], Blue: [3128, 3286, 3153], White: [2833, 2979, 2865], Red: [2319, 2436, 2425],
+    },
+  },
 ];
 
 /** The local card for an API club (search result or full course), or null. */

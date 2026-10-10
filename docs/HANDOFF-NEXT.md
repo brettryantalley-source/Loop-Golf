@@ -10,9 +10,16 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 394 tests (v22.42); must be green
+npm install && npm test    # 398 tests (v22.43); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.43 (Oct 10)
+
+Bradshaw Farm is mapped (D114): a bundled map (`src/localGeometry/bradshaw.json`) names all 27 holes for their
+nine (Red / White / Blue), so the `Course holes` screen no longer asks; White 4 and White 3's green were
+traced in. A local card gives the printed yardages and any two nines in either order. A name-read nine map
+now wins over one saved by hand. 398 tests.
 
 ## v22.42 (Oct 10)
 

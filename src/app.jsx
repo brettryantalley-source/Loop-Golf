@@ -18,6 +18,7 @@ import WOODMONT_GEOMETRY from "./localGeometry/woodmont.json";
 import CHICOPEE_GEOMETRY from "./localGeometry/chicopee.json";
 import RIVERPINES_GEOMETRY from "./localGeometry/riverpines.json";
 import HAMPTON_GEOMETRY from "./localGeometry/hampton.json";
+import BRADSHAW_GEOMETRY from "./localGeometry/bradshaw.json";
 /* v22.16: finished rounds re-read from a verified card (Ironwood 2026-09-28, the API's pars / indexes). */
 import { fixHistoryFromLocalCards, matchResult } from "./historyFix.js";
 import { loadProfile, resolveEntry, shortBandFor } from "./caddie/profile.js";
@@ -85,7 +86,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.42 · Oct 10";
+const BUILD = "v22.43 · Oct 10";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -236,7 +237,7 @@ const safeStorage = () => { try { return window.localStorage; } catch (e) { retu
    - no anchor (lat/lon) to even query from                   -> unavailable, unchanged (nothing to retry)
    v22.16.3: a club with a bundled trace (LOCAL_GEOMETRY) never asks Overpass and ignores a cache that
    predates the trace; the entry is stamped with the trace's version, so a newer trace replaces it once. */
-const LOCAL_GEOMETRY = [WOODMONT_GEOMETRY, CHICOPEE_GEOMETRY, RIVERPINES_GEOMETRY, HAMPTON_GEOMETRY];
+const LOCAL_GEOMETRY = [WOODMONT_GEOMETRY, CHICOPEE_GEOMETRY, RIVERPINES_GEOMETRY, HAMPTON_GEOMETRY, BRADSHAW_GEOMETRY];
 function useCourseMap(course) {
   const apiId = clubIdOf(course);                     // per club: switching routings never refetches
   setImagery(imageryFor(LOCAL_GEOMETRY, apiId));      // v22.16.8: before any tile is prefetched, probed or drawn
@@ -1884,15 +1885,15 @@ function NineMapScreen({ geometry, courseId, routing, initialMap, initialPlay, o
 /* The nine map for this round. Saved per CLUB (v22.7; before that per routing apiId, still read).
    With a routing chosen on Setup: a saved map takes this routing's `_play` from its `_nines`; with
    nothing saved, a confident map read off the routing (nineMapFromRouting) is saved and the screen
-   skipped. Otherwise { ask } — the screen, pre-filled. */
+   skipped. Otherwise { ask } — the screen, pre-filled.
+   v22.43 (D114): a confident map read off the holes' own names wins over a saved one, which may be
+   a pairing saved by hand before the club's holes were named (Bradshaw Farm, Oct 10). */
 function resolveNineMap(storage, geometry, course) {
   const clubId = clubIdOf(course), apiId = apiIdOf(course);
   const nines = course && course.nines;
-  let saved = loadNineMap(storage, clubId) || (String(apiId) !== String(clubId) ? loadNineMap(storage, apiId) : null);
-  if (!saved && nines) {
-    const derived = nineMapFromRouting(geometry, nines);
-    if (derived) saved = saveNineMap(storage, clubId, derived) ? (loadNineMap(storage, clubId) || derived) : derived;
-  }
+  const derived = nines ? nineMapFromRouting(geometry, nines) : null;
+  if (derived) { saveNineMap(storage, clubId, derived); return { map: derived, ask: null }; }
+  const saved = loadNineMap(storage, clubId) || (String(apiId) !== String(clubId) ? loadNineMap(storage, apiId) : null);
   if (!saved) return { map: null, ask: { initialMap: null, initialPlay: nines ? guessPlay(nines) : null } };
   if (!nines) return { map: saved, ask: null };
   const play = playFromRouting(saved, nines);
