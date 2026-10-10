@@ -15,7 +15,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEFAULT_CONFIG, CLUB_FAMILY } from "../src/caddie/config.js";
+import { DEFAULT_CONFIG, CLUB_FAMILY, lieDistAdj } from "../src/caddie/config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -32,6 +32,8 @@ const OUT_PATH = path.join(ROOT, "src/profile.json");
 const ROLL_YDS = DEFAULT_CONFIG.ROLL_YDS;
 // Shot Pattern draws no pattern under 5 shots: σ(α) from fewer is not used (D85).
 const MIN_SIGMA_N = 5;
+// A rough median is read from 5 shots up (R5, D104), the same floor.
+const MIN_ROUGH_N = 5;
 
 // The per-distance buckets E() and B() price from hold 1–16 shots each. Raw, they made the caddie
 // lay up off par-4 tees (Oct 4 PDF: +0.47 SG from 225–250 on 6 shots, −0.45 from 120–130 on 6).
@@ -882,14 +884,24 @@ function buildRoughEntry(id) {
   e.ell80 = null;
   const sheet = sheetFor("rough", id);
   e.extra = {
-    // Stored, not read by the engine until Brett decides (D85): totalMedianYds stays null, so a rough
-    // lie still takes the fairway distance × LIE_DIST_ADJ_FAMILY.
     shotDistances: sheet && sheet.medianYds != null
       ? { n: sheet.n, medianYds: sheet.medianYds, p25Yds: sheet.p25Yds, p75Yds: sheet.p75Yds }
       : null,
     pattern80: sheet?.pattern80 ?? null,
     leaveZones: leaveZonesFor("rough", id),
   };
+  // v22.33 (C7, R5, D104): a rough median measured on 5+ shots is read, shrunk toward the model (the
+  // fairway total × LIE_DIST_ADJ_FAMILY) with SHRINK_K, as D85 shrinks the approach buckets. Under 5
+  // shots, or a finesse wedge (SW, LW: its median is the distances he chose, not the club's),
+  // totalMedianYds stays null and resolveEntry scales the fairway total.
+  const d = e.extra.shotDistances, fw = sheetFor("fairway", id);
+  if (d && d.n >= MIN_ROUGH_N && fw?.medianYds != null && FAIRWAY_FAMILY_SWING[id]?.swingType === "full") {
+    const fam = CLUB_FAMILY[id];
+    const model = fw.medianYds * (1 + lieDistAdj(DEFAULT_CONFIG, "rough", fam)) / (1 + lieDistAdj(DEFAULT_CONFIG, "fairway", fam));
+    const w = d.n / (d.n + SHRINK_K);
+    e.totalMedianYds = round(w * d.medianYds + (1 - w) * model, 1);
+    e.extra.totalShrink = { measuredYds: d.medianYds, n: d.n, modelYds: round(model, 1), k: SHRINK_K };
+  }
   return e;
 }
 
@@ -999,7 +1011,16 @@ const approachAggregate = { fairway: approachAggregateFairway, rough: approachAg
 /* putting                                                                 */
 /* ---------------------------------------------------------------------- */
 
-const putting = puttingRowsRaw.map((r) => {
+// v22.33 (C7, R6, D104): the open-ended top band's three-putt rate (41+ ft: 7 of 10) is shrunk toward
+// the band below it with SHRINK_K, as D85 shrinks the approach buckets: it drives par-5 lay-up
+// pricing, and 70% from 10 putts is a step no green has. The PDF's number stays on `raw`.
+const shrinkTopThreePutt = (r, i, rows) => {
+  if (r.toFt != null || i === 0 || r.threePuttN?.[1] == null) return {};
+  const below = rows[i - 1], n = r.threePuttN[1];
+  const v = (n * r.threePuttPct + SHRINK_K * below.threePuttPct) / (n + SHRINK_K);
+  return { threePuttPct: round(v, 3), raw: { threePuttPct: r.threePuttPct }, shrink: { k: SHRINK_K, toward: `${below.fromFt}-${below.toFt} ft three-putt rate` } };
+};
+const putting = puttingRowsRaw.map((r, i, rows) => {
   const dir = puttingRecordingFor(r.fromFt, r.toFt);
   const row = {
     fromFt: r.fromFt,
@@ -1015,6 +1036,7 @@ const putting = puttingRowsRaw.map((r) => {
     within10Pct: r.within10Pct,
     missLeftPct: dir.missLeftPct,
     missRightPct: dir.missRightPct,
+    ...shrinkTopThreePutt(r, i, rows),
   };
   if (dir.extra) row.extra = dir.extra;
   return row;

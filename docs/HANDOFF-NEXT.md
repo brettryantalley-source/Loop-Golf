@@ -10,9 +10,15 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 372 tests (v22.32); must be green
+npm install && npm test    # 374 tests (v22.33); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.33 (Oct 10)
+
+A rough lie scales the total and the extra roll comes out of the carry (the 5-iron finished 219 from
+the rough; now 192); 4Hy, 5i, PW read Shot Pattern's rough medians shrunk toward the model; the 41+ ft
+three-putt rate is shrunk from 70% to 51.7% (C7, R5, R6, D104). 374 tests.
 
 ## v22.32 (Oct 10)
 

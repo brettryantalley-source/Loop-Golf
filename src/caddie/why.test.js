@@ -111,9 +111,12 @@ test("today's clause: under half a club says the yards; another family's nudge s
 
 const chicopee = parseOverpass(toOverpass(JSON.parse(readFileSync(join(here, "../localGeometry/chicopee.json"), "utf8"))));
 const village1 = (() => { const k = Object.keys(chicopee.holes).find((x) => chicopee.holes[x].name === "Village 1"); return buildHole(chicopee, k, { par: 4 }); })();
+// v22.33 (D104): with the 41+ ft three-putt rate at 52%, Village 1's tee shot is the 2-hybrid on price
+// alone; Mill 3 is a tee shot the par ranking still decides
+const mill3 = (() => { const k = Object.keys(chicopee.holes).find((x) => chicopee.holes[x].name === "Mill #3"); return buildHole(chicopee, k, { par: 4 }); })();
 
 test("recommend(): `why` names the deciding rule and the shot SAFE would have been without it", () => {
-  const tee = recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee", par: 4 }, village1, P);
+  const tee = recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee", par: 4 }, mill3, P);
   assert.deepEqual(tee.strategy, ["par"]);
   assert.equal(tee.why.rule, "par");
   assert.ok(tee.why.alt && tee.why.alt.club !== tee.safe.club, `without the par ranking: ${tee.why.alt?.club}`);

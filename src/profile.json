@@ -489,7 +489,7 @@
           },
           "rough": {
             "n": 4,
-            "totalMedianYds": null,
+            "totalMedianYds": 206.7,
             "p25Yds": null,
             "p75Yds": null,
             "carryMedianYds": null,
@@ -557,6 +557,12 @@
                   "long": 0,
                   "wellLong": 0
                 }
+              },
+              "totalShrink": {
+                "measuredYds": 205,
+                "n": 6,
+                "modelYds": 208.8,
+                "k": 5
               }
             }
           }
@@ -664,7 +670,7 @@
           },
           "rough": {
             "n": 6,
-            "totalMedianYds": null,
+            "totalMedianYds": 191.8,
             "p25Yds": null,
             "p75Yds": null,
             "carryMedianYds": null,
@@ -727,6 +733,12 @@
                   "long": 0,
                   "wellLong": 0
                 }
+              },
+              "totalShrink": {
+                "measuredYds": 186,
+                "n": 6,
+                "modelYds": 198.7,
+                "k": 5
               }
             }
           }
@@ -1453,7 +1465,7 @@
           },
           "rough": {
             "n": 10,
-            "totalMedianYds": null,
+            "totalMedianYds": 135.6,
             "p25Yds": null,
             "p75Yds": null,
             "carryMedianYds": null,
@@ -1521,6 +1533,12 @@
                   "long": 0.44,
                   "wellLong": 0
                 }
+              },
+              "totalShrink": {
+                "measuredYds": 135,
+                "n": 9,
+                "modelYds": 136.7,
+                "k": 5
               }
             }
           }
@@ -2957,7 +2975,7 @@
       "n": 10,
       "makePct": 0,
       "sgPer18": -0.26,
-      "threePuttPct": 0.7,
+      "threePuttPct": 0.517,
       "threePuttN": [
         7,
         10
@@ -2968,6 +2986,13 @@
       "within10Pct": 0.2,
       "missLeftPct": 0.3,
       "missRightPct": 0.7,
+      "raw": {
+        "threePuttPct": 0.7
+      },
+      "shrink": {
+        "k": 5,
+        "toward": "25-40 ft three-putt rate"
+      },
       "extra": {
         "direction": {
           "missLeft": 3,

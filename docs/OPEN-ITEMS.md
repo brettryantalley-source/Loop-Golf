@@ -19,7 +19,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** send **S9** (the tee stills as files).
-2. **Next code chat:** the table's order (C7, C9, C25 need nothing from Brett). Then the table's order.
+2. **Next code chat:** the table's order (C9, C25 need nothing from Brett). Then the table's order.
 3. **Next round:** the **F** list.
 
 ---
@@ -38,7 +38,10 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.32 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.33 · Oct 10** (once merged).
+- **F18.** From the rough (v22.33, D104): the caddie now plays your rough totals, not the fairway
+  ones plus extra roll. A 5-iron finishes ~192, the 4-hybrid ~207, a 7-iron ~175, a PW ~136. Note any
+  rough call that feels a club off.
 - **F14.** Approach clubs (v22.23, D94): every shot now finishes at its total. From 195 on a warm day
   the call should be a 6-iron; from 207 a 5-iron. Note any call that still feels a club off.
 - **F13.** The caddie's line (v22.22): a dashed line from the ball through where to aim; the yellow
@@ -114,7 +117,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | # | Build | Waits on | Model |
 |---|---|---|---|
 | C4 | Heads-up + aim warning | nothing (C3 shipped, D93) | Opus |
-| C7 | Profile: rough distances + the 41-ft putt step | nothing (R5, R6 accepted) | Sonnet |
 | C8 | Short / long miss model | nothing (Q1 answered) | Opus |
 | C9 | Fairway bunkers as "no hero" lies | nothing | Sonnet |
 | C10 | Re-tune the `STRATEGY` thresholds | a round of F7 notes | Opus |
@@ -173,29 +175,6 @@ reaction before any code.
 - Both read logged shot ends, never assumed ones (D87). F6 is what feeds them.
 - **Tests:** replay the Oct 3 Chicopee round and check each heads-up against what happened. Bump
   BUILD and CACHE.
-
-### C7. Profile: rough distances + the 41-ft putt step (R5, R6)
-- **Rough:** today a rough lie plays the fairway median × `LIE_DIST_ADJ_FAMILY`
-  (`src/caddie/config.js:96`: wedge/short +2%, mid −4%, long −8%). The measured medians sit unread in
-  `src/profile.json` at `clubs[].entries.full.rough.extra.shotDistances`:
-
-  | Club | Fairway | Model (≈) | Rough measured | n |
-  |---|---|---|---|---|
-  | 4Hy | 227 | 209 | 205 | 6 |
-  | 5i | 207 | 199 | **186** | 6 |
-  | 7i | 182 | 175 | 181 | 3 |
-  | 8i | 169 | 172 | **179** | 4 |
-  | 9i | 152 | 155 | 151 | 4 |
-  | PW | 134 | 137 | 135 | 9 |
-  | GW | 119 | 121 | **131** | 3 |
-
-  R5's lean: use the measured median where n ≥ 5 (4Hy, 5i, PW), shrunk toward the model with
-  `SHRINK_K` 5, the same rule D85 applies to the approach buckets.
-- **Putting:** 16–24 ft 10% (4/40) · 25–40 ft 15.2% (5/33) · **41+ ft 70% (7/10)**. The 41+ step
-  drives par-5 lay-up pricing. R6's lean: (10 × 0.70 + 5 × 0.152) / 15 ≈ 52%. Revisit if Tangent's
-  longer history gives counts.
-- `src/profile.json` is generated: change `scripts/build-profile.mjs` (or the engine, for rough; pick
-  one and record the D-number), run `npm run build:profile`, then `--check`.
 
 ### C8. Short / long miss model (D77 item 3; Q1 answered Oct 10)
 - **Q1 (Brett, Oct 10):** "the target is always where I want the ball to end up": on the hole for a
@@ -376,11 +355,11 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D93.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D105.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (360 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C7, the profile's rough
-> distances and the 41-ft putt step. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (374 pass).
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C9, fairway bunkers as
+> "no hero" lies. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.

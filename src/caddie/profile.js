@@ -206,16 +206,20 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
   const srcLie = provenance.totalMedianYds.lie;
   // Carry: derive from total unless a measured carry exists on the same lie the total came from.
   const measured = firstNonNull(chain, "carryMedianYds");
-  let carry = measured && measured.lie === srcLie && entryAt(P, club, swing, srcLie)?.carrySource === "measured"
-    ? measured.value
-    : carryFromTotal(fields.totalMedianYds, swing, family, srcLie, cfg, false, clubId);
+  const measuredCarry = !!(measured && measured.lie === srcLie && entryAt(P, club, swing, srcLie)?.carrySource === "measured");
+  let carry = measuredCarry ? measured.value : carryFromTotal(fields.totalMedianYds, swing, family, srcLie, cfg, false, clubId);
   // Lie adjustment when the distance came from a different lie than the one we are on
   // (per family for rough: integration item 7).
   const adjReq = lieDistAdj(cfg, lie, family), adjSrc = lieDistAdj(cfg, srcLie, family);
   const lieFactor = (1 + adjReq) / (1 + adjSrc);
-  carry = carry * lieFactor;
-  const sdReq = cfg.LIE_SD_MULT[lie] ?? 1, sdSrc = cfg.LIE_SD_MULT[srcLie] ?? 1;
-  const sdMult = sdReq / sdSrc;
+  // v22.33 (C7, D104): Brett's numbers are TOTALS (D94), so the lie scales the total, and the extra
+  // roll-out off a rough lie (ROLL_LIE_MULT, D33) comes out of the carry. Before, the lie scaled the
+  // carry and the tripled roll went on top: a 5-iron from the rough finished at 219 against a
+  // measured 186.
+  const rollOut = Math.max(0, fields.totalMedianYds - carry);           // the source lie's roll-out
+  const rollLie = rollOut * (cfg.ROLL_LIE_MULT?.[lie] ?? 1);
+  const spreadBase = carry * lieFactor;   // σ keep their pre-C7 base: the mean moved, not the spread
+  carry = measuredCarry ? spreadBase : Math.max(0, fields.totalMedianYds * lieFactor - rollLie);
 
   // Lateral σ: same club chain → adjacent clubs same swing/lie → scratch benchmark.
   let lateralSdDeg = fields.lateralSdDeg;
@@ -233,8 +237,13 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
     if (lateralSdDeg == null) return null;
     fields.lateralSdDeg = lateralSdDeg;
   }
+  // The lie widening is relative to the lie the spread was measured on (v22.33, D104: a rough total
+  // is now measured, but the club's σ still come from fairway and tee shots).
+  const sdLie = provenance.lateralSdDeg?.lie ?? srcLie;
+  const sdReq = cfg.LIE_SD_MULT[lie] ?? 1, sdSrc = cfg.LIE_SD_MULT[sdLie] ?? 1;
+  const sdMult = sdReq / sdSrc;
 
-  const distSd = fields.distSdYds != null ? fields.distSdYds * (carry / fields.totalMedianYds) : cfg.DIST_SD_PCT[family] * carry;
+  const distSd = fields.distSdYds != null ? fields.distSdYds * (spreadBase / fields.totalMedianYds) : cfg.DIST_SD_PCT[family] * spreadBase;
   if (fields.distSdYds == null) provenance.distSdYds = { config: "DIST_SD_PCT" };
   const bmRaw = firstNonNull(chain, "bigMiss");
   const bigMiss = {
@@ -248,7 +257,7 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
   // as far (Brett, Sep 29; D33) — times the ground-conditions multiplier (item 6). 0 off a tee
   // for tee clubs.
   const conditions = conditionsOf(opts);
-  const roll = Math.max(0, fields.totalMedianYds - carry / lieFactor) * (cfg.ROLL_LIE_MULT?.[lie] ?? 1) * rollCondMult(cfg, conditions, family);
+  const roll = rollLie * rollCondMult(cfg, conditions, family);
   // §5 UI addendum: Shot Pattern's 80% ellipse is the dispersion core where it exists.
   const ellHit = firstNonNull(chain, "ell80");
   const ell80 = ellHit ? { ...ellHit.value, sdMult } : null;
@@ -266,7 +275,7 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
     total: fields.totalMedianYds,
     roll,
     distSd: distSd * sdMult,
-    lateralSd: carry * Math.tan((lateralSdDeg * Math.PI) / 180) * sdMult,   // yards, lie-widened like distSd
+    lateralSd: spreadBase * Math.tan((lateralSdDeg * Math.PI) / 180) * sdMult,   // yards, lie-widened like distSd
     lieSdMult: sdMult,
     lateralSdDeg,
     biasDist: fields.biasDistYds ?? 0,

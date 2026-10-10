@@ -121,8 +121,9 @@ test("T48 Brett's numbers overrule the pin rule only on more trouble or a big co
 
 test("T49 no hero golf: from the trees SAFE stays out of trouble 9 times in 10; the hero shot is still shown as AGGRESSIVE", () => {
   // just inside the tree line (Oct 4 profile, D85: from −35, 260 the plain pick was no longer a hero shot;
-  // v22.23, D94: from −32, 250 the plain pick is a clean wedge, so 30 yds farther back)
-  const raw = { shotNo: 2, ball: { x: -32, y: 280 }, lieType: "recovery" };
+  // v22.23, D94: from −32, 250 the plain pick is a clean wedge, so 30 yds farther back; v22.33, D104:
+  // the extra roll off a bad lie comes out of the carry, and from −32, 280 the plain pick is clean too)
+  const raw = { shotNo: 2, ball: { x: -35, y: 300 }, lieType: "recovery" };
   const r = recommend(raw, treesLeft, P), off = recommend(raw, treesLeft, Poff);
   assert.ok(off.safe.troubleRate > DEFAULT_CONFIG.STRATEGY.noHeroMaxTrouble, `the plain pick is a hero shot (${off.safe.troubleRate})`);
   assert.ok(r.strategy.includes("no-hero"), JSON.stringify(r.strategy));

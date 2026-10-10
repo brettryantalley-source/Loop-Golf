@@ -55,3 +55,31 @@ test("C21 (v22.29): the ring's dots are the simulation's own finishes — 40, fi
   assert.ok(med(moved.map((d) => d.x)) - med(a.map((d) => d.x)) > 10, "they follow the target");
   assert.deepEqual(landingDots(ctx, noWaterPar4, P, { ...opt, club: "nope" }), []);
 });
+
+test("C7 (v22.33, D104): a rough lie scales the TOTAL; 5+ measured rough shots are read, shrunk toward it", () => {
+  const fin = (club, lie) => { const e = resolveEntry(P, club, "full", lie); return e.carry + e.roll; };
+  // measured on 5+ shots: (n · measured + 5 · model) / (n + 5)
+  const r5 = RAW.clubs.find((c) => c.id === "5i").entries.full.rough;
+  assert.deepEqual(r5.extra.totalShrink, { measuredYds: 186, n: 6, modelYds: 198.7, k: 5 });
+  assert.equal(r5.totalMedianYds, 191.8);
+  assert.ok(Math.abs(fin("5i", "rough") - 191.8) < 1e-9, "the 5-iron from the rough finishes at 192, not 219");
+  assert.ok(Math.abs(fin("4Hy", "rough") - 206.7) < 1e-9);
+  // under 5 shots, the fairway total × the family's rough adjustment
+  assert.ok(Math.abs(fin("7i", "rough") - 182 * 0.96) < 1e-9);
+  assert.ok(Math.abs(fin("8i", "rough") - fin("8i", "fairway") * 1.02) < 1e-9);
+  // a finesse wedge keeps the model: its median is the distances he chose
+  assert.equal(RAW.clubs.find((c) => c.id === "LW").entries.finesse.rough.totalMedianYds, null);
+  // the extra roll comes out of the carry, never on top of the total
+  for (const c of ["4Hy", "5i", "6i", "7i", "8i", "9i", "PW", "GW"]) {
+    const ro = resolveEntry(P, c, "full", "rough"), fw = resolveEntry(P, c, "full", "fairway");
+    assert.ok(ro.roll >= fw.roll && ro.carry <= fw.carry * 1.02 + 1e-9, `${c}: carry ${ro.carry} roll ${ro.roll}`);
+    assert.ok(ro.lateralSd > fw.lateralSd, `${c}: the rough still widens the spread`);
+  }
+});
+
+test("C7 (v22.33, R6, D104): the 41+ ft three-putt rate is shrunk toward the 25–40 ft rate; the PDF's 70% stays on raw", () => {
+  const top = RAW.putting.find((r) => r.toFt == null), below = RAW.putting.find((r) => r.toFt === 40);
+  assert.equal(top.raw.threePuttPct, 0.7);
+  assert.equal(top.threePuttPct, Math.round(((10 * 0.7 + 5 * below.threePuttPct) / 15) * 1000) / 1000);
+  assert.equal(top.threePuttPct, 0.517);
+});

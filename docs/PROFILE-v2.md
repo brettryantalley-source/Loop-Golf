@@ -134,7 +134,7 @@ Swing-type assignment (Brett's notes, spec §3.8 / Appendix A). Shot Pattern doe
 - `carryMedianYds = totalMedianYds − ROLL_YDS[swingType][family]` (import `DEFAULT_CONFIG` from `src/caddie/config.js`; do not copy the numbers), rounded to an integer; `null` when the total is null. `carrySource: "derived"`.
 - `bigMiss: { left: 0, right: 0, latYds: null }`, `penaltyPct: 0, recoveryPct: 0, penaltyCount: 0`, `mishitPct: null`, `distSdYds: null`.
 
-**Rough entries (`*.rough`).** Report §05 FROM ROUGH — BY CLUB → `n`, `girPct`, `sgPerShot`, `bigMissPct`, `medianProximityFt`. `totalMedianYds`, `carryMedianYds`, `lateralSdDeg`, `leftPct`, `rightPct`, `shortPct`, `ell80` stay `null`: the rough sheet's measured distance and pattern are stored as `extra = { shotDistances: { n, medianYds, p25Yds, p75Yds }, pattern80, leaveZones }` and **not read by the engine** until Brett decides (D85). Clubs absent from the rough table (6i, 2i) → `rough: null`.
+**Rough entries (`*.rough`).** Report §05 FROM ROUGH — BY CLUB → `n`, `girPct`, `sgPerShot`, `bigMissPct`, `medianProximityFt`. `carryMedianYds`, `lateralSdDeg`, `leftPct`, `rightPct`, `shortPct`, `ell80` stay `null`: the rough sheet's measured distance and pattern are stored as `extra = { shotDistances: { n, medianYds, p25Yds, p75Yds }, pattern80, leaveZones }`. `totalMedianYds` (v22.33, R5, D104) is the measured median where the sheet has 5+ shots and the club is a full swing (4Hy, 5i, PW), shrunk toward the model — the fairway total × `LIE_DIST_ADJ_FAMILY.rough` — as `(n · measured + SHRINK_K · model) / (n + SHRINK_K)`, with `extra.totalShrink = { measuredYds, n, modelYds, k }`; otherwise `null` and `resolveEntry` scales the fairway total. Clubs absent from the rough table (6i, 2i) → `rough: null`.
 
 **Tee entries for non-tee clubs** → `null` (Shot Pattern pools tee & fairway for approach clubs; the engine falls back to the fairway entry).
 
@@ -173,7 +173,9 @@ proximity is pooled per yard of the bucket's midpoint. The PDF's values stay on 
 ```
 
 Buckets: 0–3, 4–6, 7–9, 10–15, 16–24, 25–40, 41+ (`toFt: null` for 41+). `threePuttN` is the
-"(0/22)" pair. Feet as printed. Missing (e.g. "—") → `null`.
+"(0/22)" pair. Feet as printed. Missing (e.g. "—") → `null`. The open-ended top band's
+`threePuttPct` (v22.33, R6, D104) is shrunk toward the band below it with `SHRINK_K`
+(41+ ft: 7 of 10 → 0.517); the printed rate stays on `raw.threePuttPct`, with `shrink = { k, toward }`.
 
 ### ShortBand — report §06
 
