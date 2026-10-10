@@ -2,7 +2,8 @@
 
 The one list of everything still unresolved. It merges the eleven Loop chats open on Oct 4: seven
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
-morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22). Duplicates are merged and anything already shipped is
+morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
+and Brett's test notes of Oct 10 (C20–C29). Duplicates are merged and anything already shipped is
 dropped. State: **v22.22** (C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 360 tests, decisions D1–D93; the next
 decision is **D94**.
 
@@ -17,8 +18,9 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Brett:** answer **Q1**, then say **"go with the leans"** or change any **R**.
-2. **Next code chat:** **C2 → C4**, then **C19**.
+1. **Brett:** send **S9** (the tee stills as files).
+2. **Next code chat:** **C23** (club calls) → **C26–C28** (the logging flow) → **C18 + C20** (the
+   map camera) → **C2 + C11** (course shapes). Then the table's order.
 3. **Next round:** the **F** list.
 
 ---
@@ -26,23 +28,15 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Brett
 
 ### Questions only you can answer
-- **Q1.** In Shot Pattern, do you move the approach target, or leave it where the app puts it (green
-  centre)? → decides C8.
 - **Q2.** Two card totals disagree with GHIN. Beachwood 9/2: 84 (card) or 86 (GHIN)? Chicopee
   Mill/School 7/17: 80 or 81? → C14.
 - **Q3.** Woodmont: which holes have OB, and on which side? → C13.
 
-### Recommendations ("go with the leans" accepts all of them)
-
-| # | Decision | Lean | Other options |
-|---|---|---|---|
-| R2 | Course shapes on the satellite map (C2) | **Muted** paper tints, plus a Shapes toggle | Bold, Tangent-style |
-| R4 | Chicopee imagery (C11) | **A:** leaf-off (Wayback 49059), fewest shadows | B: leaf-on (64001), live now |
-| R5 | Rough distances (C7) | **Measured** where n ≥ 5, shrunk toward the model. Only the 5-iron moves much: 199 → ~192 | Keep the model · use every club |
-| R6 | 3-putts from 41+ ft: 70% on only 10 putts (C7) | **Shrink** toward the 25–40 ft rate → ~52% | Keep 70% · cap it |
-| R7 | Retry when OSM had no holes for a club (C6) | **Yes** | Leave it |
-| R8 | Upload the Woodmont trace to OSM (C15) | **Later**, after C13 | Now |
-| R9 | Native app for a gap-free GPS trail (P1) | **Not now**; live with the gaps | Capacitor wrapper: $99/yr Apple Developer, plus a Mac or a macOS build runner |
+### Recommendations: all accepted Oct 10 ("go with the leans")
+R2 muted course shapes plus a Shapes toggle (C2) · R4 leaf-off Chicopee imagery, Wayback 49059 (C11)
+· R5 measured rough distances where n ≥ 5, shrunk toward the model (C7) · R6 the 41+ ft three-putt
+rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont upload to OSM later,
+after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
 - **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.22 · Oct 10** (once merged).
@@ -87,11 +81,17 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 - **S3.** GHIN's hole-by-hole for Bear Slide 6/10 and Cider Ridge 6/6. → C14, after S2.
 - **S4.** 18 Shot Pattern hole screenshots in the plain 2D view: Chicopee Village 1–9 and Mill 1–9.
   The Village 1–8 screenshots sent Oct 3 never reached the repo. Green slope maps are optional. → C12.
-- **S5.** Shot Pattern's tee-shot dispersion screens for Driver, 2-iron and 4-hybrid (or just more
-  4-hybrid shots), plus the Driving tab's landing zones (Casual · Last 10). → a profile rebuild.
+- **S5.** The Driving tab's landing zones (Casual · Last 10). The tee dispersion screens arrived
+  Oct 10 (S9). → a profile rebuild.
 - **S6.** A launch-monitor range session: carry for every club, the 2-iron partial, and wedge ½ and
   ¾ swings. → a profile rebuild.
 - **S7.** Your wedge lofts. → a profile rebuild.
+- **S9.** The Oct 10 tee stills (Driver, 2-iron, 2-hybrid, 4-hybrid: the dispersion plot and the
+  Shot Distances bar for each) again, attached in a code chat so they land as files for
+  `scripts/read-carries.py` and `scripts/fit-ell80.py`. Send them in a message of their own, after
+  Claude's reply has finished: ones sent while Claude is still working arrive as pictures only. The
+  first eight (and their re-send) came through as pictures only;
+  their numbers are under C22. The two sent after them are in `data/raw/2026-10-10/`. → C22.
 - **S8.** Optional: fix two Shot Pattern mis-tags at the source. Lake Arrowhead 9/12 hole 8 reads
   "9i · 287 yds"; Hampton 9/20 hole 6 reads "Unknown Club · 86 yds".
 
@@ -103,21 +103,33 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C2 | Course shapes on the satellite map | R2 | Sonnet |
+| C2 | Course shapes on the satellite map | nothing (R2: muted + toggle) | Sonnet |
 | C4 | Heads-up + aim warning | nothing (C3 shipped, D93) | Opus |
 | C5 | Ironwood test-mode dead end | nothing | Sonnet |
-| C6 | Retry an empty OSM answer | R7 | Opus |
-| C7 | Profile: rough distances + the 41-ft putt step | R5, R6 | Sonnet |
-| C8 | Short / long miss model | Q1 | Opus |
+| C6 | Retry an empty OSM answer | nothing (R7: yes) | Opus |
+| C7 | Profile: rough distances + the 41-ft putt step | nothing (R5, R6 accepted) | Sonnet |
+| C8 | Short / long miss model | nothing (Q1 answered) | Opus |
 | C9 | Fairway bunkers as "no hero" lies | nothing | Sonnet |
 | C10 | Re-tune the `STRATEGY` thresholds | a round of F7 notes | Opus |
-| C11 | Chicopee imagery switch | R4 | rides with C2 |
+| C11 | Chicopee imagery switch | nothing (R4: A) | rides with C2 |
 | C12 | Chicopee hand-trace, Village + Mill | S4 | Opus |
 | C13 | Woodmont calibration | F9, Q3 | Sonnet |
 | C14 | History data | S1–S3, Q2 | Sonnet |
-| C15 | Woodmont trace → OSM | C13, R8 | Sonnet |
+| C15 | Woodmont trace → OSM | C13 (R8: later) | Sonnet |
 | C18 | Pinch to zoom on the caddie map | nothing | Opus |
 | C19 | Remove `Enter yards` | nothing (R10 answered: remove) | Sonnet |
+| C20 | The map frames the suggested shot | nothing | Opus, with C18 |
+| C21 | Dots inside the ring | nothing | Sonnet |
+| C22 | Tee rings from good shots (2-hybrid ~100 yds deep) | S9 | Sonnet |
+| C23 | Approach club calls a club long | nothing | Opus |
+| C24 | Start line follows the shot shape | nothing | Opus |
+| C25 | Per-club miss summary | nothing | Sonnet |
+| C26 | Test mode: tap the next ball after each log | nothing | Sonnet |
+| C27 | After Log shot, move on to the next shot | nothing | Opus |
+| C28 | Putting: Missed → next putt; putt length from the ball | nothing | Sonnet |
+| C29 | A short-game card inside 100 yds | a one-page spec, Brett's OK | Opus |
+| C30 | The par chance stays live as the target moves | nothing | Sonnet |
+| C31 | Shot 1 beside the tee box reads rough, so no driver | nothing | Sonnet |
 
 Details for each are under **Build details** below.
 
@@ -224,7 +236,11 @@ reaction before any code.
 - `src/profile.json` is generated: change `scripts/build-profile.mjs` (or the engine, for rough; pick
   one and record the D-number), run `npm run build:profile`, then `--check`.
 
-### C8. Short / long miss model (D77 item 3; Q1)
+### C8. Short / long miss model (D77 item 3; Q1 answered Oct 10)
+- **Q1 (Brett, Oct 10):** "the target is always where I want the ball to end up": on the hole for a
+  middle pin, or inside 75 yds when it's safe; toward the safe side of the green otherwise (left of a
+  right pin with trouble right). So Shot Pattern's misses are measured against where he meant to
+  finish, and the first branch below applies.
 - Shot Pattern measures approach proximity and leave zones against **its target, not the hole**:
   130 of 159 approaches across 8 rounds finish a different distance from each (Oct 3 hole 14: 7 ft
   from the target, 42 ft from the hole). D77 assumed the pin, which is wrong.
@@ -361,6 +377,129 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   is the only action. Marked-green mode (no map, GPS working) is unaffected.
 - Bump BUILD and CACHE.
 
+### C20. The map frames the suggested shot (Brett, Oct 10)
+- "The map should automatically be zoomed into the hole where the suggested shot is in frame."
+  Today `cameraPoints` (`src/caddie/overlay.js`) fits the ball, the whole green and BOTH options'
+  rings, so a tee shot with a far AGGRESSIVE ring frames most of the hole.
+- **Do:** frame the ball, the shown option's ring and its target (plus the pin on a lay-up); the
+  other option may fall off screen. Build with C18 (pinch to zoom): one camera change, one test pass.
+  Bump BUILD and CACHE.
+
+### C21. Dots inside the ring (Brett, Oct 10)
+- "Dots inside the dispersion circle to give a better idea of what part is more likely to be hit."
+- **Do:** draw a fixed sample of the simulation's own landings (e.g. 40 of the 500 draws, same seed,
+  so the dots don't jump) as small printed dots under the rings, mishits included. Shapes only (T37).
+  Bump BUILD and CACHE.
+
+### C22. Tee rings from good shots (S9; Brett, Oct 10)
+- The 2-hybrid's ring is ~100 yds deep: "mishits should be outliers"; the ring should run from
+  "slightly below average to above average". Shot Pattern's own 80% ring off the tee is just as deep;
+  its bar shows a few mishits at 150–200 yds stretching it.
+- **Oct 10 tee screens** (Shot Pattern, Driving, 80% coverage):
+
+  | Club | Shots | Ring W × D | Median | 25th–75th | Longest | Avg offline | 68% / 95% arc | Big miss |
+  |---|---|---|---|---|---|---|---|---|
+  | Dr | 117 | 105 × 98 | 289 | 275–303 | 378 | 23 | 59 / 108 | 19% |
+  | 2i | 26 | 88 × 90 | 255 | 240–261 | 277 | 21 | 51 / 93 | 15% |
+  | 2Hy | 12 | 80 × 96 | 253 | 236–264 (bar 243–265) | 268 | 17 | 36 / 72 | 25% |
+  | 4Hy | 16 | 87 × 69 | 232 | 223–245 (bar 223–246) | 284 | 22 | 46 / 75 | 31% |
+
+- **2-hybrid from the fairway, Oct 10** (`data/raw/2026-10-10/sp-2hy-approach-pattern.webp`): 7 shots,
+  ring 66 × 112 yds, median 233, 25th–75th 214–243. Too deep the same way.
+- **Do:** with the stills as files (S9), run D92's method on the tee clubs and the 2-hybrid: carries off the bar,
+  good shots within the 20-yd window, the good ring from those dots, mishits drawn from the printed
+  ring at `mishitRate`. The driver gets a fitted ring for the first time (today it is drawn from its
+  σs, capped at 70 yds). Rebuild the profile (`npm run build:profile`, `--check`). Record a D-number.
+
+### C23. Approach club calls run a club long (Brett, Oct 10)
+- "My 4-hybrid was suggested from 185 to 207 yards. That should not be the club." Brett, from 195 in
+  the fairway to a middle pin: "when it's hot, a 6-iron; trouble long, a 6; trouble short, maybe a 5."
+- The profile: 6i carry 185 + roll 9 = 194 · 5i 197 + 10 = 207 · 4Hy 215 + 12 = 227 (fairway). A
+  green-bound shot is judged on carry, and a ball that lands on the green **never rolls** in
+  `simulateCandidate` (`if (lie !== "green" && roll > 0)`), so from 195 the 6-iron lands 10 yds short
+  of the middle and stays there, and the caddie prefers the 5-iron or more, where Brett plays the
+  6-iron's 194 total. Below 85°F (D79's profile
+  temperature) every shot plays longer still, which pushes the call up to the 4-hybrid.
+- **Shot Pattern's Approach tab, Oct 10** (`data/raw/2026-10-10/sp-approach-club-distances.webp`;
+  Brett: "a great example of club distance medians to use"): 2Hy 233 · 5i 204 · 6i 197 · 7i 181 ·
+  8i 168 · 9i 153 · PW 136 · GW 120 · SW 98 · LW 84. These match the profile's fairway totals within
+  3 yds except LW (84 vs 78), so the gap is the carry / no-roll treatment, not the medians: Brett plays
+  the median as where the ball finishes.
+- **Village 1, 6% chance of par** (Brett, Oct 10; the screen can't be recovered): run `recommend`
+  from Village 1's tee and from 250 / 200 / 150 / 100 yds on its line and fairway, and explain any
+  par chance under 15%. Likely the false trees from shadows (C12).
+- **Do:** price an approach on where it finishes, at these medians: let a ball that lands on the
+  green roll (a green-roll share of the club's roll, checked against these totals), re-run the sweep, and confirm 195 → 6-iron at 85°F and
+  5-iron when the trouble is short. Check D79's temperature step against what he hits in October.
+  Record a D-number. Bump BUILD and CACHE.
+
+### C24. The start line follows the shot shape (Brett, Oct 10)
+- "If fade is the shot I choose from the tee with a driver, the line should be left of the target."
+  The dashed line (v22.22, D93) allows for the pattern and the wind, but not the shape chosen on the
+  map (Draw · Straight · Fade).
+- **Do:** a curve allowance per club and shape (uncalibrated config: e.g. a driver fade starts ~10
+  yds left; straight 0; his usual shape is already inside the pattern, so only a change from it
+  moves the line). The line starts on that side; the finish (the yellow ring) stays where it was.
+  Ask Brett for his curve amounts first. Bump BUILD and CACHE.
+
+### C25. Per-club miss summary (Brett, Oct 10)
+- "Will we be able to consistently track how far off I am from my target with each club?" Yes:
+  every shot whose end is marked stores its miss from the target and, since v22.22, from its start
+  line. Nothing shows it yet.
+- **Do:** on History, per club: shots, average miss long/short and left/right from the target, and
+  the pattern from the start line (`tendencies`, `patternLatYds`). Only shots with a real end (D87).
+
+### C26. Test mode: tap the next ball after each log (Brett, Oct 10)
+- "After every logged shot, automatically ask me where to place the GPS for the next shot."
+- **Do:** in test mode, after Log shot (Good shot or Save), arm `Fake my location` straight away with
+  a one-line prompt ("Tap where the ball finished"); the tap closes the shot and starts the next.
+  Bump BUILD and CACHE.
+
+### C27. After Log shot, move on to the next shot (Brett, Oct 10)
+- "After I log a shot, there needs to be some mechanism that prompts me to my next shot."
+- **Do:** after Log shot the screen shows one primary action for the next step: `I'm at my ball`
+  (next shot), or the green flow when the ball is on the green. Spec the states with Brett before
+  coding (it changes `caddieState.js`'s flow). Bump BUILD and CACHE.
+
+### C28. Putting: Missed → next putt (Brett, Oct 10; F2)
+- "After I log the first putt, the only options are Score hole or Log putt. There is a Made button
+  but no Missed." Today a miss is `Save` (with the speed / break / line sliders); the card closes and
+  `Log putt` reopens it for the next one, which reads as no way forward.
+- **Do:** `Missed` beside `Made`; Missed saves the putt and opens putt 2 at once, its length from the
+  leave (or the stepper). "Is there a way to have the putt distance register from where I tap my
+  first putt and where the pin is?": yes, it can be built: the first putt's length = the ball (the
+  GPS fix on the green, or the tap in test mode) → the pin, in feet, as the stepper's start; check
+  what `lastPuttFt` is seeded from today. Bump BUILD and CACHE.
+
+### C30. The par chance stays live as the target moves (Brett, Oct 10)
+- "I would love for the '__% chance at par' to continue to be dynamic and update as I move the
+  target location." The "why" line (D91) shows it for Safe and Aggressive and hides on Custom; the
+  dragged target is already re-priced every frame (`priceTarget`, D83).
+- **Do:** on Custom, the strip reads `6-iron: 48% chance at par` from the dragged target's own price,
+  updated while dragging (80 draws) and settled on release (500). Bump BUILD and CACHE.
+
+### C31. Shot 1 beside the tee box reads rough (Brett's screenshot, Oct 10)
+- Hole 3, par 4, 422 yds, shot 1, 20 mph into-left, 59°F: SAFE `2-hybrid`, 163 to target, 261 to pin,
+  26% chance of par; Plays 529.
+- Cause (likely): the ball was placed with `I'm at my ball` (trigger "ball", not "tee"), just off the
+  tee box polygon, so `assembleShotContext` (`src/caddie/context.js`) inferred **rough**. From rough
+  the full driver and 2-iron are tee-only (D86), and the 2-hybrid from rough (carry 206) into 20 mph
+  (−16.5% for the long family, +2% for 59°F) finishes ~163, which matches.
+- **Do:** on shot 1, a ball within ~15 yds of the hole's tee boxes (or of `hole.tee`) is a tee lie
+  whatever the trigger; the Lie chip still overrides. Test: a shot-1 fix 8 yds off the tee box gets
+  the driver back. Bump BUILD and CACHE.
+- Also check: the wind is Open-Meteo's `wind_speed_10m` (10 m up). 20 mph into the wind makes a
+  424-yd hole play 529 (−22% at 20 mph, D-integration item 3). Confirm with Brett that it was that
+  windy before changing anything.
+
+### C29. A short-game card inside 100 yds (Brett, Oct 10)
+- "Didn't we talk about a chip screen from 100 yards and in, so we don't confuse chip and finesse
+  shots with full-shot data?" Not in the repo's notes. Today: a wedge from 120 yds in logs as
+  `finesse` (`defaultShotType`, `shotlog.js`), finesse is learned apart from full swings, and
+  `shortGame` / putts never reach the full-swing learning (`isShortGameOrPutt`).
+- **Do:** write a one-page spec first (when the card shows, its choices: chip · pitch · bunker ·
+  finesse wedge, what each teaches) and get Brett's OK.
+
 ---
 
 ## Environment notes (cloud sessions)
@@ -382,6 +521,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 
 ## Paste into the next chat
 > Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (360 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C2, the course shapes
-> on the satellite map. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C23, the approach
+> club calls. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.
