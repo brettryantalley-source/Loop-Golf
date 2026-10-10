@@ -528,3 +528,16 @@ test("C17: a club whose good dots are too few keeps Shot Pattern's ring and draw
     assert.ok(r.wYds * r.hYds < r.allWYds * r.allHYds * 1.6 || id === "9i", `${id}: the good ring is not larger than the printed one`);
   }
 });
+
+test("C2 (v22.28): satellite shapes — muted tints in order, no rough fill, nothing on a marked green, no text", async () => {
+  const { satShapesModel, SHAPE_STYLE } = await import("./overlay.js");
+  const hole = { ...waterLeftPar4, key: 2, tees: [[[-6, -6], [6, -6], [6, 6], [-6, 6]]], hazards: [...waterLeftPar4.hazards,
+    { type: "trees", ring: [[-90, 100], [-40, 100], [-40, 200], [-90, 200]] }, { type: "sand", ring: [[10, 380], [20, 380], [20, 390], [10, 390]] }] };
+  const { project } = linearProjector({ center: { x: 0, y: 200 }, pxPerYd: 1.5 }, { width: 375, height: 812 });
+  const m = satShapesModel({ hole, project });
+  assert.deepEqual([...new Set(m.map((n) => n.attrs["data-part"]))], ["shape-trees", "shape-fairway", "shape-tee", "shape-green", "shape-water", "shape-sand"]);
+  assert.equal(m.find((n) => n.attrs["data-part"] === "shape-trees").attrs.stroke, "none", "trees: a tint with no outline, so the traced tiles' seams don't show");
+  assert.equal(m.find((n) => n.attrs["data-part"] === "shape-green").attrs.fill, SHAPE_STYLE.green.fill);
+  assert.ok(!tagsOf(m).includes("text"));
+  assert.deepEqual(satShapesModel({ hole: { ...hole, synthetic: true }, project }), [], "a marked green has no course data to draw");
+});

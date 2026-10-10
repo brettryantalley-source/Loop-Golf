@@ -25,7 +25,7 @@
  * WebGL context throws "Failed to initialize WebGL" from the constructor (caught → drawn map).
  */
 import {
-  cameraKey, cameraFor, cameraPoints, fitBounds, linearProjector, zoomForPxPerYd,
+  cameraKey, cameraFor, cameraPoints, fitBounds, linearProjector, zoomForPxPerYd, satShapesModel,
   overlayModel, fallbackMapModel, mapModeFor, markCamera, pinViewCamera, pinViewKey, pinMarkerHit, satelliteFailure, targetMarkerHit,
 } from "./overlay.js";
 import { frameOf, pinFromTap, holeFrame, clampToGreen } from "./geo.js";
@@ -265,10 +265,15 @@ export function renderNodes(nodes) {
 
 const FADE_CSS = `.loop-ovl-cur{animation:loopOvlRedraw .22s ease-out}
 @keyframes loopOvlRedraw{from{opacity:.15}to{opacity:1}}
-@media (prefers-reduced-motion: reduce){.loop-ovl-cur{animation:none}}
+.loop-shapes{animation:loopShapesIn .45s ease-out}
+@keyframes loopShapesIn{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){.loop-ovl-cur,.loop-shapes{animation:none}}
 .loop-map .maplibregl-canvas{outline:none}`;
 
 let idSeq = 0;
+const mapPill = (on) => ({ height: 30, padding: "0 14px", borderRadius: 15, border: `1.5px solid ${T.ink}`, background: on ? T.ink : T.paper, color: on ? T.paper : T.ink,
+  fontFamily: F.label, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" });
+const SHAPES_KEY = "bogeyman-matches:shapes:v1";          // v22.28: "on" | "off" (the bogeyman-matches:* namespace, Sep 28)
 const r1 = (n) => Math.round(n * 10) / 10;
 
 /**
@@ -456,6 +461,9 @@ export function MapLayer({
     } catch (e) { /* an older MapLibre without a handler: the view stays fixed */ }
   }, [markMode, pinchOk, mapGen]);
   const [zoomed, setZoomed] = useState(false);            // v22.27: Brett pinched away from the hole's camera
+  // v22.28 (C2, D99): the course shapes over the satellite, on by default; Brett's choice is kept on the phone
+  const [shapesOn, setShapesOn] = useState(() => { try { return localStorage.getItem(SHAPES_KEY) !== "off"; } catch (e) { return true; } });
+  const toggleShapes = () => setShapesOn((on) => { try { localStorage.setItem(SHAPES_KEY, on ? "off" : "on"); } catch (e) { /* private mode */ } return !on; });
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return undefined;
@@ -501,6 +509,7 @@ export function MapLayer({
     intent: inPinView || markMode ? null : { marker: markerDrawn, lineDeg: startLineDeg, dragging: !!tdrag },
   }) : [];
   const base = hole && drawn && project ? fallbackMapModel({ hole, project }) : [];
+  const shapes = hole && satellite && shapesOn && project && !markMode ? satShapesModel({ hole, project }) : [];
 
   /* ---------- pointer input: tap, long-press (re-mark), press-hold-drag (pin view) ---------- */
   const TAP_SLOP_PX = 8, HOLD_MS = 300, LONG_MS = 600;
@@ -647,6 +656,11 @@ export function MapLayer({
           {renderNodes(base)}
         </svg>
       )}
+      {shapes.length > 0 && (
+        <svg key={`shapes-${hole?.key ?? hole?.id ?? ""}`} className="loop-shapes" data-layer="shapes" style={{ ...svgStyle, pointerEvents: "none" }} width={vp.width} height={vp.height} viewBox={`0 0 ${vp.width} ${vp.height}`} aria-hidden="true">
+          {renderNodes(shapes)}
+        </svg>
+      )}
       {project && (trail.length > 0 || stops.length > 0) && !inPinView && !markMode && (
         <svg data-layer="trail" style={{ ...svgStyle, pointerEvents: "none" }} width={vp.width} height={vp.height} viewBox={`0 0 ${vp.width} ${vp.height}`} aria-hidden="true">
           {trail.map((p, i) => { const q = project(p); return q ? <circle key={i} cx={q.x} cy={q.y} r={1.6} fill={drawn ? T.pencil : "#fff"} opacity={0.55} /> : null; })}
@@ -680,11 +694,13 @@ export function MapLayer({
           </div>
         );
       })}
-      {/* v22.27 (C18): after a pinch, Fit puts the hole's camera back */}
-      {zoomed && satellite && pinchOk && (
-        <button data-part="map-fit" onClick={(e) => { e.stopPropagation(); fit(); }} onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}
-          style={{ position: "absolute", left: 6, bottom: attrBottom + 22, zIndex: 6, height: 30, padding: "0 14px", borderRadius: 15, border: `1.5px solid ${T.ink}`,
-            background: T.paper, color: T.ink, fontFamily: F.label, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>Fit</button>
+      {/* v22.28 (C2): the Shapes toggle; v22.27 (C18): after a pinch, Fit puts the hole's camera back */}
+      {satellite && pinchOk && (
+        <div style={{ position: "absolute", left: 6, bottom: attrBottom + 22, zIndex: 6, display: "flex", gap: 6 }}
+          onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
+          <button data-part="map-shapes" aria-pressed={shapesOn ? "true" : "false"} onClick={toggleShapes} style={mapPill(shapesOn)}>Shapes</button>
+          {zoomed && <button data-part="map-fit" onClick={fit} style={mapPill(false)}>Fit</button>}
+        </div>
       )}
       {/* v22.15: test mode — a thin dashed pencil border, so a fake round is never mistaken for a live one */}
       {testBorder && <div data-part="test-border" aria-hidden="true" style={{ position: "absolute", inset: 2, border: `1.5px dashed ${T.pencil}`, pointerEvents: "none", zIndex: 5 }} />}

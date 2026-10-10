@@ -181,6 +181,8 @@ test("chicopee and woodmont name their own imagery (Wayback, 256-px tiles); othe
     assert.equal(img.tileSize, 256);
   }
   assert.ok(imageryFor([woodmont, chicopee], woodmont.apiId).url.includes("/tile/64001/"), "woodmont: the Oct 10 2025 capture");
+  assert.ok(imageryFor([woodmont, chicopee], chicopee.apiId).url.includes("/tile/49059/"), "chicopee: leaf-off (R4, v22.28)");
+  assert.equal(chicopee.version, 3, "bumped so the phones' cached copy refreshes once");
   assert.equal(imageryFor([woodmont, chicopee], "not-a-local-club"), null);
 });
 

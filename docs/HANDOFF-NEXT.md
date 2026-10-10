@@ -10,8 +10,13 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 368 tests (v22.27); must be green
+npm install && npm test    # 369 tests (v22.28); must be green
 ```
+
+## v22.28 (Oct 10)
+
+Course shapes over the satellite, muted, with a `Shapes` toggle (C2), and Chicopee on Esri Wayback
+49059, leaf-off (C11, `version` 3); D99. 369 tests.
 
 ## v22.27 (Oct 10)
 

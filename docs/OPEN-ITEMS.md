@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 and Brett's test notes of Oct 10 (C20–C29). Duplicates are merged and anything already shipped is
-dropped. State: **v22.27** (C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 368 tests, decisions D1–D98; the next
-decision is **D99**.
+dropped. State: **v22.28** (C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 369 tests, decisions D1–D99; the next
+decision is **D100**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -19,7 +19,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** send **S9** (the tee stills as files).
-2. **Next code chat:** **C2 + C11** (course shapes). Then the table's order.
+2. **Next code chat:** **C21** (dots in the ring), then the table's order. Then the table's order.
 3. **Next round:** the **F** list.
 
 ---
@@ -38,7 +38,7 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.27 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.28 · Oct 10** (once merged).
 - **F14.** Approach clubs (v22.23, D94): every shot now finishes at its total. From 195 on a warm day
   the call should be a 6-iron; from 207 a 5-iron. Note any call that still feels a club off.
 - **F13.** The caddie's line (v22.22): a dashed line from the ball through where to aim; the yellow
@@ -55,6 +55,9 @@ after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
   length from your ball to the pin). It has never been used on a course.
 - **F3.** Log a hole you skipped: Place shot 1 → Place shot 2 → … → Done.
 - **F4.** The GPS trail on a real walk. It records only while the screen is on.
+- **F16.** Course shapes (v22.28, D99): muted tints over the photo; `Shapes` turns them off. Where a
+  tint disagrees with the photo (trees over a fairway, a bunker in the wrong place), that is what the
+  caddie believes: note the hole. Chicopee is on its leaf-off photo now.
 - **F15.** The map (v22.27, D98): it frames your ball and the suggested shot; pinch to zoom in and
   out; `Fit` (bottom-left) puts it back. One finger still drags the target, the Line and the pin.
 - **F5.** The full-screen map: nothing sits under the notch or the home bar; the target drag, Line,
@@ -107,7 +110,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C2 | Course shapes on the satellite map | nothing (R2: muted + toggle) | Sonnet |
 | C4 | Heads-up + aim warning | nothing (C3 shipped, D93) | Opus |
 | C5 | Ironwood test-mode dead end | nothing | Sonnet |
 | C6 | Retry an empty OSM answer | nothing (R7: yes) | Opus |
@@ -115,7 +117,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | C8 | Short / long miss model | nothing (Q1 answered) | Opus |
 | C9 | Fairway bunkers as "no hero" lies | nothing | Sonnet |
 | C10 | Re-tune the `STRATEGY` thresholds | a round of F7 notes | Opus |
-| C11 | Chicopee imagery switch | nothing (R4: A) | rides with C2 |
 | C12 | Chicopee hand-trace, Village + Mill | S4 | Opus |
 | C13 | Woodmont calibration | F9, Q3 | Sonnet |
 | C14 | History data | S1–S3, Q2 | Sonnet |
@@ -157,19 +158,6 @@ service worker answered font requests with `index.html`); reopen only if it come
 ---
 
 ## Build details
-
-### C2. Course shapes on the satellite map (R2; about a day)
-- Every hole's fairway, green, tee, bunker, water, rough and tree outlines are already loaded. Only
-  the no-tiles paper map draws them. Draw them as tinted layers over the satellite in
-  `src/caddie/mapLayer.jsx` and `overlay.js`.
-- **Muted style:** fairway light green at ~35% with a crisp edge · green brighter, more opaque, white
-  edge · bunkers sand, mostly opaque · water blue with a darker edge · tees tinted by the tee played,
-  where OSM tags them · tree lines a dark band along the wood edge (no cartoon tree dots) · rough no
-  fill, since the photo shows it and a fill hides the lie. One short fade when a hole opens; nothing
-  keeps moving. A **Shapes** toggle on the map.
-- The shapes are only as good as the geometry: Ironwood has none, and Chicopee and Woodmont improve
-  with C12 and C13.
-- No engine or scoring change. Bump BUILD and CACHE.
 
 ### C4. Heads-up + aim warning (C3 shipped in v22.22, D93)
 Write a one-page spec first (when each one fires, the wording, the shot counts) and get Brett's
@@ -280,10 +268,6 @@ Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/con
 - Check the D76 × D78 interaction: does the pin rule still change SAFE as often now that SAFE is
   par-ranked?
 - Each change gets a decision row.
-
-### C11. Chicopee imagery (R4)
-`imagery.url` in `src/localGeometry/chicopee.json` (the Wayback release number is in the path; A is
-49059), plus a `version` bump. Ride along with C2.
 
 ### C12. Chicopee hand-trace, Village + Mill (S4)
 - **Village 1's 6% par** (Brett, Oct 10; D94): points on its line 150 and 200 yds out classify as
@@ -437,6 +421,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 
 ## Paste into the next chat
 > Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (360 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C2 + C11, the course
-> shapes. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C21, the dots inside
+> the ring. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.

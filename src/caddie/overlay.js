@@ -737,6 +737,42 @@ export function fallbackMapModel({ hole, project }) {
   return out.filter(Boolean);
 }
 
+/* ---------- v22.28 (C2, D99): course shapes over the satellite ---------- */
+
+/** R2 "muted": tints that let the photo through. Rough has no fill (the photo shows the lie). */
+export const SHAPE_STYLE = Object.freeze({
+  fairway: { fill: "rgba(150,205,110,.35)", stroke: "rgba(214,240,190,.9)", strokeWidth: 1.2 },
+  tee:     { fill: "rgba(150,205,110,.45)", stroke: "rgba(244,240,228,.9)", strokeWidth: 1 },
+  green:   { fill: "rgba(140,220,120,.55)", stroke: "#F4F0E4", strokeWidth: 1.6 },
+  water:   { fill: "rgba(64,126,204,.45)", stroke: "rgba(28,70,140,.95)", strokeWidth: 1.4 },
+  sand:    { fill: "rgba(236,222,184,.82)", stroke: "rgba(190,168,118,.95)", strokeWidth: 1 },
+  // a soft dark tint, no outline: the traced woods are cut into tiles (D74) and an edge line drew the seams
+  trees:   { fill: "rgba(10,30,14,.3)", stroke: "none", strokeWidth: 0 },
+});
+
+/**
+ * The hole's shapes as tinted layers for the satellite map (R2: muted, a Shapes toggle). Order:
+ * tree edges, fairways (this hole's and the nearby ones), tees, green, water, sand. Nothing on a
+ * marked green (no course data to show). Shapes only (T37).
+ */
+export function satShapesModel({ hole, project }) {
+  if (!hole || hole.synthetic || !project) return [];
+  const poly = (ring, st, part) => {
+    const pts = (ring || []).map((q) => project(Array.isArray(q) ? { x: q[0], y: q[1] } : q));
+    return pts.length >= 3 ? el("path", { "data-part": part, d: pathD(pts), fill: st.fill, stroke: st.stroke, strokeWidth: st.strokeWidth, strokeLinejoin: "round" }) : null;
+  };
+  const hz = hole.hazards || [];
+  return [
+    ...hz.filter((h) => h.type === "trees").map((h) => poly(h.ring, SHAPE_STYLE.trees, "shape-trees")),
+    ...(hole.nearby?.fairways || []).map((r) => poly(r, SHAPE_STYLE.fairway, "shape-fairway")),
+    ...(hole.fairways || []).map((r) => poly(r, SHAPE_STYLE.fairway, "shape-fairway")),
+    ...(hole.tees || []).map((r) => poly(r, SHAPE_STYLE.tee, "shape-tee")),
+    poly(hole.green?.ring, SHAPE_STYLE.green, "shape-green"),
+    ...hz.filter((h) => h.type === "water").map((h) => poly(h.ring, SHAPE_STYLE.water, "shape-water")),
+    ...hz.filter((h) => h.type === "sand").map((h) => poly(h.ring, SHAPE_STYLE.sand, "shape-sand")),
+  ].filter(Boolean);
+}
+
 /** Every tag in a descriptor tree (T37 walks this). */
 export function tagsOf(nodes) {
   const out = [];
