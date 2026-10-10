@@ -75,16 +75,19 @@ export const NOTICES = Object.freeze({
   nofix: "No GPS fix. Step into the open and tap Try again.",
   locationoff: "Location is off for Loop. Turn it on in Settings, then tap Try again.",
   noprofile: "Profile didn't load. Reconnect and tap Try again.",
-  nomap: (n) => `No course map for hole ${n}. Enter yards for a club.`,
+  nomap: (n) => `No course map for hole ${n}.`,   // v22.30 (C19): no Enter yards
   /* v22.11 marked-green mode (no OSM geometry for the hole) */
   markPreTee: (n) => `No course map for hole ${n}. Tap I'm on the tee for satellite.`,
   markedPreTee: (n) => `Hole ${n}: green marked. Tap I'm on the tee for satellite.`,
   mark: NOTICE_MARK_GREEN,
   noHazards: NOTE_NO_HAZARDS,
   /* v22.12: an unmapped hole with a fix but no satellite says which part failed (overlay.js satelliteFailure) */
-  noSatellite: (why) => `Satellite: ${why}. Enter yards for a club.`,
+  noSatellite: (why) => `Satellite: ${why}.`,
   /* v22.15 test mode (SPEC-shotlog-v2 §1) */
   testTap: "Test mode · tap the map where you are",
+  /* v22.25 (C26, C27, D96): after Log shot */
+  testTapBall: "Test mode · tap where the ball finished",
+  nextShot: "Shot logged · at your ball, tap I'm at my ball",
 });
 
 /* ---------- 1. state ---------- */
@@ -252,14 +255,15 @@ export function caddieReducer(s, a) {
       return { ...s, logCard: "putt" };
     /* puttSave: a.record is already built (newPuttRecord / quickMade) and already written to
        storage by the caller. Increments that hole's putt count and remembers the distance for the
-       stepper's next starting point. */
+       stepper's next starting point. v22.25 (C28, D96): a.next (Missed) keeps the card open for the
+       next putt, its stepper starting at a.nextFt. */
     case "puttSave": {
       if (!a.record) return s;
       const hole = Number.isInteger(a.record.hole) ? a.record.hole : s.hole;
       const putts = { ...s.putts, [hole]: (s.putts[hole] || 0) + 1 };
       const ft = a.record.putt?.distanceFt;
-      const lastPuttFt = Number.isFinite(ft) ? ft : s.lastPuttFt;
-      return { ...s, logCard: null, putts, lastPuttFt };
+      const lastPuttFt = a.next && Number.isFinite(a.nextFt) ? a.nextFt : Number.isFinite(ft) ? ft : s.lastPuttFt;
+      return { ...s, logCard: a.next ? "putt" : null, putts, lastPuttFt };
     }
     /* puttDismiss: Skip, or the scrim — closes the card, writes nothing. */
     case "puttDismiss":
@@ -352,7 +356,9 @@ export function restoreCaddie(raw) {
   let phase = PHASES.includes(raw.phase) ? raw.phase : "pretee";
   if (phase === "locating") phase = PHASES.includes(raw.prevPhase) && raw.prevPhase !== "locating" ? raw.prevPhase : s.ball ? "ready" : s.yards ? "yards" : "pretee";
   if (phase === "ready" && !s.ball) phase = "pretee";
-  if (phase === "yards" && !s.yards) phase = "pretee";
+  // v22.30 (C19, D101): Enter yards is gone; a round saved in club-brain mode comes back before the
+  // ball (Ready with its fix, else pre-tee)
+  if (phase === "yards") { phase = s.ball ? "ready" : "pretee"; s.yards = null; }
   s.phase = phase;
   s.trigger = raw.trigger === "tee" || raw.trigger === "ball" ? raw.trigger : null;
   s.opt = raw.opt === "aggressive" ? "aggressive" : "safe";
@@ -540,7 +546,13 @@ export function ellipsesFor(res, resolve, opts = {}) {
  */
 export function withinRoundCtx(ctx, shotsThisRound, P, config) {
   if (!ctx || !P) return ctx;
-  const w = withinRound(shotsThisRound || [], config || P.config, { P, lie: ctx.lieType });
+  const cfg = config || P.config;
+  const w = withinRound(shotsThisRound || [], cfg, { P, lie: ctx.lieType });
+  // C32 (v22.41, D112): the nudges are said, not applied — the call stays where the profile puts it
+  if ((cfg?.NUDGES_MOVE_CALL ?? DEFAULT_CONFIG.NUDGES_MOVE_CALL) === false) {
+    const said = w.nudges.map((n) => ({ ...n, moved: false, text: String(n.text || "").replace(/ → .*$/, "") }));
+    return { ...ctx, adjust: { distYds: {}, aimYds: {} }, nudges: said, flags: w.flags };
+  }
   return { ...ctx, adjust: w.adjust, nudges: w.nudges, flags: w.flags };
 }
 
@@ -789,7 +801,7 @@ export function caddieView({
   state, par = null, profileOk = true, mapOk = true, res = null, options = null, inferred = null, onGreen = false,
   ballXY = null, green = null, config = DEFAULT_CONFIG,
   markable = false, greenMarked = false, synthetic = false, pinYds = null, satFailure = null,
-  greenManual = false, unreviewed = 0,
+  greenManual = false, unreviewed = 0, headsUp = null,
 }) {
   const s = state;
   const holeNo = s.hole;
@@ -844,7 +856,7 @@ export function caddieView({
     // v22.12: on a hole with no map the bar carries I'm at my ball + Log shot, so Enter yards (for
     // the ball Brett is at) moves here as a text button under the aim. v22.15 (SPEC-shotlog-v2 §8):
     // on a mapped Ready too — yards for this ball.
-    action: bare || view === "ready" || view === "sameshot" ? { label: COPY.yards, action: "yardsSame" } : null,
+    action: null,   // v22.30 (C19, D101): Enter yards removed (R10, Brett Oct 5)
     // v22.15 §2 / §8 rail extras: shape pills wherever a shot is about to be hit, Line only where
     // the map can take a mark (Ready and Same shot — §2 says Same shot takes the shape only, but an
     // approach is usually Same shot and its one option has a target to move; yards: shape only),
@@ -856,7 +868,9 @@ export function caddieView({
   };
 
   /* details column */
-  const dctx = hasRec || view === "green" ? res?.context?.distances || inferred?.distances || null : null;
+  // v22.40 (C29, D111): with no call (just off a green) the distances still show
+  const noCall = (view === "ready" || view === "sameshot") && !!res?.context && !res?.safe;
+  const dctx = hasRec || view === "green" || noCall ? res?.context?.distances || inferred?.distances || null : null;
   const num = (v) => (Number.isFinite(v) ? String(Math.round(v)) : DASH);
   const distancesStrip = [
     { k: "Front", v: num(dctx?.front) },
@@ -882,7 +896,7 @@ export function caddieView({
   }
   const reasons = hasRec ? (sameShot ? [opts.safe] : [opts.safe, opts.aggressive]).filter(Boolean).map((o) => o.reason).filter(Boolean) : [];
   // v22.18 (C1, D91): one printed line for the option on screen; the caller hides it on Custom
-  const why = hasRec ? whyLine(res, { opt: activeKey, family: familyOf, sameAvgDelta: cfg.SAME_AVG_DELTA ?? 0.05 }) : null;
+  const why = hasRec ? whyLine(res, { opt: activeKey, family: familyOf, sameAvgDelta: cfg.SAME_AVG_DELTA ?? 0.05, headsUp }) : null;
   const today = hasRec ? todayLines(res) : [];
 
   const details = {
@@ -904,9 +918,9 @@ export function caddieView({
   else if (view === "nomap") { primary = s.phase === "pretee" ? { label: COPY.tee, action: "tee" } : { label: COPY.ball, action: "ball" }; secondary = { label: COPY.logShot, action: "logshot" }; }
   else if (view === "markgreen") { primary = { label: COPY.ball, action: "ball" }; secondary = { label: COPY.logShot, action: "logshot" }; }
   else if (view === "pretee" && markable && !mapOk) { primary = { label: COPY.tee, action: "tee" }; secondary = { label: COPY.logShot, action: "logshot" }; }
-  else if (view === "nofix" || view === "locationoff") { primary = { label: COPY.retry, action: "retry" }; secondary = { label: COPY.yards, action: "yards" }; }
+  else if (view === "nofix" || view === "locationoff") { primary = { label: COPY.retry, action: "retry" }; }   // v22.30 (C19): Retry only
   else if (view === "pretee") { primary = { label: COPY.tee, action: "tee" }; secondary = { label: COPY.logShot, action: "logshot" }; }   // v22.15 §8
-  else if (view === "green") { primary = { label: COPY.score(holeNo), action: "score" }; secondary = { label: COPY.logPutt, action: "logputt" }; }
+  else if (view === "green") { primary = { label: COPY.score(holeNo), action: "score" }; secondary = { label: `${COPY.logPutt} ${(s.putts?.[holeNo] || 0) + 1}`, action: "logputt" }; }   // v22.25 (C28): numbered
   else { primary = { label: COPY.ball, action: "ball" }; secondary = { label: COPY.logShot, action: "logshot" }; }
 
   // v22.15 §6: where the green cannot be detected, On the green takes the secondary after the tee shot
@@ -921,7 +935,11 @@ export function caddieView({
     rail.shapes = false; rail.line = false; rail.action = null;
   }
 
-  const notice = s.awaitingTap ? NOTICES.testTap : view === "noprofile" ? NOTICES.noprofile
+  // v22.25 (C27): a logged shot not yet closed is the walk to the ball; say what comes next
+  const loggedHere = !!s.openShot && s.openShot.hole === s.hole && s.openShot.shotNo === s.shotNo && (view === "ready" || view === "sameshot");
+  const notice = s.awaitingTap ? (s.awaitingTap.trigger === "ball" && s.openShot ? NOTICES.testTapBall : NOTICES.testTap)
+    : loggedHere ? NOTICES.nextShot
+    : view === "noprofile" ? NOTICES.noprofile
     : view === "nomap" ? (satFailure && s.ball ? NOTICES.noSatellite(satFailure) : NOTICES.nomap(holeNo))
     : view === "nofix" ? NOTICES.nofix
     : view === "locationoff" ? NOTICES.locationoff

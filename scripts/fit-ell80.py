@@ -151,13 +151,13 @@ def good_ring(e, r, stats):
     """80% ring (SP frame, yards) of the dots that pass the depth cut, plus the mishit rate."""
     y0, y1 = e["plotYpx"]
     dx_, dy_ = read_dots(os.path.join(ROOT, e["frame"]), y0, y1)
-    s = e["wYds"] / (2 * r["px"]["a"])
+    s = r["wYds"] / (2 * r["px"]["a"])   # this fit's yards per pixel (a stored wYds may be from a coverage-scaled ring)
     X = (dx_ - r["px"]["cross"][0]) * s
     Y = (dy_ - (r["px"]["cross"][1] - y0)) * s   # + = short
     keep = np.abs(Y - np.median(Y)) <= stats["windowYds"]
     X, Y = X[keep], Y[keep]
     if keep.sum() < MIN_GOOD_DOTS:   # too few to fit: the Shot Pattern ring stands and nothing is drawn as a mishit
-        return dict(goodWYds=e["wYds"], goodHYds=e["hYds"], goodTiltDeg=e["tiltDeg"], goodDxYds=e["dxYds"],
+        return dict(goodWYds=r["wYds"], goodHYds=r["hYds"], goodTiltDeg=r["tiltDeg"], goodDxYds=r["dxYds"],
                     goodDots=int(keep.sum()), mishitRate=0.0, goodWindowYds=stats["windowYds"])
     w, v = np.linalg.eigh(np.cov(np.vstack([X, Y])))
     th = np.arctan2(v[1, 1], v[0, 1])
@@ -183,6 +183,12 @@ if __name__ == "__main__":
         y0, y1 = e["plotYpx"]
         r = run(os.path.join(root, e["frame"]), y0, y1, e["bboxWYds"], e["bboxDYds"])
         r.update(good_ring(e, r, rc.entry_stats(e, root)))
+        # C22 (D113): a ring printed at another coverage is scaled to the 80% ring the engine draws
+        # (2-D normal contours: radius sqrt(-2 ln(1 - c))); its centre and tilt do not change
+        cov = e.get("coverage", 0.8)
+        if abs(cov - 0.8) > 1e-9:
+            k = K80 / np.sqrt(-2 * np.log(1 - cov))
+            r["wYds"], r["hYds"] = round(r["wYds"] * k, 1), round(r["hYds"] * k, 1)
         for k in FIELDS:
             if e.get(k) != r[k]:
                 stale.append((e["club"], k, e.get(k), r[k]))

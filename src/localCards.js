@@ -15,6 +15,9 @@ export const LOCAL_CLUBS = [
   {
     key: "ironwood-fishers",
     name: "Ironwood Golf Club",
+    // v22.31 (C5, D102): the club's own golfcourseapi entry (c2qw5c2h) has a location; its routing
+    // entries don't (latitude null), so the caddie had no anchor for test mode or the weather
+    location: { lat: 39.9465811, lon: -85.9787805 },
     match: { name: /ironwood/i, state: /^(IN|Indiana)$/i, city: /fishers/i },
     tees: ["Blue", "Ironwood", "White", "Green", "Red", "Family"],
     nines: [

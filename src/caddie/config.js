@@ -61,6 +61,43 @@ export const DEFAULT_CONFIG = Object.freeze({
     tee: 0,                                            // driver / tee shots use total directly
   },
   ROLL_LIE_MULT: { tee: 1, fairway: 1, rough: 3, sand: 1, recovery: 3 },
+  /* v22.23 (C23, D94): a ball that lands on the green rolls this share of its roll-out too. Brett's
+     roll figures are roll-outs wherever the ball lands, and Shot Pattern's medians (totals) are where
+     his approaches finish, so 1 makes an approach's average finish its median. Uncalibrated. */
+  GREEN_ROLL_SHARE: 1,
+  /* C8 (v22.36, D107): the short tail. Shot Pattern's shortPct is the share of a club's shots that
+     finish more than `overPct` short of where Brett meant to finish (Q1, Oct 10: the target is where
+     he wants the ball to end up); the simulation's ellipse gives fewer for most clubs. The gap,
+     shrunk by the club's n with SHRINK_K, is drawn as extra shots that finish `depthMin`–`depthMax`
+     of the distance short. Depths uncalibrated (C8: "10–20% of carry"); `on: false` → none. */
+  SHORT_TAIL: { on: true, overPct: 0.10, depthMin: 0.10, depthMax: 0.20 },
+  /* C24 (v22.37, D108): Brett's usual shape per club and how far it curves, yards (Oct 10: "the two
+     and four hybrid are about a 10 yard fade. The 5-8 iron is about a 7 yard draw. Nine and pitching
+     wedge a 5 yard draw. Gap wedge 3 yard draw. Sand wedge and lob wedge straight"; the driver a
+     15-yd fade, never a draw). Shot Pattern measures the finish against his target, which already
+     allows for the curve, so the start line sits the curve's width to the other side of the finish.
+     A shape he picks that isn't his usual one curves `yds` the other way; a straight club (or one not
+     listed, the 2-iron) curves CURVE_DEFAULT_YDS when he picks one. */
+  SHOT_SHAPE: {
+    Dr: { usual: "fade", yds: 15 }, "2Hy": { usual: "fade", yds: 10 }, "4Hy": { usual: "fade", yds: 10 },
+    "5i": { usual: "draw", yds: 7 }, "6i": { usual: "draw", yds: 7 }, "7i": { usual: "draw", yds: 7 }, "8i": { usual: "draw", yds: 7 },
+    "9i": { usual: "draw", yds: 5 }, PW: { usual: "draw", yds: 5 }, GW: { usual: "draw", yds: 3 },
+    SW: { usual: "straight", yds: 0 }, LW: { usual: "straight", yds: 0 },
+  },
+  CURVE_DEFAULT_YDS: 5,
+  /* C4 (v22.39, D110; docs/SPEC-C4-headsup.md, OK'd Oct 10). Heads-up, one clause for SAFE's club:
+     today — the same miss on `todayHit` of its last `todayOf` shots (or 2 of 2); history — at least
+     `histMinN` measured shots and `histShare` of them finish `overPct` or more short (or long).
+     Aim warning, on his own target or Line: trouble `troubleGap` more often than SAFE, or his club's
+     average miss (at least `minN` Loop-measured shots) carries the ring's centre off the green. */
+  HEADS_UP: { todayOf: 4, todayHit: 3, histMinN: 10, histShare: 0.3, overPct: 0.10 },
+  /* C32 (v22.41, D112; Brett Oct 10: "i don't want the targets or suggested start lines to shift,
+     but i do want the caddie to mention it to me"). The within-round nudges (§5.5) still read the
+     round and the why line names the pattern; with false they no longer move the club, the target
+     or the start line. Replaying the nine imported rounds, the trigger fired 381 times and the next
+     shot went the same way about half the time, no better than any shot. */
+  NUDGES_MOVE_CALL: false,
+  AIM_WARN: { troubleGap: 0.10, minN: 10 },
   /* Roll by ground conditions, by club family (integration item 6; research §3.1, §3.4). Replaces
      "wet → roll 0 everywhere". Wet ground kills a long club's release (tour driver −4.5 yds medium
      / −9.8 soft vs firm, USGA/R&A 2023) but a wet wedge loses 15–20% spin and releases MORE (Rice,
@@ -82,6 +119,9 @@ export const DEFAULT_CONFIG = Object.freeze({
   /* A club with no fitted ring (the driver) is drawn from its σs; its full 80% axes are capped here so
      the ring stays readable. DISPLAY ONLY — the simulation still uses the uncapped σs. */
   RING_DRAW_CAP_YDS: 70,
+  /* v22.29 (C21, D100): dots inside the ring — this many of the simulation's own draws (the first ones
+     of the fixed seed, so they hold still until the shot moves). */
+  RING_DOTS: 40,
   /* Widening when the lie chip says bad / buried: +15% σ, −5 yds (spec default). */
   LIE_QUALITY: {
     good:     { sdMult: 1.0,  distYds: 0 },
@@ -120,8 +160,12 @@ export const DEFAULT_CONFIG = Object.freeze({
   LAYUP_MIN_YDS: 50,
   LAYUP_MAX_YDS: 150,
   LAYUP_STEP_YDS: 5,
-  REACH_SHORT_TOLERANCE_YDS: 8, // a club "reaches" if carry ≥ front − this
-  FLY_TOLERANCE_YDS: 20,        // prune clubs that fly the back edge by more than this (§3.4)
+  /* v22.24 (C31, D95): on shot 1, a ball this close to one of the hole's tee boxes is a tee lie even
+     when it was placed with "I'm at my ball" (a fix a few yards off the mapped box read rough, and
+     rough takes the full driver and 2-iron away, D86). The Lie chip still wins. */
+  TEE_SNAP_YDS: 15,
+  REACH_SHORT_TOLERANCE_YDS: 8, // a club "reaches" if its finish (carry + green roll, D94) ≥ front − this
+  FLY_TOLERANCE_YDS: 20,        // prune clubs that finish past the back edge by more than this (§3.4)
 
   /* ---- selection (§3.6) ---- */
   /* Same shot (v22.17, engine.js pickOptions): the same club + swing within SAME_SHOT_TARGET_YDS, or
@@ -164,8 +208,9 @@ export const DEFAULT_CONFIG = Object.freeze({
     clubUpShortWeight: 2,         // tip 4: finishing short of the depth target counts double (club up)
     maxExtraTrouble: 0.05,        // the pin rule yields when its pick finds > 5 points more trouble …
     maxCostStrokes: 0.5,          // … or costs > ½ stroke more than the best-priced shot
-    noHero: true,                 // tip 6: from trees or a bad / buried rough lie, no hero shots
+    noHero: true,                 // tip 6: from trees, a bad / buried rough lie or a fairway bunker, no hero shots
     noHeroMaxTrouble: 0.10,       // "9 out of 10"; nothing that clean → the least trouble (punch out)
+    fairwayBunkerMinYds: 40,      // C9 (D105): sand this far from the front of the green is a fairway bunker → no hero
   },
 
   /* ---- expected strokes (§3.5) ---- */
@@ -259,6 +304,23 @@ export function lieDistAdj(cfg, lie, family) {
   const v = cfg?.LIE_DIST_ADJ?.[lie];
   if (v && typeof v === "object") return Number.isFinite(v[family]) ? v[family] : 0;
   return Number.isFinite(v) ? v : 0;
+}
+
+/** C24 (D108): Brett's usual shape for a club ("straight" when not listed). */
+export function usualShape(club, cfg = DEFAULT_CONFIG) {
+  const s = (cfg?.SHOT_SHAPE || DEFAULT_CONFIG.SHOT_SHAPE)?.[club]?.usual;
+  return s === "draw" || s === "fade" || s === "straight" ? s : "straight";
+}
+
+/**
+ * C24 (D108): how far a shot of this shape curves in the air, yards, + = to the right (a fade for a
+ * right-hander), − = to the left (a draw); 0 straight. The start line sits this far the other way.
+ */
+export function curveYds(club, shape, cfg = DEFAULT_CONFIG) {
+  if (shape !== "draw" && shape !== "fade") return 0;
+  const yds = (cfg?.SHOT_SHAPE || DEFAULT_CONFIG.SHOT_SHAPE)?.[club]?.yds;
+  const amt = Number.isFinite(yds) && yds > 0 ? yds : (cfg?.CURVE_DEFAULT_YDS ?? DEFAULT_CONFIG.CURVE_DEFAULT_YDS);
+  return shape === "fade" ? amt : -amt;
 }
 
 /** Club families (§5.5). Hybrids and the 2-iron are `long`. */

@@ -25,7 +25,7 @@
  * WebGL context throws "Failed to initialize WebGL" from the constructor (caught → drawn map).
  */
 import {
-  cameraKey, cameraFor, cameraPoints, fitBounds, linearProjector, zoomForPxPerYd,
+  cameraKey, cameraFor, cameraPoints, fitBounds, linearProjector, zoomForPxPerYd, satShapesModel,
   overlayModel, fallbackMapModel, mapModeFor, markCamera, pinViewCamera, pinViewKey, pinMarkerHit, satelliteFailure, targetMarkerHit,
 } from "./overlay.js";
 import { frameOf, pinFromTap, holeFrame, clampToGreen } from "./geo.js";
@@ -265,10 +265,15 @@ export function renderNodes(nodes) {
 
 const FADE_CSS = `.loop-ovl-cur{animation:loopOvlRedraw .22s ease-out}
 @keyframes loopOvlRedraw{from{opacity:.15}to{opacity:1}}
-@media (prefers-reduced-motion: reduce){.loop-ovl-cur{animation:none}}
+.loop-shapes{animation:loopShapesIn .45s ease-out}
+@keyframes loopShapesIn{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){.loop-ovl-cur,.loop-shapes{animation:none}}
 .loop-map .maplibregl-canvas{outline:none}`;
 
 let idSeq = 0;
+const mapPill = (on) => ({ height: 30, padding: "0 14px", borderRadius: 15, border: `1.5px solid ${T.ink}`, background: on ? T.ink : T.paper, color: on ? T.paper : T.ink,
+  fontFamily: F.label, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" });
+const SHAPES_KEY = "bogeyman-matches:shapes:v1";          // v22.28: "on" | "off" (the bogeyman-matches:* namespace, Sep 28)
 const r1 = (n) => Math.round(n * 10) / 10;
 
 /**
@@ -326,7 +331,7 @@ export function MapLayer({
   previousShots = [], insets = {}, fallback = false, onPinTap, onMapTap, onSatelliteFail, recomputing = false, attributionBottom,
   fitBall, fitOptions, markAt = null, onMarkGreen, onRemark, pinView = false, onPinDrag, onPinDrop,
   intentMarker = null, startLineDeg = null, onTargetDrag, onTargetDrop, lineMode = false, onLineTap, onFakeTap = null, fakeAt = null, testBorder = false,
-  labels = [], trail = [], stops = [], onStopTap = null,
+  labels = [], trail = [], stops = [], onStopTap = null, dots = [],
 }) {
   const camBall = fitBall !== undefined ? fitBall : ball;
   const camOptions = fitOptions !== undefined ? fitOptions : options;
@@ -340,6 +345,7 @@ export function MapLayer({
   const [tdrag, setTdrag] = useState(null);               // v22.15: the target marker's frame point mid-drag
   const dragRef = useRef(null);
   const pressRef = useRef(null);
+  const touchesRef = useRef(new Set());                   // v22.27 (C18): pointers down now (a pinch is two)
   const failRef = useRef(onSatelliteFail); failRef.current = onSatelliteFail;
 
   /* measure the map box */
@@ -441,15 +447,30 @@ export function MapLayer({
   }, [satellite, lib, !!camView]);
 
   /* v22.11: pan and pinch-zoom only in the mark view (no rotate, no pitch), so a green beyond the
-     first 300 yds can be brought on screen and tapped. Everywhere else every gesture stays off. */
+     first 300 yds can be brought on screen and tapped. v22.27 (C18, D98): on a hole, two-finger
+     pinch zooms too (rotation, one-finger pan and double-tap stay off, so one finger still drags the
+     target, the Line and the pin); `Fit` puts the hole's camera back. The pin view stays fixed. */
+  const pinchOk = !markMode && !!hole && !inPinView;
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     try {
       if (markMode) { map.dragPan.enable(); map.touchZoomRotate.enable(); map.touchZoomRotate.disableRotation(); map.scrollZoom.enable(); }
+      else if (pinchOk) { map.dragPan.disable(); map.touchZoomRotate.enable(); map.touchZoomRotate.disableRotation(); map.scrollZoom.enable(); map.doubleClickZoom?.disable(); }
       else { map.dragPan.disable(); map.touchZoomRotate.disable(); map.scrollZoom.disable(); }
     } catch (e) { /* an older MapLibre without a handler: the view stays fixed */ }
-  }, [markMode, mapGen]);
+  }, [markMode, pinchOk, mapGen]);
+  const [zoomed, setZoomed] = useState(false);            // v22.27: Brett pinched away from the hole's camera
+  // v22.28 (C2, D99): the course shapes over the satellite, on by default; Brett's choice is kept on the phone
+  const [shapesOn, setShapesOn] = useState(() => { try { return localStorage.getItem(SHAPES_KEY) !== "off"; } catch (e) { return true; } });
+  const toggleShapes = () => setShapesOn((on) => { try { localStorage.setItem(SHAPES_KEY, on ? "off" : "on"); } catch (e) { /* private mode */ } return !on; });
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return undefined;
+    const onZoom = (e) => { if (e && e.originalEvent) setZoomed(true); };
+    map.on("zoomend", onZoom);
+    return () => { try { map.off("zoomend", onZoom); } catch (e) { /* removed */ } };
+  }, [mapGen]);
 
   /* camera + size changes → jumpTo (never animated: the camera only moves on a new ball / hole) */
   useEffect(() => {
@@ -457,7 +478,9 @@ export function MapLayer({
     if (!map || !camView) return;
     map.resize();
     map.jumpTo(camView);
+    setZoomed(false);
   }, [camView, vp.width, vp.height]);
+  const fit = () => { const m = mapRef.current; if (m && camView) { m.jumpTo(camView); setZoomed(false); } };
 
   /* projection: map.project on satellite, the camera's linear projection otherwise (v22.15: the
      mark / test frame too, so a tap lands on the drawn paper map when there are no tiles) */
@@ -474,7 +497,7 @@ export function MapLayer({
   if (typeof window !== "undefined") window.__loopOverlay = { project, unproject, frame: PF, mode: markMode ? (fakeFrame ? "test" : "mark") : hole ? "hole" : "none" };
   const { active: opt, other } = overlayPair(options, active, sameShot);
   const pinDrawn = (inPinView && drag) || pin;
-  const redrawKey = [active, sameShot ? 1 : 0, opt?.club, opt?.target && `${r1(opt.target.x)},${r1(opt.target.y)}`, opt?.ell && `${r1(opt.ell.w)}x${r1(opt.ell.h)}`, opt?.aimOffsetYds ?? "",
+  const redrawKey = [active, sameShot ? 1 : 0, opt?.club, opt?.target && `${r1(opt.target.x)},${r1(opt.target.y)}`, opt?.ell && `${r1(opt.ell.w)}x${r1(opt.ell.h)}`, opt?.aimOffsetYds ?? "", opt?.curveYds ?? "",
     pin && `${r1(pin.x)},${r1(pin.y)}`, inPinView ? "pv" : ""].join("|");
 
   // the pin view hides the shot (its ellipse and lines would sit on the green) — pin and ball only
@@ -484,8 +507,10 @@ export function MapLayer({
     active: inPinView ? null : opt, other: inPinView ? null : other, previousShots: inPinView ? [] : previousShots,
     palette: drawn ? "paper" : "satellite", idPrefix, redrawKey, recomputing, pinMarker: inPinView, pinDragging: inPinView && !!drag,
     intent: inPinView || markMode ? null : { marker: markerDrawn, lineDeg: startLineDeg, dragging: !!tdrag },
+    dots: inPinView || markMode ? [] : dots,
   }) : [];
   const base = hole && drawn && project ? fallbackMapModel({ hole, project }) : [];
+  const shapes = hole && satellite && shapesOn && project && !markMode ? satShapesModel({ hole, project }) : [];
 
   /* ---------- pointer input: tap, long-press (re-mark), press-hold-drag (pin view) ---------- */
   const TAP_SLOP_PX = 8, HOLD_MS = 300, LONG_MS = 600;
@@ -532,6 +557,14 @@ export function MapLayer({
   };
   const onPointerDown = (ev) => {
     if (!boxRef.current || (ev.button != null && ev.button > 0)) return;
+    // v22.27 (C18): a second finger is a pinch — drop the press, no tap, no hold, no drag
+    touchesRef.current.add(ev.pointerId);
+    if (touchesRef.current.size > 1) {
+      const pr0 = pressRef.current;
+      pressRef.current = null;
+      if (pr0) { clearTimeout(pr0.timer); if (pr0.mode === "drag") endDrag(); if (pr0.mode === "tdrag") endTdrag(); }
+      return;
+    }
     const pt = local(ev);
     const pr = { id: ev.pointerId, x0: pt.x, y0: pt.y, moved: false, mode: null, timer: null, grab: null };
     pressRef.current = pr;
@@ -587,6 +620,7 @@ export function MapLayer({
     if (!pr.moved && Math.hypot(pt.x - pr.x0, pt.y - pr.y0) > TAP_SLOP_PX) { pr.moved = true; clearTimeout(pr.timer); }
   };
   const onPointerUp = (ev) => {
+    touchesRef.current.delete(ev.pointerId);
     const pr = pressRef.current;
     if (!pr || pr.id !== ev.pointerId) return;
     pressRef.current = null;
@@ -597,7 +631,8 @@ export function MapLayer({
     if (pr.mode === "long" || pr.moved) return;
     tap(local(ev));
   };
-  const onPointerCancel = () => {
+  const onPointerCancel = (ev) => {
+    if (ev) touchesRef.current.delete(ev.pointerId);
     const pr = pressRef.current;
     pressRef.current = null;
     if (!pr) return;
@@ -620,6 +655,11 @@ export function MapLayer({
       {base.length > 0 && (
         <svg data-layer="drawn-map" style={{ ...svgStyle, pointerEvents: "none" }} width={vp.width} height={vp.height} viewBox={`0 0 ${vp.width} ${vp.height}`} aria-hidden="true">
           {renderNodes(base)}
+        </svg>
+      )}
+      {shapes.length > 0 && (
+        <svg key={`shapes-${hole?.key ?? hole?.id ?? ""}`} className="loop-shapes" data-layer="shapes" style={{ ...svgStyle, pointerEvents: "none" }} width={vp.width} height={vp.height} viewBox={`0 0 ${vp.width} ${vp.height}`} aria-hidden="true">
+          {renderNodes(shapes)}
         </svg>
       )}
       {project && (trail.length > 0 || stops.length > 0) && !inPinView && !markMode && (
@@ -655,6 +695,14 @@ export function MapLayer({
           </div>
         );
       })}
+      {/* v22.28 (C2): the Shapes toggle; v22.27 (C18): after a pinch, Fit puts the hole's camera back */}
+      {satellite && pinchOk && (
+        <div style={{ position: "absolute", left: 6, bottom: attrBottom + 22, zIndex: 6, display: "flex", gap: 6 }}
+          onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
+          <button data-part="map-shapes" aria-pressed={shapesOn ? "true" : "false"} onClick={toggleShapes} style={mapPill(shapesOn)}>Shapes</button>
+          {zoomed && <button data-part="map-fit" onClick={fit} style={mapPill(false)}>Fit</button>}
+        </div>
+      )}
       {/* v22.15: test mode — a thin dashed pencil border, so a fake round is never mistaken for a live one */}
       {testBorder && <div data-part="test-border" aria-hidden="true" style={{ position: "absolute", inset: 2, border: `1.5px dashed ${T.pencil}`, pointerEvents: "none", zIndex: 5 }} />}
       {(hole || markMode) && (

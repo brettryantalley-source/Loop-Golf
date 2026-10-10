@@ -63,11 +63,13 @@ test("C3 / R3: the aim-off includes the crosswind; a drift under 2 yds is aimed 
 });
 
 test("C3: every shot aims off — off the tee only the wind moves it; Brett's own target carries the aim-off for its club", () => {
+  // C22 (D113): the tee clubs have measured rings now; the driver's good drives finish ~5 yds right
   const calm = recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee" }, openPar5, P);
-  assert.equal(calm.safe.aimOffsetYds, 0, "no tee club has a measured lateral pattern");
+  const teeDx = resolveEntry(P, calm.safe.club, "full", "tee").ell80?.dxYds ?? 0;
+  assert.equal(calm.safe.aimOffsetYds, Math.abs(teeDx) >= 2 ? -teeDx : 0, `${calm.safe.club}: aims off its own pattern`);
   const windy = recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee", wind: LEFT_WIND }, openPar5, P);
   assert.ok(windy.safe.windYds > 2, `tee shot drift ${windy.safe.windYds}`);
-  assert.equal(windy.safe.aimOffsetYds, -windy.safe.windYds, `${windy.safe.club} ${windy.safe.kind}: aims into the wind`);
+  assert.ok(Math.abs(windy.safe.aimOffsetYds + windy.safe.patternYds + windy.safe.windYds) < 0.11, `${windy.safe.club} ${windy.safe.kind}: aims into the wind and off the pattern`);
   const own = priceTarget({ shotNo: 2, ball: { x: 0, y: 540 - 165 }, lieType: "fairway" }, openPar5, P, { x: 3, y: 540 });
   const pat = resolveEntry(P, own.club, "full", "fairway").ell80?.dxYds ?? 0;
   assert.equal(own.aimOffsetYds, Math.abs(pat) >= 2 ? -pat : 0, `${own.club}: the marker is where it finishes`);
@@ -83,6 +85,9 @@ test("C3: both rings centre on the target; the drift shows only when it is under
   assert.equal(windy.ell.dx, 0, "with the wind in the aim too");
   const six = withEllipses({ safe: opt("6i", { aimOffsetYds: 0, patternYds: -1.2, windYds: 0 }), sameShot: true }, resolve).safe;
   assert.equal(six.ell.dx, -1.2, "6-iron: under the floor, the ring keeps its 1.2 yds left");
+  // v22.29 (C21, D100): along the line, the rings sit where the club's average shot finishes
+  const long = withEllipses({ safe: opt("8i", { aimOffsetYds: 7.1, patternYds: -7.1, windYds: 0, meanYds: 169, toTargetYds: 162 }), sameShot: true }, resolve).safe;
+  assert.equal(long.ell.dy, -7, "finishes 7 past the target: the ring moves 7 long (SP +y = short)");
   const { project } = linearProjector({ center: { x: 0, y: 460 }, pxPerYd: 2 }, { width: 375, height: 812 });
   const se = screenEllipseFor(on, ball, project), T = project(GREEN);
   assert.ok(Math.hypot(se.e.cx - T.x, se.e.cy - T.y) < 0.01, "the drawn centre is the target");
@@ -127,10 +132,14 @@ test("C3: an untouched line is not logged as his; an on-pattern shot reads ~0 fr
   assert.equal(onPattern.derived.lateralMissYds, 0, "measured from the target: on target");
   assert.equal(onPattern.derived.latMissYds, 0);
   assert.equal(patternLatYds(onPattern), -7.1, "from the line it started on: the 8-iron's 7 yds left");
-  // his own Line, straight at the target: the same 7 yds left is a miss from the target and the pattern from his line
-  const own = shot({ x: -7.1, y: 540 }, shotIntent({ option, ball, set: { startLineDeg: 0 } }));
+  // his own Line, straight at the target, hit straight: the same 7 yds left is a miss from the target and the pattern from his line
+  const own = shot({ x: -7.1, y: 540 }, shotIntent({ option, ball, set: { startLineDeg: 0, shape: "straight" } }));
   assert.equal(own.derived.lateralMissYds, -7.1);
   assert.equal(patternLatYds(own), -7.1);
+  // C24 (D108): the same Line with his usual 8-iron draw (7 yds left): finishing 7 left is the draw, not the pattern
+  const drawn = shot({ x: -7.1, y: 540 }, shotIntent({ option, ball, set: { startLineDeg: 0 } }));
+  assert.equal(drawn.intent.curveYds, -7);
+  assert.equal(patternLatYds(drawn), -0.1);
   // with the wind in the aim: the drift the caddie allowed for comes back out
   const windIt = shotIntent({ option: { ...option, aimOffsetYds: 2.1, windYds: 5 }, ball });
   assert.equal(patternLatYds(shot({ x: 0, y: 540 }, windIt)), -7.1);

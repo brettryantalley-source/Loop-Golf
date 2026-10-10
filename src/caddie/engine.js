@@ -141,8 +141,10 @@ function landingModel(entry, ball, target, ctx, cfg) {
   const roll = entry.roll;                               // ground conditions already applied (ROLL_COND_MULT)
   const dir = { x: Math.sin(b * DEG), y: Math.cos(b * DEG) };
   const perp = { x: dir.y, y: -dir.x };                // +x when heading up the hole → right
-  // mean = carry (what a green-bound shot is judged on); total = where a fairway-bound shot stops.
-  return { mean, total: mean + roll, roll, dir, perp, bearing: b, wind: pl.wind, sdMult: q.sdMult };
+  // mean = carry; total = where a fairway-bound shot stops; greenTotal (D94) = where a green-bound
+  // shot stops: it rolls GREEN_ROLL_SHARE of its roll-out on the green too.
+  const greenRoll = roll * (cfg.GREEN_ROLL_SHARE ?? DEFAULT_CONFIG.GREEN_ROLL_SHARE);
+  return { mean, total: mean + roll, greenTotal: mean + greenRoll, roll, greenRoll, dir, perp, bearing: b, wind: pl.wind, sdMult: q.sdMult };
 }
 
 /**
@@ -204,8 +206,10 @@ export function generateCandidates(ctx, hole, P) {
   const reach = new Map();
   for (const e of entries) {
     const lm = landingModel(e, ctx.ball, center, ctx, cfg);
-    reach.set(e, lm.mean >= g.front - cfg.REACH_SHORT_TOLERANCE_YDS && lm.mean <= g.back + cfg.FLY_TOLERANCE_YDS
-      ? "reaches" : lm.mean > g.back + cfg.FLY_TOLERANCE_YDS ? "flies" : "short");
+    // D94: judged on where it finishes (carry + its roll on the green), not on carry alone
+    const fin = lm.greenTotal;
+    reach.set(e, fin >= g.front - cfg.REACH_SHORT_TOLERANCE_YDS && fin <= g.back + cfg.FLY_TOLERANCE_YDS
+      ? "reaches" : fin > g.back + cfg.FLY_TOLERANCE_YDS ? "flies" : "short");
   }
 
   // Green-reachable approach: pin, center, fat side (§3.4).
@@ -407,7 +411,38 @@ export function aimFor(entry, crossYds, cfg) {
   return { patternYds, windYds, aimOffsetYds };
 }
 
-export function simulateCandidate(cand, ctx, hole, P, samples) {
+/**
+ * C8 (v22.36, D107): the share of draws that finish 10–20% short on top of the ellipse — Brett's
+ * observed P(finish > overPct short), shrunk toward the model's own by n/(n + SHRINK_K), less what
+ * the model already gives, as a share of the draws that aren't already that short. The model's rate
+ * is the ellipse's (good ring and mishit ring, D92) along the line, at the lie the data came from
+ * (sdMult 1), or σ-distance without one. 0 with no shortPct, or when the model is already as short.
+ */
+export function shortTailPct(e, cfg = DEFAULT_CONFIG) {
+  const T = cfg.SHORT_TAIL || DEFAULT_CONFIG.SHORT_TAIL;
+  const obs = e?.fields?.shortPct, n = e?.shortN;
+  if (!T.on || !Number.isFinite(obs) || !Number.isFinite(n) || n <= 0) return 0;
+  const total = e.carry + e.roll, over = T.overPct * total;
+  const along = (ell) => {
+    const sw = ell.wYds / 2 / ELL80_K, sh = ell.hYds / 2 / ELL80_K, t = ell.tiltDeg * DEG;
+    const sd = Math.hypot(sw * Math.sin(t), sh * Math.cos(t));
+    return sd > 0 ? 1 - phi((over - (ell.dyYds || 0)) / sd) : 0;     // y + = short
+  };
+  let model;
+  if (e.ell80) {
+    const m = e.ell80.mishitRate > 0 && e.ell80.allWYds > 0 ? e.ell80.mishitRate : 0;
+    const all = { ...e.ell80, wYds: e.ell80.allWYds, hYds: e.ell80.allHYds, tiltDeg: e.ell80.allTiltDeg };
+    model = (1 - m) * along(e.ell80) + (m ? m * along(all) : 0);
+  } else {
+    const sd = e.distSd / (e.lieSdMult || 1);
+    model = sd > 0 ? phi(-over / sd) : 0;
+  }
+  const K = cfg.SHRINK_K ?? DEFAULT_CONFIG.SHRINK_K;
+  const target = (n * obs + K * model) / (n + K);
+  return model < 1 && target > model ? (target - model) / (1 - model) : 0;
+}
+
+export function simulateCandidate(cand, ctx, hole, P, samples, trace = null) {
   const cfg = P.config;
   const e = cand.entry;
   const pin = pinPoint(hole, ctx.ball, ctx.pinPos);
@@ -424,7 +459,11 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
   const sigmaLat = e.lateralSd * lm.sdMult;             // lie-widened in resolveEntry, quality-widened here
   const sigmaD = e.distSd * lm.sdMult;
   const k = ctx.par - 1 - ctx.shotNo;                     // birdie needs this many more after this shot
+  // C8 (D107): the short tail. Not on a par-4/5 tee shot: shortPct is measured on approaches.
+  const tail = ctx.lieType === "tee" && ctx.par >= 4 ? 0 : shortTailPct(e, cfg);
+  const T = cfg.SHORT_TAIL || DEFAULT_CONFIG.SHORT_TAIL;
   let sumStrokes = 0, sumBirdie = 0, sumPar = 0, sumDouble = 0, trouble = 0, sumLat = 0;
+  const troubleBy = {};                                   // v22.39 (C4, D110): which trouble, for the aim warning
   const n = samples.length;
   for (let i = 0; i < n; i++) {
     const s = samples[i];
@@ -437,33 +476,42 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
       along = lm.mean + sigmaD * s.z1;
       lat = e.biasLat + lm.wind.crossYds + sigmaLat * s.z2;
     }
+    if (tail > 0 && s.t < tail) {
+      const depth = T.depthMin + (T.depthMax - T.depthMin) * (s.t / tail);
+      along = lm.mean - (ell ? e.biasDist : 0) - depth * lm.total;
+    }
     const tailLat = Math.abs(sigmaLat * s.z2) * 0.5;
     if (s.u < e.bigMiss.left) lat = -e.bigMiss.latYds - tailLat;
     else if (s.u < e.bigMiss.left + e.bigMiss.right) lat = e.bigMiss.latYds + tailLat;
-    lat += aim.aimOffsetYds;                           // C3: the whole shot, big misses too, starts on the aim line
+    // C3: the whole shot, big misses too, starts on the aim line — or on his own Line (C4, D110)
+    lat += Number.isFinite(cand.startOffsetYds) ? cand.startOffsetYds : aim.aimOffsetYds;
     sumLat += lat;
     let p = { x: ctx.ball.x + lm.dir.x * along + lm.perp.x * lat, y: ctx.ball.y + lm.dir.y * along + lm.perp.y * lat };
     let lie = classify(hole, p);
-    if (lie !== "green" && roll > 0) {
+    // D94: a ball that lands on the green rolls too (GREEN_ROLL_SHARE of its roll-out), and can
+    // roll off it; before v22.23 it stopped where it landed.
+    const rollHere = lie === "green" ? lm.greenRoll : roll;
+    if (rollHere > 0) {
       // Roll along the line of flight in short steps; the ball stops in the first bunker, water
       // or trees it runs into (it never rolls through a hazard onto the green).
       const step = 2;
       let rolled = 0;
-      while (rolled < roll) {
-        const d = Math.min(step, roll - rolled);
+      while (rolled < rollHere) {
+        const d = Math.min(step, rollHere - rolled);
         const q = { x: p.x + lm.dir.x * d, y: p.y + lm.dir.y * d };
         const ql = classify(hole, q);
         p = q; lie = ql; rolled += d;
         if (ql === "sand" || ql === "water" || ql === "trees") break;
       }
     }
+    if (trace) trace.push({ x: p.x, y: p.y });         // v22.29 (C21): where each draw finished
     const r = priceLanding(hole, P, ctx, ctx.ball, p, lie, k, pin);
     sumStrokes += r.strokes;
     sumBirdie += r.birdie;
     const f = finishProbs(P, r, ctx, cfg);
     sumPar += f.par;
     sumDouble += f.double;
-    if (r.trouble) trouble++;
+    if (r.trouble) { trouble++; troubleBy[lie] = (troubleBy[lie] || 0) + 1; }
   }
   return {
     expScore: ctx.shotNo - 1 + sumStrokes / n,
@@ -471,7 +519,8 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
     parProb: sumPar / n,
     doubleProb: sumDouble / n,
     troubleRate: trouble / n,
-    meanYds: cand.kind === "approach" ? lm.mean : lm.total,
+    troubleBy: Object.fromEntries(Object.entries(troubleBy).map(([k, v]) => [k, v / n])),
+    meanYds: cand.kind === "approach" ? lm.greenTotal : lm.total,   // where it finishes on average (D94)
     distToTarget: dist(ctx.ball, cand.target),
     aimOffsetYds: aim.aimOffsetYds,
     patternYds: aim.patternYds,
@@ -539,6 +588,7 @@ function formatOption(c, P, safeExp, geo) {
     parProb: r3(c.parProb),
     doubleProb: r3(c.doubleProb),
     troubleRate: r3(c.troubleRate),
+    ...(c.troubleBy ? { troubleBy: Object.fromEntries(Object.entries(c.troubleBy).map(([k, v]) => [k, r3(v)])) } : {}),
     reason: text,
     reasonFields: fields,
   };
@@ -579,7 +629,7 @@ export function recommend(rawCtx, hole, P) {
   }
   const samples = makeSamples(cfg.SAMPLES, cfg.SEED);
   const scored = cands.map((c) => ({ ...c, ...simulateCandidate(c, ctx, hole, P, samples) }));
-  const sit = situationOf(ctx, hole, g);
+  const sit = situationOf(ctx, hole, g, cfg);
   const { safe, aggressive, sameShot, rules } = pickOptions(scored, cfg, sit);
   const geo = { ball: ctx.ball, pin: pinPoint(hole, ctx.ball, ctx.pinPos) };
   const out = {
@@ -632,11 +682,39 @@ function whyFacts(scored, sit, cfg, safe, rules, ctx, P, geo) {
   };
 }
 
+/**
+ * v22.39 (C4, D110): the aim warning for Brett's own target or Line (`own`, priceTarget's option,
+ * priced on his Line when he drew one) against SAFE, or null:
+ *   { kind: "trouble", hazard, rate, safeRate }  his shot finds trouble AIM_WARN.troubleGap more
+ *                                                 often than SAFE; the hazard it finds most
+ *   { kind: "miss", rightYds, longYds }          his club's average miss from the target (missSummary,
+ *                                                 at least AIM_WARN.minN Loop-measured shots) carries
+ *                                                 the ring's centre off the green he aimed at
+ */
+export function aimWarning(own, safe, { hole = null, ball = null, miss = null, config = DEFAULT_CONFIG } = {}) {
+  if (!own || !safe) return null;
+  const W = { ...DEFAULT_CONFIG.AIM_WARN, ...(config?.AIM_WARN || {}) };
+  if (Number.isFinite(own.troubleRate) && Number.isFinite(safe.troubleRate) && own.troubleRate >= safe.troubleRate + W.troubleGap - 1e-9) {
+    const by = own.troubleBy || {};
+    const hazard = Object.keys(by).sort((a, b) => by[b] - by[a])[0] || null;
+    return { kind: "trouble", hazard, rate: hazard ? by[hazard] : own.troubleRate, safeRate: hazard ? safe.troubleBy?.[hazard] ?? 0 : safe.troubleRate };
+  }
+  if (miss && miss.nYds >= W.minN && hole && ball && own.target && classify(hole, own.target) === "green") {
+    const T = own.target, dx = T.x - ball.x, dy = T.y - ball.y, L = Math.hypot(dx, dy);
+    if (L > 1e-9) {
+      const ux = dx / L, uy = dy / L, r = miss.rightYds || 0, l = miss.longYds || 0;
+      const c = { x: T.x + uy * r + ux * l, y: T.y - ux * r + uy * l };
+      if (classify(hole, c) !== "green") return { kind: "miss", rightYds: r, longYds: l };
+    }
+  }
+  return null;
+}
+
 /* ---------- §3.10 display strings ---------- */
 
 /**
  * Brett's own target (v22.16.5): the club whose average shot best fits the distance to `target` —
- * carry when the target is on the green, carry + roll anywhere else — simulated like any candidate,
+ * carry + its green roll when the target is on the green (D94), carry + roll anywhere else — simulated like any candidate,
  * so the club, its dispersion and its numbers follow the marker. Not an option of recommend(): the
  * SAFE / AGGRESSIVE pair is still what the caddie said; this is what Brett chose to aim at.
  * opts.samples (v22.17): how many draws to price with — the UI uses ~80 while the marker is being
@@ -652,7 +730,7 @@ export function priceTarget(rawCtx, hole, P, target, opts = {}) {
   let best = null;
   for (const e of candidateEntries(P, ctx.lieType, { conditions: ctx.conditions })) {
     const lm = landingModel(e, ctx.ball, target, ctx, cfg);
-    const err = Math.abs((toGreen ? lm.mean : lm.total) - need);
+    const err = Math.abs((toGreen ? lm.greenTotal : lm.total) - need);
     if (!best || err < best.err) best = { e, err };
   }
   if (!best) return null;
@@ -660,9 +738,34 @@ export function priceTarget(rawCtx, hole, P, target, opts = {}) {
   const leave = Math.round(dist(target, pin));
   const cand = { club: best.e.club, swing: best.e.swing, entry: best.e, kind: toGreen ? "approach" : "layup", target: { x: target.x, y: target.y },
     label: toGreen ? "own target" : `leave ${leave}, own target` };
+  // v22.39 (C4, D110): his own Line (hole-frame bearing) — the shot starts on it and curves by the
+  // shape he chose (opts.curveYds, D108); without one it starts on the caddie's aim line
+  if (Number.isFinite(opts?.lineDeg)) {
+    const L = need, brg = Math.atan2(target.x - ctx.ball.x, target.y - ctx.ball.y) / DEG;
+    const d = ((opts.lineDeg - brg + 540) % 360) - 180;
+    if (L > 1e-9 && Math.abs(d) < 60) cand.startOffsetYds = L * Math.tan(d * DEG) + (Number.isFinite(opts.curveYds) ? opts.curveYds : 0);
+  }
   const n = Number.isFinite(opts?.samples) && opts.samples >= 1 ? Math.round(opts.samples) : cfg.SAMPLES;
   const sim = simulateCandidate(cand, ctx, hole, P, makeSamples(n, cfg.SEED));
   return formatOption({ ...cand, ...sim }, P, null, { ball: ctx.ball, pin });
+}
+
+/**
+ * v22.29 (C21, D100): the dots inside the ring — where `n` of the simulation's own draws finish for
+ * an option on screen (recommend()'s or priceTarget's), mishits, big misses and roll included. Same
+ * seed, so the dots only move when the shot does. Kept out of recommend() so the shot record's
+ * recommendation snapshot stays small. [] when the club isn't in the profile.
+ */
+export function landingDots(rawCtx, hole, P, option, n) {
+  if (!option?.target || !Number.isFinite(option.target.x)) return [];
+  const cfg = P.config || DEFAULT_CONFIG;
+  const ctx = normalizeContext(rawCtx, hole);
+  const e = candidateEntries(P, ctx.lieType, { conditions: ctx.conditions }).find((x) => x.club === option.club && x.swing === (option.swingType || "full"));
+  if (!e) return [];
+  const cand = { club: e.club, swing: e.swing, entry: e, kind: option.kind || "approach", target: { x: option.target.x, y: option.target.y } };
+  const out = [];
+  simulateCandidate(cand, ctx, hole, P, makeSamples(Number.isFinite(n) ? n : cfg.RING_DOTS ?? DEFAULT_CONFIG.RING_DOTS, cfg.SEED), out);
+  return out;
 }
 
 /**

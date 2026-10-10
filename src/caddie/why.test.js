@@ -111,9 +111,25 @@ test("today's clause: under half a club says the yards; another family's nudge s
 
 const chicopee = parseOverpass(toOverpass(JSON.parse(readFileSync(join(here, "../localGeometry/chicopee.json"), "utf8"))));
 const village1 = (() => { const k = Object.keys(chicopee.holes).find((x) => chicopee.holes[x].name === "Village 1"); return buildHole(chicopee, k, { par: 4 }); })();
+// The tee shot the par ranking decides moves as the profile does (Chicopee Village 1 until v22.33, D104;
+// Mill 3 until v22.42, C22 / D113): take the first par-4/5 tee shot on the bundled maps where it decides.
+const parTee = (() => {
+  for (const n of ["chicopee", "woodmont", "riverpines", "hampton"]) for (const [k, g] of (() => {
+    const geo = parseOverpass(toOverpass(JSON.parse(readFileSync(join(here, "../localGeometry", `${n}.json`), "utf8"))));
+    return Object.keys(geo.holes).map((key) => [key, geo]);
+  })()) {
+    const par = Number(g.holes[k].par) || 4;
+    if (par < 4) continue;
+    const h = buildHole(g, k, { par });
+    const r = h && recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee", par }, h, P);
+    if (r?.strategy?.length === 1 && r.strategy[0] === "par" && r.why?.alt && r.why.alt.club !== r.safe.club) return { h, par };
+  }
+  return null;
+})();
 
 test("recommend(): `why` names the deciding rule and the shot SAFE would have been without it", () => {
-  const tee = recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee", par: 4 }, village1, P);
+  assert.ok(parTee, "some tee shot on the bundled maps is decided by the par ranking");
+  const tee = recommend({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee", par: parTee.par }, parTee.h, P);
   assert.deepEqual(tee.strategy, ["par"]);
   assert.equal(tee.why.rule, "par");
   assert.ok(tee.why.alt && tee.why.alt.club !== tee.safe.club, `without the par ranking: ${tee.why.alt?.club}`);
@@ -155,4 +171,16 @@ test("caddieView: `why` for the option on screen; none before the tee or without
   assert.equal(ready.why.text, "7-iron to the middle: back pin.");
   assert.equal(ready.why.rule, "pin-back");
   assert.equal(caddieView({ state: initialCaddie(7), par: 4, res: r }).why, null, "pre-tee");
+});
+
+test("C30 (v22.26): a moved target's line is its own par chance, from priceTarget's option", async () => {
+  const { ownLine } = await import("./reasons.js");
+  const { priceTarget } = await import("./engine.js");
+  const { noWaterPar4 } = await import("../fixtures/synthetic-holes.js");
+  const o = priceTarget({ shotNo: 2, ball: { x: 0, y: 215 }, lieType: "fairway", par: 4 }, noWaterPar4, P, { x: 4, y: 410 });
+  const l = ownLine(o);
+  assert.equal(l.text, `${clubName(o)}: ${Math.round(o.parProb * 100)}% chance at par`);
+  const moved = priceTarget({ shotNo: 2, ball: { x: 0, y: 215 }, lieType: "fairway", par: 4 }, noWaterPar4, P, { x: 22, y: 410 });
+  assert.notEqual(ownLine(moved).text, l.text, "moving the target moves the number");
+  assert.equal(ownLine(null), null);
 });

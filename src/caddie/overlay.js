@@ -183,14 +183,19 @@ export function withEllipses(res, resolve, { lieQuality = "standard", config = D
 }
 
 /**
- * v22.22 (C3, D93): the rings sit where the shot finishes. The ring's own lateral offset plus the
- * crosswind drift, less the aim-off (engine.js aimFor): 0 when the aim cancels the drift, so both
+ * v22.22 (C3, D93): the rings sit where the shot finishes. Across: the ring's own lateral offset plus
+ * the crosswind drift, less the aim-off (engine.js aimFor): 0 when the aim cancels the drift, so both
  * rings centre on the target; the drift itself when it is under PATTERN_AIM_MIN_YDS.
+ * v22.29 (C21, D100): along the line too: a club whose average shot (meanYds) finishes past or short
+ * of the target (toTargetYds) moves its rings there; the dots showed the 8-iron finishing 7 yds past a
+ * 162-yd middle while its rings sat on it. The yellow target stays where Brett wants it to finish.
  */
 function onFinish(ell, o) {
   if (!ell) return ell;
   const dx = ell.dx + (Number.isFinite(o?.windYds) ? o.windYds : 0) + (Number.isFinite(o?.aimOffsetYds) ? o.aimOffsetYds : 0);
-  return { ...ell, dx: Math.abs(dx) < 0.15 ? 0 : f1(dx) };
+  const long = Number.isFinite(o?.meanYds) && Number.isFinite(o?.toTargetYds) ? o.meanYds - o.toTargetYds : 0;
+  const dy = ell.dy - long;                                 // SP frame: +y = short
+  return { ...ell, dx: Math.abs(dx) < 0.15 ? 0 : f1(dx), dy: Math.abs(dy) < 0.15 ? 0 : f1(dy) };
 }
 
 /**
@@ -200,7 +205,8 @@ function onFinish(ell, o) {
 export function aimPointFor(option, ball) {
   const T = option?.target;
   if (!T || !ball || !Number.isFinite(T.x) || !Number.isFinite(ball.x)) return null;
-  const o = Number.isFinite(option.aimOffsetYds) ? option.aimOffsetYds : 0;
+  // v22.37 (C24, D108): a shot that curves starts the curve's width to the other side (a fade, left)
+  const o = (Number.isFinite(option.aimOffsetYds) ? option.aimOffsetYds : 0) - (Number.isFinite(option.curveYds) ? option.curveYds : 0);
   const dx = T.x - ball.x, dy = T.y - ball.y, L = Math.hypot(dx, dy);
   if (!o || L < 1e-9) return { x: T.x, y: T.y };
   return { x: T.x + (dy / L) * o, y: T.y - (dx / L) * o };
@@ -245,28 +251,34 @@ export function fitBounds(points) {
 const asXY = (p) => (p ? (Array.isArray(p) ? { x: p[0], y: p[1] } : p) : null);
 
 /**
- * What the camera frames (addendum §4.1), in hole-frame yards:
- * ball + green polygon + BOTH options' ellipses (their boxes are the polygons' boxes) + the
- * layup-to-pin line. With no ball (pre-tee) the hole is framed tee → green: the centreline + green.
+ * What the camera frames (addendum §4.1), in hole-frame yards. v22.27 (C20, D98; Brett Oct 10: "the
+ * map should automatically be zoomed into the hole where the suggested shot is in frame"): the ball,
+ * SAFE's ellipse and target (+ the pin on a lay-up), the green only when SAFE goes at it, and
+ * AGGRESSIVE's target point (its ring may run off the edge; pinch to zoom out, C18). Before v22.27 it
+ * was the whole green and BOTH ellipses, which on a tee shot framed most of the hole. With no
+ * options (Locating, no call) the ball + green. With no ball (pre-tee) the hole is framed
+ * tee → green: the centreline + green.
  */
 export function cameraPoints({ hole, ball, pin, options }) {
   const pts = [];
   if (!hole) return pts;
   const b = asXY(ball);
-  if (b) pts.push(b);
-  else {
+  const green = () => { for (const q of hole.green?.ring || []) pts.push(asXY(q)); };
+  if (!b) {
     pts.push(hole.tee || { x: 0, y: 0 });
     for (const q of hole.line || []) pts.push(asXY(q));
+    green();
+    if (pin) pts.push(asXY(pin));
+    return pts;
   }
-  for (const q of hole.green?.ring || []) pts.push(asXY(q));
-  if (b) {
-    for (const o of [options?.safe, options?.aggressive]) {
-      if (!o || !o.target) continue;
-      pts.push(o.target);
-      for (const q of ellipseInFrame(o.ell, b, o.target)) pts.push(asXY(q));
-      if (o.kind === "layup" && pin) pts.push(asXY(pin));
-    }
-  } else if (pin) pts.push(asXY(pin));
+  pts.push(b);
+  const safe = options?.safe?.target ? options.safe : null;
+  if (!safe) { green(); return pts; }
+  pts.push(safe.target);
+  for (const q of ellipseInFrame(safe.ell, b, safe.target)) pts.push(asXY(q));
+  if (safe.kind === "approach") green();
+  if (safe.kind === "layup" && pin) pts.push(asXY(pin));
+  if (options?.aggressive?.target) pts.push(options.aggressive.target);
   return pts;
 }
 
@@ -330,7 +342,7 @@ export function cameraKey({ hole, ball, options, viewport, insets }) {
 export const NOTICE_NO_SATELLITE = "No satellite here. Map drawn from course data.";
 export const NOTICE_NO_SATELLITE_MARKED = "No satellite here. Map drawn from the marked green.";
 export const NOTICE_MARK_GREEN = "No course map. Satellite on GPS — tap the green to mark it.";
-export const noticeNoCourseMap = (holeNo) => `No course map for hole ${holeNo}. Enter yards for a club.`;
+export const noticeNoCourseMap = (holeNo) => `No course map for hole ${holeNo}.`;   // v22.30 (C19): no Enter yards
 
 /**
  * T39. { hasHole, libFailed, tilesCached, online, probeOk } → { mode, notice }.
@@ -514,7 +526,7 @@ export function troubleRings(hole) {
  *          pin, active (option with target/kind/ell), other (the ghosted option; null when sameShot),
  *          previousShots [{from, to}], palette "satellite"|"paper", idPrefix, redrawKey, recomputing }
  * Draw order (§4.2): pin · [cur: previous shots · other option · the caddie's start line (C3) ·
- * corridor · leave line · ellipse · trouble hatch · target ring] · intent · ball. The `cur` group
+ * corridor · leave line · ellipse · dots (C21) · trouble hatch · target ring] · intent · ball. The `cur` group
  * carries the redraw fade.
  */
 export function overlayModel(input) {
@@ -522,7 +534,7 @@ export function overlayModel(input) {
     project, viewport = { width: 375, height: 812 }, hole = null, ball = null, accuracyM = null, pin = null,
     active = null, other = null, previousShots = [], palette = "satellite", idPrefix = "ovl", redrawKey = "", recomputing = false,
     pinMarker = false, pinDragging = false,
-    intent = null,
+    intent = null, dots = [],
   } = input;
   const P = PALETTES[palette] || PALETTES.satellite;
   const hatchId = `${idPrefix}-hatch`, clipId = `${idPrefix}-trouble`;
@@ -603,6 +615,13 @@ export function overlayModel(input) {
       const ei = ellipseScreen({ target: T, ...active.ell, w: active.ell.w * active.ell.innerFrac, h: active.ell.h * active.ell.innerFrac,
         thetaDeg: thetaDeg(B, T), pxPerYd: pxPerYdAt(project, active.target) });
       cur.push(el("ellipse", { "data-part": "ellipse-inner", ...ellipseAttrs(ei), fill: "none", stroke: P.line, strokeWidth: 1.2, strokeDasharray: "4 3" }));
+    }
+    // 6c. v22.29 (C21, D100): dots — where the simulation's draws finish (engine.js landingDots)
+    if (dots && dots.length) {
+      cur.push(el("g", { "data-part": "dots" }, dots.filter((d) => d && Number.isFinite(d.x)).map((d) => {
+        const q = project(d);
+        return el("circle", { cx: f1(q.x), cy: f1(q.y), r: 2, fill: P.line, opacity: 0.85, ...(P.halo ? { stroke: P.halo, strokeWidth: 0.6 } : {}) });
+      })));
     }
     // 7. trouble hatch: the same ellipse, hatched, clipped to water / bunkers / trees / outside OB
     const clip = troubleClip(hole, project, viewport);
@@ -729,6 +748,42 @@ export function fallbackMapModel({ hole, project }) {
     ...hz.filter((h) => h.type === "sand").map((h) => poly(h.ring, FB.fillHalf)),
   ];
   return out.filter(Boolean);
+}
+
+/* ---------- v22.28 (C2, D99): course shapes over the satellite ---------- */
+
+/** R2 "muted": tints that let the photo through. Rough has no fill (the photo shows the lie). */
+export const SHAPE_STYLE = Object.freeze({
+  fairway: { fill: "rgba(150,205,110,.35)", stroke: "rgba(214,240,190,.9)", strokeWidth: 1.2 },
+  tee:     { fill: "rgba(150,205,110,.45)", stroke: "rgba(244,240,228,.9)", strokeWidth: 1 },
+  green:   { fill: "rgba(140,220,120,.55)", stroke: "#F4F0E4", strokeWidth: 1.6 },
+  water:   { fill: "rgba(64,126,204,.45)", stroke: "rgba(28,70,140,.95)", strokeWidth: 1.4 },
+  sand:    { fill: "rgba(236,222,184,.82)", stroke: "rgba(190,168,118,.95)", strokeWidth: 1 },
+  // a soft dark tint, no outline: the traced woods are cut into tiles (D74) and an edge line drew the seams
+  trees:   { fill: "rgba(10,30,14,.3)", stroke: "none", strokeWidth: 0 },
+});
+
+/**
+ * The hole's shapes as tinted layers for the satellite map (R2: muted, a Shapes toggle). Order:
+ * tree edges, fairways (this hole's and the nearby ones), tees, green, water, sand. Nothing on a
+ * marked green (no course data to show). Shapes only (T37).
+ */
+export function satShapesModel({ hole, project }) {
+  if (!hole || hole.synthetic || !project) return [];
+  const poly = (ring, st, part) => {
+    const pts = (ring || []).map((q) => project(Array.isArray(q) ? { x: q[0], y: q[1] } : q));
+    return pts.length >= 3 ? el("path", { "data-part": part, d: pathD(pts), fill: st.fill, stroke: st.stroke, strokeWidth: st.strokeWidth, strokeLinejoin: "round" }) : null;
+  };
+  const hz = hole.hazards || [];
+  return [
+    ...hz.filter((h) => h.type === "trees").map((h) => poly(h.ring, SHAPE_STYLE.trees, "shape-trees")),
+    ...(hole.nearby?.fairways || []).map((r) => poly(r, SHAPE_STYLE.fairway, "shape-fairway")),
+    ...(hole.fairways || []).map((r) => poly(r, SHAPE_STYLE.fairway, "shape-fairway")),
+    ...(hole.tees || []).map((r) => poly(r, SHAPE_STYLE.tee, "shape-tee")),
+    poly(hole.green?.ring, SHAPE_STYLE.green, "shape-green"),
+    ...hz.filter((h) => h.type === "water").map((h) => poly(h.ring, SHAPE_STYLE.water, "shape-water")),
+    ...hz.filter((h) => h.type === "sand").map((h) => poly(h.ring, SHAPE_STYLE.sand, "shape-sand")),
+  ].filter(Boolean);
 }
 
 /** Every tag in a descriptor tree (T37 walks this). */

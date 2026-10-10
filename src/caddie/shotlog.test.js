@@ -76,8 +76,8 @@ test("T17 quick path: Good shot writes all defaults", () => {
   assert.equal(rec.contact, 0);
   assert.equal(rec.strike, "center");
   assert.equal(rec.startLine, "on");
-  assert.equal(rec.intendedShape, "straight");  // no history supplied
-  assert.equal(rec.curve, 0);                   // matches intended shape
+  assert.equal(rec.intendedShape, "draw");      // his usual 5-iron shape (C24, D108)
+  assert.equal(rec.curve, -1);                  // matches intended shape
   assert.equal(rec.shotType, "full");           // 5i is not a wedge
   assert.ok(rec.id);
   assert.equal(rec.schema, SHOT_SCHEMA);
@@ -111,27 +111,33 @@ test("sameShot: default club and line come from the single (safe) option", () =>
 });
 
 test("v22.13 every slider field opens at its centre stop (contact 0, strike center, intendedShape straight, startLine on, curve 0)", () => {
-  const rec = newShotRecord({ club: "7i", start: { frame: { x: 0, y: 0 } } });   // no history, nothing supplied
+  // v22.37 (C24, D108): a club with a stated shape opens on it; the 2-iron has none, so it opens straight
+  const rec = newShotRecord({ club: "2i", start: { frame: { x: 0, y: 0 } } });   // no history, nothing supplied
   assert.equal(rec.contact, 0);
   assert.equal(rec.strike, "center");
   assert.equal(rec.intendedShape, "straight");
   assert.equal(rec.startLine, "on");
   assert.equal(rec.curve, 0);
   // the same through the long card's path: a record built for the card carries the centre defaults too
-  const card = newShotRecord({ club: "7i", recommendation: fakeRecommendation(), history: [] });
+  const card = newShotRecord({ club: "2i", recommendation: fakeRecommendation(), history: [] });
   assert.deepEqual([card.contact, card.strike, card.intendedShape, card.startLine, card.curve], [0, "center", "straight", "on", 0]);
+  const i7 = newShotRecord({ club: "7i", start: { frame: { x: 0, y: 0 } } });
+  assert.deepEqual([i7.intendedShape, i7.curve], ["draw", -1], "the 7-iron opens on his usual draw");
 });
 
-test("intendedShape defaults to the most common prior shape for that club", () => {
+test("intendedShape defaults to his stated shape, else the most common prior shape for that club", () => {
   const history = [
+    { club: "2i", intendedShape: "fade" },
+    { club: "2i", intendedShape: "fade" },
+    { club: "2i", intendedShape: "draw" },
     { club: "5i", intendedShape: "fade" },
     { club: "5i", intendedShape: "fade" },
-    { club: "5i", intendedShape: "draw" },
-    { club: "7i", intendedShape: "draw" },
   ];
-  const rec = newShotRecord({ club: "5i", start: { frame: { x: 0, y: 0 } }, history });
+  const rec = newShotRecord({ club: "2i", start: { frame: { x: 0, y: 0 } }, history });
   assert.equal(rec.intendedShape, "fade");
   assert.equal(rec.curve, 1);
+  // C24 (D108): a club with a stated shape keeps it whatever the history says
+  assert.equal(newShotRecord({ club: "5i", start: { frame: { x: 0, y: 0 } }, history }).intendedShape, "draw");
 });
 
 /* ---------- T18 auto-derive ---------- */
@@ -418,7 +424,8 @@ test("T45 intent defaults: an untouched shot aims at the recommendation, no star
   assert.deepEqual(it.target, { x: 0, y: 238 });
   assert.equal(it.targetLabel, "leave 100, fairway center");
   assert.equal(it.startLineDeg, null, "C3 (D93): the caddie's line is not logged as his");
-  assert.equal(it.shape, "fade", "the most common shape for the 5-iron");
+  assert.equal(it.shape, "draw", "C24 (D108): his stated 5-iron shape, over the history");
+  assert.equal(it.curveYds, -7, "and how far it curves (left)");
   assert.equal(it.source, "default");
   // an aggressive target to the right: still no line until he draws one; the bearing helper reads right of +y
   const ag = shotIntent({ option: rec.aggressive, ball: { x: 0, y: 0 } });
@@ -438,7 +445,7 @@ test("T45 intent defaults: an untouched shot aims at the recommendation, no star
   assert.equal(linePlayedFor({ target: { x: 0, y: 238 }, source: "default" }, rec, "2Hy"), "aggressive");
   // no recommendation: shape only
   const bare = shotIntent({ club: "7i" });
-  assert.equal(bare.target, null); assert.equal(bare.startLineDeg, null); assert.equal(bare.shape, "straight");
+  assert.equal(bare.target, null); assert.equal(bare.startLineDeg, null); assert.equal(bare.shape, "draw", "his usual 7-iron (C24, D108)");
   // an intent round-trips normIntent and a frame adds the lat/lng
   const F = { toLatLng: ({ x, y }) => ({ lat: 34 + y / 1e5, lon: -84 + x / 1e5 }) };
   const withLL = shotIntent({ option: rec.safe, ball, frame: F });

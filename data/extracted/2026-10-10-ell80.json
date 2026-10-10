@@ -1,0 +1,273 @@
+{
+  "batch": "2026-10-10",
+  "source": "Shot Pattern club sheets (club → Shot Pattern · Dispersion), screenshots Brett sent Oct 10 as files: on the Driving tab the 2-iron and 4-hybrid at 1:47 pm and the Driver and 2-hybrid at 4:50 pm; on the Approach tab the 2-hybrid at 1:51 pm (7 shots). Originals under data/raw/2026-10-10/ (sp-tee-*); the fitted frames under data/raw/2026-10-10/fit/ are those screenshots downscaled to 588 px wide (Lanczos), the size scripts/fit-ell80.py and scripts/read-carries.py are tuned on. Measured by scripts/fit-ell80.py.",
+  "method": "As data/extracted/2026-10-04-ell80.json: largest bright-green component in the plot = the printed outline, direct least-squares conic fit, target = the white '+' glyph, pixels → yards from the printed Width × Depth labels; the good-shot ring from the dots within the club's window of the median carry (scripts/read-carries.py on the Shot Distances bar, rows per still in barRows). A ring printed at another coverage is scaled to the 80% ring (2-D normal contours).",
+  "frame": "Shot Pattern club plot: +x right, +y short. wYds is the full axis at tiltDeg clockwise from +x; hYds the perpendicular axis. dx, dy = ellipse centre relative to the target cross.",
+  "resolvedFilters": {
+    "lies": "Tee (Driving tab); the 2-hybrid fairway entry from the Approach tab",
+    "coverage": 0.8
+  },
+  "filterSource": "Not visible in the stills (the screens were scrolled past the filter chips). The 2-iron and 4-hybrid screens are the 1:47 pm view (26 and 16 shots, the same as the numbers under OPEN-ITEMS C22); the Driver and 2-hybrid screens are a later view with fewer shots (Driver ~35 against 117; the 2-hybrid at 60% coverage, 7 shots). Brett, Oct 10: \"i want you to use them as is even though they're different.\"",
+  "confidenceRule": "medium = n ≥ 8, low = 5–7 (Shot Pattern draws no pattern under 5).",
+  "entries": [
+    {
+      "club": "Dr",
+      "lie": "tee",
+      "n": 35,
+      "capturedAt": "4:50 pm",
+      "frame": "data/raw/2026-10-10/fit/sp-tee-dr-pattern.jpg",
+      "plotYpx": [
+        150,
+        570
+      ],
+      "barRows": [
+        852,
+        868
+      ],
+      "barLabels": [
+        265,
+        296
+      ],
+      "bboxWYds": 106,
+      "bboxDYds": 113,
+      "coverage": 0.8,
+      "confidence": "medium",
+      "wYds": 103.4,
+      "hYds": 115.3,
+      "tiltDeg": 27.7,
+      "dxYds": 1.8,
+      "dyYds": 0.1,
+      "isotropyPct": -0.2,
+      "goodWYds": 91.6,
+      "goodHYds": 35.2,
+      "goodTiltDeg": 1.9,
+      "goodDxYds": 5.2,
+      "goodDots": 16,
+      "mishitRate": 0.429,
+      "goodWindowYds": 20.0,
+      "px": {
+        "cx": 297.7,
+        "cy": 328.1,
+        "a": 107.8,
+        "b": 120.2,
+        "cross": [
+          294,
+          328
+        ],
+        "axes": [
+          172,
+          328
+        ],
+        "crossSrc": "plus glyph"
+      }
+    },
+    {
+      "club": "2i",
+      "lie": "tee",
+      "n": 26,
+      "capturedAt": "1:47 pm",
+      "frame": "data/raw/2026-10-10/fit/sp-tee-2i-pattern.jpg",
+      "plotYpx": [
+        335,
+        805
+      ],
+      "barRows": [
+        1093,
+        1109
+      ],
+      "barLabels": [
+        242,
+        261
+      ],
+      "bboxWYds": 88,
+      "bboxDYds": 90,
+      "coverage": 0.8,
+      "confidence": "medium",
+      "wYds": 67.9,
+      "hYds": 106.0,
+      "tiltDeg": 43.3,
+      "dxYds": -9.0,
+      "dyYds": 0.1,
+      "isotropyPct": 0.2,
+      "goodWYds": 89.0,
+      "goodHYds": 28.2,
+      "goodTiltDeg": 174.5,
+      "goodDxYds": -2.9,
+      "goodDots": 16,
+      "mishitRate": 0.231,
+      "goodWindowYds": 20.0,
+      "px": {
+        "cx": 273.2,
+        "cy": 569.3,
+        "a": 78.3,
+        "b": 122.3,
+        "cross": [
+          294,
+          569
+        ],
+        "axes": [
+          153,
+          559
+        ],
+        "crossSrc": "plus glyph"
+      }
+    },
+    {
+      "club": "2Hy",
+      "lie": "tee",
+      "n": 7,
+      "capturedAt": "4:51 pm",
+      "frame": "data/raw/2026-10-10/fit/sp-tee-2hy-pattern-60.jpg",
+      "plotYpx": [
+        150,
+        560
+      ],
+      "barRows": [
+        830,
+        841
+      ],
+      "barLabels": [
+        240,
+        261
+      ],
+      "bboxWYds": 67,
+      "bboxDYds": 45,
+      "coverage": 0.6,
+      "confidence": "low",
+      "wYds": 100.3,
+      "hYds": 37.1,
+      "tiltDeg": 30.1,
+      "dxYds": 4.2,
+      "dyYds": -0.1,
+      "isotropyPct": 0.2,
+      "goodWYds": 75.8,
+      "goodHYds": 37.4,
+      "goodTiltDeg": 18.7,
+      "goodDxYds": -2.0,
+      "goodDots": 6,
+      "mishitRate": 0.143,
+      "goodWindowYds": 20.0,
+      "px": {
+        "cx": 307.7,
+        "cy": 303.7,
+        "a": 132.8,
+        "b": 49.2,
+        "cross": [
+          293,
+          304
+        ],
+        "axes": [
+          175,
+          304
+        ],
+        "crossSrc": "plus glyph"
+      }
+    },
+    {
+      "club": "4Hy",
+      "lie": "tee",
+      "n": 16,
+      "capturedAt": "1:47 pm",
+      "frame": "data/raw/2026-10-10/fit/sp-tee-4hy-pattern.jpg",
+      "plotYpx": [
+        345,
+        815
+      ],
+      "barRows": [
+        1105,
+        1120
+      ],
+      "barLabels": [
+        223,
+        246
+      ],
+      "bboxWYds": 87,
+      "bboxDYds": 69,
+      "coverage": 0.8,
+      "confidence": "medium",
+      "wYds": 64.8,
+      "hYds": 90.2,
+      "tiltDeg": 112.0,
+      "dxYds": -3.2,
+      "dyYds": -0.2,
+      "isotropyPct": -0.3,
+      "goodWYds": 90.9,
+      "goodHYds": 30.8,
+      "goodTiltDeg": 15.2,
+      "goodDxYds": 0.8,
+      "goodDots": 12,
+      "mishitRate": 0.312,
+      "goodWindowYds": 20.0,
+      "px": {
+        "cx": 283.7,
+        "cy": 581.5,
+        "a": 105.2,
+        "b": 146.5,
+        "cross": [
+          294,
+          582
+        ],
+        "axes": [
+          127,
+          571
+        ],
+        "crossSrc": "plus glyph"
+      }
+    },
+    {
+      "club": "2Hy",
+      "lie": "fairway",
+      "n": 7,
+      "capturedAt": "1:51 pm",
+      "lies": "Approach tab",
+      "frame": "data/raw/2026-10-10/fit/sp-2hy-approach-pattern.jpg",
+      "plotYpx": [
+        345,
+        840
+      ],
+      "barRows": [
+        1118,
+        1128
+      ],
+      "barLabels": [
+        214,
+        243
+      ],
+      "bboxWYds": 66,
+      "bboxDYds": 112,
+      "coverage": 0.8,
+      "confidence": "low",
+      "wYds": 112.6,
+      "hYds": 64.9,
+      "tiltDeg": 82.5,
+      "dxYds": -1.5,
+      "dyYds": 26.6,
+      "isotropyPct": -0.1,
+      "goodWYds": 112.6,
+      "goodHYds": 64.9,
+      "goodTiltDeg": 82.5,
+      "goodDxYds": -1.5,
+      "goodDots": 4,
+      "mishitRate": 0.0,
+      "goodWindowYds": 20.0,
+      "px": {
+        "cx": 290.6,
+        "cy": 649.5,
+        "a": 128.0,
+        "b": 73.8,
+        "cross": [
+          294,
+          589
+        ],
+        "axes": [
+          200,
+          589
+        ],
+        "crossSrc": "plus glyph"
+      }
+    }
+  ],
+  "notFitted": {
+    "note": "The 2-hybrid fairway entry replaces the Oct 4 one (5 shots) for the same club and lie."
+  }
+}

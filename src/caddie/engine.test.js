@@ -163,7 +163,8 @@ test("profile: fallback chain — rough entry with no median uses the fairway me
   assert.equal(fw.sourceLie, "fairway");
   // item 7: the rough adjustment is per family (7-iron = mid, −4%)
   assert.equal(lieDistAdj(DEFAULT_CONFIG, "rough", "mid"), -0.04);
-  assert.ok(Math.abs(ro.carry - fw.carry * (1 + lieDistAdj(DEFAULT_CONFIG, "rough", "mid"))) < 1e-9);
+  // v22.33 (D104): his numbers are totals, so the lie scales where the ball finishes
+  assert.ok(Math.abs(ro.carry + ro.roll - (fw.carry + fw.roll) * (1 + lieDistAdj(DEFAULT_CONFIG, "rough", "mid"))) < 1e-9);
   assert.ok(ro.distSd > fw.distSd, "rough widens σ");
   assert.equal(ro.fields.girPct, P.clubs.get("7i").entries.full.rough.girPct, "rough GIR is the rough entry's own");
   const tee = resolveEntry(P, "7i", "full", "tee");
@@ -346,13 +347,15 @@ test("rough carry by family (item 7): wedges and short irons fly a touch longer,
   assert.equal(lieDistAdj(cfg, "fairway", "mid"), 0);
   // a per-family object inside LIE_DIST_ADJ itself is read too
   assert.equal(lieDistAdj(mergeConfig({ LIE_DIST_ADJ_FAMILY: { rough: null }, LIE_DIST_ADJ: { rough: { mid: -0.05 } } }), "rough", "mid"), -0.05);
-  for (const [club, fam] of [["GW", "wedge"], ["PW", "short"], ["7i", "mid"], ["2Hy", "long"]]) {
+  // v22.33 (D104): the adjustment scales the total (a club with no measured rough median)
+  const fin = (e) => e.carry + e.roll;
+  for (const [club, fam] of [["GW", "wedge"], ["9i", "short"], ["7i", "mid"], ["2Hy", "long"]]) {
     const fw = resolveEntry(P, club, "full", "fairway"), ro = resolveEntry(P, club, "full", "rough");
     assert.equal(ro.family, fam);
-    assert.ok(Math.abs(ro.carry - fw.carry * (1 + lieDistAdj(cfg, "rough", fam))) < 1e-9, `${club} rough carry`);
+    assert.ok(Math.abs(fin(ro) - fin(fw) * (1 + lieDistAdj(cfg, "rough", fam))) < 1e-9, `${club} rough finish`);
   }
-  assert.ok(resolveEntry(P, "PW", "full", "rough").carry > resolveEntry(P, "PW", "full", "fairway").carry, "flyer: PW from rough goes longer");
-  assert.ok(resolveEntry(P, "5i", "full", "rough").carry < resolveEntry(P, "5i", "full", "fairway").carry, "5i from rough comes up short");
+  assert.ok(fin(resolveEntry(P, "PW", "full", "rough")) > fin(resolveEntry(P, "PW", "full", "fairway")), "flyer: PW from rough goes longer");
+  assert.ok(fin(resolveEntry(P, "5i", "full", "rough")) < fin(resolveEntry(P, "5i", "full", "fairway")), "5i from rough comes up short");
 });
 
 test("handicap prior (item 2): no bucket → baseline + 0.42 × (0.41 + 0.0025 d); a bucketed distance is unchanged", () => {
@@ -366,8 +369,9 @@ test("handicap prior (item 2): no bucket → baseline + 0.42 × (0.41 + 0.0025 d
   assert.ok(Math.abs(e400 - b400 - puttingGapAt(Pf, 400, "tee") - 0.42 * (0.41 + 0.0025 * 400)) < 1e-9, `E(400 tee) ${e400}`);
   // a bucketed distance prices from its bucket, not the prior. Pinned to the Oct 4 profile (D85:
   // buckets shrunk toward the lie average): 150 fairway, 165 rough, and the personal part at 30.
-  assert.ok(Math.abs(E(Pf, 150, "fairway") - 3.7585) < 1e-9, `E(150 fw) ${E(Pf, 150, "fairway")}`);
-  assert.ok(Math.abs(E(Pf, 165, "rough") - 3.8161666666666667) < 1e-9, `E(165 rough) ${E(Pf, 165, "rough")}`);
+  // v22.33 (R6, D104): the 41+ ft three-putt rate shrunk to 51.7% takes 0.183 off both.
+  assert.ok(Math.abs(E(Pf, 150, "fairway") - 3.5755) < 1e-9, `E(150 fw) ${E(Pf, 150, "fairway")}`);
+  assert.ok(Math.abs(E(Pf, 165, "rough") - 3.6331666666666664) < 1e-9, `E(165 rough) ${E(Pf, 165, "rough")}`);
   assert.ok(Math.abs(E(Pf, 30, "fairway") - baselineE(30, "fairway") - 0.237) < 1e-9, `E(30 fw) ${E(Pf, 30, "fairway")}`);
   // a measured 0 is data, not "no data"
   const P0 = loadProfile(withBucket(RAW, "fairway", 150, { sgPerShot: 0 }));
@@ -419,24 +423,25 @@ test("T2 aggressive always priced: whenever sameShot is false both options carry
   assert.ok(seen >= 1, "at least one fixture produced two options");
 });
 
-test("T3 lie changes the club: 174 from the fairway → 7-iron; from the rough the pick changes and never runs through the front bunker", () => {
+test("T3 lie changes the shot: 177 from the fairway → 7-iron over the front bunker; from the rough it finishes at its rough total and the run-up through the bunker is priced", () => {
   // A bunker across the front of the green. From the fairway the club that plays the number wins.
-  // From the rough Brett's roll-out triples (D33), so the same club is no longer the answer: the
-  // engine must pick a different club, and no roll path may end in the bunker on the mean line.
+  // From the rough Brett's roll-out triples (D33) and, since his numbers are totals (D104), comes out
+  // of the carry: every club lands short of the bunker and runs at it. The engine must see that (a
+  // rolling ball stops in the first bunker, D34) rather than price a carry over it.
   const hole = { ...openPar5, id: "guarded-approach", green: { ring: ellipse(0, 540, 12, 12, 32), center: { x: 0, y: 540 } },
     hazards: [{ type: "sand", ring: rect(-14, 520, 14, 527) }] };
-  const ball = { x: 0, y: openPar5.yards - 174 };
+  // v22.23 (D94): an approach finishes at its total (carry + roll on the green), so the 7-iron's 182
+  // plays the number from 177 (it played 174 when a ball stopped where it landed)
+  const ball = { x: 0, y: openPar5.yards - 177 };
   const fw = recommend({ shotNo: 2, ball, lieType: "fairway" }, hole, P);
   const ro = recommend({ shotNo: 2, ball, lieType: "rough" }, hole, P);
-  assert.equal(fw.context.distances.pin, 174);
+  assert.equal(fw.context.distances.pin, 177);
   assert.equal(fw.safe.club, "7i", `fairway → ${fw.safe.club}`);
-  assert.notEqual(ro.safe.club, fw.safe.club, `rough → ${ro.safe.club} should differ from the fairway club`);
   const e = resolveEntry(P, ro.safe.club, ro.safe.swingType, "rough");
   assert.ok(e.roll > resolveEntry(P, ro.safe.club, ro.safe.swingType, "fairway").roll, "rough roll-out is larger");
-  // the rough pick's mean carry does not land in the bunker
-  const yCarry = ball.y + e.carry;
-  assert.ok(yCarry < 520 || yCarry > 527, `mean carry ${yCarry.toFixed(0)} lands in the bunker`);
-  assert.ok(ro.safe.troubleRate < 0.5, `trouble ${ro.safe.troubleRate}`);
+  assert.ok(Math.abs(ro.safe.meanYds - (e.carry + e.roll)) <= 1, `finishes at its rough total: ${ro.safe.meanYds}`);
+  assert.ok(ball.y + e.carry < 520, `the mean ball lands short of the bunker (${(ball.y + e.carry).toFixed(0)})`);
+  assert.ok(ro.safe.troubleRate > fw.safe.troubleRate + 0.2, `the run-up is priced: ${ro.safe.troubleRate} vs ${fw.safe.troubleRate}`);
 });
 
 test("T4 finesse preference: 100 yds from the fairway → a finesse wedge entry, never a full-swing wedge carry", () => {

@@ -127,8 +127,8 @@ test("T34: 10,000 engine samples from an ell80 entry → 80% ± 1% inside the dr
 });
 
 test("ellipseFromEntry: σ fallback (no ell80) covers 80% of the engine's normal draws", () => {
-  const entry = resolveEntry(P, "Dr", "full", "tee");
-  assert.equal(entry.ell80, null, "driver has no measured ellipse yet");
+  // C22 (D113): the driver has a measured ring now; the σ fallback is checked on its σs without it
+  const entry = { ...resolveEntry(P, "Dr", "full", "tee"), ell80: null };
   const ell = ellipseFromEntry(entry, { config: { ...DEFAULT_CONFIG, RING_DRAW_CAP_YDS: Infinity } });
   assert.equal(ell.tiltDeg, 90); assert.equal(ell.source, "profile");
   const sLat = entry.carry * Math.tan(entry.lateralSdDeg * Math.PI / 180);
@@ -204,7 +204,7 @@ test("cameraFor: the box fills the visible region (§3.1) with 16 px padding and
   near(q.x, 12.5, 1e-9, "x"); near(q.y, 301, 1e-9, "y");
 });
 
-test("cameraPoints: ball + green + both ellipses + layup line; pre-tee frames tee → green", () => {
+test("cameraPoints (C20, v22.27): ball + SAFE's ellipse, target and lay-up pin + AGGRESSIVE's target; pre-tee frames tee → green", () => {
   const hole = { ...openPar5, key: "t", line: [{ x: 0, y: 0 }, { x: 0, y: 540 }] };
   const pre = fitBounds(cameraPoints({ hole, ball: null, pin: { x: 0, y: 540 }, options: null }));
   near(pre.minY, 0, 1e-9, "tee in frame"); near(pre.maxY, 556, 1e-9, "green back in frame");
@@ -214,11 +214,20 @@ test("cameraPoints: ball + green + both ellipses + layup line; pre-tee frames te
   const pts = cameraPoints({ hole, ball, pin: { x: 0, y: 545 }, options: { safe, aggressive } });
   const bb = fitBounds(pts);
   const eA = fitBounds(ellipseInFrame(aggressive.ell, ball, aggressive.target));
-  assert.ok(bb.minX <= eA.minX && bb.maxX >= eA.maxX && bb.maxY >= eA.maxY, "aggressive ellipse inside");
+  const eS = fitBounds(ellipseInFrame(safe.ell, ball, safe.target));
+  assert.ok(bb.minX <= eS.minX && bb.maxX >= eS.maxX && bb.maxY >= eS.maxY, "SAFE's ellipse inside");
+  assert.ok(pts.some((p) => p.x === aggressive.target.x && p.y === aggressive.target.y), "AGGRESSIVE's target point inside");
+  assert.ok(bb.maxX < eA.maxX, "AGGRESSIVE's wide 2-hybrid ring is not what sets the frame");
+  near(bb.maxY, 545, 1e-9, "the lay-up's pin is the top edge (not the green's back, 556)");
   near(bb.minY, 250, 1e-9, "ball is the low edge");
+  // SAFE at the green brings the green in; no call → ball + green
+  const ap = fitBounds(cameraPoints({ hole, ball, pin: { x: 0, y: 545 }, options: { safe: aggressive, aggressive: null } }));
+  assert.ok(ap.maxY >= 556, "an approach frames the whole green");
+  near(fitBounds(cameraPoints({ hole, ball, pin: null, options: null })).maxY, 556, 1e-9);
   // the 2-hybrid ellipse at a straight-up shot: its frame box equals the SP box (x same, y flipped)
-  const box = resolveEntry(P, "2Hy", "full", "fairway").ell80;
-  near(eA.maxX - eA.minX, box.bboxWYds, 1.2, "frame width"); near(eA.maxY - eA.minY, box.bboxDYds, 1.2, "frame depth");
+  // (C22, D113: the 2-hybrid's good-shot ring, not Shot Pattern's printed box)
+  const box = bboxYds(aggressive.ell);
+  near(eA.maxX - eA.minX, box.w, 1.2, "frame width"); near(eA.maxY - eA.minY, box.d, 1.2, "frame depth");
 });
 
 test("zoomForPxPerYd: MapLibre zoom from px/yd (512-px world)", () => {
@@ -257,7 +266,7 @@ test("T36: SAFE ↔ AGGRESSIVE changes the drawn shot, never the camera", () => 
 
 /* ---------- T37 ---------- */
 
-function fullModel(palette) {
+function fullModel(palette, extra = {}) {
   const hole = buildHole(hampton, 18, { par: 4 });
   const ball = { x: 2, y: 150 };
   const pin = distances(hole, ball, "back").pinPoint;
@@ -269,7 +278,7 @@ function fullModel(palette) {
   return {
     hole, project,
     model: overlayModel({ project, viewport: vp, hole, ball, accuracyM: 12, pin, active: safe, other: aggressive,
-      previousShots: [{ from: { x: 0, y: 0 }, to: ball }], palette, idPrefix: "t37", redrawKey: "k" }),
+      previousShots: [{ from: { x: 0, y: 0 }, to: ball }], palette, idPrefix: "t37", redrawKey: "k", ...extra }),
   };
 }
 
@@ -289,6 +298,12 @@ test("overlay draw order (§4.2) and palettes (§4.3)", () => {
   assert.deepEqual(parts, ["defs", "pin", "cur", "ball"]);
   const cur = model.find((n) => n.attrs?.["data-part"] === "cur");
   assert.deepEqual(cur.children.map((n) => n.attrs["data-part"]), ["previous", "other", "aim-line", "corridor", "leave", "ellipse", "ellipse-inner", "hatch", "target"]);
+  // v22.29 (C21): with dots, they sit on the ellipse, under the hatch and the target ring
+  const withDots = fullModel("satellite", { dots: [{ x: 0, y: 300 }, { x: 5, y: 305 }] }).model.find((n) => n.attrs?.["data-part"] === "cur");
+  {
+    const parts = withDots.children.map((n) => n.attrs["data-part"]);
+    assert.ok(parts.indexOf("dots") > parts.indexOf("ellipse-inner") && parts.indexOf("dots") < parts.indexOf("hatch"), parts.join(","));
+  }
   assert.ok(model.find((n) => n.attrs?.["data-part"] === "ball").children.some((c) => c.attrs["data-part"] === "accuracy"), "accuracy ring > 8 m");
   const json = JSON.stringify(model);
   assert.ok(!json.includes("#1E6B3A"), "no ink green on satellite");
@@ -322,7 +337,7 @@ test("T39: network blocked and no cached tiles → the drawn map and its notice"
   assert.equal(mapModeFor({ hasHole: true, tilesCached: true, online: false }).mode, "satellite", "cached tiles work offline");
   assert.equal(mapModeFor({ hasHole: true, online: true, probeOk: null }).mode, "checking");
   assert.equal(mapModeFor({ hasHole: true, tilesCached: true, libFailed: true }).mode, "fallback", "no MapLibre → drawn map");
-  assert.deepEqual(mapModeFor({ hasHole: false, holeNo: 7 }), { mode: "none", notice: "No course map for hole 7. Enter yards for a club." });
+  assert.deepEqual(mapModeFor({ hasHole: false, holeNo: 7 }), { mode: "none", notice: "No course map for hole 7." });
   assert.equal(NOTICE_NO_SATELLITE, "No satellite here. Map drawn from course data.");
 });
 
@@ -339,7 +354,7 @@ test("fallback map model: flat polygons with ink outlines in §4.3 order", () =>
 /* ---------- v22.11: marked-green mode and the pin view ---------- */
 
 test("mapModeFor, no geometry: no GPS → paper as before; GPS + unmarked → the mark view; GPS + marked → satellite / drawn", () => {
-  const nm = "No course map for hole 7. Enter yards for a club.";
+  const nm = "No course map for hole 7.";
   // unchanged without a fix
   assert.deepEqual(mapModeFor({ hasHole: false, holeNo: 7, probeOk: true, greenMarked: true }), { mode: "none", notice: nm });
   // a fix, no green yet: satellite north-up on the ball, and the notice asking for the tap
@@ -501,10 +516,12 @@ test("C17: the inner ring is the best 30% (0.471 of the 80%); the 30% contour of
   assert.ok(Math.abs(inside / S.length - 0.3) <= 0.015, `${inside / 100}% inside the inner ring`);
 });
 
-test("C17: the driver's drawn ring is capped; the fitted irons are not", () => {
-  const dr = ellipseFromEntry(resolveEntry(P, "Dr", "full", "tee"));
-  assert.ok(dr.w <= DEFAULT_CONFIG.RING_DRAW_CAP_YDS && dr.h <= DEFAULT_CONFIG.RING_DRAW_CAP_YDS, `${dr.w} × ${dr.h}`);
-  assert.ok(Math.max(dr.w, dr.h) === DEFAULT_CONFIG.RING_DRAW_CAP_YDS, "the wide axis sits on the cap");
+test("C17: a ring drawn from σs is capped; a fitted ring (the irons, and the tee clubs since C22) is not", () => {
+  const sigma = ellipseFromEntry({ ...resolveEntry(P, "Dr", "full", "tee"), ell80: null });
+  assert.ok(sigma.w <= DEFAULT_CONFIG.RING_DRAW_CAP_YDS && sigma.h <= DEFAULT_CONFIG.RING_DRAW_CAP_YDS, `${sigma.w} × ${sigma.h}`);
+  assert.ok(Math.max(sigma.w, sigma.h) === DEFAULT_CONFIG.RING_DRAW_CAP_YDS, "the wide axis sits on the cap");
+  const dr = resolveEntry(P, "Dr", "full", "tee");
+  assert.deepEqual(ellipseFromEntry(dr), ellipseFromEntry(dr, { config: { ...DEFAULT_CONFIG, RING_DRAW_CAP_YDS: Infinity } }), "the driver's fitted ring is drawn as measured");
   const iron = resolveEntry(P, "5i", "full", "fairway");
   const uncapped = ellipseFromEntry(iron, { config: { ...DEFAULT_CONFIG, RING_DRAW_CAP_YDS: Infinity } });
   assert.deepEqual(ellipseFromEntry(iron), uncapped);
@@ -512,11 +529,29 @@ test("C17: the driver's drawn ring is capped; the fitted irons are not", () => {
 
 test("C17: a club whose good dots are too few keeps Shot Pattern's ring and draws no mishits; the rest are split", () => {
   const ring = (id) => Object.values(RAW.clubs.find((c) => c.id === id).entries).map((l) => l?.fairway?.ell80).find(Boolean);
-  for (const id of ["2Hy", "PW"]) { const r = ring(id); assert.equal(r.mishitRate, 0, id); assert.equal(r.allWYds, r.wYds, id); assert.equal(r.allHYds, r.hYds, id); }
+  for (const id of ["PW"]) { const r = ring(id); assert.equal(r.mishitRate, 0, id); assert.equal(r.allWYds, r.wYds, id); assert.equal(r.allHYds, r.hYds, id); }
+  // C22 (D113): the 2-hybrid's thin fairway ring gives way to its tee ring, which has the good shots
+  assert.equal(ring("2Hy"), undefined);
+  const hy = resolveEntry(P, "2Hy", "full", "fairway");
+  assert.ok(hy.ell80.goodDots >= 5 && hy.ell80.mishitRate > 0, "the fairway reads the tee ring");
+  assert.ok(hy.ell80.hYds < 40, `depth ${hy.ell80.hYds} (was 135)`);
   for (const id of ["5i", "6i", "7i", "8i", "9i", "GW", "SW", "LW"]) {
     const r = ring(id);
     assert.ok(r.goodDots >= 5, id);
     assert.ok(r.mishitRate >= 0 && r.mishitRate < 1, id);
     assert.ok(r.wYds * r.hYds < r.allWYds * r.allHYds * 1.6 || id === "9i", `${id}: the good ring is not larger than the printed one`);
   }
+});
+
+test("C2 (v22.28): satellite shapes — muted tints in order, no rough fill, nothing on a marked green, no text", async () => {
+  const { satShapesModel, SHAPE_STYLE } = await import("./overlay.js");
+  const hole = { ...waterLeftPar4, key: 2, tees: [[[-6, -6], [6, -6], [6, 6], [-6, 6]]], hazards: [...waterLeftPar4.hazards,
+    { type: "trees", ring: [[-90, 100], [-40, 100], [-40, 200], [-90, 200]] }, { type: "sand", ring: [[10, 380], [20, 380], [20, 390], [10, 390]] }] };
+  const { project } = linearProjector({ center: { x: 0, y: 200 }, pxPerYd: 1.5 }, { width: 375, height: 812 });
+  const m = satShapesModel({ hole, project });
+  assert.deepEqual([...new Set(m.map((n) => n.attrs["data-part"]))], ["shape-trees", "shape-fairway", "shape-tee", "shape-green", "shape-water", "shape-sand"]);
+  assert.equal(m.find((n) => n.attrs["data-part"] === "shape-trees").attrs.stroke, "none", "trees: a tint with no outline, so the traced tiles' seams don't show");
+  assert.equal(m.find((n) => n.attrs["data-part"] === "shape-green").attrs.fill, SHAPE_STYLE.green.fill);
+  assert.ok(!tagsOf(m).includes("text"));
+  assert.deepEqual(satShapesModel({ hole: { ...hole, synthetic: true }, project }), [], "a marked green has no course data to draw");
 });

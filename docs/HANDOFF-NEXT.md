@@ -10,8 +10,117 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 360 tests (v22.22); must be green
+npm install && npm test    # 394 tests (v22.42); must be green
+node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.42 (Oct 10)
+
+Tee rings from good shots (C22, D113): the Oct 10 Driving stills fitted by D92's method into
+`data/extracted/2026-10-10-ell80.json`; the driver gets a fitted ring, the hybrids' rings go from
+~100 yds deep to ~35. The fitting scripts take per-still bar rows and coverage. 394 tests.
+
+## v22.41 (Oct 10)
+
+In-round nudges are said, not applied (C32, D112): the why line names the pattern, the club, target
+and start line stay put (`NUDGES_MOVE_CALL: false`). 394 tests.
+
+## v22.40 (Oct 10)
+
+The short-game card: off the green within 100 yds the log card's row is Chip · Pitch · Bunker · Wedge;
+with no call off the green the why line gives Brett's own up-and-down and leave (C29, D111). Band
+learning from chips is C33. 394 tests.
+
+## v22.39 (Oct 10)
+
+The heads-up (one clause for SAFE's club: 3 of 4 the same way today, or 3 in 10 short in history)
+and the aim warning on Brett's own target or Line; his Line is now priced (C4, D110). The replay
+found same-day streaks don't predict the next shot; the nudges are C32. 390 tests.
+
+## v22.38 (Oct 10)
+
+A course's map shows before its elevation arrives (D109); the smoke test holds Open-Meteo 30 s to
+keep it that way. 384 tests.
+
+## v22.37 (Oct 10)
+
+The start line follows the shot shape: Brett's usual shape and curve per club (driver a 15-yd fade,
+5–8 iron a 7-yd draw …); the dashed line starts the curve's width to the other side, the ring stays
+(C24, D108). 384 tests.
+
+## v22.36 (Oct 10)
+
+The simulation comes up short as often as Brett does: a short tail per club from Shot Pattern's
+`shortPct`, shrunk by n (C8, D107). 382 tests.
+
+## v22.35 (Oct 10)
+
+History's `Misses by club`: per club, yards from the target from Loop's own shots, the start-line
+pattern, and Shot Pattern's directions (C25, D106). 379 tests.
+
+## v22.34 (Oct 10)
+
+A fairway bunker (sand more than 40 yds from the green's front) is a "no hero" lie; a punch-out
+never aims away from the green (C9, D105). 377 tests.
+
+## v22.33 (Oct 10)
+
+A rough lie scales the total and the extra roll comes out of the carry (the 5-iron finished 219 from
+the rough; now 192); 4Hy, 5i, PW read Shot Pattern's rough medians shrunk toward the model; the 41+ ft
+three-putt rate is shrunk from 70% to 51.7% (C7, R5, R6, D104). 374 tests.
+
+## v22.32 (Oct 10)
+
+An empty OSM answer expires after a week and the `no-holes` line retries on a tap (C6, D103).
+372 tests.
+
+## v22.31 (Oct 10)
+
+Ironwood has a course location (its local card), so test mode and the weather work there (C5);
+`scripts/smoke-caddie.mjs` renders the caddie screen in headless Chromium and fails on page errors
+(D102). 371 tests.
+
+## v22.30 (Oct 10)
+
+`Enter yards` removed everywhere (C19, R10, D101): no-GPS states offer `Try again` alone; a round
+saved in yards mode reopens before the ball. 371 tests.
+
+## v22.29 (Oct 10)
+
+Dots inside the ring: 40 of the simulation's own finishes for the shot on screen (C21), and the rings
+moved along the line to where the club's average shot finishes (D100). 370 tests.
+
+## v22.28 (Oct 10)
+
+Course shapes over the satellite, muted, with a `Shapes` toggle (C2), and Chicopee on Esri Wayback
+49059, leaf-off (C11, `version` 3); D99. 369 tests.
+
+## v22.27 (Oct 10)
+
+The map frames the ball and the suggested shot, not the whole hole (C20), and pinches to zoom on
+satellite with a `Fit` pill to put it back (C18); one finger still drags (D98). 368 tests.
+
+## v22.26 (Oct 10)
+
+A moved target shows its own par chance in the strip, live while dragging (C30, D97). 368 tests.
+
+## v22.25 (Oct 10)
+
+The logging flow moves on by itself (C26–C28, D96): `Missed · next putt` opens the next putt, the
+first putt's length comes from the ball → pin, a notice after Log shot says to tap `I'm at my ball`,
+and in test mode the map arms for the next tap after every logged shot. 367 tests.
+
+## v22.24 (Oct 10)
+
+Shot 1 within 15 yds of a tee box is a tee lie whatever the trigger (C31, D95): a ball placed with
+`I'm at my ball` just off the box read rough and lost the driver. 365 tests.
+
+## v22.23 (Oct 10)
+
+Every shot finishes at its total, approaches included (C23, D94; Brett: "treat my club numbers as
+total"). A ball that lands on the green now rolls its roll-out (`GREEN_ROLL_SHARE` 1); before, it
+stopped at the derived carry and the caddie called a club long (195 → 5-iron, 207 → 4-hybrid; now
+6-iron and 5-iron). Brett's Oct 10 test notes are C20–C31 in `docs/OPEN-ITEMS.md`. 363 tests.
 
 ## v22.22 (Oct 10)
 

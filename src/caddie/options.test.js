@@ -236,13 +236,11 @@ test("priceTarget opts.samples: 80 draws while dragging, 500 on drop; same club;
   assert.ok(Math.abs(fast.parProb - full.parProb) < 0.1);
   assert.equal(full.toTargetYds, Math.round(Math.hypot(4, 150)));
   assert.equal(full.leaveYds, Math.round(Math.hypot(4, 410 - 150)));
-  // and it is faster
-  const t0 = performance.now();
-  for (let i = 0; i < 20; i++) priceTarget(ctx, noWaterPar4, P, { x: 4, y: 150 + i }, { samples: 80 });
-  const tFast = performance.now() - t0;
-  const t1 = performance.now();
-  for (let i = 0; i < 20; i++) priceTarget(ctx, noWaterPar4, P, { x: 4, y: 150 + i });
-  assert.ok(tFast < performance.now() - t1, "80 samples price faster than 500");
+  // and it is faster: warmed up, best of three each, so a cold start or a busy machine can't flip it
+  const time = (opts) => { const t = performance.now(); for (let i = 0; i < 20; i++) priceTarget(ctx, noWaterPar4, P, { x: 4, y: 150 + i }, opts); return performance.now() - t; };
+  time({ samples: 80 }); time(undefined);
+  const best = (opts) => Math.min(time(opts), time(opts), time(opts));
+  assert.ok(best({ samples: 80 }) < best(undefined), "80 samples price faster than 500");
 });
 
 /* ---------- D79: the profile's summer temperature ---------- */

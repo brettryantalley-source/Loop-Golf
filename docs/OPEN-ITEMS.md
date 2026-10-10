@@ -2,9 +2,10 @@
 
 The one list of everything still unresolved. It merges the eleven Loop chats open on Oct 4: seven
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
-morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22). Duplicates are merged and anything already shipped is
-dropped. State: **v22.22** (C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 360 tests, decisions D1–D93; the next
-decision is **D94**.
+morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
+and Brett's test notes of Oct 10 (C20–C29). Duplicates are merged and anything already shipped is
+dropped. State: **v22.32** (C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 372 tests, decisions D1–D103; the next
+decision is **D104**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -17,35 +18,50 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Brett:** answer **Q1**, then say **"go with the leans"** or change any **R**.
-2. **Next code chat:** **C2 → C4**, then **C19**.
-3. **Next round:** the **F** list.
+1. **Next code chat:** nothing is left that needs nothing from Brett; see **Brett** below (F7 notes → C10,
+   S4 → C12, F9 + Q3 → C13, S1–S3 + Q2 → C14) and C33 once chips are logged.
+2. **Next round:** the **F** list.
 
 ---
 
 ## Brett
 
 ### Questions only you can answer
-- **Q1.** In Shot Pattern, do you move the approach target, or leave it where the app puts it (green
-  centre)? → decides C8.
 - **Q2.** Two card totals disagree with GHIN. Beachwood 9/2: 84 (card) or 86 (GHIN)? Chicopee
   Mill/School 7/17: 80 or 81? → C14.
 - **Q3.** Woodmont: which holes have OB, and on which side? → C13.
 
-### Recommendations ("go with the leans" accepts all of them)
-
-| # | Decision | Lean | Other options |
-|---|---|---|---|
-| R2 | Course shapes on the satellite map (C2) | **Muted** paper tints, plus a Shapes toggle | Bold, Tangent-style |
-| R4 | Chicopee imagery (C11) | **A:** leaf-off (Wayback 49059), fewest shadows | B: leaf-on (64001), live now |
-| R5 | Rough distances (C7) | **Measured** where n ≥ 5, shrunk toward the model. Only the 5-iron moves much: 199 → ~192 | Keep the model · use every club |
-| R6 | 3-putts from 41+ ft: 70% on only 10 putts (C7) | **Shrink** toward the 25–40 ft rate → ~52% | Keep 70% · cap it |
-| R7 | Retry when OSM had no holes for a club (C6) | **Yes** | Leave it |
-| R8 | Upload the Woodmont trace to OSM (C15) | **Later**, after C13 | Now |
-| R9 | Native app for a gap-free GPS trail (P1) | **Not now**; live with the gaps | Capacitor wrapper: $99/yr Apple Developer, plus a Mac or a macOS build runner |
+### Recommendations: all accepted Oct 10 ("go with the leans")
+R2 muted course shapes plus a Shapes toggle (C2) · R4 leaf-off Chicopee imagery, Wayback 49059 (C11)
+· R5 measured rough distances where n ≥ 5, shrunk toward the model (C7) · R6 the 41+ ft three-putt
+rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont upload to OSM later,
+after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.22 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.42 · Oct 10** (once merged).
+- **F18.** From the rough (v22.33, D104): the caddie now plays your rough totals, not the fairway
+  ones plus extra roll. A 5-iron finishes ~192, the 4-hybrid ~207, a 7-iron ~175, a PW ~136. Note any
+  rough call that feels a club off.
+- **F19.** From a fairway bunker (v22.34, D105; sand more than 40 yds from the green's front): the
+  caddie now stays out of trouble 9 times in 10, so expect more lay-ups. Say if one feels too timid.
+- **F25.** Tee rings (v22.42, D113): the driver, 2-iron and the hybrids draw their good shots now —
+  wide and shallow (the driver 92 × 35), not ~100 yds deep. Say whether they look like your tee shots.
+- **F24.** In-round nudges (v22.41, D112): the why line still says "short with mid irons on 3 and 6
+  today", but the club, target and line no longer move for it. Say if you miss the old club-ups.
+- **F23.** The short-game card (v22.40, D111): just off a green the why line shows your up-and-down
+  and leave for the lie; log the shot as Chip, Pitch, Bunker or Wedge, and log the putts after it
+  (C33 needs them).
+- **F22.** The heads-up and the aim warning (v22.39, D110): when a club misses the same way 3 of its
+  last 4 today, the why line says so; move the target or draw a Line toward trouble and it says how
+  often ("water 1 in 4 (Loop's call: 1 in 12)"). Tap the line to hide that for the shot. Say
+  whether either one changed what you did.
+- **F21.** The start line (v22.37, D108): the shape chips open on your usual shape (driver Fade, 5–8
+  iron Draw …) and the dashed line starts the curve's width to the other side (driver 15 yds left).
+  Say whether each club's line looks like where you'd start it.
+- **F20.** History → `Misses by club` (v22.35, D106): after a round with marked ends, check each
+  club's "2 short · 3 R · off by 7" against how the round felt.
+- **F14.** Approach clubs (v22.23, D94): every shot now finishes at its total. From 195 on a warm day
+  the call should be a 6-iron; from 207 a 5-iron. Note any call that still feels a club off.
 - **F13.** The caddie's line (v22.22): a dashed line from the ball through where to aim; the yellow
   ring and both rings are where the ball should finish. Start the ball on the dashed line, or tap
   `Line` and draw your own; Loop learns from whichever you used. Report whether the 8-iron (aims
@@ -56,9 +72,18 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
   cautious or too bold. SAFE attempts more from the trees (D92).
 - **F11.** Read the new line above the action button on every call. When it says something that
   doesn't match what you'd do, dictate a Note (F7) with the line's exact words.
-- **F2.** The putting flow, start to finish. It has never been used on a course.
+- **F2.** The putting flow, start to finish (v22.25, D96: `Missed · next putt`; the first putt's
+  length from your ball to the pin). It has never been used on a course.
 - **F3.** Log a hole you skipped: Place shot 1 → Place shot 2 → … → Done.
 - **F4.** The GPS trail on a real walk. It records only while the screen is on.
+- **F17.** The dots in the ring (v22.29, D100): where 40 of the caddie's simulated shots finish.
+  The rings now sit where the club's average shot finishes, which can be a few yards past or short
+  of the yellow target. Say whether the dots match where your shots go.
+- **F16.** Course shapes (v22.28, D99): muted tints over the photo; `Shapes` turns them off. Where a
+  tint disagrees with the photo (trees over a fairway, a bunker in the wrong place), that is what the
+  caddie believes: note the hole. Chicopee is on its leaf-off photo now.
+- **F15.** The map (v22.27, D98): it frames your ball and the suggested shot; pinch to zoom in and
+  out; `Fit` (bottom-left) puts it back. One finger still drags the target, the Line and the pin.
 - **F5.** The full-screen map: nothing sits under the notch or the home bar; the target drag, Line,
   and the club changing as you drag all work; panning and dragging don't stutter.
 - **F6.** Mark where each shot ends, live or with F3 afterward. The heads-up (C4) and the learning
@@ -87,8 +112,8 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 - **S3.** GHIN's hole-by-hole for Bear Slide 6/10 and Cider Ridge 6/6. → C14, after S2.
 - **S4.** 18 Shot Pattern hole screenshots in the plain 2D view: Chicopee Village 1–9 and Mill 1–9.
   The Village 1–8 screenshots sent Oct 3 never reached the repo. Green slope maps are optional. → C12.
-- **S5.** Shot Pattern's tee-shot dispersion screens for Driver, 2-iron and 4-hybrid (or just more
-  4-hybrid shots), plus the Driving tab's landing zones (Casual · Last 10). → a profile rebuild.
+- **S5.** The Driving tab's landing zones (Casual · Last 10). The tee dispersion screens arrived
+  Oct 10 (S9). → a profile rebuild.
 - **S6.** A launch-monitor range session: carry for every club, the 2-iron partial, and wedge ½ and
   ¾ swings. → a profile rebuild.
 - **S7.** Your wedge lofts. → a profile rebuild.
@@ -103,21 +128,12 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C2 | Course shapes on the satellite map | R2 | Sonnet |
-| C4 | Heads-up + aim warning | nothing (C3 shipped, D93) | Opus |
-| C5 | Ironwood test-mode dead end | nothing | Sonnet |
-| C6 | Retry an empty OSM answer | R7 | Opus |
-| C7 | Profile: rough distances + the 41-ft putt step | R5, R6 | Sonnet |
-| C8 | Short / long miss model | Q1 | Opus |
-| C9 | Fairway bunkers as "no hero" lies | nothing | Sonnet |
 | C10 | Re-tune the `STRATEGY` thresholds | a round of F7 notes | Opus |
-| C11 | Chicopee imagery switch | R4 | rides with C2 |
 | C12 | Chicopee hand-trace, Village + Mill | S4 | Opus |
 | C13 | Woodmont calibration | F9, Q3 | Sonnet |
 | C14 | History data | S1–S3, Q2 | Sonnet |
-| C15 | Woodmont trace → OSM | C13, R8 | Sonnet |
-| C18 | Pinch to zoom on the caddie map | nothing | Opus |
-| C19 | Remove `Enter yards` | nothing (R10 answered: remove) | Sonnet |
+| C15 | Woodmont trace → OSM | C13 (R8: later) | Sonnet |
+| C33 | Short-game bands learn from Loop's chips | a few rounds of chips + putts logged | Sonnet |
 
 Details for each are under **Build details** below.
 
@@ -150,106 +166,6 @@ service worker answered font requests with `index.html`); reopen only if it come
 
 ## Build details
 
-### C2. Course shapes on the satellite map (R2; about a day)
-- Every hole's fairway, green, tee, bunker, water, rough and tree outlines are already loaded. Only
-  the no-tiles paper map draws them. Draw them as tinted layers over the satellite in
-  `src/caddie/mapLayer.jsx` and `overlay.js`.
-- **Muted style:** fairway light green at ~35% with a crisp edge · green brighter, more opaque, white
-  edge · bunkers sand, mostly opaque · water blue with a darker edge · tees tinted by the tee played,
-  where OSM tags them · tree lines a dark band along the wood edge (no cartoon tree dots) · rough no
-  fill, since the photo shows it and a fill hides the lie. One short fade when a hole opens; nothing
-  keeps moving. A **Shapes** toggle on the map.
-- The shapes are only as good as the geometry: Ironwood has none, and Chicopee and Woodmont improve
-  with C12 and C13.
-- No engine or scoring change. Bump BUILD and CACHE.
-
-### C4. Heads-up + aim warning (C3 shipped in v22.22, D93)
-Write a one-page spec first (when each one fires, the wording, the shot counts) and get Brett's
-reaction before any code.
-- **Heads-up:** for SAFE's club, one clause on the map's "why" line (v22.18, D91: `whyLine` in `reasons.js`) when a pattern is strong: "Driver: 3 of 4
-  left today, aim right-center" · "From 100: you finish short 34% of the time". Silent otherwise.
-  Today's pattern speaks only after 2–3 shots agree; otherwise the 10-round history does, and only
-  with ≥ 10 shots for that club. It never contradicts SAFE: "aim right" means the map aims right (D93).
-- **Aim warning** (queued since v22.16; D68, D77): when Brett's own target or line differs from the
-  recommendation, re-run the dispersion simulation at his target and line. Warn when expected trouble
-  is 10+ points worse, or when his club's bias from `tendencies()` (`learning.js`) carries the ellipse
-  centre off the green. Only with n ≥ 10 for that club. One line in the `reasons.js` style;
-  dismissable; never blocks logging.
-- Both read logged shot ends, never assumed ones (D87). F6 is what feeds them.
-- **Tests:** replay the Oct 3 Chicopee round and check each heads-up against what happened. Bump
-  BUILD and CACHE.
-
-### C5. Ironwood test-mode dead end (needs nothing from Brett)
-- **Symptom:** at Ironwood, test mode shows blank paper and a tap does nothing. Setup reads
-  `Satellite: no course location to test`.
-- **Cause:** `courseAnchor(course)` (`src/app.jsx`) takes `course.lat/lon` from the golfcourseapi
-  entry's `location`. Ironwood's routing entries (`sd1vw3ps` Lakes/Ridge, `r36gcyc6`, `cb45aras`, …)
-  have `latitude: null`; only the club entry `c2qw5c2h` has one: **39.9465811, −85.9787805**.
-  Ironwood has no OSM holes either, so nothing turns a tap into a fix.
-- **Do:** give Ironwood's entry in `src/localCards.js` a `location` and make `courseAnchor` fall back
-  to it. For any course still without an anchor, replace the dead tap with one line: `No course
-  location — use Enter yards, or test on a mapped course`. Add tests for the fallback. Bump BUILD and
-  CACHE.
-- **Done when:** at Ironwood the first test-mode tap becomes the ball, and the Setup line no longer
-  says "no course location".
-
-### C6. Retry an empty OSM answer (R7)
-- `useCourseMap` (`src/app.jsx`, ~L217–292) caches a `no-holes` answer with no expiry, and
-  `no-holes` has no retry (D73). A club mapped in OSM later stays blank on phones that already
-  opened it. This applies to every club, Ironwood included.
-- **Do:** don't cache an empty answer (or expire it), and put a Retry on the `no-holes` line. A club
-  with nothing in OSM still lands in marked-green mode. Add a test. Opus, because it changes
-  `useCourseMap`'s state flow.
-
-### C7. Profile: rough distances + the 41-ft putt step (R5, R6)
-- **Rough:** today a rough lie plays the fairway median × `LIE_DIST_ADJ_FAMILY`
-  (`src/caddie/config.js:96`: wedge/short +2%, mid −4%, long −8%). The measured medians sit unread in
-  `src/profile.json` at `clubs[].entries.full.rough.extra.shotDistances`:
-
-  | Club | Fairway | Model (≈) | Rough measured | n |
-  |---|---|---|---|---|
-  | 4Hy | 227 | 209 | 205 | 6 |
-  | 5i | 207 | 199 | **186** | 6 |
-  | 7i | 182 | 175 | 181 | 3 |
-  | 8i | 169 | 172 | **179** | 4 |
-  | 9i | 152 | 155 | 151 | 4 |
-  | PW | 134 | 137 | 135 | 9 |
-  | GW | 119 | 121 | **131** | 3 |
-
-  R5's lean: use the measured median where n ≥ 5 (4Hy, 5i, PW), shrunk toward the model with
-  `SHRINK_K` 5, the same rule D85 applies to the approach buckets.
-- **Putting:** 16–24 ft 10% (4/40) · 25–40 ft 15.2% (5/33) · **41+ ft 70% (7/10)**. The 41+ step
-  drives par-5 lay-up pricing. R6's lean: (10 × 0.70 + 5 × 0.152) / 15 ≈ 52%. Revisit if Tangent's
-  longer history gives counts.
-- `src/profile.json` is generated: change `scripts/build-profile.mjs` (or the engine, for rough; pick
-  one and record the D-number), run `npm run build:profile`, then `--check`.
-
-### C8. Short / long miss model (D77 item 3; Q1)
-- Shot Pattern measures approach proximity and leave zones against **its target, not the hole**:
-  130 of 159 approaches across 8 rounds finish a different distance from each (Oct 3 hole 14: 7 ft
-  from the target, 42 ft from the hole). D77 assumed the pin, which is wrong.
-- **Leave zones**, short / long share of misses (`data/extracted/2026-10-04-screens.json` →
-  `approach.leaveZones`): 9i 75/25 · PW 83/17 · GW 80/20 · SW 78/22 · LW 64/36 (short irons and
-  wedges miss short); 6i 27/73 · 7i 33/67 · 8i 30/70 (mid irons miss long); 5i 58/41; 2Hy and 4Hy
-  have too few shots.
-- **`shortPct`** (finishing > 10% short): 2Hy 50% · 4Hy 33% · PW 29% · GW 19% · 5i–6i 8–9% ·
-  7i–9i 0%. The engine's symmetric normal (5–6% of carry) gives ~2–5%. D85 zeroed `dy` because the
-  centre's shortfall is already in the travelled-yards median, so the centre is handled; the tail
-  may not be.
-- **If Q1 = "I put the target where I aim":** per club, compare the model's P(> 10% short) with the
-  observed rate. Where the gap holds (likely PW, GW, 2Hy), add a short/long tail in
-  `simulateCandidate` (`src/caddie/engine.js:389`): probability = observed − modelled, depth 10–20% of
-  carry, both config values marked uncalibrated. Then see whether the pin rule's ½-stroke guard can
-  tighten.
-- **If Q1 = "the app places it":** the split is contaminated. Park C8.
-
-### C9. Fairway bunkers as "no hero" lies (D77 item 2)
-- Today the 9-in-10 rule covers trees and bad or buried rough. Add sand, **fairway bunkers only**:
-  define one as more than ~40 yds from the green, or not touching the green's surround. Pick one
-  definition and record it.
-- The punch-out fallback must never aim away from the green.
-- **Tests:** a fairway bunker with water ahead triggers the rule; a greenside bunker doesn't.
-
 ### C10. Re-tune the `STRATEGY` thresholds (after a round of F7 notes)
 Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/config.js`):
 
@@ -269,11 +185,9 @@ Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/con
   par-ranked?
 - Each change gets a decision row.
 
-### C11. Chicopee imagery (R4)
-`imagery.url` in `src/localGeometry/chicopee.json` (the Wayback release number is in the path; A is
-49059), plus a `version` bump. Ride along with C2.
-
 ### C12. Chicopee hand-trace, Village + Mill (S4)
+- **Village 1's 6% par** (Brett, Oct 10; D94): points on its line 150 and 200 yds out classify as
+  trees, so SAFE punches out at a 10% par chance. Re-run that check after the trace.
 - The current trace is automatic segmentation (D74 v2): rough and cart paths show as trees inside the
   ellipse.
 - **Method learned Oct 3:**
@@ -340,26 +254,16 @@ The trace converts to OSM ways (`golf=hole`, `green`, `tee`, `fairway`, `bunker`
 for tracing from Esri imagery and its import and automated-edit guidelines, and review each feature by
 hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY`.
 
-### C18. Pinch to zoom on the caddie map (Brett, Oct 4)
-- Gestures are off on purpose (`interactive: false`, `src/caddie/mapLayer.jsx`; addendum §4.1),
-  so one finger drags the target and the pin without moving the map. Only marked-green mode turns
-  them on.
-- **Build:** two-finger pinch zooms (rotation and one-finger pan stay off); a double-tap or a `Fit`
-  button returns to the hole view; the overlay re-projects on every move; a new ball resets the
-  camera as today (T36). Test that the target drag, Line taps and pin drag still work at any zoom.
-  Bump BUILD and CACHE.
+### C33. Short-game bands learn from Loop's chips (C29, D111)
+- Since v22.40 chips, pitches and bunker shots are logged as `shotType: "shortGame"` with a
+  `shortKind`, and never teach a club's distances. Nothing learns the bands from them yet (the
+  profile's 0–25 / 25–50 bands are Shot Pattern's).
+- **Do:** once a few rounds of chips are logged with their putts, overlay the bands the way D85
+  shrinks the approach buckets: leave (the end's feet to the hole) and up-and-down (holed in two from
+  the chip, from the putt records that follow it), shrunk toward the band with `SHRINK_K`. Check
+  first how often the putts after a chip are actually logged; a missing putt must not read as an
+  up-and-down.
 
-### C19. Remove `Enter yards` (R10: Brett, Oct 5, "remove it entirely")
-- `Enter yards` lets Brett type the distance when GPS is off or wrong; the caddie then picks a club
-  from the profile alone, with no map (club-brain mode, the `yards` view, §8). Brett: remove it
-  everywhere.
-- **Do:** drop the rail's `Enter yards` (`rail.action` in `caddieView`, `src/caddie/caddieState.js`),
-  the `nofix` / `locationoff` bar's secondary, the yards sheet in `src/app.jsx`, and the `yards`
-  view. Keep any saved round in the `yards` phase loading (it falls back to pre-tee). Update the
-  tests that expect it.
-- **What he gives up:** with no GPS fix, or GPS off, the caddie has no club call at all; `Retry`
-  is the only action. Marked-green mode (no map, GPS working) is unaffected.
-- Bump BUILD and CACHE.
 
 ---
 
@@ -372,16 +276,17 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 - Brett tests in the home-screen app, not Safari. Safari keeps separate storage.
 
 ## Rules (from CLAUDE.md)
+- Before pushing an app change, run `node scripts/smoke-caddie.mjs` (headless Chromium; D102).
 - Never touch `computeGhost` / `evalMatch`; run the byte-identical check before every commit.
 - Never rename the `bogeyman-matches:*` keys. `index.html`, `src/profile.json` and
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D93.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D114.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (360 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C2, the course shapes
-> on the satellite map. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (394 pass).
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with whichever item
+> I've sent what it waits on (OPEN-ITEMS, the Waits on column). Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.

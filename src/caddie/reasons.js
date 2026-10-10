@@ -82,6 +82,7 @@ export function oneIn(p) {
 
 function lieWords(lieType, lieQuality) {
   if (lieType === "recovery") return "the trees";
+  if (lieType === "sand") return "the fairway bunker";   // no-hero from sand is a fairway bunker only (C9)
   if (lieQuality === "buried") return "a buried lie";
   if (lieQuality === "bad") return "a bad lie";
   return "here";
@@ -98,6 +99,10 @@ export function todayClause(nudges, club, family) {
   const list = (nudges || []).filter((n) => n && n.group && (n.dist || n.dirn));
   const n = list.find((x) => x.group.kind === "family" && x.group.key === family) || list.find((x) => x.group.kind === "lie");
   if (!n) return null;
+  const word0 = [n.dist, n.dirn].filter(Boolean).join("-");
+  const where0 = n.holes?.length ? ` on ${holeWords(n.holes)}` : "";
+  // C32 (D112): a nudge that no longer moves the call only names the pattern
+  if (n.moved === false) return { text: `${word0} ${n.phrase}${where0} today`, fields: { group: n.group, dist: n.dist, dirn: n.dirn, holes: n.holes, shiftYds: 0, moved: false } };
   const fix = [];
   if (n.dist) {
     const steps = Number.isFinite(n.shiftYds) && n.gapYds > 0 ? Math.round((Math.abs(n.shiftYds) / n.gapYds) * 2) / 2 : 0;
@@ -148,10 +153,72 @@ function safeClause(res) {
 }
 
 /**
- * The line for the option on screen: { text, rule } or null (no call, or Custom — C4's aim warning
- * owns Custom). opts: { opt: "safe" | "aggressive", custom, family (club → family), sameAvgDelta }.
+ * v22.26 (C30, D97): the line for a target Brett moved — its own price, live while he drags it:
+ * "6-iron: 48% chance at par". `o` is priceTarget's option. Null without a par chance.
  */
-export function whyLine(res, { opt = "safe", custom = false, family = () => null, sameAvgDelta = 0.05 } = {}) {
+export function ownLine(o) {
+  if (!o || !Number.isFinite(o.parProb)) return null;
+  return { text: `${clubName(o)}: ${pctText(o.parProb)} chance at par`, rule: "own" };
+}
+
+/**
+ * v22.39 (C4, D110): the heads-up clause from learning.js headsUp(), or null. "aiming right-center"
+ * only when the map does aim that way (h.aimYds, today's aim nudge for the club's family, + right).
+ */
+export function headsUpClause(h) {
+  if (!h) return null;
+  if (h.kind === "today") {
+    const opp = h.dir === "left" ? "right" : h.dir === "right" ? "left" : null;
+    const aims = opp && Number.isFinite(h.aimYds) && (opp === "right" ? h.aimYds > 0 : h.aimYds < 0);
+    return `${h.k} of ${h.n} ${h.dir} today${aims ? `, aiming ${opp}-center` : ""}`;
+  }
+  if (h.kind === "history" && Number.isFinite(h.share)) {
+    const tenths = `${Math.round(h.share * 10)} in 10`;
+    return h.dir === "short" ? `it finishes short ${tenths}: the call allows for it` : `it finishes long ${tenths}`;
+  }
+  return null;
+}
+
+/**
+ * v22.40 (C29, D111): the line where the caddie has no call off the green (inside ~30 yds): Brett's
+ * own short-game numbers for the lie and distance, from the profile's band (shortBandFor). Null
+ * without a band. "Rough, 18 yds: up and down 43% · you leave it 7 ft"; under 10 shots it says so.
+ */
+export function shortGameLine(band, yds) {
+  if (!band || !Number.isFinite(yds)) return null;
+  const lie = { fairway: "Fairway", rough: "Rough", bunker: "Bunker" }[band.lie] || "From here";
+  const parts = [];
+  if (Number.isFinite(band.upDownPct)) parts.push(`up and down ${pctText(band.upDownPct)}${Number.isFinite(band.n) && band.n < 10 ? ` (${band.n} shots)` : ""}`);
+  if (Number.isFinite(band.medianProximityFt)) parts.push(`you leave it ${Math.round(band.medianProximityFt)} ft`);
+  return parts.length ? `${lie}, ${Math.round(yds)} yds: ${parts.join(" · ")}` : null;
+}
+
+const HAZARD_WORDS = { water: "water", sand: "sand", trees: "trees", ob: "out of bounds" };
+
+/**
+ * v22.39 (C4, D110): the aim warning's clause from engine.js aimWarning(), or null:
+ * "water 1 in 4 (Loop's call: 1 in 12)" · "you finish 7 R on average: that's off the green".
+ */
+export function aimWarningText(w) {
+  if (!w) return null;
+  if (w.kind === "trouble") {
+    const what = HAZARD_WORDS[w.hazard] || "trouble";
+    return `${what} ${oneIn(w.rate) || "rarely"} (Loop's call: ${w.safeRate >= 0.005 ? oneIn(w.safeRate) : "almost never"})`;
+  }
+  if (w.kind === "miss") {
+    const side = (v, neg, pos) => (Math.abs(v) >= 0.5 ? `${Math.round(Math.abs(v))} ${v < 0 ? neg : pos}` : null);
+    const parts = [side(w.longYds, "short", "long"), side(w.rightYds, "L", "R")].filter(Boolean).join(", ");
+    return parts ? `you finish ${parts} on average: that's off the green` : null;
+  }
+  return null;
+}
+
+/**
+ * The line for the option on screen: { text, rule } or null (no call, or Custom — C4's aim warning
+ * owns Custom). opts: { opt: "safe" | "aggressive", custom, family (club → family), sameAvgDelta,
+ * headsUp (v22.39, C4: learning.js headsUp() for SAFE's club, with aimYds) }.
+ */
+export function whyLine(res, { opt = "safe", custom = false, family = () => null, sameAvgDelta = 0.05, headsUp = null } = {}) {
   if (!res?.safe || custom) return null;
   const aggr = opt === "aggressive" && !res.sameShot && res.aggressive;
   const o = aggr ? res.aggressive : res.safe;
@@ -166,5 +233,13 @@ export function whyLine(res, { opt = "safe", custom = false, family = () => null
     rule = res.why?.rule || null;
   }
   const today = todayClause(res.nudges, o.club, family(o.club));
-  return { text: `${main}${today ? ` · ${today.text}` : ""}.`, rule, today: today ? today.fields : null };
+  // C4 (D110): one clause after the reason. Today's family nudge moves the call, so it stays; the
+  // club's own heads-up shows when there is no nudge, or when it rests on more shots than the nudge.
+  let extra = today ? today.text : null, hu = null;
+  if (!aggr && headsUp && headsUp.club === o.club) {
+    const famShots = today ? (today.fields.holes?.length || 2) : 0;
+    const t = headsUpClause(headsUp);
+    if (t && (!today || (headsUp.kind === "today" && headsUp.k > famShots))) { extra = t; hu = headsUp; }
+  }
+  return { text: `${main}${extra ? ` · ${extra}` : ""}.`, rule, today: today && !hu ? today.fields : null, headsUp: hu };
 }

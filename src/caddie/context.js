@@ -11,6 +11,7 @@
 
 import { DEFAULT_CONFIG } from "./config.js";
 import { frameOf, inferLie, distances, clampToGreen, ll } from "./geo.js";
+import { dist, ringDistance } from "./course.js";
 import { conditionsFrom, elevationDeltaYds as elevDelta, interpolateElevation, weatherTempF } from "./sensors.js";
 
 const FEET_PER_METER = 3.28084;
@@ -79,6 +80,14 @@ export function chipWind(chip, shotBearingDeg) {
  *     samples (integration item 5), null without samples.
  * ball is null when there is no fix and it is not the first shot — the caller shows the no-GPS state.
  */
+/** v22.24 (C31): within `yds` of one of the hole's tee boxes, or of its tee point when none is mapped. */
+export function nearTee(hole, ball, yds) {
+  if (!hole || !ball || !(yds > 0)) return false;
+  const rings = (hole.tees || []).filter((r) => Array.isArray(r) && r.length >= 3);
+  if (rings.length) return rings.some((r) => ringDistance(ball, r) <= yds);
+  return !!hole.tee && dist(ball, hole.tee) <= yds;
+}
+
 export function assembleShotContext(inputs = {}) {
   const { round = {}, hole, geometry = null, fix = null, weather = null, elevation = null, overrides = [], chips = {}, config = DEFAULT_CONFIG, now = null } = inputs;
   if (!hole) throw new Error("assembleShotContext: no hole (club-brain mode has no geometry)");
@@ -111,7 +120,10 @@ export function assembleShotContext(inputs = {}) {
   const lc = parseLieChip(chips.lie);
   if (lc) { lieType = lc.lieType; lieConfidence = lc.unsure ? "low" : "high"; sources.lie = "chip"; }
   else if (trigger === "tee") { lieType = "tee"; lieConfidence = "high"; lie = "tee"; sources.lie = "tee"; }
-  else if (ball) {
+  else if (ball && shotNo === 1 && nearTee(hole, ball, config.TEE_SNAP_YDS ?? DEFAULT_CONFIG.TEE_SNAP_YDS)) {
+    // v22.24 (C31, D95): shot 1 a few yards off the mapped tee box is still a tee shot
+    lieType = "tee"; lieConfidence = "high"; lie = "tee"; sources.lie = "tee-near";
+  } else if (ball) {
     const r = inferLie(hole, geometry, fixLL || ball, { accuracyM: fix?.accuracyM, overrides, courseId: round.courseId ?? null });
     lieType = r.lieType; lieConfidence = r.lieConfidence; lie = r.lie; penalty = r.penalty; sources.lie = r.source;
   } else { lieType = "fairway"; lieConfidence = "low"; sources.lie = "default"; }

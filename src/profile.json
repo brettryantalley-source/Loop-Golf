@@ -92,7 +92,28 @@
             },
             "width95Yds": 109,
             "width90Yds": 100,
-            "ell80": null
+            "ell80": {
+              "wYds": 91.6,
+              "hYds": 35.2,
+              "tiltDeg": 1.9,
+              "dxYds": 5.2,
+              "allWYds": 103.4,
+              "allHYds": 115.3,
+              "allTiltDeg": 27.7,
+              "allDxYds": 1.8,
+              "mishitRate": 0.429,
+              "goodWindowYds": 20,
+              "goodDots": 16,
+              "dyYds": 0,
+              "dyMeasuredYds": 0.1,
+              "bboxWYds": 106,
+              "bboxDYds": 113,
+              "source": "shotPattern",
+              "capturedAt": "2026-10-10",
+              "lies": "Tee (Driving tab); the 2-hybrid fairway entry from the Approach tab",
+              "n": 35,
+              "confidence": "medium"
+            }
           },
           "fairway": null,
           "rough": null
@@ -148,7 +169,28 @@
             },
             "width95Yds": 85,
             "width90Yds": 69,
-            "ell80": null
+            "ell80": {
+              "wYds": 89,
+              "hYds": 28.2,
+              "tiltDeg": 174.5,
+              "dxYds": -2.9,
+              "allWYds": 67.9,
+              "allHYds": 106,
+              "allTiltDeg": 43.3,
+              "allDxYds": -9,
+              "mishitRate": 0.231,
+              "goodWindowYds": 20,
+              "goodDots": 16,
+              "dyYds": 0,
+              "dyMeasuredYds": 0.1,
+              "bboxWYds": 88,
+              "bboxDYds": 90,
+              "source": "shotPattern",
+              "capturedAt": "2026-10-10",
+              "lies": "Tee (Driving tab); the 2-hybrid fairway entry from the Approach tab",
+              "n": 26,
+              "confidence": "medium"
+            }
           },
           "fairway": null,
           "rough": null
@@ -208,7 +250,33 @@
             },
             "width95Yds": 69,
             "width90Yds": 67,
-            "ell80": null
+            "ell80": {
+              "wYds": 75.8,
+              "hYds": 37.4,
+              "tiltDeg": 18.7,
+              "dxYds": -2,
+              "allWYds": 100.3,
+              "allHYds": 37.1,
+              "allTiltDeg": 30.1,
+              "allDxYds": 4.2,
+              "mishitRate": 0.143,
+              "goodWindowYds": 20,
+              "goodDots": 6,
+              "dyYds": 0,
+              "dyMeasuredYds": -0.1,
+              "bboxWYds": 88.8,
+              "bboxDYds": 59.6,
+              "printedCoverage": 0.6,
+              "printedBboxYds": [
+                67,
+                45
+              ],
+              "source": "shotPattern",
+              "capturedAt": "2026-10-10",
+              "lies": "Tee (Driving tab); the 2-hybrid fairway entry from the Approach tab",
+              "n": 7,
+              "confidence": "low"
+            }
           },
           "fairway": {
             "n": 4,
@@ -250,28 +318,7 @@
               ],
               "note": "σ(α) 2.58° from 4 shots dropped (< 5); the lie chain supplies it."
             },
-            "ell80": {
-              "wYds": 135.7,
-              "hYds": 60.5,
-              "tiltDeg": 87.7,
-              "dxYds": 0,
-              "allWYds": 135.7,
-              "allHYds": 60.5,
-              "allTiltDeg": 87.7,
-              "allDxYds": 0,
-              "mishitRate": 0,
-              "goodWindowYds": 20,
-              "goodDots": 2,
-              "dyYds": 0,
-              "dyMeasuredYds": 28,
-              "bboxWYds": 61,
-              "bboxDYds": 135,
-              "source": "shotPattern",
-              "capturedAt": "2026-10-04",
-              "lies": "Tee & Fairway",
-              "n": 5,
-              "confidence": "low"
-            },
+            "ell80": null,
             "extra": {
               "sheetN": 5,
               "pattern80": {
@@ -418,7 +465,28 @@
             },
             "width95Yds": 71,
             "width90Yds": 66,
-            "ell80": null
+            "ell80": {
+              "wYds": 90.9,
+              "hYds": 30.8,
+              "tiltDeg": 15.2,
+              "dxYds": 0.8,
+              "allWYds": 64.8,
+              "allHYds": 90.2,
+              "allTiltDeg": 112,
+              "allDxYds": -3.2,
+              "mishitRate": 0.312,
+              "goodWindowYds": 20,
+              "goodDots": 12,
+              "dyYds": 0,
+              "dyMeasuredYds": -0.2,
+              "bboxWYds": 87,
+              "bboxDYds": 69,
+              "source": "shotPattern",
+              "capturedAt": "2026-10-10",
+              "lies": "Tee (Driving tab); the 2-hybrid fairway entry from the Approach tab",
+              "n": 16,
+              "confidence": "medium"
+            }
           },
           "fairway": {
             "n": 3,
@@ -489,7 +557,7 @@
           },
           "rough": {
             "n": 4,
-            "totalMedianYds": null,
+            "totalMedianYds": 206.7,
             "p25Yds": null,
             "p75Yds": null,
             "carryMedianYds": null,
@@ -557,6 +625,12 @@
                   "long": 0,
                   "wellLong": 0
                 }
+              },
+              "totalShrink": {
+                "measuredYds": 205,
+                "n": 6,
+                "modelYds": 208.8,
+                "k": 5
               }
             }
           }
@@ -664,7 +738,7 @@
           },
           "rough": {
             "n": 6,
-            "totalMedianYds": null,
+            "totalMedianYds": 191.8,
             "p25Yds": null,
             "p75Yds": null,
             "carryMedianYds": null,
@@ -727,6 +801,12 @@
                   "long": 0,
                   "wellLong": 0
                 }
+              },
+              "totalShrink": {
+                "measuredYds": 186,
+                "n": 6,
+                "modelYds": 198.7,
+                "k": 5
               }
             }
           }
@@ -1453,7 +1533,7 @@
           },
           "rough": {
             "n": 10,
-            "totalMedianYds": null,
+            "totalMedianYds": 135.6,
             "p25Yds": null,
             "p75Yds": null,
             "carryMedianYds": null,
@@ -1521,6 +1601,12 @@
                   "long": 0.44,
                   "wellLong": 0
                 }
+              },
+              "totalShrink": {
+                "measuredYds": 135,
+                "n": 9,
+                "modelYds": 136.7,
+                "k": 5
               }
             }
           }
@@ -2957,7 +3043,7 @@
       "n": 10,
       "makePct": 0,
       "sgPer18": -0.26,
-      "threePuttPct": 0.7,
+      "threePuttPct": 0.517,
       "threePuttN": [
         7,
         10
@@ -2968,6 +3054,13 @@
       "within10Pct": 0.2,
       "missLeftPct": 0.3,
       "missRightPct": 0.7,
+      "raw": {
+        "threePuttPct": 0.7
+      },
+      "shrink": {
+        "k": 5,
+        "toward": "25-40 ft three-putt rate"
+      },
       "extra": {
         "direction": {
           "missLeft": 3,
