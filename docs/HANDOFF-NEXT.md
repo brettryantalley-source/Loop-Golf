@@ -10,14 +10,18 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 368 tests (v22.25); must be green
+npm install && npm test    # 368 tests (v22.26); must be green
 ```
+
+## v22.26 (Oct 10)
+
+A moved target shows its own par chance in the strip, live while dragging (C30, D97). 368 tests.
 
 ## v22.25 (Oct 10)
 
 The logging flow moves on by itself (C26–C28, D96): `Missed · next putt` opens the next putt, the
 first putt's length comes from the ball → pin, a notice after Log shot says to tap `I'm at my ball`,
-and in test mode the map arms for the next tap after every logged shot. 368 tests.
+and in test mode the map arms for the next tap after every logged shot. 367 tests.
 
 ## v22.24 (Oct 10)
 

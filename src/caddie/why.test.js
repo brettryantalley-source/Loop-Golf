@@ -156,3 +156,15 @@ test("caddieView: `why` for the option on screen; none before the tee or without
   assert.equal(ready.why.rule, "pin-back");
   assert.equal(caddieView({ state: initialCaddie(7), par: 4, res: r }).why, null, "pre-tee");
 });
+
+test("C30 (v22.26): a moved target's line is its own par chance, from priceTarget's option", async () => {
+  const { ownLine } = await import("./reasons.js");
+  const { priceTarget } = await import("./engine.js");
+  const { noWaterPar4 } = await import("../fixtures/synthetic-holes.js");
+  const o = priceTarget({ shotNo: 2, ball: { x: 0, y: 215 }, lieType: "fairway", par: 4 }, noWaterPar4, P, { x: 4, y: 410 });
+  const l = ownLine(o);
+  assert.equal(l.text, `${clubName(o)}: ${Math.round(o.parProb * 100)}% chance at par`);
+  const moved = priceTarget({ shotNo: 2, ball: { x: 0, y: 215 }, lieType: "fairway", par: 4 }, noWaterPar4, P, { x: 22, y: 410 });
+  assert.notEqual(ownLine(moved).text, l.text, "moving the target moves the number");
+  assert.equal(ownLine(null), null);
+});

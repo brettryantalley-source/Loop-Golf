@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 and Brett's test notes of Oct 10 (C20–C29). Duplicates are merged and anything already shipped is
-dropped. State: **v22.25** (C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 368 tests, decisions D1–D96; the next
-decision is **D97**.
+dropped. State: **v22.26** (C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 368 tests, decisions D1–D97; the next
+decision is **D98**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -19,8 +19,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** send **S9** (the tee stills as files).
-2. **Next code chat:** **C30** (live par chance) → **C18 + C20** (the
-   map camera) → **C2 + C11** (course shapes). Then the table's order.
+2. **Next code chat:** **C18 + C20** (the map camera) → **C2 + C11** (course shapes). Then the table's order.
 3. **Next round:** the **F** list.
 
 ---
@@ -39,7 +38,7 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.25 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.26 · Oct 10** (once merged).
 - **F14.** Approach clubs (v22.23, D94): every shot now finishes at its total. From 195 on a warm day
   the call should be a 6-iron; from 207 a 5-iron. Note any call that still feels a club off.
 - **F13.** The caddie's line (v22.22): a dashed line from the ball through where to aim; the yellow
@@ -127,7 +126,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | C24 | Start line follows the shot shape | nothing | Opus |
 | C25 | Per-club miss summary | nothing | Sonnet |
 | C29 | A short-game card inside 100 yds | a one-page spec, Brett's OK | Opus |
-| C30 | The par chance stays live as the target moves | nothing | Sonnet |
 
 Details for each are under **Build details** below.
 
@@ -427,13 +425,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 - **Do:** on History, per club: shots, average miss long/short and left/right from the target, and
   the pattern from the start line (`tendencies`, `patternLatYds`). Only shots with a real end (D87).
 
-### C30. The par chance stays live as the target moves (Brett, Oct 10)
-- "I would love for the '__% chance at par' to continue to be dynamic and update as I move the
-  target location." The "why" line (D91) shows it for Safe and Aggressive and hides on Custom; the
-  dragged target is already re-priced every frame (`priceTarget`, D83).
-- **Do:** on Custom, the strip reads `6-iron: 48% chance at par` from the dragged target's own price,
-  updated while dragging (80 draws) and settled on release (500). Bump BUILD and CACHE.
-
 ### C29. A short-game card inside 100 yds (Brett, Oct 10)
 - "Didn't we talk about a chip screen from 100 yards and in, so we don't confuse chip and finesse
   shots with full-shot data?" Not in the repo's notes. Today: a wedge from 120 yds in logs as
@@ -463,6 +454,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 
 ## Paste into the next chat
 > Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (360 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C30, the live par
-> chance. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C18 + C20, the map
+> camera. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.

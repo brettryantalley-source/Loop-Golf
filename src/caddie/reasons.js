@@ -148,6 +148,15 @@ function safeClause(res) {
 }
 
 /**
+ * v22.26 (C30, D97): the line for a target Brett moved — its own price, live while he drags it:
+ * "6-iron: 48% chance at par". `o` is priceTarget's option. Null without a par chance.
+ */
+export function ownLine(o) {
+  if (!o || !Number.isFinite(o.parProb)) return null;
+  return { text: `${clubName(o)}: ${pctText(o.parProb)} chance at par`, rule: "own" };
+}
+
+/**
  * The line for the option on screen: { text, rule } or null (no call, or Custom — C4's aim warning
  * owns Custom). opts: { opt: "safe" | "aggressive", custom, family (club → family), sameAvgDelta }.
  */

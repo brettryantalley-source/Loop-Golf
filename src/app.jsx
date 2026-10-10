@@ -26,6 +26,7 @@ import { MapLayer, useSatellite, prefetchTiles, satelliteCheck, setImagery, TILE
 import { assembleShotContext, frameBearing } from "./caddie/context.js";
 import { recommend, windEffect, priceTarget } from "./caddie/engine.js";
 import { classify } from "./caddie/course.js";
+import { ownLine } from "./caddie/reasons.js";
 import { fetchWeather, weatherRefreshDue, weatherTempF } from "./caddie/sensors.js";
 import {
   loadLieOverrides, recordLieOverride, routeShot, newShotRecord, quickLog, detailLog, skipShot, closeOutShot,
@@ -83,7 +84,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.25 · Oct 10";
+const BUILD = "v22.26 · Oct 10";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -2368,7 +2369,9 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   })();
   /* v22.18 (C1, D91): the "why" line — why this call, plus today's adjustment — above the action bar.
      Not on Custom (C4's aim warning will speak there) and not in the pin view. */
-  const whyText = v.why && !routeCustom && !pinView ? v.why.text : null;
+  // v22.26 (C30, D97): a moved target shows its own par chance, live while it is dragged
+  const ownWhy = !pinView && own && (dragTarget || marks.target) ? ownLine(own) : null;
+  const whyText = ownWhy ? ownWhy.text : v.why && !routeCustom && !pinView ? v.why.text : null;
   const lift = whyText ? 48 : 0;
   const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
   const mapLabels = [];
