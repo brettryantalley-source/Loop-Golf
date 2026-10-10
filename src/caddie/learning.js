@@ -19,7 +19,8 @@
  *
  * Shot records follow spec §4.6. Fields read: id, roundId, courseId, hole, shotNo, ts, club,
  * shotType, lie.{confirmed,inferred}, contact, linePlayed, logged, recommendation.{safe,aggressive}
- * .expScore, derived.{distanceMissYds, lateralMissYds, onTarget}. Optional, read when present:
+ * .expScore, derived.{distanceMissYds, lateralMissYds, onTarget}, intent.{aimOffsetYds, windYds,
+ * startLineDeg} (v22.22, patternLatYds). Optional, read when present:
  * derived.intendedYds (target distance along the line) or derived.actualYds — without one of
  * them Loop learns bias and spread but not an absolute distance median.
  */
@@ -100,6 +101,32 @@ export function assumedEnd(s) {
 }
 function hasMisses(s) {
   return !assumedEnd(s) && num(s?.derived?.distanceMissYds) && num(s?.derived?.lateralMissYds);
+}
+
+/**
+ * v22.22 (C3, D93) — the club's own lateral miss on a shot: from the line it was started on, less the
+ * crosswind drift the caddie allowed for (+ right). `derived.lateralMissYds` is measured from the
+ * target, where the shot finishes on average once the caddie aims off for the pattern, so an
+ * on-pattern shot reads 0 there; the profile and the tendencies need the pattern itself, or the
+ * loop would teach it away. The line it started on: the one Brett drew (intent.startLineDeg), else
+ * the caddie's (intent.aimOffsetYds). A record from before v22.22 (no aimOffsetYds) reads as
+ * before. Within the round (withinRound) misses stay measured from the target: a miss there is
+ * today's, beyond the pattern.
+ */
+export function patternLatYds(s) {
+  const lat = s?.derived?.lateralMissYds;
+  if (!num(lat)) return null;
+  const it = s.intent;
+  if (!it || !num(it.aimOffsetYds)) return lat;
+  let offset = it.aimOffsetYds;
+  const a = s.start?.frame, t = s.target?.frame;
+  if (num(it.startLineDeg) && a && t && num(a.x) && num(t.x)) {
+    const L = Math.hypot(t.x - a.x, t.y - a.y);
+    let d = it.startLineDeg - Math.atan2(t.x - a.x, t.y - a.y) / DEG;
+    d = ((d + 540) % 360) - 180;                       // (−180, 180]: + = his line runs right of the target
+    if (L > 1e-9 && Math.abs(d) < 90) offset = L * Math.tan(d * DEG);
+  }
+  return Math.round((lat - offset - (num(it.windYds) ? it.windYds : 0)) * 10) / 10;
 }
 
 function intendedYds(s) {
@@ -595,7 +622,7 @@ export function applyShotLog(P, allShots, { now, roundIndexById } = {}, config) 
     const n = shots.length;
     const nEff = wSum(ws);
     const dm = shots.map((s) => s.derived.distanceMissYds);
-    const lm = shots.map((s) => s.derived.lateralMissYds);
+    const lm = shots.map((s) => patternLatYds(s));     // C3: from the line it started on, not the target
 
     const act = [], actW = [];
     shots.forEach((s, i) => { const a = actualYds(s); if (a != null) { act.push(a); actW.push(ws[i]); } });
@@ -621,7 +648,7 @@ export function applyShotLog(P, allShots, { now, roundIndexById } = {}, config) 
     const ang = [], angW = [];
     shots.forEach((s, i) => {
       const d = actualYds(s) ?? intendedYds(s) ?? priors.totalMedianYds?.value ?? null;
-      if (d && d > 0) { ang.push(Math.atan2(s.derived.lateralMissYds, d) / DEG); angW.push(ws[i]); }
+      if (d && d > 0) { ang.push(Math.atan2(lm[i], d) / DEG); angW.push(ws[i]); }
     });
 
     const distVar = wVar(dm, ws), angVar = wVar(ang, angW);
@@ -831,7 +858,8 @@ const pct = (k, n) => (n > 0 ? Math.round((1000 * k) / n) / 10 : null);
  * The direction and distance signs one record can give, and whether it was a big lateral miss:
  * { lat: −1 | 0 | 1 | null, dist: −1 | 0 | 1 | null, big: boolean | null }.
  *   Loop records  the sign of derived.lateralMissYds / distanceMissYds, else v22.15's
- *                 latMissYds / distMissYds. A miss of exactly 0 is 0 (neither side).
+ *                 latMissYds / distMissYds. A miss of exactly 0 is 0 (neither side). v22.22 (C3):
+ *                 the lateral one from the line the shot started on (patternLatYds), not the target.
  *   Shot Pattern  derived.missLatSign / missDistSign (the words), lateralMissYds on a drive.
  *   putts         line → lat, speed → dist; a made putt with no grades reads 0 / 0.
  * `big` is known when the lateral yards are, or when the whole miss is ≤ bigYds (a 7-yard miss
@@ -845,7 +873,8 @@ export function missSignsOf(r, bigYds = BIG_MISS_YDS) {
     return { lat: num(p.line) ? Math.sign(p.line) || 0 : made ? 0 : null, dist: num(p.speed) ? Math.sign(p.speed) || 0 : made ? 0 : null, big: null };
   }
   const d = r.derived || {};
-  const latYds = num(d.lateralMissYds) ? d.lateralMissYds : num(d.latMissYds) ? d.latMissYds : null;
+  const latRaw = num(d.lateralMissYds) ? d.lateralMissYds : num(d.latMissYds) ? d.latMissYds : null;
+  const latYds = latRaw == null ? null : patternLatYds({ ...r, derived: { ...d, lateralMissYds: latRaw } });
   const distYds = num(d.distanceMissYds) ? d.distanceMissYds : num(d.distMissYds) ? d.distMissYds : null;
   const lat = latYds != null ? signOf(latYds) : num(d.missLatSign) ? Math.sign(d.missLatSign) || 0 : null;
   const dist = distYds != null ? signOf(distYds) : num(d.missDistSign) ? Math.sign(d.missDistSign) || 0 : null;

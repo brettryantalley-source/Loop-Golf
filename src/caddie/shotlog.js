@@ -389,6 +389,8 @@ export function normIntent(it) {
     ...(lineLL ? { lineLL } : {}),
     shape: SHAPES.includes(it.shape) ? it.shape : null,
     source: it.source === "set" ? "set" : "default",
+    // v22.22 (C3, D93): the caddie's aim-off for this target and the crosswind drift it allowed for
+    ...(Number.isFinite(it.aimOffsetYds) ? { aimOffsetYds: it.aimOffsetYds, windYds: Number.isFinite(it.windYds) ? it.windYds : 0 } : {}),
   };
 }
 
@@ -439,23 +441,28 @@ function withIntent(rec, it) {
 
 /**
  * §2 — the intent for a shot: the marks Brett set (`set`: target {x,y}, targetLabel, startLineDeg,
- * shape) over the defaults — target = the recommended option's target, start line through the
- * target, shape = his usual shape for the club (defaultIntendedShape). `frame` (optional, the shot's
- * hole frame) adds the target in lat/lng so the Review sheet can compare shots across frames.
- * source = "set" once any mark is Brett's. With no option and no marks (no recommendation): shape only.
+ * shape) over the defaults — target = the recommended option's target, shape = his usual shape for
+ * the club (defaultIntendedShape). `frame` (optional, the shot's hole frame) adds the target in
+ * lat/lng so the Review sheet can compare shots across frames. source = "set" once any mark is
+ * Brett's. With no option and no marks (no recommendation): shape only.
+ * v22.22 (C3, D93): the target is where the shot finishes; `option` (the one the target belongs to —
+ * Custom's when he moved it) adds the caddie's aim-off (aimOffsetYds, windYds). The start line is
+ * his only when he drew one: the caddie's dashed line is never logged as his (startLineDeg null).
  */
 export function shotIntent({ set = {}, option = null, ball = null, history = null, club = option?.club ?? null, frame = null } = {}) {
   const mine = set || {};
   const target = isPt(mine.target) ? { x: mine.target.x, y: mine.target.y } : isPt(option?.target) ? { x: option.target.x, y: option.target.y } : null;
   const targetLabel = isPt(mine.target) ? mine.targetLabel ?? "own target" : option?.target?.label ?? null;
-  const startLineDeg = Number.isFinite(mine.startLineDeg) ? mine.startLineDeg : target && isPt(ball) ? bearingInFrame(ball, target) : null;
+  const startLineDeg = Number.isFinite(mine.startLineDeg) ? mine.startLineDeg : null;
+  const aim = target && Number.isFinite(option?.aimOffsetYds)
+    ? { aimOffsetYds: option.aimOffsetYds, windYds: Number.isFinite(option.windYds) ? option.windYds : 0 } : {};
   const shape = SHAPES.includes(mine.shape) ? mine.shape : defaultIntendedShape(club, history);
   const source = isPt(mine.target) || Number.isFinite(mine.startLineDeg) || SHAPES.includes(mine.shape) ? "set" : "default";
   let targetLL = null;
   if (target && frame && typeof frame.toLatLng === "function") { const q = frame.toLatLng(target); targetLL = { lat: q.lat, lng: q.lon ?? q.lng }; }
   const ll0 = mine.lineLL;
   const lineLL = Number.isFinite(mine.startLineDeg) && ll0 && Number.isFinite(ll0.lat) && Number.isFinite(ll0.lng ?? ll0.lon) ? { lat: ll0.lat, lng: ll0.lng ?? ll0.lon } : null;
-  return { target, targetLabel, targetLL, startLineDeg, shape, source, ...(lineLL ? { lineLL } : {}) };
+  return { target, targetLabel, targetLL, startLineDeg, shape, source, ...(lineLL ? { lineLL } : {}), ...aim };
 }
 
 /** A miss in yards → 0 / ±1 / ±2 by the §3 bands: |v| < slight → 0, slight … big → ±1, > big → ±2. */

@@ -2,9 +2,9 @@
 
 The one list of everything still unresolved. It merges the eleven Loop chats open on Oct 4: seven
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
-morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3). Duplicates are merged and anything already shipped is
-dropped. State: **v22.21** (C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 354 tests, decisions D1–D92; the next
-decision is **D93**.
+morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22). Duplicates are merged and anything already shipped is
+dropped. State: **v22.22** (C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 360 tests, decisions D1–D93; the next
+decision is **D94**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -18,7 +18,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** answer **Q1**, then say **"go with the leans"** or change any **R**.
-2. **Next code chat:** **C2 → C3 → C4**, then **C19**.
+2. **Next code chat:** **C2 → C4**, then **C19**.
 3. **Next round:** the **F** list.
 
 ---
@@ -37,7 +37,6 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 | # | Decision | Lean | Other options |
 |---|---|---|---|
 | R2 | Course shapes on the satellite map (C2) | **Muted** paper tints, plus a Shapes toggle | Bold, Tangent-style |
-| R3 | Aim-off for your pattern includes wind (C3) | **Yes** | Pattern only |
 | R4 | Chicopee imagery (C11) | **A:** leaf-off (Wayback 49059), fewest shadows | B: leaf-on (64001), live now |
 | R5 | Rough distances (C7) | **Measured** where n ≥ 5, shrunk toward the model. Only the 5-iron moves much: 199 → ~192 | Keep the model · use every club |
 | R6 | 3-putts from 41+ ft: 70% on only 10 putts (C7) | **Shrink** toward the 25–40 ft rate → ~52% | Keep 70% · cap it |
@@ -46,7 +45,12 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 | R9 | Native app for a gap-free GPS trail (P1) | **Not now**; live with the gaps | Capacitor wrapper: $99/yr Apple Developer, plus a Mac or a macOS build runner |
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.21 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.22 · Oct 10** (once merged).
+- **F13.** The caddie's line (v22.22): a dashed line from the ball through where to aim; the yellow
+  ring and both rings are where the ball should finish. Start the ball on the dashed line, or tap
+  `Line` and draw your own; Loop learns from whichever you used. Report whether the 8-iron (aims
+  ~7 R) and PW (~5 L) finish where the ring says, and whether the crosswind aim (~12 yds into a
+  10 mph wind at 150) looks right. SAFE gets bolder in wind (D93).
 - **F12.** The two rings (v22.21): outer 80%, inner dashed best 30%, good shots only. Report whether the
   5i–9i rings look right, and whether the wedges (10% window; GW 40%, LW 71% mishits) now play too
   cautious or too bold. SAFE attempts more from the trees (D92).
@@ -100,8 +104,7 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | # | Build | Waits on | Model |
 |---|---|---|---|
 | C2 | Course shapes on the satellite map | R2 | Sonnet |
-| C3 | Aim for the pattern, and the Line drawn on its own | R3 | Opus |
-| C4 | Heads-up + aim warning | C3 | Opus |
+| C4 | Heads-up + aim warning | nothing (C3 shipped, D93) | Opus |
 | C5 | Ironwood test-mode dead end | nothing | Sonnet |
 | C6 | Retry an empty OSM answer | R7 | Opus |
 | C7 | Profile: rough distances + the 41-ft putt step | R5, R6 | Sonnet |
@@ -160,39 +163,13 @@ service worker answered font requests with `index.html`); reopen only if it come
   with C12 and C13.
 - No engine or scoring change. Bump BUILD and CACHE.
 
-### C3. Aim for the pattern (D77 item 1; R3)
-- The engine aims approaches and lay-ups at the target and lets the pattern's lateral offset carry
-  the ball off it. Oct 4 fairway offsets (`ell80.dxYds`, + = right): **8i 10.3 L · 5i 5.6 R ·
-  PW 5.2 R · 6i 4.1 L · 9i 2.2 R**.
-- **Build:**
-  1. `generateCandidates` (`src/caddie/engine.js`): shift approach and lay-up aim points by −dx
-     when |dx| ≥ `PATTERN_AIM_MIN_YDS` (2). The label stays on the finish target ("green, center").
-     Corridor candidates already sweep the fairway; leave them.
-  2. Store `aimOffsetYds` on the shot record. `deriveResult`, `withinRound`, `applyShotLog` and
-     `tendencies` measure misses against the finish target (aim + offset). Otherwise an on-pattern
-     shot reads as a miss and the loop teaches the bias away (D61, D77).
-  3. `overlay.js`: centre the ellipse on the finish target and draw the aim point separately.
-  4. Wind (R3): the simulation pushes the ball by the crosswind and the engine outputs
-     `aimOffsetYds = −crossYds`, but no screen reads it and the drawn ellipse leaves wind out. With
-     wind in, the overlay needs the cross drift too.
-  5. **The Line on its own** (Brett, Oct 4: "a way for the target line to automatically appear at
-     the suggested target line based on my data and stats"). The map already draws ball → target
-     and target → pin. The `Line` tool (the start-line ray, D60) only appears when he taps it. With
-     a recommendation showing, draw the start line from the ball through the aim point (pattern +
-     wind offset from steps 1 and 4), lighter than a line he sets. Tapping `Line` still moves it.
-     An untouched auto line is NOT logged as his intent (`startLine` stays null), so the learning
-     loop never reads the caddie's line as his.
-- **Tests:** an 8-iron to a centre target aims ~10 yds right and its mean landing sits within 2 yds
-  of centre; an on-pattern shot logs a ~0 lateral miss; the ellipse is centred on the finish target;
-  the auto line runs through the aim point and an untouched one logs `startLine: null`.
-
-### C4. Heads-up + aim warning (after C3)
+### C4. Heads-up + aim warning (C3 shipped in v22.22, D93)
 Write a one-page spec first (when each one fires, the wording, the shot counts) and get Brett's
 reaction before any code.
 - **Heads-up:** for SAFE's club, one clause on the map's "why" line (v22.18, D91: `whyLine` in `reasons.js`) when a pattern is strong: "Driver: 3 of 4
   left today, aim right-center" · "From 100: you finish short 34% of the time". Silent otherwise.
   Today's pattern speaks only after 2–3 shots agree; otherwise the 10-round history does, and only
-  with ≥ 10 shots for that club. It never contradicts SAFE: "aim right" means the map aims right (C3).
+  with ≥ 10 shots for that club. It never contradicts SAFE: "aim right" means the map aims right (D93).
 - **Aim warning** (queued since v22.16; D68, D77): when Brett's own target or line differs from the
   recommendation, re-run the dispersion simulation at his target and line. Warn when expected trouble
   is 10+ points worse, or when his club's bias from `tendencies()` (`learning.js`) carries the ellipse
@@ -404,7 +381,7 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (354 pass).
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (360 pass).
 > Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C2, the course shapes
 > on the satellite map. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.

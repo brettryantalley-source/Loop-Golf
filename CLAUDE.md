@@ -31,7 +31,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
   - `baseline.js` — the published expected-strokes baseline (Broadie, cited in the file) the engine prices candidates against.
   - `course.js` — a hole in a local yard frame (x lateral, y tee→green); lie classification, distances, fat side, corridor.
   - `profile.js` — loads `src/profile.json`, resolves an entry with fallback + provenance + learning overlays (`loadProfile(json, config, { overlays })`, `mergeOverlay`), the E()/Eputt()/B() expected-value functions.
-  - `engine.js` — `recommend(ctx, hole, P)`: candidates → dispersion simulation → SAFE/AGGRESSIVE → reasons.
+  - `engine.js` — `recommend(ctx, hole, P)`: candidates → dispersion simulation → SAFE/AGGRESSIVE → reasons. Since v22.22 (D93) every target is where the ball finishes on average and `aimFor` aims off it for the pattern + crosswind (`aimOffsetYds`).
   - `strategy.js` — the course-management rules (Wicked Smart Golf, v22.16.9, D76) that choose SAFE from the priced candidates: pin position + club up, no hero shots from trouble, driver on ties. Tunables in `STRATEGY` (config.js). The caddie's own decision function; not `computeGhost`/`evalMatch` and not subject to that freeze, but still not casually touched — see the spec before editing.
   - `reasons.js` — one-line reason strings built only from resolved profile fields, never free text; and (v22.18) `whyLine`, the map's "why" line from recommend()'s `why` facts + today's nudges.
   - `geo.js` — OSM geometry → the hole frame, lie inference, distances, hole detection, the 27-hole nine map, the coverage check.
@@ -59,7 +59,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
 3. On any deploy that ships user-facing changes, bump BOTH version markers together and keep the numbers in sync:
    - the cache name in `sw.js` (e.g. `loop-golf-v4` -> `-v5`). REQUIRED — without it, Brett's installed PWA keeps serving the old cached bundle.
    - the on-screen build tag: `const BUILD = "vN · <date>"` near the top of `src/app.jsx` (just after the icon definitions). Keep the existing `"vN · <date>"` format (e.g. `"v5 · Aug 2"`) and match `vN` to the new cache version.
-   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers sit at **v22.21** (v22.21: two rings, good shots only, D92; v22.18: the "why" line above the action button, D91; v22.17.4: lay-ups and the corridor's center aim at the middle of the fairway, not the hole line, D90; v22.17.3: Woodmont on the Esri Oct 2025 photo, D88; Riverpines + Hampton bundled OSM maps and their own Esri photos, D89; v22.17.2: assumed ends never teach the profile, D87; v22.17.1: the Oct 4 stats refresh, D85–D86; v22.17: full-screen map, hole navigation + past-hole logging, notes, Safe = most likely par, Custom, summer-temperature profile, breadcrumb trail; D78–D84). The working branch is restarted from `main` after each merge. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
+   This build tag renders in the top-right of the Setup screen and is the deploy counter Brett reads on his phone to confirm the new bundle actually loaded — so it MUST move every user-facing deploy. Both markers sit at **v22.22** (v22.22: aim for the pattern + wind, and the caddie's start line drawn on its own, D93; v22.21: two rings, good shots only, D92; v22.18: the "why" line above the action button, D91; v22.17.4: lay-ups and the corridor's center aim at the middle of the fairway, not the hole line, D90; v22.17.3: Woodmont on the Esri Oct 2025 photo, D88; Riverpines + Hampton bundled OSM maps and their own Esri photos, D89; v22.17.2: assumed ends never teach the profile, D87; v22.17.1: the Oct 4 stats refresh, D85–D86; v22.17: full-screen map, hole navigation + past-hole logging, notes, Safe = most likely par, Custom, summer-temperature profile, breadcrumb trail; D78–D84). The working branch is restarted from `main` after each merge. (Docs-only commits that don't touch app code skip this step and skip `./build.sh`.)
 4. Show Brett a diff.
 5. WAIT for his explicit "go" before git commit / git push. Never push without approval.
 6. Pages redeploys the same URL automatically (~1 min); Brett fully closes and reopens the app to load the new service worker.
@@ -188,7 +188,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
 - Handoffs live in `docs/`; `docs/README.md` says which is current. A thread that finishes a phase writes or updates its handoff, and the next thread starts by reading it.
 - Every thread starts with: `git status` (must be clean), `git log --oneline -3`, `npm test`. Every thread ends with its work committed and the push command handed to Brett.
 - `computeGhost` / `evalMatch` byte-identical check before every commit, as before.
-- `npm test` runs 354 tests as of v22.21 (349 at v22.18, 336 at v22.17.4, 329 at v22.17.3, 325 at v22.17.2, 324 at v22.17.1 and v22.17; 299 at v22.16.9, 290 at v22.16.8, 289 at v22.16.6, 285 at v22.16.3, 274 at v22.16.2; 160 at the end of the Sep 28–29 caddie build (T1–T42 across S1–S5, named
+- `npm test` runs 360 tests as of v22.22 (354 at v22.21, 349 at v22.18, 336 at v22.17.4, 329 at v22.17.3, 325 at v22.17.2, 324 at v22.17.1 and v22.17; 299 at v22.16.9, 290 at v22.16.8, 289 at v22.16.6, 285 at v22.16.3, 274 at v22.16.2; 160 at the end of the Sep 28–29 caddie build (T1–T42 across S1–S5, named
   as in `docs/SPEC-caddie.md` §9 and `docs/SPEC-caddie-UI.md` §12, plus units); it globs
   `src/**/*.test.js`, so a later agent adding files under `src/caddie/` picks up new tests
   automatically. If a thread after this one sees a different count, an app-side agent has added or
@@ -224,7 +224,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   → `Fake my location`; every fix becomes a map tap through the real code path.
 - Spec: `docs/SPEC-caddie.md` (locked) + `docs/SPEC-caddie-UI.md` (the UI addendum, §8 states / §13
   flags). Decisions made along the way that override the spec live in `docs/DECISIONS-caddie.md`
-  (D1–D92) — read it, don't copy it into other docs. Course-management sources: `docs/research/`
+  (D1–D93) — read it, don't copy it into other docs. Course-management sources: `docs/research/`
   (the Sep 29 evidence-graded research and the Oct 3 Wicked Smart Golf notes; where they disagree the
   guide wins, Brett Oct 3) → `docs/CADDIE-BRAIN-INTEGRATION.md` parts 1 and 2.
 - Refresh workflow (spec §5.8): after a round, export the shot log or a Shot Pattern export →

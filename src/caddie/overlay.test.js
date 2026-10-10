@@ -288,7 +288,7 @@ test("overlay draw order (§4.2) and palettes (§4.3)", () => {
   const parts = model.map((n) => n.attrs?.["data-part"] ?? n.tag);
   assert.deepEqual(parts, ["defs", "pin", "cur", "ball"]);
   const cur = model.find((n) => n.attrs?.["data-part"] === "cur");
-  assert.deepEqual(cur.children.map((n) => n.attrs["data-part"]), ["previous", "other", "corridor", "leave", "ellipse", "ellipse-inner", "hatch", "target"]);
+  assert.deepEqual(cur.children.map((n) => n.attrs["data-part"]), ["previous", "other", "aim-line", "corridor", "leave", "ellipse", "ellipse-inner", "hatch", "target"]);
   assert.ok(model.find((n) => n.attrs?.["data-part"] === "ball").children.some((c) => c.attrs["data-part"] === "accuracy"), "accuracy ring > 8 m");
   const json = JSON.stringify(model);
   assert.ok(!json.includes("#1E6B3A"), "no ink green on satellite");
