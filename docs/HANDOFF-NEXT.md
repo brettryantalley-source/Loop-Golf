@@ -10,8 +10,17 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 349 tests (v22.18); must be green
+npm install && npm test    # 354 tests (v22.21); must be green
 ```
+
+## v22.21 (Oct 10)
+
+Two rings, good shots only (C17, D92): the map draws the 80% ring of the good shots plus an inner
+dashed ring for the best 30%; the engine draws a mishit from Shot Pattern's printed ring at the club's
+`mishitRate`. Built by `scripts/read-carries.py` (Shot Distances bar) and `scripts/fit-ell80.py`
+(plot dots) from the Oct 4 stills. Driver ring capped at 70 yds (display only). 2Hy and PW keep one
+ring (under 5 good dots). 354 tests. Smaller rings lower trouble everywhere, so SAFE attempts more
+(see D92); C10 re-tunes.
 
 ## v22.18 (Oct 5)
 

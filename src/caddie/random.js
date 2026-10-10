@@ -19,16 +19,20 @@ export function mulberry32(seed) {
   };
 }
 
-/** N samples of { z1, z2, u }: two standard normals (Box–Muller) and one uniform. */
+/**
+ * N samples of { z1, z2, u, v }: two standard normals (Box–Muller) and two uniforms. `v` (C17, D92)
+ * comes from its own stream so adding it left every z1, z2 and u exactly where they were.
+ */
 export function makeSamples(n, seed) {
   const rnd = mulberry32(seed);
+  const rndV = mulberry32((seed ^ 0x9e3779b9) >>> 0);
   const out = new Array(n);
   for (let i = 0; i < n; i++) {
     let u1 = rnd();
     if (u1 < 1e-12) u1 = 1e-12;
     const u2 = rnd();
     const r = Math.sqrt(-2 * Math.log(u1));
-    out[i] = { z1: r * Math.cos(2 * Math.PI * u2), z2: r * Math.sin(2 * Math.PI * u2), u: rnd() };
+    out[i] = { z1: r * Math.cos(2 * Math.PI * u2), z2: r * Math.sin(2 * Math.PI * u2), u: rnd(), v: rndV() };
   }
   return out;
 }

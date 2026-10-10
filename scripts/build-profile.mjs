@@ -688,11 +688,16 @@ function shortGameExtra(bucket, lie) {
 // dyMeasuredYds. The lateral offset dx has no such twin and is kept (D85).
 const ell80ByClubLie = {};
 for (const e of ell80Doc.entries) {
+  // C17 (D92): wYds/hYds/tiltDeg/dxYds are the GOOD-shot 80% ring (what the engine draws from and the
+  // map draws); the ring Shot Pattern printed, all shots, rides on allW/H/Tilt/Dx and is where the
+  // engine draws a mishit (mishitRate of the time) from. A club with too few good dots keeps one ring.
+  const split = e.goodWYds != null;
   ell80ByClubLie[`${e.club}|${e.lie}`] = {
-    wYds: e.wYds,
-    hYds: e.hYds,
-    tiltDeg: e.tiltDeg,
-    dxYds: e.dxYds,
+    wYds: split ? e.goodWYds : e.wYds,
+    hYds: split ? e.goodHYds : e.hYds,
+    tiltDeg: split ? e.goodTiltDeg : e.tiltDeg,
+    dxYds: split ? e.goodDxYds : e.dxYds,
+    ...(split ? { allWYds: e.wYds, allHYds: e.hYds, allTiltDeg: e.tiltDeg, allDxYds: e.dxYds, mishitRate: e.mishitRate, goodWindowYds: e.goodWindowYds, goodDots: e.goodDots } : {}),
     dyYds: 0,
     dyMeasuredYds: e.dyYds,
     bboxWYds: e.bboxWYds,

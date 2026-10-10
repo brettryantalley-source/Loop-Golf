@@ -75,6 +75,13 @@ export const DEFAULT_CONFIG = Object.freeze({
   /* ---- dispersion (§3.5) ---- */
   SAMPLES: 500,
   SEED: 20260928,               // fixed seed + common random numbers → deterministic output (T7, T8)
+  /* The map's two rings (C17, D92): the outer 80% and an inner ring that holds the best RING_INNER_PCT
+     of the shots. A 2-D normal's p-contour sits at √(−2 ln(1−p)) σ, so the inner ring is
+     √(−2 ln 0.7) / √(−2 ln 0.2) ≈ 0.471 of the outer, computed in overlay.js. */
+  RING_INNER_PCT: 0.30,
+  /* A club with no fitted ring (the driver) is drawn from its σs; its full 80% axes are capped here so
+     the ring stays readable. DISPLAY ONLY — the simulation still uses the uncapped σs. */
+  RING_DRAW_CAP_YDS: 70,
   /* Widening when the lie chip says bad / buried: +15% σ, −5 yds (spec default). */
   LIE_QUALITY: {
     good:     { sdMult: 1.0,  distYds: 0 },

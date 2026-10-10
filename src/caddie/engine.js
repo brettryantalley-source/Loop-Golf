@@ -398,6 +398,11 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
   const roll = lm.roll;
   // Dispersion core: the ell80 ellipse when measured (UI addendum §5.2), else σ-distance × σ-lateral.
   const ell = e.ell80 ? ellipseSampler(e.ell80, lm.sdMult) : null;
+  // C17 (D92): ell80 is the good-shot ring; a mishit (mishitRate of the shots) comes from the ring
+  // Shot Pattern printed for all of the club's shots, which carries the mishits too.
+  const mishit = e.ell80?.mishitRate > 0 && e.ell80.allWYds > 0
+    ? ellipseSampler({ ...e.ell80, wYds: e.ell80.allWYds, hYds: e.ell80.allHYds, tiltDeg: e.ell80.allTiltDeg, dxYds: e.ell80.allDxYds }, lm.sdMult)
+    : null;
   const sigmaLat = e.lateralSd * lm.sdMult;             // lie-widened in resolveEntry, quality-widened here
   const sigmaD = e.distSd * lm.sdMult;
   const k = ctx.par - 1 - ctx.shotNo;                     // birdie needs this many more after this shot
@@ -407,7 +412,7 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
     const s = samples[i];
     let along, lat;
     if (ell) {
-      const d = ell(s.z1, s.z2);
+      const d = mishit && s.v < e.ell80.mishitRate ? mishit(s.z1, s.z2) : ell(s.z1, s.z2);
       along = lm.mean - e.biasDist + d.alongMiss;      // ell80 carries its own distance bias (dy)
       lat = lm.wind.crossYds + d.lat;
     } else {
