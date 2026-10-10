@@ -10,9 +10,14 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 377 tests (v22.34); must be green
+npm install && npm test    # 379 tests (v22.35); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.35 (Oct 10)
+
+History's `Misses by club`: per club, yards from the target from Loop's own shots, the start-line
+pattern, and Shot Pattern's directions (C25, D106). 379 tests.
 
 ## v22.34 (Oct 10)
 

@@ -16,6 +16,7 @@ import { bareShotRecord, closeOutShot, quickLog, detailLog, autoShotRecord, shot
 import {
   familyOf, withinRound, recencyWeight, shrink, priorFor, applyShotLog, entryWithOverlay,
   lieOverrideAt, aggressionScorecard, clubGapYds, fitEll80, entryKey, tendencies, missSignsOf,
+  missSummary, missWords,
 } from "./learning.js";
 
 const K = DEFAULT_CONFIG.SHRINK_K;
@@ -609,4 +610,41 @@ test("D87 a shot closed on the green's centre (no fix) is not a distance; nor is
   const real = shot({ round: "a", hole: 4, dist: -5, intended: 170 });
   assert.equal(applyShotLog(P, [...bogus, wild, real], { roundIndexById: idx }, DEFAULT_CONFIG)[entryKey("7i", "full", "fairway")].n, 1);
   assert.deepEqual(Object.keys(tendencies(bogus)), [], "nor does it count as a miss direction");
+});
+
+/* ---------- C25 (v22.35, D106): the per-club miss summary on History ---------- */
+
+test("C25 missSummary: per club, yards from the target from Loop's shots, directions from every source", () => {
+  const own = [
+    shot({ hole: 1, club: "7i", dist: -6, lat: 4 }), shot({ hole: 2, club: "7i", dist: -2, lat: -2 }), shot({ hole: 3, club: "7i", dist: 2, lat: 7 }),
+    { ...shot({ hole: 4, club: "7i", dist: 30, lat: 30 }), logged: "skipped" },                      // never counts
+    { ...shot({ hole: 5, club: "7i", dist: 40, lat: 0 }), end: { lat: 34.2, lng: -83.8, lie: "green", assumed: true } },   // D87
+    shot({ hole: 6, club: "PW", swing: "finesse", dist: -3, lat: 1 }),
+    { ...shot({ hole: 7, club: "PW", dist: 1, lat: 1 }), shotType: "putt", putt: { made: true } },   // a putt is not a PW
+  ];
+  const rows = missSummary([...own, ...spRecs()], { order: ["Dr", "2i", "5i", "7i", "8i", "PW"] });
+  const i7 = rows.find((r) => r.club === "7i" && r.swing === "full");
+  assert.deepEqual({ n: i7.nYds, long: i7.longYds, right: i7.rightYds, off: i7.offYds }, { n: 3, long: -2, right: 3, off: 7.2 });
+  assert.equal(i7.lineYds, 3, "no aim-off on these records: the line is the target");
+  assert.equal(missWords(i7).target, "2 short · 3 R · off by 7");
+  // Shot Pattern rows carry directions only
+  const i2 = rows.find((r) => r.club === "2i");
+  assert.equal(i2.nYds, 0); assert.equal(i2.longYds, null); assert.equal(missWords(i2).target, null);
+  assert.equal(i2.leftPct, 71.4);
+  assert.equal(missWords(i2).shares, "L 7 in 10");
+  // finesse is its own row; the order follows the bag, finesse after full
+  assert.ok(rows.some((r) => r.club === "PW" && r.swing === "finesse" && r.nYds === 1));
+  const ids = rows.map((r) => `${r.club}/${r.swing}`);
+  assert.ok(ids.indexOf("2i/full") < ids.indexOf("7i/full") && ids.indexOf("7i/full") < ids.indexOf("PW/finesse"));
+  assert.ok(!rows.some((r) => r.club === "Putter"));
+  assert.deepEqual(missSummary([]), []);
+});
+
+test("C25 the line is measured from the start line: an on-pattern 8-iron reads its pattern, not a miss", () => {
+  // the caddie aimed 7 yds left for the 8-iron's right pattern; the ball finished on target
+  const r = { ...shot({ hole: 1, club: "8i", dist: 0, lat: 0 }), intent: { aimOffsetYds: -7, windYds: 0 } };
+  const row = missSummary([r]).find((x) => x.club === "8i");
+  assert.equal(row.rightYds, 0); assert.equal(row.lineYds, 7);
+  // the shares come from tendencies, measured from the start line too
+  assert.deepEqual(missWords(row), { target: "on line · off by 0", line: "7 R", shares: "R 10 in 10" });
 });

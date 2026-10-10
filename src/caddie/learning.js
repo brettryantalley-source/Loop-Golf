@@ -11,6 +11,7 @@
  *   aggressionScorecard()§5.7  safe / aggressive / custom ("own" before v22.17) vs. the engine's expScore
  *   teeShotGrade()       v22.17 tee shots by line played: Safe · Aggressive · Custom
  *   tendencies()         v22.16 per-club left/right, short/long and big-miss shares (signs only)
+ *   missSummary()        v22.35 per-club miss from the target, in yards, for History (C25)
  *
  * Source separation (§5.2, T32): `P.raw` is Shot Pattern only and is never written. Everything
  * here returns NEW objects; nothing mutates an argument.
@@ -922,6 +923,69 @@ export function tendencies(records, { shotTypes = ["full", "finesse", "putt"], b
     };
   }
   return out;
+}
+
+/* ---------- v22.35 (C25, D106) per-club miss summary (History) ---------- */
+
+const meanR1 = (xs) => (xs.length ? r1(mean(xs)) : null);
+const medianR1 = (xs) => {
+  if (!xs.length) return null;
+  const v = xs.slice().sort((a, b) => a - b), m = v.length >> 1;
+  return r1(v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2);
+};
+
+/**
+ * How far each club's shots finish from the target, for History (Brett, Oct 10: "will we be able to
+ * consistently track how far off I am from my target with each club?"). Real ends only (D87):
+ * skipped shots, assumed ends, putts and short game are left out; a finesse swing is its own row.
+ * Yards come from Loop's own records, measured from the target (`derived.distanceMissYds`, + long;
+ * `lateralMissYds`, + right); Shot Pattern imports carry only the direction, so they count toward the
+ * shares (`tendencies`) and not the yards. `lineYds` is the lateral pattern from the start line, less
+ * the wind allowed for (`patternLatYds`): what the caddie aims off for.
+ * → [{ club, swing, n, nYds, longYds, rightYds, offYds, lineYds, leftPct, rightPct, shortPct, longPct }]
+ *   in `order` (unknown clubs last), finesse after full. Yards are means, `offYds` the median distance
+ *   from the target; one decimal; null without a Loop-measured shot.
+ */
+export function missSummary(records, { order = [] } = {}) {
+  const rows = [];
+  for (const swing of ["full", "finesse"]) {
+    const tend = tendencies(records, { shotTypes: [swing] });
+    const yds = new Map();
+    for (const r of records || []) {
+      if (!r || r.logged === "skipped" || r.club == null || swingOf(r) !== swing || !hasMisses(r)) continue;
+      if (!yds.has(r.club)) yds.set(r.club, []);
+      yds.get(r.club).push(r);
+    }
+    for (const club of new Set([...Object.keys(tend), ...yds.keys()])) {
+      const t = tend[club] || {}, list = yds.get(club) || [];
+      const dist = list.map((r) => r.derived.distanceMissYds), lat = list.map((r) => r.derived.lateralMissYds);
+      const line = list.map(patternLatYds).filter(num);
+      rows.push({
+        club, swing, n: Math.max(t.n || 0, list.length), nYds: list.length,
+        longYds: meanR1(dist), rightYds: meanR1(lat), offYds: medianR1(list.map((r, i) => Math.hypot(dist[i], lat[i]))),
+        lineYds: meanR1(line),
+        leftPct: t.leftPct ?? null, rightPct: t.rightPct ?? null, shortPct: t.shortPct ?? null, longPct: t.longPct ?? null,
+      });
+    }
+  }
+  const rank = (c) => { const i = order.indexOf(c); return i < 0 ? order.length : i; };
+  return rows.sort((a, b) => rank(a.club) - rank(b.club) || String(a.club).localeCompare(String(b.club)) || (a.swing === "full" ? -1 : 1));
+}
+
+/** One summary row in words: "4 short · 3 R · off by 11", the line "2 L", and the shares "R 6 in 10 · short 7 in 10". */
+export function missWords(row) {
+  if (!row) return { target: null, line: null, shares: null };
+  const side = (v, neg, pos) => (v == null ? null : Math.abs(v) < 0.5 ? null : `${Math.round(Math.abs(v))} ${v < 0 ? neg : pos}`);
+  const parts = [side(row.longYds, "short", "long"), side(row.rightYds, "L", "R")].filter(Boolean);
+  const target = row.nYds ? `${parts.length ? parts.join(" · ") : "on line"}${row.offYds != null ? ` · off by ${Math.round(row.offYds)}` : ""}` : null;
+  const line = row.lineYds == null ? null : side(row.lineYds, "L", "R") || "straight";
+  const share = (a, b, wa, wb) => {
+    if (a == null || b == null || (a === 0 && b === 0)) return null;
+    const [w, p] = a >= b ? [wa, a] : [wb, b];
+    return `${w} ${Math.round(p / 10)} in 10`;
+  };
+  const shares = [share(row.leftPct, row.rightPct, "L", "R"), share(row.shortPct, row.longPct, "short", "long")].filter(Boolean).join(" · ") || null;
+  return { target, line, shares };
 }
 
 export const _internal = { readShot, evidenceFor, clubText, haversineM, wMedian, wVar, ELL80_K, FAMILIES };

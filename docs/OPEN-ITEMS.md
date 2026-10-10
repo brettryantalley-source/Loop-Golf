@@ -19,7 +19,8 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** send **S9** (the tee stills as files).
-2. **Next code chat:** the table's order (C25 needs nothing from Brett). Then the table's order.
+2. **Next code chat:** C8 needs nothing from Brett. C4 and C29 start with a one-page spec for his
+   OK; C24 needs his curve amounts. Then the table's order.
 3. **Next round:** the **F** list.
 
 ---
@@ -38,12 +39,14 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.34 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.35 · Oct 10** (once merged).
 - **F18.** From the rough (v22.33, D104): the caddie now plays your rough totals, not the fairway
   ones plus extra roll. A 5-iron finishes ~192, the 4-hybrid ~207, a 7-iron ~175, a PW ~136. Note any
   rough call that feels a club off.
 - **F19.** From a fairway bunker (v22.34, D105; sand more than 40 yds from the green's front): the
   caddie now stays out of trouble 9 times in 10, so expect more lay-ups. Say if one feels too timid.
+- **F20.** History → `Misses by club` (v22.35, D106): after a round with marked ends, check each
+  club's "2 short · 3 R · off by 7" against how the round felt.
 - **F14.** Approach clubs (v22.23, D94): every shot now finishes at its total. From 195 on a warm day
   the call should be a 6-iron; from 207 a 5-iron. Note any call that still feels a club off.
 - **F13.** The caddie's line (v22.22): a dashed line from the ball through where to aim; the yellow
@@ -127,7 +130,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | C15 | Woodmont trace → OSM | C13 (R8: later) | Sonnet |
 | C22 | Tee rings from good shots (2-hybrid ~100 yds deep) | S9 | Sonnet |
 | C24 | Start line follows the shot shape | nothing | Opus |
-| C25 | Per-club miss summary | nothing | Sonnet |
 | C29 | A short-game card inside 100 yds | a one-page spec, Brett's OK | Opus |
 
 Details for each are under **Build details** below.
@@ -317,13 +319,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   moves the line). The line starts on that side; the finish (the yellow ring) stays where it was.
   Ask Brett for his curve amounts first. Bump BUILD and CACHE.
 
-### C25. Per-club miss summary (Brett, Oct 10)
-- "Will we be able to consistently track how far off I am from my target with each club?" Yes:
-  every shot whose end is marked stores its miss from the target and, since v22.22, from its start
-  line. Nothing shows it yet.
-- **Do:** on History, per club: shots, average miss long/short and left/right from the target, and
-  the pattern from the start line (`tendencies`, `patternLatYds`). Only shots with a real end (D87).
-
 ### C29. A short-game card inside 100 yds (Brett, Oct 10)
 - "Didn't we talk about a chip screen from 100 yards and in, so we don't confuse chip and finesse
   shots with full-shot data?" Not in the repo's notes. Today: a wedge from 120 yds in logs as
@@ -352,11 +347,11 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D106.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D107.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (377 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C25, the per-club miss
-> summary. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (379 pass).
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C8, the short / long miss
+> model. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.

@@ -39,7 +39,7 @@ import { satelliteCheckLine, fallbackMapModel, fitBounds, cameraFor, linearProje
 import { fetchElevationSamples, elevationSamplePoints } from "./caddie/sensors.js";
 import { DEFAULT_CONFIG, mergeConfig } from "./caddie/config.js";
 /* v22.17: the breadcrumb trail's stops, the round's notes, the tee-shot grade (pure models; storage injected). */
-import { teeShotGrade } from "./caddie/learning.js";
+import { teeShotGrade, missSummary, missWords } from "./caddie/learning.js";
 import { appendPoint, stopsFrom, matchStops } from "./caddie/trail.js";
 import { newNote, saveNote, loadNotes } from "./caddie/notes.js";
 import {
@@ -84,7 +84,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.34 · Oct 10";
+const BUILD = "v22.35 · Oct 10";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -3237,6 +3237,37 @@ function TeeGrade({ records, label = "Tee shots", size = 11 }) {
     </div>
   );
 }
+/* v22.35 (C25, D106): per club, where its shots finish against the target — Loop's own shots in yards,
+   Shot Pattern's by direction only (learning.js missSummary). The line is the pattern from the start
+   line: what the caddie aims off for. */
+function ClubMisses({ records, order }) {
+  let rows = [];
+  try { rows = missSummary(records || [], { order }); } catch (e) { rows = []; }
+  if (!rows.length) return null;
+  return (
+    <div data-part="club-misses" style={{ display: "flex", flexDirection: "column", gap: 3, padding: "10px 0", borderBottom: rule }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+        <span style={caps(10)}>Misses by club</span>
+        <span style={{ fontFamily: F.label, fontSize: 11, color: T.muted }}>shots · from the target</span>
+      </div>
+      {rows.map((r) => {
+        const w = missWords(r);
+        return (
+          <div key={`${r.club}/${r.swing}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, borderTop: hairline, paddingTop: 3 }}>
+            <span style={{ fontFamily: F.label, fontSize: 12, color: T.ink, whiteSpace: "nowrap" }}>
+              {clubShort(r.club)}{r.swing === "finesse" ? " · finesse" : ""} <span style={{ ...printed(12), color: T.muted }}>{r.n}</span>
+            </span>
+            <span style={{ fontFamily: F.label, fontSize: 12, color: T.ink, textAlign: "right" }}>
+              {w.target || w.shares || DASH}
+              {w.target && r.nYds < r.n ? <span style={{ color: T.muted }}> · {r.nYds} measured</span> : null}
+              {w.line ? <span style={{ color: T.muted }}> · line {w.line}</span> : null}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 function AggressionLines({ view, label = "Lines played", size = 11 }) {
   if (!view) return null;
   return (
@@ -3812,6 +3843,8 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
         {agg.season && <div style={{ paddingTop: 4, borderTop: hairline, marginTop: 2 }}><AggressionLines view={agg.season} label="Season lines" /></div>}
         <TeeGrade records={(() => { try { return allShots(safeStorage()); } catch (e) { return []; } })()} label="Season tee shots" />
       </div>
+
+      <ClubMisses records={(() => { try { return allShots(safeStorage()); } catch (e) { return []; } })()} order={PROFILE_JSON.clubOrder || []} />
 
       {/* the ledger */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "12px 0 4px" }}>
