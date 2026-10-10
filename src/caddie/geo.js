@@ -589,12 +589,24 @@ export const geoCacheKey = (apiId) => `bogeyman-matches:geo:v1:${apiId}`;
 
 /** Store the compact geometry (+ elevation samples, §6.5). `local` = the version stamp of a bundled
  *  trace (localGeometry.js) when that is where the geometry came from. Returns true when written. */
-export function saveGeometryCache(storage, apiId, geometry, elevation = null, local = null) {
+export function saveGeometryCache(storage, apiId, geometry, elevation = null, local = null, savedAt = null) {
   if (!storage || apiId == null || !geometry) return false;
   try {
-    storage.setItem(geoCacheKey(apiId), JSON.stringify({ ...compactGeometry(geometry), elevation, ...(local ? { local } : {}) }));
+    storage.setItem(geoCacheKey(apiId), JSON.stringify({ ...compactGeometry(geometry), elevation, ...(local ? { local } : {}), ...(Number.isFinite(savedAt) ? { savedAt } : {}) }));
     return true;
   } catch { return false; }
+}
+
+/** v22.32 (C6, D103): an empty OSM answer is kept this long, then asked again (the club may be mapped since). */
+export const EMPTY_GEOMETRY_TTL_MS = 7 * 24 * 3600 * 1000;
+
+/**
+ * v22.32 (C6): true when a cached geometry has no holes and was saved before `now − ttlMs` (or carries
+ * no `savedAt`, i.e. it predates v22.32): the caller asks OSM again. A geometry with holes never is.
+ */
+export function emptyGeometryStale(g, now, ttlMs = EMPTY_GEOMETRY_TTL_MS) {
+  if (!g || Object.keys(g.holes || {}).length > 0) return false;
+  return !Number.isFinite(g.savedAt) || !Number.isFinite(now) || now - g.savedAt > ttlMs;
 }
 
 /** The cached geometry, or null when absent, unreadable or from an older schema (re-fetch then). */

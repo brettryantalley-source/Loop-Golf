@@ -10,9 +10,14 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 371 tests (v22.31); must be green
+npm install && npm test    # 372 tests (v22.32); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.32 (Oct 10)
+
+An empty OSM answer expires after a week and the `no-holes` line retries on a tap (C6, D103).
+372 tests.
 
 ## v22.31 (Oct 10)
 

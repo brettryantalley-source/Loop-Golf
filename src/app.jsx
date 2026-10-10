@@ -6,7 +6,7 @@ import { T, F, caps, printed, written, writtenWord, rule, hairline, doubleRule, 
 import { SEED_ROUNDS, historyRows, scoreSeeds, recordLedger, dayTime } from "./seedRounds.js";
 /* Caddie (S3a, v22): the map layer. The profile is bundled, never fetched (addendum §11.1). */
 import { fetchGeometry } from "./geometry.js";
-import { buildHole, frameOf, detectHole, needsNineMap, nineMapCandidates, saveNineMap, loadNineMap, loadGeometryCache, saveGeometryCache, inferLie, ll,
+import { buildHole, frameOf, detectHole, needsNineMap, nineMapCandidates, saveNineMap, loadNineMap, loadGeometryCache, saveGeometryCache, emptyGeometryStale, inferLie, ll,
   nineMapFromRouting, playFromRouting, ninesAssociation, guessPlay, coverageCheck } from "./caddie/geo.js";
 /* v22.7: clubs with more than 18 holes — one picker row per club, the nines chosen on Setup. */
 import { groupResultsByClub, clubKeyOf, routingLabel, routingNines, splitTee27, nineCombos, teeForCombo, loadLastRouting, saveLastRouting, defaultRoutingIndex,
@@ -84,7 +84,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.31 · Oct 10";
+const BUILD = "v22.32 · Oct 10";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -228,8 +228,8 @@ const safeStorage = () => { try { return window.localStorage; } catch (e) { retu
 /* { geometry, phase: none | loading | ready | network-error | no-holes | partial | unavailable, done, total, retry }
    v22.8: "unavailable" used to cover three different failures with one copy line. Split:
    - the Overpass fetch itself threw or timed out             -> network-error (retryable)
-   - it answered but coverageCheck found NO holes at all      -> no-holes (not retryable — OSM just
-     doesn't have this course; retrying the same query won't change that)
+   - it answered but coverageCheck found NO holes at all      -> no-holes (v22.32, C6: retryable, and
+     the empty answer is asked again after a week, since a club can be mapped in OSM later)
    - it answered with SOME but not all 18 holes               -> partial (retryable — a wider/second
      Overpass mirror can fill in what the first one missed)
    - no anchor (lat/lon) to even query from                   -> unavailable, unchanged (nothing to retry)
@@ -251,6 +251,9 @@ function useCourseMap(course) {
     const local = localGeometryFor(LOCAL_GEOMETRY, apiId);
     let g = force ? null : loadGeometryCache(safeStorage(), apiId);
     if (g && local && g.local !== local.version) g = null;   // cached before the trace existed (an empty OSM answer) or from an older trace
+    // v22.32 (C6, D103): an empty OSM answer is asked again after a week (the club may be mapped since)
+    const staleEmpty = !local && emptyGeometryStale(g, Date.now()) ? g : null;
+    if (staleEmpty) g = null;
     setGeometry(g);                                   // never show the previous course's holes
     (async () => {
       if (!g) {
@@ -272,9 +275,11 @@ function useCourseMap(course) {
               }
             } catch (e2) { /* silent — elevation is a nice-to-have */ }
           }
-          saveGeometryCache(safeStorage(), apiId, parsed, elevation, local ? local.version : null);
+          saveGeometryCache(safeStorage(), apiId, parsed, elevation, local ? local.version : null, Date.now());
           g = loadGeometryCache(safeStorage(), apiId) || parsed;
         } catch (e) {
+          // an expired empty answer that could not be asked again still says "no holes" (marked greens)
+          if (live && staleEmpty) { setGeometry(staleEmpty); setSt({ phase: "no-holes", done: 0, total: 18 }); return; }
           if (live) { setGeometry(null); setSt({ phase: "network-error", done: 0, total: 0 }); }
           return;
         }
@@ -300,10 +305,10 @@ const courseMapLine = (m) => !m || m.phase === "none" ? null
   : m.phase === "ready" ? "Course map ready"
   : m.phase === "loading" ? `Course map · loading ${m.done} of ${m.total || 18}`
   : m.phase === "network-error" ? "Course map · could not reach the map server · tap to retry"
-  : m.phase === "no-holes" ? "No course map. Satellite on GPS — mark each green on the tee."
+    : m.phase === "no-holes" ? "No course map. Satellite on GPS — mark each green on the tee. · tap to retry"
   : m.phase === "partial" ? `Course map · ${m.done} of ${m.total || 18} holes mapped · tap to retry`
-  : "Course map unavailable · caddie will use yards";
-const courseMapRetryable = (m) => !!m && (m.phase === "network-error" || m.phase === "partial");
+  : "Course map unavailable";   // v22.30 (C19): no yards to fall back to
+const courseMapRetryable = (m) => !!m && (m.phase === "network-error" || m.phase === "partial" || m.phase === "no-holes");   // v22.32 (C6): no-holes too
 
 
 /* ---------- home-state filter (results have state; the API also returns location.latitude/longitude since v1.1 — used by the Hole View, not here) ---------- */

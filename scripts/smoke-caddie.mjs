@@ -66,9 +66,16 @@ await page.waitForTimeout(500);
 await step("tee tap", async () => { await tapMap(0.5, 0.75); });
 await page.waitForTimeout(2500);
 await shot("2-ready");
-await step("Log shot", async () => { await page.getByText("Log shot", { exact: false }).first().click({ timeout: 5000 }); });
-await page.waitForTimeout(800);
-await step("Good shot", async () => { await page.getByText("Good shot", { exact: false }).first().click({ timeout: 5000 }); });
+// the call is on screen (the strip above the action button) before Log shot; the sheet before Good shot
+await step("call on screen", async () => { await page.getByText(/chance at par|birdie chance|Punch out/).first().waitFor({ timeout: 15000 }); });
+await step("Log shot", async () => {
+  for (let i = 0; i < 3; i++) {
+    await page.getByText("Log shot", { exact: false }).first().click({ timeout: 5000 });
+    try { await page.getByText("Good shot", { exact: false }).first().waitFor({ timeout: 3000 }); return; } catch (e) { /* the screen was still settling: once more */ }
+  }
+  throw new Error("the log card never opened");
+});
+await step("Good shot", async () => { await page.getByText("Good shot", { exact: false }).first().click({ timeout: 8000 }); });
 await page.waitForTimeout(1200);
 await shot("3-after-log");
 await step("next-ball tap", async () => { await tapMap(0.5, 0.45); });

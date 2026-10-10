@@ -812,3 +812,16 @@ test("assembleShotContext: the §3.1 ctx the engine takes, from GPS + geometry +
   assert.equal(assembleShotContext({ ...base, elevation: null, fix: { ...at(260, 0), accuracyM: 4 } }).elevFt, null);
   assert.throws(() => assembleShotContext({}), /no hole/);
 });
+
+test("C6 (v22.32): an empty OSM answer expires after a week; a mapped one never does; savedAt round-trips", async () => {
+  const { emptyGeometryStale, EMPTY_GEOMETRY_TTL_MS, saveGeometryCache, loadGeometryCache } = await import("./geo.js");
+  const now = Date.parse("2026-10-10T12:00:00Z");
+  const empty = { holes: {}, savedAt: now - 2 * 24 * 3600 * 1000 };
+  assert.equal(emptyGeometryStale(empty, now), false, "two days old: keep it");
+  assert.equal(emptyGeometryStale({ ...empty, savedAt: now - EMPTY_GEOMETRY_TTL_MS - 1 }, now), true, "past a week: ask again");
+  assert.equal(emptyGeometryStale({ holes: {} }, now), true, "saved before v22.32 (no savedAt): ask again once");
+  assert.equal(emptyGeometryStale({ holes: { 1: {} } }, now), false, "a mapped course never expires");
+  const mem = new Map(); const st = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
+  saveGeometryCache(st, "x1", real, null, null, now);
+  assert.equal(loadGeometryCache(st, "x1").savedAt, now);
+});

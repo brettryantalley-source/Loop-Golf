@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 and Brett's test notes of Oct 10 (C20–C29). Duplicates are merged and anything already shipped is
-dropped. State: **v22.31** (C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 371 tests, decisions D1–D102; the next
-decision is **D103**.
+dropped. State: **v22.32** (C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 372 tests, decisions D1–D103; the next
+decision is **D104**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -19,7 +19,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** send **S9** (the tee stills as files).
-2. **Next code chat:** the table's order (C6, C7, C9, C25 need nothing from Brett). Then the table's order.
+2. **Next code chat:** the table's order (C7, C9, C25 need nothing from Brett). Then the table's order.
 3. **Next round:** the **F** list.
 
 ---
@@ -38,7 +38,7 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.31 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.32 · Oct 10** (once merged).
 - **F14.** Approach clubs (v22.23, D94): every shot now finishes at its total. From 195 on a warm day
   the call should be a 6-iron; from 207 a 5-iron. Note any call that still feels a club off.
 - **F13.** The caddie's line (v22.22): a dashed line from the ball through where to aim; the yellow
@@ -114,7 +114,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | # | Build | Waits on | Model |
 |---|---|---|---|
 | C4 | Heads-up + aim warning | nothing (C3 shipped, D93) | Opus |
-| C6 | Retry an empty OSM answer | nothing (R7: yes) | Opus |
 | C7 | Profile: rough distances + the 41-ft putt step | nothing (R5, R6 accepted) | Sonnet |
 | C8 | Short / long miss model | nothing (Q1 answered) | Opus |
 | C9 | Fairway bunkers as "no hero" lies | nothing | Sonnet |
@@ -174,14 +173,6 @@ reaction before any code.
 - Both read logged shot ends, never assumed ones (D87). F6 is what feeds them.
 - **Tests:** replay the Oct 3 Chicopee round and check each heads-up against what happened. Bump
   BUILD and CACHE.
-
-### C6. Retry an empty OSM answer (R7)
-- `useCourseMap` (`src/app.jsx`, ~L217–292) caches a `no-holes` answer with no expiry, and
-  `no-holes` has no retry (D73). A club mapped in OSM later stays blank on phones that already
-  opened it. This applies to every club, Ironwood included.
-- **Do:** don't cache an empty answer (or expire it), and put a Retry on the `no-holes` line. A club
-  with nothing in OSM still lands in marked-green mode. Add a test. Opus, because it changes
-  `useCourseMap`'s state flow.
 
 ### C7. Profile: rough distances + the 41-ft putt step (R5, R6)
 - **Rough:** today a rough lie plays the fairway median × `LIE_DIST_ADJ_FAMILY`
@@ -390,6 +381,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 
 ## Paste into the next chat
 > Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (360 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C6, retrying an empty
-> OSM answer. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C7, the profile's rough
+> distances and the 41-ft putt step. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.
