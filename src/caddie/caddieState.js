@@ -795,7 +795,7 @@ export function caddieView({
   state, par = null, profileOk = true, mapOk = true, res = null, options = null, inferred = null, onGreen = false,
   ballXY = null, green = null, config = DEFAULT_CONFIG,
   markable = false, greenMarked = false, synthetic = false, pinYds = null, satFailure = null,
-  greenManual = false, unreviewed = 0,
+  greenManual = false, unreviewed = 0, headsUp = null,
 }) {
   const s = state;
   const holeNo = s.hole;
@@ -888,7 +888,7 @@ export function caddieView({
   }
   const reasons = hasRec ? (sameShot ? [opts.safe] : [opts.safe, opts.aggressive]).filter(Boolean).map((o) => o.reason).filter(Boolean) : [];
   // v22.18 (C1, D91): one printed line for the option on screen; the caller hides it on Custom
-  const why = hasRec ? whyLine(res, { opt: activeKey, family: familyOf, sameAvgDelta: cfg.SAME_AVG_DELTA ?? 0.05 }) : null;
+  const why = hasRec ? whyLine(res, { opt: activeKey, family: familyOf, sameAvgDelta: cfg.SAME_AVG_DELTA ?? 0.05, headsUp }) : null;
   const today = hasRec ? todayLines(res) : [];
 
   const details = {

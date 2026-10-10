@@ -990,4 +990,58 @@ export function missWords(row) {
   return { target, line, shares };
 }
 
+/* ---------- v22.39 (C4, D110) the heads-up (docs/SPEC-C4-headsup.md) ---------- */
+
+/** Which way a shot missed its target, beyond ON_TARGET's tolerance: { lat, dist } signs, null unknown. */
+function missSidesOf(r, C) {
+  const d = r?.derived || {}, it = intendedYds(r);
+  const tol = C.ON_TARGET || DEFAULT_CONFIG.ON_TARGET;
+  const latTol = num(it) ? it * Math.tan((tol.latDeg * Math.PI) / 180) : 5;
+  const distTol = num(it) ? it * tol.distPct : 5;
+  const side = (v, t) => (Math.abs(v) > t ? Math.sign(v) : 0);
+  const lat = num(d.lateralMissYds) ? side(d.lateralMissYds, latTol) : num(d.missLatSign) ? Math.sign(d.missLatSign) : null;
+  const dist = num(d.distanceMissYds) ? side(d.distanceMissYds, distTol) : num(d.missDistSign) ? Math.sign(d.missDistSign) : null;
+  return { lat, dist };
+}
+
+/**
+ * The heads-up for SAFE's club, or null (silent). `today` = this round's records, `history` = every
+ * record (both from any source; Shot Pattern's by direction only), `entry` = the club's resolved
+ * profile entry (its Shot Pattern shortPct and the shots behind it, D107).
+ *   today    the club missed its target the same way on HEADS_UP.todayHit of its last todayOf shots,
+ *            or 2 of 2: { kind: "today", club, swing, axis: "lat" | "dist", dir, k, n, holes }.
+ *            Measured from the target, so a shot that follows the pattern the caddie aimed for is
+ *            not a miss. Lateral first when both axes fire.
+ *   history  at least histMinN measured shots and histShare of them finish overPct or more short
+ *            (Loop's own plus the profile's shortPct over its n) or long (Loop's only):
+ *            { kind: "history", club, swing, dir, share, n }.
+ * Real ends only (D87): skipped shots, assumed ends, short game, putts and recovery shots never count.
+ */
+export function headsUp({ today = [], history = [], club, swing = "full", entry = null, config } = {}) {
+  if (!club) return null;
+  const C = cfgOf(config);
+  const H = { ...DEFAULT_CONFIG.HEADS_UP, ...(C.HEADS_UP || {}) };
+  const mine = (r) => r && r.club === club && r.logged !== "skipped" && !assumedEnd(r) && !isShortGameOrPutt(r) && swingOf(r) === swing;
+  const shots = chronological((today || []).filter(mine));
+  for (const axis of ["lat", "dist"]) {
+    const seen = shots.map((s) => ({ s, v: missSidesOf(s, C)[axis] })).filter((x) => x.v != null).slice(-H.todayOf);
+    const n = seen.length;
+    for (const sgn of [-1, 1]) {
+      const hit = seen.filter((x) => x.v === sgn), k = hit.length;
+      if ((n === 2 && k === 2) || (n >= 3 && k >= H.todayHit)) {
+        const dir = axis === "lat" ? (sgn < 0 ? "left" : "right") : (sgn < 0 ? "short" : "long");
+        return { kind: "today", club, swing, axis, dir, k, n, holes: [...new Set(hit.map((x) => x.s.hole).filter(num))] };
+      }
+    }
+  }
+  const measured = (history || []).filter((r) => mine(r) && num(r?.derived?.distanceMissYds) && num(intendedYds(r)) && intendedYds(r) > 0);
+  const shortL = measured.filter((r) => r.derived.distanceMissYds <= -H.overPct * intendedYds(r)).length;
+  const longL = measured.filter((r) => r.derived.distanceMissYds >= H.overPct * intendedYds(r)).length;
+  const spN = num(entry?.shortN) && num(entry?.fields?.shortPct) ? entry.shortN : 0;
+  const nShort = measured.length + spN, short = shortL + (spN ? entry.fields.shortPct * spN : 0);
+  if (nShort >= H.histMinN && short / nShort >= H.histShare - 1e-9) return { kind: "history", club, swing, dir: "short", share: r1(short / nShort * 10) / 10, n: nShort };
+  if (measured.length >= H.histMinN && longL / measured.length >= H.histShare - 1e-9) return { kind: "history", club, swing, dir: "long", share: r1(longL / measured.length * 10) / 10, n: measured.length };
+  return null;
+}
+
 export const _internal = { readShot, evidenceFor, clubText, haversineM, wMedian, wVar, ELL80_K, FAMILIES };

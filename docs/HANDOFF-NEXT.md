@@ -10,9 +10,15 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 384 tests (v22.38); must be green
+npm install && npm test    # 390 tests (v22.39); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.39 (Oct 10)
+
+The heads-up (one clause for SAFE's club: 3 of 4 the same way today, or 3 in 10 short in history)
+and the aim warning on Brett's own target or Line; his Line is now priced (C4, D110). The replay
+found same-day streaks don't predict the next shot; the nudges are C32. 390 tests.
 
 ## v22.38 (Oct 10)
 

@@ -158,10 +158,49 @@ export function ownLine(o) {
 }
 
 /**
- * The line for the option on screen: { text, rule } or null (no call, or Custom — C4's aim warning
- * owns Custom). opts: { opt: "safe" | "aggressive", custom, family (club → family), sameAvgDelta }.
+ * v22.39 (C4, D110): the heads-up clause from learning.js headsUp(), or null. "aiming right-center"
+ * only when the map does aim that way (h.aimYds, today's aim nudge for the club's family, + right).
  */
-export function whyLine(res, { opt = "safe", custom = false, family = () => null, sameAvgDelta = 0.05 } = {}) {
+export function headsUpClause(h) {
+  if (!h) return null;
+  if (h.kind === "today") {
+    const opp = h.dir === "left" ? "right" : h.dir === "right" ? "left" : null;
+    const aims = opp && Number.isFinite(h.aimYds) && (opp === "right" ? h.aimYds > 0 : h.aimYds < 0);
+    return `${h.k} of ${h.n} ${h.dir} today${aims ? `, aiming ${opp}-center` : ""}`;
+  }
+  if (h.kind === "history" && Number.isFinite(h.share)) {
+    const tenths = `${Math.round(h.share * 10)} in 10`;
+    return h.dir === "short" ? `it finishes short ${tenths}: the call allows for it` : `it finishes long ${tenths}`;
+  }
+  return null;
+}
+
+const HAZARD_WORDS = { water: "water", sand: "sand", trees: "trees", ob: "out of bounds" };
+
+/**
+ * v22.39 (C4, D110): the aim warning's clause from engine.js aimWarning(), or null:
+ * "water 1 in 4 (Loop's call: 1 in 12)" · "you finish 7 R on average: that's off the green".
+ */
+export function aimWarningText(w) {
+  if (!w) return null;
+  if (w.kind === "trouble") {
+    const what = HAZARD_WORDS[w.hazard] || "trouble";
+    return `${what} ${oneIn(w.rate) || "rarely"} (Loop's call: ${w.safeRate >= 0.005 ? oneIn(w.safeRate) : "almost never"})`;
+  }
+  if (w.kind === "miss") {
+    const side = (v, neg, pos) => (Math.abs(v) >= 0.5 ? `${Math.round(Math.abs(v))} ${v < 0 ? neg : pos}` : null);
+    const parts = [side(w.longYds, "short", "long"), side(w.rightYds, "L", "R")].filter(Boolean).join(", ");
+    return parts ? `you finish ${parts} on average: that's off the green` : null;
+  }
+  return null;
+}
+
+/**
+ * The line for the option on screen: { text, rule } or null (no call, or Custom — C4's aim warning
+ * owns Custom). opts: { opt: "safe" | "aggressive", custom, family (club → family), sameAvgDelta,
+ * headsUp (v22.39, C4: learning.js headsUp() for SAFE's club, with aimYds) }.
+ */
+export function whyLine(res, { opt = "safe", custom = false, family = () => null, sameAvgDelta = 0.05, headsUp = null } = {}) {
   if (!res?.safe || custom) return null;
   const aggr = opt === "aggressive" && !res.sameShot && res.aggressive;
   const o = aggr ? res.aggressive : res.safe;
@@ -176,5 +215,13 @@ export function whyLine(res, { opt = "safe", custom = false, family = () => null
     rule = res.why?.rule || null;
   }
   const today = todayClause(res.nudges, o.club, family(o.club));
-  return { text: `${main}${today ? ` · ${today.text}` : ""}.`, rule, today: today ? today.fields : null };
+  // C4 (D110): one clause after the reason. Today's family nudge moves the call, so it stays; the
+  // club's own heads-up shows when there is no nudge, or when it rests on more shots than the nudge.
+  let extra = today ? today.text : null, hu = null;
+  if (!aggr && headsUp && headsUp.club === o.club) {
+    const famShots = today ? (today.fields.holes?.length || 2) : 0;
+    const t = headsUpClause(headsUp);
+    if (t && (!today || (headsUp.kind === "today" && headsUp.k > famShots))) { extra = t; hu = headsUp; }
+  }
+  return { text: `${main}${extra ? ` · ${extra}` : ""}.`, rule, today: today && !hu ? today.fields : null, headsUp: hu };
 }

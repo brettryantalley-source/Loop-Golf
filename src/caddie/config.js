@@ -85,6 +85,13 @@ export const DEFAULT_CONFIG = Object.freeze({
     SW: { usual: "straight", yds: 0 }, LW: { usual: "straight", yds: 0 },
   },
   CURVE_DEFAULT_YDS: 5,
+  /* C4 (v22.39, D110; docs/SPEC-C4-headsup.md, OK'd Oct 10). Heads-up, one clause for SAFE's club:
+     today — the same miss on `todayHit` of its last `todayOf` shots (or 2 of 2); history — at least
+     `histMinN` measured shots and `histShare` of them finish `overPct` or more short (or long).
+     Aim warning, on his own target or Line: trouble `troubleGap` more often than SAFE, or his club's
+     average miss (at least `minN` Loop-measured shots) carries the ring's centre off the green. */
+  HEADS_UP: { todayOf: 4, todayHit: 3, histMinN: 10, histShare: 0.3, overPct: 0.10 },
+  AIM_WARN: { troubleGap: 0.10, minN: 10 },
   /* Roll by ground conditions, by club family (integration item 6; research §3.1, §3.4). Replaces
      "wet → roll 0 everywhere". Wet ground kills a long club's release (tour driver −4.5 yds medium
      / −9.8 soft vs firm, USGA/R&A 2023) but a wet wedge loses 15–20% spin and releases MORE (Rice,

@@ -463,6 +463,7 @@ export function simulateCandidate(cand, ctx, hole, P, samples, trace = null) {
   const tail = ctx.lieType === "tee" && ctx.par >= 4 ? 0 : shortTailPct(e, cfg);
   const T = cfg.SHORT_TAIL || DEFAULT_CONFIG.SHORT_TAIL;
   let sumStrokes = 0, sumBirdie = 0, sumPar = 0, sumDouble = 0, trouble = 0, sumLat = 0;
+  const troubleBy = {};                                   // v22.39 (C4, D110): which trouble, for the aim warning
   const n = samples.length;
   for (let i = 0; i < n; i++) {
     const s = samples[i];
@@ -482,7 +483,8 @@ export function simulateCandidate(cand, ctx, hole, P, samples, trace = null) {
     const tailLat = Math.abs(sigmaLat * s.z2) * 0.5;
     if (s.u < e.bigMiss.left) lat = -e.bigMiss.latYds - tailLat;
     else if (s.u < e.bigMiss.left + e.bigMiss.right) lat = e.bigMiss.latYds + tailLat;
-    lat += aim.aimOffsetYds;                           // C3: the whole shot, big misses too, starts on the aim line
+    // C3: the whole shot, big misses too, starts on the aim line — or on his own Line (C4, D110)
+    lat += Number.isFinite(cand.startOffsetYds) ? cand.startOffsetYds : aim.aimOffsetYds;
     sumLat += lat;
     let p = { x: ctx.ball.x + lm.dir.x * along + lm.perp.x * lat, y: ctx.ball.y + lm.dir.y * along + lm.perp.y * lat };
     let lie = classify(hole, p);
@@ -509,7 +511,7 @@ export function simulateCandidate(cand, ctx, hole, P, samples, trace = null) {
     const f = finishProbs(P, r, ctx, cfg);
     sumPar += f.par;
     sumDouble += f.double;
-    if (r.trouble) trouble++;
+    if (r.trouble) { trouble++; troubleBy[lie] = (troubleBy[lie] || 0) + 1; }
   }
   return {
     expScore: ctx.shotNo - 1 + sumStrokes / n,
@@ -517,6 +519,7 @@ export function simulateCandidate(cand, ctx, hole, P, samples, trace = null) {
     parProb: sumPar / n,
     doubleProb: sumDouble / n,
     troubleRate: trouble / n,
+    troubleBy: Object.fromEntries(Object.entries(troubleBy).map(([k, v]) => [k, v / n])),
     meanYds: cand.kind === "approach" ? lm.greenTotal : lm.total,   // where it finishes on average (D94)
     distToTarget: dist(ctx.ball, cand.target),
     aimOffsetYds: aim.aimOffsetYds,
@@ -585,6 +588,7 @@ function formatOption(c, P, safeExp, geo) {
     parProb: r3(c.parProb),
     doubleProb: r3(c.doubleProb),
     troubleRate: r3(c.troubleRate),
+    ...(c.troubleBy ? { troubleBy: Object.fromEntries(Object.entries(c.troubleBy).map(([k, v]) => [k, r3(v)])) } : {}),
     reason: text,
     reasonFields: fields,
   };
@@ -678,6 +682,34 @@ function whyFacts(scored, sit, cfg, safe, rules, ctx, P, geo) {
   };
 }
 
+/**
+ * v22.39 (C4, D110): the aim warning for Brett's own target or Line (`own`, priceTarget's option,
+ * priced on his Line when he drew one) against SAFE, or null:
+ *   { kind: "trouble", hazard, rate, safeRate }  his shot finds trouble AIM_WARN.troubleGap more
+ *                                                 often than SAFE; the hazard it finds most
+ *   { kind: "miss", rightYds, longYds }          his club's average miss from the target (missSummary,
+ *                                                 at least AIM_WARN.minN Loop-measured shots) carries
+ *                                                 the ring's centre off the green he aimed at
+ */
+export function aimWarning(own, safe, { hole = null, ball = null, miss = null, config = DEFAULT_CONFIG } = {}) {
+  if (!own || !safe) return null;
+  const W = { ...DEFAULT_CONFIG.AIM_WARN, ...(config?.AIM_WARN || {}) };
+  if (Number.isFinite(own.troubleRate) && Number.isFinite(safe.troubleRate) && own.troubleRate >= safe.troubleRate + W.troubleGap - 1e-9) {
+    const by = own.troubleBy || {};
+    const hazard = Object.keys(by).sort((a, b) => by[b] - by[a])[0] || null;
+    return { kind: "trouble", hazard, rate: hazard ? by[hazard] : own.troubleRate, safeRate: hazard ? safe.troubleBy?.[hazard] ?? 0 : safe.troubleRate };
+  }
+  if (miss && miss.nYds >= W.minN && hole && ball && own.target && classify(hole, own.target) === "green") {
+    const T = own.target, dx = T.x - ball.x, dy = T.y - ball.y, L = Math.hypot(dx, dy);
+    if (L > 1e-9) {
+      const ux = dx / L, uy = dy / L, r = miss.rightYds || 0, l = miss.longYds || 0;
+      const c = { x: T.x + uy * r + ux * l, y: T.y - ux * r + uy * l };
+      if (classify(hole, c) !== "green") return { kind: "miss", rightYds: r, longYds: l };
+    }
+  }
+  return null;
+}
+
 /* ---------- §3.10 display strings ---------- */
 
 /**
@@ -706,6 +738,13 @@ export function priceTarget(rawCtx, hole, P, target, opts = {}) {
   const leave = Math.round(dist(target, pin));
   const cand = { club: best.e.club, swing: best.e.swing, entry: best.e, kind: toGreen ? "approach" : "layup", target: { x: target.x, y: target.y },
     label: toGreen ? "own target" : `leave ${leave}, own target` };
+  // v22.39 (C4, D110): his own Line (hole-frame bearing) — the shot starts on it and curves by the
+  // shape he chose (opts.curveYds, D108); without one it starts on the caddie's aim line
+  if (Number.isFinite(opts?.lineDeg)) {
+    const L = need, brg = Math.atan2(target.x - ctx.ball.x, target.y - ctx.ball.y) / DEG;
+    const d = ((opts.lineDeg - brg + 540) % 360) - 180;
+    if (L > 1e-9 && Math.abs(d) < 60) cand.startOffsetYds = L * Math.tan(d * DEG) + (Number.isFinite(opts.curveYds) ? opts.curveYds : 0);
+  }
   const n = Number.isFinite(opts?.samples) && opts.samples >= 1 ? Math.round(opts.samples) : cfg.SAMPLES;
   const sim = simulateCandidate(cand, ctx, hole, P, makeSamples(n, cfg.SEED));
   return formatOption({ ...cand, ...sim }, P, null, { ball: ctx.ball, pin });

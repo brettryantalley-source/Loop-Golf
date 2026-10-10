@@ -24,9 +24,9 @@ import { loadProfile, resolveEntry } from "./caddie/profile.js";
 import { MapLayer, useSatellite, prefetchTiles, satelliteCheck, setImagery, TILE_PREFETCH_ENABLED, renderNodes } from "./caddie/mapLayer.jsx";
 /* Caddie (S3b, v22): the engine, its inputs and the screen's state + render model. */
 import { assembleShotContext, frameBearing } from "./caddie/context.js";
-import { recommend, windEffect, priceTarget, landingDots } from "./caddie/engine.js";
+import { recommend, windEffect, priceTarget, landingDots, aimWarning } from "./caddie/engine.js";
 import { classify } from "./caddie/course.js";
-import { ownLine } from "./caddie/reasons.js";
+import { ownLine, aimWarningText } from "./caddie/reasons.js";
 import { fetchWeather, weatherRefreshDue, weatherTempF } from "./caddie/sensors.js";
 import {
   loadLieOverrides, recordLieOverride, routeShot, newShotRecord, quickLog, detailLog, skipShot, closeOutShot,
@@ -39,7 +39,7 @@ import { satelliteCheckLine, fallbackMapModel, fitBounds, cameraFor, linearProje
 import { fetchElevationSamples, elevationSamplePoints } from "./caddie/sensors.js";
 import { DEFAULT_CONFIG, mergeConfig } from "./caddie/config.js";
 /* v22.17: the breadcrumb trail's stops, the round's notes, the tee-shot grade (pure models; storage injected). */
-import { teeShotGrade, missSummary, missWords } from "./caddie/learning.js";
+import { teeShotGrade, missSummary, missWords, headsUp as headsUpFor } from "./caddie/learning.js";
 import { appendPoint, stopsFrom, matchStops } from "./caddie/trail.js";
 import { newNote, saveNote, loadNotes } from "./caddie/notes.js";
 import {
@@ -84,7 +84,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.38 · Oct 10";
+const BUILD = "v22.39 · Oct 10";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -2041,7 +2041,17 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     } catch (e) { console.warn("own target failed", e); return null; }
   }, [engine, built, profile, ownAt?.x, ownAt?.y]);
   const shownOptions = own && engine?.options ? { ...engine.options, [engine.res.sameShot ? "safe" : cs.opt]: own } : engine?.options || null;
-  const v = caddieView({ state: cs, par: h.par, profileOk: !!profile, mapOk: !!built, res: engine?.res || null, options: shownOptions,
+  // v22.39 (C4, D110): the heads-up for SAFE's club — one clause on the why line, silent otherwise
+  const heads = useMemo(() => {
+    const s = engine?.res?.safe;
+    if (!s || !profile) return null;
+    try {
+      const entry = resolveEntry(profile, s.club, s.swingType, "fairway");
+      const h = headsUpFor({ today: roundId ? loadShots(safeStorage(), roundId) : [], history: allShots(safeStorage()), club: s.club, swing: s.swingType, entry, config });
+      return h ? { ...h, aimYds: engine.ctx?.adjust?.aimYds?.[entry?.family] ?? null } : null;
+    } catch (e) { return null; }
+  }, [engine, profile, roundId, shotsRev]);
+  const v = caddieView({ headsUp: heads, state: cs, par: h.par, profileOk: !!profile, mapOk: !!built, res: engine?.res || null, options: shownOptions,
     inferred: engine?.inferred || null, onGreen: !!engine?.onGreen, ballXY: cs.phase === "yards" ? null : ballXY, green: engine?.green || null, config,
     markable, greenMarked: !!marked, synthetic: !!built?.synthetic, pinYds: pinView ? pinYds : null, satFailure: noGeo ? sat.failure : null,
     greenManual, unreviewed });
@@ -2059,6 +2069,23 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     set: mapMarks ? marks : { shape: marks.shape }, option: mapMarks ? opt : null,
     ball: cs.phase === "yards" ? null : ballXY, club: opt?.club ?? null, history: allShots(safeStorage()), frame: cs.phase === "yards" ? null : Fr,
   });
+  // v22.39 (C4, D110): the aim warning. His shot — his target, started on his Line when he drew one
+  // (curving by the shape on screen, D108) — against SAFE; tap the line to hide it for this shot.
+  const lineDeg = mapMarks && Number.isFinite(marks.startLineDeg) ? marks.startLineDeg : null;
+  const lineAt = lineDeg != null && !dragTarget && cs.phase === "ready" && engine?.res?.safe && built ? (ownAt || activeOpt?.target || null) : null;
+  const onLine = useMemo(() => {
+    if (!lineAt) return null;
+    try { return priceTarget(engine.ctx, built, profile, lineAt, { lineDeg, curveYds: intentNow(activeOpt).curveYds || 0 }); } catch (e) { return null; }
+  }, [engine, built, profile, lineAt?.x, lineAt?.y, lineDeg, marks.shape]);
+  const mine = onLine || (ownAt ? own : null);
+  const missRows = useMemo(() => { try { return missSummary(allShots(safeStorage())); } catch (e) { return []; } }, [shotsRev]);
+  const warnKey = `${n}:${cs.shotNo}`;
+  const [hiddenWarn, setHiddenWarn] = useState(null);
+  // not while the marker is dragged: 80 draws a frame would flicker it; it shows on the drop
+  const warn = mine && !dragTarget && engine?.res?.safe && hiddenWarn !== warnKey
+    ? aimWarning(mine, engine.res.safe, { hole: built, ball: engine.ctx?.ball, miss: missRows.find((r) => r.club === mine.club && r.swing === (mine.swingType || "full")) || null, config })
+    : null;
+  const warnText = warn ? aimWarningText(warn) : null;
   // §9.4/§9.5 — everything the shot record needs to default from, snapshotted at the moment Brett
   // acts (Log shot / I'm at my ball), not eagerly at arrival: the toggle, chips and pin may still
   // change while he's standing over the ball. `club` (optional) overrides the toggle's club.
@@ -2393,10 +2420,10 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     return !near || (own?.club && !clubs.includes(own.club));
   })();
   /* v22.18 (C1, D91): the "why" line — why this call, plus today's adjustment — above the action bar.
-     Not on Custom (C4's aim warning will speak there) and not in the pin view. */
+     On his own target or Line it is his shot's par chance and the aim warning (C4, D110); not in the pin view. */
   // v22.26 (C30, D97): a moved target shows its own par chance, live while it is dragged
-  const ownWhy = !pinView && own && (dragTarget || marks.target) ? ownLine(own) : null;
-  const whyText = ownWhy ? ownWhy.text : v.why && !routeCustom && !pinView ? v.why.text : null;
+  const ownWhy = !pinView && mine && (dragTarget || marks.target || lineDeg != null) ? ownLine(mine) : null;
+  const whyText = ownWhy ? `${ownWhy.text}${warnText ? ` · ${warnText}` : ""}` : v.why && !routeCustom && !pinView ? v.why.text : null;
   const lift = whyText ? 48 : 0;
   const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
   const mapLabels = [];
@@ -2589,7 +2616,8 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
       )}
 
       {whyText && (
-        <div role="note" data-part="why" data-rule={v.why.rule || "none"} style={{ ...card, position: "absolute", left: 10, right: 10, bottom: safe.bottom + 114, padding: "6px 12px", borderRadius: 12, zIndex: 16,
+        <div role="note" data-part="why" data-rule={v.why?.rule || "none"} data-warn={warnText && ownWhy ? warn.kind : undefined}
+          onClick={() => { if (warnText && ownWhy) setHiddenWarn(warnKey); }} style={{ ...card, position: "absolute", left: 10, right: 10, bottom: safe.bottom + 114, padding: "6px 12px", borderRadius: 12, zIndex: 16,
           color: T.ink, fontFamily: F.label, fontSize: 12, lineHeight: "15px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
           {whyText}
         </div>

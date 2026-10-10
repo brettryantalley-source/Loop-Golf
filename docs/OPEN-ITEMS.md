@@ -18,7 +18,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Next code chat:** C4 and C29, from their specs (both OK'd Oct 10 with the leans).
+1. **Next code chat:** C29 from its spec (OK'd Oct 10 with the leans), then C32.
 2. **Brett:** send **S9** (the tee stills as files).
 3. **Next round:** the **F** list.
 
@@ -38,12 +38,16 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.38 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.39 · Oct 10** (once merged).
 - **F18.** From the rough (v22.33, D104): the caddie now plays your rough totals, not the fairway
   ones plus extra roll. A 5-iron finishes ~192, the 4-hybrid ~207, a 7-iron ~175, a PW ~136. Note any
   rough call that feels a club off.
 - **F19.** From a fairway bunker (v22.34, D105; sand more than 40 yds from the green's front): the
   caddie now stays out of trouble 9 times in 10, so expect more lay-ups. Say if one feels too timid.
+- **F22.** The heads-up and the aim warning (v22.39, D110): when a club misses the same way 3 of its
+  last 4 today, the why line says so; move the target or draw a Line toward trouble and it says how
+  often ("water 1 in 4 (Loop's call: 1 in 12)"). Tap the line to hide that for the shot. Say
+  whether either one changed what you did.
 - **F21.** The start line (v22.37, D108): the shape chips open on your usual shape (driver Fade, 5–8
   iron Draw …) and the dashed line starts the curve's width to the other side (driver 15 yds left).
   Say whether each club's line looks like where you'd start it.
@@ -123,7 +127,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C4 | Heads-up + aim warning | nothing (spec OK'd Oct 10, the leans) | Opus |
 | C10 | Re-tune the `STRATEGY` thresholds | a round of F7 notes | Opus |
 | C12 | Chicopee hand-trace, Village + Mill | S4 | Opus |
 | C13 | Woodmont calibration | F9, Q3 | Sonnet |
@@ -131,6 +134,7 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | C15 | Woodmont trace → OSM | C13 (R8: later) | Sonnet |
 | C22 | Tee rings from good shots (2-hybrid ~100 yds deep) | S9 | Sonnet |
 | C29 | A short-game card inside 100 yds | nothing (spec OK'd Oct 10, the leans) | Opus |
+| C32 | Do the in-round nudges help? | nothing | Opus |
 
 Details for each are under **Build details** below.
 
@@ -162,22 +166,6 @@ service worker answered font requests with `index.html`); reopen only if it come
 ---
 
 ## Build details
-
-### C4. Heads-up + aim warning (C3 shipped in v22.22, D93)
-**Spec: `docs/SPEC-C4-headsup.md`, OK'd Oct 10 with the leans** (3 of 4 today, +10 points, the
-history clause on). The notes below are what it was drafted from.
-- **Heads-up:** for SAFE's club, one clause on the map's "why" line (v22.18, D91: `whyLine` in `reasons.js`) when a pattern is strong: "Driver: 3 of 4
-  left today, aim right-center" · "From 100: you finish short 34% of the time". Silent otherwise.
-  Today's pattern speaks only after 2–3 shots agree; otherwise the 10-round history does, and only
-  with ≥ 10 shots for that club. It never contradicts SAFE: "aim right" means the map aims right (D93).
-- **Aim warning** (queued since v22.16; D68, D77): when Brett's own target or line differs from the
-  recommendation, re-run the dispersion simulation at his target and line. Warn when expected trouble
-  is 10+ points worse, or when his club's bias from `tendencies()` (`learning.js`) carries the ellipse
-  centre off the green. Only with n ≥ 10 for that club. One line in the `reasons.js` style;
-  dismissable; never blocks logging.
-- Both read logged shot ends, never assumed ones (D87). F6 is what feeds them.
-- **Tests:** replay the Oct 3 Chicopee round and check each heads-up against what happened. Bump
-  BUILD and CACHE.
 
 ### C10. Re-tune the `STRATEGY` thresholds (after a round of F7 notes)
 Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/config.js`):
@@ -287,6 +275,16 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   ring at `mishitRate`. The driver gets a fitted ring for the first time (today it is drawn from its
   σs, capped at 70 yds). Rebuild the profile (`npm run build:profile`, `--check`). Record a D-number.
 
+### C32. Do the in-round nudges help? (C4 replay, Oct 10)
+- The why line's "today" nudges (D91; `withinRound` in `src/caddie/learning.js`) club up or aim off
+  after 2–3 shots of a family agree. The C4 replay (D110) checked the same kind of streak on all nine
+  imported rounds: 99 streaks, and the next shot with that club went the same way 44% of the time
+  against a 53% base rate. A same-day streak did not predict the next shot.
+- **Do:** replay the nudges themselves on the imported rounds plus Loop's own logged rounds: for
+  each shot a nudge would have moved, did the moved call price better against what happened? Then
+  one of: keep them, raise the bar (more shots, bigger misses), or switch them off. Bring Brett the
+  numbers and a recommendation before changing anything. Brett, Oct 10: "add as an item".
+
 ### C29. A short-game card inside 100 yds (Brett, Oct 10)
 - "Didn't we talk about a chip screen from 100 yards and in, so we don't confuse chip and finesse
   shots with full-shot data?" Not in the repo's notes. Today: a wedge from 120 yds in logs as
@@ -315,11 +313,11 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D110.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D111.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (384 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C4, built from
-> `docs/SPEC-C4-headsup.md` as I OK'd it. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (390 pass).
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C29, built from
+> `docs/SPEC-C29-shortgame.md` as I OK'd it. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.
