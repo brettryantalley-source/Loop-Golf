@@ -178,8 +178,40 @@ export function ellipseFromEntry(entry, { lieQuality = "standard", config = DEFA
  * Returns { safe, aggressive } with `.ell` on each (aggressive null when sameShot).
  */
 export function withEllipses(res, resolve, { lieQuality = "standard", config = DEFAULT_CONFIG } = {}) {
-  const one = (o) => (o ? { ...o, ell: ellipseFromEntry(resolve(o.club, o.swingType), { lieQuality, config }) } : null);
+  const one = (o) => (o ? { ...o, ell: onFinish(ellipseFromEntry(resolve(o.club, o.swingType), { lieQuality, config }), o) } : null);
   return { safe: one(res?.safe), aggressive: res?.sameShot ? null : one(res?.aggressive) };
+}
+
+/**
+ * v22.22 (C3, D93): the rings sit where the shot finishes. The ring's own lateral offset plus the
+ * crosswind drift, less the aim-off (engine.js aimFor): 0 when the aim cancels the drift, so both
+ * rings centre on the target; the drift itself when it is under PATTERN_AIM_MIN_YDS.
+ */
+function onFinish(ell, o) {
+  if (!ell) return ell;
+  const dx = ell.dx + (Number.isFinite(o?.windYds) ? o.windYds : 0) + (Number.isFinite(o?.aimOffsetYds) ? o.aimOffsetYds : 0);
+  return { ...ell, dx: Math.abs(dx) < 0.15 ? 0 : f1(dx) };
+}
+
+/**
+ * The caddie's aim point for an option, hole frame: `aimOffsetYds` square to the ball → target line
+ * (+ right). The target itself when there is no offset. null without a ball or a target.
+ */
+export function aimPointFor(option, ball) {
+  const T = option?.target;
+  if (!T || !ball || !Number.isFinite(T.x) || !Number.isFinite(ball.x)) return null;
+  const o = Number.isFinite(option.aimOffsetYds) ? option.aimOffsetYds : 0;
+  const dx = T.x - ball.x, dy = T.y - ball.y, L = Math.hypot(dx, dy);
+  if (!o || L < 1e-9) return { x: T.x, y: T.y };
+  return { x: T.x + (dy / L) * o, y: T.y - (dx / L) * o };
+}
+
+/** Bearing (degrees clockwise from +y, the hole frame) of the caddie's start line: ball → aim point. */
+export function aimLineDeg(option, ball) {
+  const A = aimPointFor(option, ball);
+  if (!A) return null;
+  const dx = A.x - ball.x, dy = A.y - ball.y;
+  return Math.hypot(dx, dy) < 1e-9 ? null : Math.atan2(dx, dy) / DEG;
 }
 
 /* ---------- the same ellipse in the hole frame (camera bounds, hit tests) ---------- */
@@ -481,8 +513,9 @@ export function troubleRings(hole) {
  * input: { project (frame {x,y} → screen {x,y}), viewport {width,height}, hole, ball, accuracyM,
  *          pin, active (option with target/kind/ell), other (the ghosted option; null when sameShot),
  *          previousShots [{from, to}], palette "satellite"|"paper", idPrefix, redrawKey, recomputing }
- * Draw order (§4.2): pin · [cur: previous shots · other option · corridor · leave line · ellipse ·
- * trouble hatch · target ring] · ball. The `cur` group carries the redraw fade.
+ * Draw order (§4.2): pin · [cur: previous shots · other option · the caddie's start line (C3) ·
+ * corridor · leave line · ellipse · trouble hatch · target ring] · intent · ball. The `cur` group
+ * carries the redraw fade.
  */
 export function overlayModel(input) {
   const {
@@ -534,6 +567,18 @@ export function overlayModel(input) {
     cur.push(el("g", { "data-part": "other", opacity: 0.75 }, [
       el("line", { x1: f1(B.x), y1: f1(B.y), x2: f1(OT.x), y2: f1(OT.y), stroke: P.line, strokeWidth: 1.8, strokeDasharray: ".5 6.5", strokeLinecap: "round" }),
       el("circle", { cx: f1(OT.x), cy: f1(OT.y), r: 6, fill: "none", stroke: P.line, strokeWidth: 1.5 }),
+    ]));
+  }
+
+  // 3b. v22.22 (C3, D93): the caddie's start line, ball → aim point and on to the map edge. Printed,
+  //     thin and dashed — lighter than the pencil line Brett sets, which replaces it (8b).
+  const autoDeg = B && active?.target && !Number.isFinite(intent?.lineDeg) ? aimLineDeg(active, ball) : null;
+  if (autoDeg != null) {
+    const F2 = project(rayEnd(ball, autoDeg));
+    const g = { x1: f1(B.x), y1: f1(B.y), x2: f1(F2.x), y2: f1(F2.y), strokeLinecap: "round" };
+    cur.push(el("g", { "data-part": "aim-line" }, [
+      ...(P.halo ? [el("line", { ...g, stroke: P.halo, strokeWidth: 2.8, opacity: 0.5 })] : []),
+      el("line", { ...g, stroke: P.line, strokeWidth: 1.3, strokeDasharray: "6 5", opacity: 0.9 }),
     ]));
   }
 

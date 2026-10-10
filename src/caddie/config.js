@@ -109,7 +109,11 @@ export const DEFAULT_CONFIG = Object.freeze({
   BIG_MISS_LAT_YDS_DEFAULT: 45,
 
   /* ---- candidates (§3.4, §3.7) ---- */
-  CORRIDOR_STEP_YDS: 5,         // aim points across the fairway at the club's distance
+  CORRIDOR_STEP_YDS: 5,         // targets across the fairway at the club's distance
+  /* v22.22 (C3, D93): every target is where the ball finishes on average. The aim point sits off it
+     by −(the good-shot ring's lateral offset + the crosswind drift) once that drift reaches this many
+     yards; under it the shot is aimed straight at the target. */
+  PATTERN_AIM_MIN_YDS: 2,
   /* v22.17.4 (D90): lay-ups and the corridor's "center" move from the hole line to the middle of
      the hole's own fairway, by at most this much. Uncalibrated. */
   FAIRWAY_SNAP_YDS: 40,

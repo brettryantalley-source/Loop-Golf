@@ -10,8 +10,19 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 354 tests (v22.21); must be green
+npm install && npm test    # 360 tests (v22.22); must be green
 ```
+
+## v22.22 (Oct 10)
+
+Aim for the pattern, and the Line drawn on its own (C3, D93; R3: the aim-off includes wind). Every
+target is where the ball finishes on average; the shot is aimed off it by the good-shot ring's
+lateral offset (D92) plus the crosswind, once that reaches 2 yds (`aimFor` in `engine.js`, every shot,
+tee shots included). Both rings centre on the target. A dashed printed line runs ball → aim point
+whenever a call shows; Brett's own `Line` replaces it, and an untouched one is not logged as his
+(`intent.startLineDeg` null). The intent stores `aimOffsetYds` / `windYds`; `applyShotLog` and
+`tendencies` read misses from the line the shot started on (`patternLatYds`), `withinRound` and the
+read-back from the target. 360 tests. In a crosswind SAFE gets bolder (aimed into it): see D93.
 
 ## v22.21 (Oct 10)
 

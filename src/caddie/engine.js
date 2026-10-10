@@ -10,6 +10,8 @@
  * par or better (D78) / AGGRESSIVE / same-shot (§3.6, loosened v22.17) → reason strings from
  * profile fields (§3.10). Every option carries expScore, parProb, birdieProb, doubleProb and
  * troubleRate; routeReadout() lays them out per route for the dev readout.
+ * v22.22 (C3, D93): every target is where the ball finishes on average; the shot is aimed off it by
+ * aimOffsetYds so the pattern and the crosswind carry it back (aimFor).
  */
 
 import { DEFAULT_CONFIG } from "./config.js";
@@ -243,7 +245,7 @@ export function generateCandidates(ctx, hole, P) {
   }
   for (const { cand } of layups.values()) push(cand);
 
-  // Fairway-bound shots (§3.4): aim points across the corridor at the club's distance, plus the
+  // Fairway-bound shots (§3.4): targets across the corridor at the club's distance, plus the
   // centerline. Spread across the corridor only for the long family — a short iron off the tee is
   // a layup and already has its centerline candidate above.
   for (const e of nonReaching) {
@@ -390,12 +392,28 @@ function priceLanding(hole, P, ctx, from, landing, lie, k, pin) {
   }
 }
 
+/**
+ * v22.22 (C3, D93): aim for the pattern. `target` is where the shot finishes on average; the ball
+ * would drift off it by the good-shot ring's lateral offset (ell80.dxYds, D92; biasLat for a club
+ * with no ring) plus the crosswind. Once that drift reaches PATTERN_AIM_MIN_YDS the shot is aimed
+ * the other way by the same amount, square to the ball → target line.
+ * → { patternYds, windYds, aimOffsetYds } (+ = right; aimOffsetYds = target → aim point, 0 under the floor).
+ */
+export function aimFor(entry, crossYds, cfg) {
+  const patternYds = (entry.ell80 ? entry.ell80.dxYds : entry.biasLat) || 0;
+  const windYds = crossYds || 0;
+  const drift = patternYds + windYds;
+  const aimOffsetYds = Math.abs(drift) >= (cfg?.PATTERN_AIM_MIN_YDS ?? DEFAULT_CONFIG.PATTERN_AIM_MIN_YDS) ? -drift : 0;
+  return { patternYds, windYds, aimOffsetYds };
+}
+
 export function simulateCandidate(cand, ctx, hole, P, samples) {
   const cfg = P.config;
   const e = cand.entry;
   const pin = pinPoint(hole, ctx.ball, ctx.pinPos);
   const lm = landingModel(e, ctx.ball, cand.target, ctx, cfg);
   const roll = lm.roll;
+  const aim = aimFor(e, lm.wind.crossYds, cfg);
   // Dispersion core: the ell80 ellipse when measured (UI addendum §5.2), else σ-distance × σ-lateral.
   const ell = e.ell80 ? ellipseSampler(e.ell80, lm.sdMult) : null;
   // C17 (D92): ell80 is the good-shot ring; a mishit (mishitRate of the shots) comes from the ring
@@ -406,7 +424,7 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
   const sigmaLat = e.lateralSd * lm.sdMult;             // lie-widened in resolveEntry, quality-widened here
   const sigmaD = e.distSd * lm.sdMult;
   const k = ctx.par - 1 - ctx.shotNo;                     // birdie needs this many more after this shot
-  let sumStrokes = 0, sumBirdie = 0, sumPar = 0, sumDouble = 0, trouble = 0;
+  let sumStrokes = 0, sumBirdie = 0, sumPar = 0, sumDouble = 0, trouble = 0, sumLat = 0;
   const n = samples.length;
   for (let i = 0; i < n; i++) {
     const s = samples[i];
@@ -422,6 +440,8 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
     const tailLat = Math.abs(sigmaLat * s.z2) * 0.5;
     if (s.u < e.bigMiss.left) lat = -e.bigMiss.latYds - tailLat;
     else if (s.u < e.bigMiss.left + e.bigMiss.right) lat = e.bigMiss.latYds + tailLat;
+    lat += aim.aimOffsetYds;                           // C3: the whole shot, big misses too, starts on the aim line
+    sumLat += lat;
     let p = { x: ctx.ball.x + lm.dir.x * along + lm.perp.x * lat, y: ctx.ball.y + lm.dir.y * along + lm.perp.y * lat };
     let lie = classify(hole, p);
     if (lie !== "green" && roll > 0) {
@@ -453,7 +473,10 @@ export function simulateCandidate(cand, ctx, hole, P, samples) {
     troubleRate: trouble / n,
     meanYds: cand.kind === "approach" ? lm.mean : lm.total,
     distToTarget: dist(ctx.ball, cand.target),
-    aimOffsetYds: -lm.wind.crossYds,
+    aimOffsetYds: aim.aimOffsetYds,
+    patternYds: aim.patternYds,
+    windYds: aim.windYds,
+    meanLatYds: sumLat / n,                            // where the draws finish across the ball → target line (+ right)
   };
 }
 
@@ -491,6 +514,7 @@ export function pickOptions(scored, cfg, sit) {
   return { safe, aggressive, sameShot, rules };
 }
 
+function r1(x) { return Math.round(x * 10) / 10; }
 function r2(x) { return Math.round(x * 100) / 100; }
 function r3(x) { return Math.round(x * 1000) / 1000; }
 
@@ -505,7 +529,11 @@ function formatOption(c, P, safeExp, geo) {
     kind: c.kind,
     carryYds: Math.round(c.entry.carry),
     meanYds: Math.round(c.meanYds),
-    aimOffsetYds: Math.round(c.aimOffsetYds),
+    // C3 (D93): target → aim point, square to the ball → target line (+ right); the pattern and
+    // crosswind drift it cancels. The target is where the shot finishes on average.
+    aimOffsetYds: r1(c.aimOffsetYds) || 0,
+    patternYds: r1(c.patternYds) || 0,
+    windYds: r1(c.windYds) || 0,
     expScore: r2(c.expScore),
     birdieProb: r3(c.birdieProb),
     parProb: r3(c.parProb),

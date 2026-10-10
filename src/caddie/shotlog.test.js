@@ -410,19 +410,20 @@ test("bareShotRecord: no recommendation, no target, nulls where nothing is known
 
 /* ---------- v22.15 shot log v2 (docs/SPEC-shotlog-v2.md §2, §3, §7) ---------- */
 
-test("T45 intent defaults: an untouched shot aims at the recommendation, starts through the target, shape = his usual", () => {
+test("T45 intent defaults: an untouched shot aims at the recommendation, no start line of his, shape = his usual", () => {
   const rec = fakeRecommendation();
   const history = [newShotRecord({ club: "5i", intendedShape: "fade" }), newShotRecord({ club: "5i", intendedShape: "fade" }), newShotRecord({ club: "5i", intendedShape: "draw" })];
   const ball = { x: 0, y: 0 };
   const it = shotIntent({ option: rec.safe, ball, history });
   assert.deepEqual(it.target, { x: 0, y: 238 });
   assert.equal(it.targetLabel, "leave 100, fairway center");
-  assert.equal(it.startLineDeg, 0, "straight up the frame, through the target");
+  assert.equal(it.startLineDeg, null, "C3 (D93): the caddie's line is not logged as his");
   assert.equal(it.shape, "fade", "the most common shape for the 5-iron");
   assert.equal(it.source, "default");
-  // an aggressive target to the right: the default line bears right of +y
+  // an aggressive target to the right: still no line until he draws one; the bearing helper reads right of +y
   const ag = shotIntent({ option: rec.aggressive, ball: { x: 0, y: 0 } });
-  assert.ok(ag.startLineDeg > 0 && ag.startLineDeg < 5);
+  assert.equal(ag.startLineDeg, null);
+  assert.ok(bearingInFrame({ x: 0, y: 0 }, rec.aggressive.target) > 0 && bearingInFrame({ x: 0, y: 0 }, rec.aggressive.target) < 5);
   assert.equal(bearingInFrame({ x: 0, y: 0 }, { x: -10, y: 0 }), -90);
   // a mark set by Brett wins and makes the intent "set"; the record carries it
   const set = shotIntent({ set: { target: { x: -3, y: 235 }, shape: "draw" }, option: rec.safe, ball, history });

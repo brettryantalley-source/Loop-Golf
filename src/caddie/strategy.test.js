@@ -63,14 +63,21 @@ test("T44 front pin → club up to the middle of the green, aimed at the center 
 
 test("T45 back pin → take less than the pin yardage; the average shot finishes in the middle", () => {
   // 137 yds to the middle of a 40-yd-deep green (Oct 4 profile + par ranking, D85/D78: from 390 the
-  // plain pick no longer flew the pin; from 404 the par ranking alone already played the middle)
+  // plain pick no longer flew the pin; from 404 the par ranking alone already played the middle).
+  // v22.22 (C3, D93): with the aim-off on, the PW's 5 yds right is aimed out and the par ranking alone
+  // plays it to the middle here, so the rule itself is checked with the aim-off off.
   const raw = { shotNo: 2, ball: { x: 0, y: 403 }, lieType: "fairway", pinPos: "back" };
-  const r = recommend(raw, deepGreen, P), off = recommend(raw, deepGreen, Poff);
+  const noAim = { PATTERN_AIM_MIN_YDS: Infinity };
+  const r = recommend(raw, deepGreen, loadProfile(RAW, mergeConfig(noAim))), off = recommend(raw, deepGreen, loadProfile(RAW, mergeConfig({ ...OFF, ...noAim })));
   const g = greenDistances(deepGreen, raw.ball, "back");
   assert.ok(off.safe.meanYds > g.pin, `the plain pick flies the back pin (${off.safe.club} ${off.safe.meanYds} vs ${g.pin})`);
   assert.deepEqual(r.strategy, ["pin-back"]);
   assert.ok(r.safe.meanYds < g.pin, `${r.safe.club} ${r.safe.meanYds} is less than the pin yardage ${g.pin}`);
   assert.ok(Math.abs(r.safe.meanYds - g.center) <= 5, `${r.safe.meanYds} vs center ${g.center}`);
+  // and as shipped: SAFE still finishes in the middle, short of the back pin
+  const c3 = recommend(raw, deepGreen, P);
+  assert.ok(c3.safe.meanYds < g.pin && Math.abs(c3.safe.meanYds - g.center) <= 5, `${c3.safe.club} ${c3.safe.meanYds} (${c3.safe.target.label})`);
+  assert.equal(c3.safe.target.label, "green, center");
 });
 
 test("T46 middle pin: only the wedges aim at the flag; front pin: nobody does", () => {

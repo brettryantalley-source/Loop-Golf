@@ -474,7 +474,7 @@ export function MapLayer({
   if (typeof window !== "undefined") window.__loopOverlay = { project, unproject, frame: PF, mode: markMode ? (fakeFrame ? "test" : "mark") : hole ? "hole" : "none" };
   const { active: opt, other } = overlayPair(options, active, sameShot);
   const pinDrawn = (inPinView && drag) || pin;
-  const redrawKey = [active, sameShot ? 1 : 0, opt?.club, opt?.target && `${r1(opt.target.x)},${r1(opt.target.y)}`, opt?.ell && `${r1(opt.ell.w)}x${r1(opt.ell.h)}`,
+  const redrawKey = [active, sameShot ? 1 : 0, opt?.club, opt?.target && `${r1(opt.target.x)},${r1(opt.target.y)}`, opt?.ell && `${r1(opt.ell.w)}x${r1(opt.ell.h)}`, opt?.aimOffsetYds ?? "",
     pin && `${r1(pin.x)},${r1(pin.y)}`, inPinView ? "pv" : ""].join("|");
 
   // the pin view hides the shot (its ellipse and lines would sit on the green) — pin and ball only
