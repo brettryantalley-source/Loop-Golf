@@ -340,6 +340,7 @@ export function MapLayer({
   const [tdrag, setTdrag] = useState(null);               // v22.15: the target marker's frame point mid-drag
   const dragRef = useRef(null);
   const pressRef = useRef(null);
+  const touchesRef = useRef(new Set());                   // v22.27 (C18): pointers down now (a pinch is two)
   const failRef = useRef(onSatelliteFail); failRef.current = onSatelliteFail;
 
   /* measure the map box */
@@ -441,15 +442,27 @@ export function MapLayer({
   }, [satellite, lib, !!camView]);
 
   /* v22.11: pan and pinch-zoom only in the mark view (no rotate, no pitch), so a green beyond the
-     first 300 yds can be brought on screen and tapped. Everywhere else every gesture stays off. */
+     first 300 yds can be brought on screen and tapped. v22.27 (C18, D98): on a hole, two-finger
+     pinch zooms too (rotation, one-finger pan and double-tap stay off, so one finger still drags the
+     target, the Line and the pin); `Fit` puts the hole's camera back. The pin view stays fixed. */
+  const pinchOk = !markMode && !!hole && !inPinView;
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     try {
       if (markMode) { map.dragPan.enable(); map.touchZoomRotate.enable(); map.touchZoomRotate.disableRotation(); map.scrollZoom.enable(); }
+      else if (pinchOk) { map.dragPan.disable(); map.touchZoomRotate.enable(); map.touchZoomRotate.disableRotation(); map.scrollZoom.enable(); map.doubleClickZoom?.disable(); }
       else { map.dragPan.disable(); map.touchZoomRotate.disable(); map.scrollZoom.disable(); }
     } catch (e) { /* an older MapLibre without a handler: the view stays fixed */ }
-  }, [markMode, mapGen]);
+  }, [markMode, pinchOk, mapGen]);
+  const [zoomed, setZoomed] = useState(false);            // v22.27: Brett pinched away from the hole's camera
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return undefined;
+    const onZoom = (e) => { if (e && e.originalEvent) setZoomed(true); };
+    map.on("zoomend", onZoom);
+    return () => { try { map.off("zoomend", onZoom); } catch (e) { /* removed */ } };
+  }, [mapGen]);
 
   /* camera + size changes → jumpTo (never animated: the camera only moves on a new ball / hole) */
   useEffect(() => {
@@ -457,7 +470,9 @@ export function MapLayer({
     if (!map || !camView) return;
     map.resize();
     map.jumpTo(camView);
+    setZoomed(false);
   }, [camView, vp.width, vp.height]);
+  const fit = () => { const m = mapRef.current; if (m && camView) { m.jumpTo(camView); setZoomed(false); } };
 
   /* projection: map.project on satellite, the camera's linear projection otherwise (v22.15: the
      mark / test frame too, so a tap lands on the drawn paper map when there are no tiles) */
@@ -532,6 +547,14 @@ export function MapLayer({
   };
   const onPointerDown = (ev) => {
     if (!boxRef.current || (ev.button != null && ev.button > 0)) return;
+    // v22.27 (C18): a second finger is a pinch — drop the press, no tap, no hold, no drag
+    touchesRef.current.add(ev.pointerId);
+    if (touchesRef.current.size > 1) {
+      const pr0 = pressRef.current;
+      pressRef.current = null;
+      if (pr0) { clearTimeout(pr0.timer); if (pr0.mode === "drag") endDrag(); if (pr0.mode === "tdrag") endTdrag(); }
+      return;
+    }
     const pt = local(ev);
     const pr = { id: ev.pointerId, x0: pt.x, y0: pt.y, moved: false, mode: null, timer: null, grab: null };
     pressRef.current = pr;
@@ -587,6 +610,7 @@ export function MapLayer({
     if (!pr.moved && Math.hypot(pt.x - pr.x0, pt.y - pr.y0) > TAP_SLOP_PX) { pr.moved = true; clearTimeout(pr.timer); }
   };
   const onPointerUp = (ev) => {
+    touchesRef.current.delete(ev.pointerId);
     const pr = pressRef.current;
     if (!pr || pr.id !== ev.pointerId) return;
     pressRef.current = null;
@@ -597,7 +621,8 @@ export function MapLayer({
     if (pr.mode === "long" || pr.moved) return;
     tap(local(ev));
   };
-  const onPointerCancel = () => {
+  const onPointerCancel = (ev) => {
+    if (ev) touchesRef.current.delete(ev.pointerId);
     const pr = pressRef.current;
     pressRef.current = null;
     if (!pr) return;
@@ -655,6 +680,12 @@ export function MapLayer({
           </div>
         );
       })}
+      {/* v22.27 (C18): after a pinch, Fit puts the hole's camera back */}
+      {zoomed && satellite && pinchOk && (
+        <button data-part="map-fit" onClick={(e) => { e.stopPropagation(); fit(); }} onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}
+          style={{ position: "absolute", left: 6, bottom: attrBottom + 22, zIndex: 6, height: 30, padding: "0 14px", borderRadius: 15, border: `1.5px solid ${T.ink}`,
+            background: T.paper, color: T.ink, fontFamily: F.label, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>Fit</button>
+      )}
       {/* v22.15: test mode — a thin dashed pencil border, so a fake round is never mistaken for a live one */}
       {testBorder && <div data-part="test-border" aria-hidden="true" style={{ position: "absolute", inset: 2, border: `1.5px dashed ${T.pencil}`, pointerEvents: "none", zIndex: 5 }} />}
       {(hole || markMode) && (

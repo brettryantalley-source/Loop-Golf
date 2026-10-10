@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 and Brett's test notes of Oct 10 (C20–C29). Duplicates are merged and anything already shipped is
-dropped. State: **v22.26** (C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 368 tests, decisions D1–D97; the next
-decision is **D98**.
+dropped. State: **v22.27** (C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 368 tests, decisions D1–D98; the next
+decision is **D99**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -19,7 +19,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** send **S9** (the tee stills as files).
-2. **Next code chat:** **C18 + C20** (the map camera) → **C2 + C11** (course shapes). Then the table's order.
+2. **Next code chat:** **C2 + C11** (course shapes). Then the table's order.
 3. **Next round:** the **F** list.
 
 ---
@@ -38,7 +38,7 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.26 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.27 · Oct 10** (once merged).
 - **F14.** Approach clubs (v22.23, D94): every shot now finishes at its total. From 195 on a warm day
   the call should be a 6-iron; from 207 a 5-iron. Note any call that still feels a club off.
 - **F13.** The caddie's line (v22.22): a dashed line from the ball through where to aim; the yellow
@@ -55,6 +55,8 @@ after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
   length from your ball to the pin). It has never been used on a course.
 - **F3.** Log a hole you skipped: Place shot 1 → Place shot 2 → … → Done.
 - **F4.** The GPS trail on a real walk. It records only while the screen is on.
+- **F15.** The map (v22.27, D98): it frames your ball and the suggested shot; pinch to zoom in and
+  out; `Fit` (bottom-left) puts it back. One finger still drags the target, the Line and the pin.
 - **F5.** The full-screen map: nothing sits under the notch or the home bar; the target drag, Line,
   and the club changing as you drag all work; panning and dragging don't stutter.
 - **F6.** Mark where each shot ends, live or with F3 afterward. The heads-up (C4) and the learning
@@ -118,9 +120,7 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | C13 | Woodmont calibration | F9, Q3 | Sonnet |
 | C14 | History data | S1–S3, Q2 | Sonnet |
 | C15 | Woodmont trace → OSM | C13 (R8: later) | Sonnet |
-| C18 | Pinch to zoom on the caddie map | nothing | Opus |
 | C19 | Remove `Enter yards` | nothing (R10 answered: remove) | Sonnet |
-| C20 | The map frames the suggested shot | nothing | Opus, with C18 |
 | C21 | Dots inside the ring | nothing | Sonnet |
 | C22 | Tee rings from good shots (2-hybrid ~100 yds deep) | S9 | Sonnet |
 | C24 | Start line follows the shot shape | nothing | Opus |
@@ -354,15 +354,6 @@ The trace converts to OSM ways (`golf=hole`, `green`, `tee`, `fairway`, `bunker`
 for tracing from Esri imagery and its import and automated-edit guidelines, and review each feature by
 hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY`.
 
-### C18. Pinch to zoom on the caddie map (Brett, Oct 4)
-- Gestures are off on purpose (`interactive: false`, `src/caddie/mapLayer.jsx`; addendum §4.1),
-  so one finger drags the target and the pin without moving the map. Only marked-green mode turns
-  them on.
-- **Build:** two-finger pinch zooms (rotation and one-finger pan stay off); a double-tap or a `Fit`
-  button returns to the hole view; the overlay re-projects on every move; a new ball resets the
-  camera as today (T36). Test that the target drag, Line taps and pin drag still work at any zoom.
-  Bump BUILD and CACHE.
-
 ### C19. Remove `Enter yards` (R10: Brett, Oct 5, "remove it entirely")
 - `Enter yards` lets Brett type the distance when GPS is off or wrong; the caddie then picks a club
   from the profile alone, with no map (club-brain mode, the `yards` view, §8). Brett: remove it
@@ -374,14 +365,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 - **What he gives up:** with no GPS fix, or GPS off, the caddie has no club call at all; `Retry`
   is the only action. Marked-green mode (no map, GPS working) is unaffected.
 - Bump BUILD and CACHE.
-
-### C20. The map frames the suggested shot (Brett, Oct 10)
-- "The map should automatically be zoomed into the hole where the suggested shot is in frame."
-  Today `cameraPoints` (`src/caddie/overlay.js`) fits the ball, the whole green and BOTH options'
-  rings, so a tee shot with a far AGGRESSIVE ring frames most of the hole.
-- **Do:** frame the ball, the shown option's ring and its target (plus the pin on a lay-up); the
-  other option may fall off screen. Build with C18 (pinch to zoom): one camera change, one test pass.
-  Bump BUILD and CACHE.
 
 ### C21. Dots inside the ring (Brett, Oct 10)
 - "Dots inside the dispersion circle to give a better idea of what part is more likely to be hit."
@@ -454,6 +437,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 
 ## Paste into the next chat
 > Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (360 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C18 + C20, the map
-> camera. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C2 + C11, the course
+> shapes. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.

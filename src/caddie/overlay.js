@@ -245,28 +245,34 @@ export function fitBounds(points) {
 const asXY = (p) => (p ? (Array.isArray(p) ? { x: p[0], y: p[1] } : p) : null);
 
 /**
- * What the camera frames (addendum §4.1), in hole-frame yards:
- * ball + green polygon + BOTH options' ellipses (their boxes are the polygons' boxes) + the
- * layup-to-pin line. With no ball (pre-tee) the hole is framed tee → green: the centreline + green.
+ * What the camera frames (addendum §4.1), in hole-frame yards. v22.27 (C20, D98; Brett Oct 10: "the
+ * map should automatically be zoomed into the hole where the suggested shot is in frame"): the ball,
+ * SAFE's ellipse and target (+ the pin on a lay-up), the green only when SAFE goes at it, and
+ * AGGRESSIVE's target point (its ring may run off the edge; pinch to zoom out, C18). Before v22.27 it
+ * was the whole green and BOTH ellipses, which on a tee shot framed most of the hole. With no
+ * options (Locating, no call) the ball + green. With no ball (pre-tee) the hole is framed
+ * tee → green: the centreline + green.
  */
 export function cameraPoints({ hole, ball, pin, options }) {
   const pts = [];
   if (!hole) return pts;
   const b = asXY(ball);
-  if (b) pts.push(b);
-  else {
+  const green = () => { for (const q of hole.green?.ring || []) pts.push(asXY(q)); };
+  if (!b) {
     pts.push(hole.tee || { x: 0, y: 0 });
     for (const q of hole.line || []) pts.push(asXY(q));
+    green();
+    if (pin) pts.push(asXY(pin));
+    return pts;
   }
-  for (const q of hole.green?.ring || []) pts.push(asXY(q));
-  if (b) {
-    for (const o of [options?.safe, options?.aggressive]) {
-      if (!o || !o.target) continue;
-      pts.push(o.target);
-      for (const q of ellipseInFrame(o.ell, b, o.target)) pts.push(asXY(q));
-      if (o.kind === "layup" && pin) pts.push(asXY(pin));
-    }
-  } else if (pin) pts.push(asXY(pin));
+  pts.push(b);
+  const safe = options?.safe?.target ? options.safe : null;
+  if (!safe) { green(); return pts; }
+  pts.push(safe.target);
+  for (const q of ellipseInFrame(safe.ell, b, safe.target)) pts.push(asXY(q));
+  if (safe.kind === "approach") green();
+  if (safe.kind === "layup" && pin) pts.push(asXY(pin));
+  if (options?.aggressive?.target) pts.push(options.aggressive.target);
   return pts;
 }
 

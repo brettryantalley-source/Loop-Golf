@@ -10,8 +10,13 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 368 tests (v22.26); must be green
+npm install && npm test    # 368 tests (v22.27); must be green
 ```
+
+## v22.27 (Oct 10)
+
+The map frames the ball and the suggested shot, not the whole hole (C20), and pinches to zoom on
+satellite with a `Fit` pill to put it back (C18); one finger still drags (D98). 368 tests.
 
 ## v22.26 (Oct 10)
 

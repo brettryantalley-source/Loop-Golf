@@ -204,7 +204,7 @@ test("cameraFor: the box fills the visible region (§3.1) with 16 px padding and
   near(q.x, 12.5, 1e-9, "x"); near(q.y, 301, 1e-9, "y");
 });
 
-test("cameraPoints: ball + green + both ellipses + layup line; pre-tee frames tee → green", () => {
+test("cameraPoints (C20, v22.27): ball + SAFE's ellipse, target and lay-up pin + AGGRESSIVE's target; pre-tee frames tee → green", () => {
   const hole = { ...openPar5, key: "t", line: [{ x: 0, y: 0 }, { x: 0, y: 540 }] };
   const pre = fitBounds(cameraPoints({ hole, ball: null, pin: { x: 0, y: 540 }, options: null }));
   near(pre.minY, 0, 1e-9, "tee in frame"); near(pre.maxY, 556, 1e-9, "green back in frame");
@@ -214,8 +214,16 @@ test("cameraPoints: ball + green + both ellipses + layup line; pre-tee frames te
   const pts = cameraPoints({ hole, ball, pin: { x: 0, y: 545 }, options: { safe, aggressive } });
   const bb = fitBounds(pts);
   const eA = fitBounds(ellipseInFrame(aggressive.ell, ball, aggressive.target));
-  assert.ok(bb.minX <= eA.minX && bb.maxX >= eA.maxX && bb.maxY >= eA.maxY, "aggressive ellipse inside");
+  const eS = fitBounds(ellipseInFrame(safe.ell, ball, safe.target));
+  assert.ok(bb.minX <= eS.minX && bb.maxX >= eS.maxX && bb.maxY >= eS.maxY, "SAFE's ellipse inside");
+  assert.ok(pts.some((p) => p.x === aggressive.target.x && p.y === aggressive.target.y), "AGGRESSIVE's target point inside");
+  assert.ok(bb.maxX < eA.maxX, "AGGRESSIVE's wide 2-hybrid ring is not what sets the frame");
+  near(bb.maxY, 545, 1e-9, "the lay-up's pin is the top edge (not the green's back, 556)");
   near(bb.minY, 250, 1e-9, "ball is the low edge");
+  // SAFE at the green brings the green in; no call → ball + green
+  const ap = fitBounds(cameraPoints({ hole, ball, pin: { x: 0, y: 545 }, options: { safe: aggressive, aggressive: null } }));
+  assert.ok(ap.maxY >= 556, "an approach frames the whole green");
+  near(fitBounds(cameraPoints({ hole, ball, pin: null, options: null })).maxY, 556, 1e-9);
   // the 2-hybrid ellipse at a straight-up shot: its frame box equals the SP box (x same, y flipped)
   const box = resolveEntry(P, "2Hy", "full", "fairway").ell80;
   near(eA.maxX - eA.minX, box.bboxWYds, 1.2, "frame width"); near(eA.maxY - eA.minY, box.bboxDYds, 1.2, "frame depth");
