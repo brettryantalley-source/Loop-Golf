@@ -15,6 +15,12 @@ scales disagree. Frame: +x right, +y SHORT (screen down), tilt clockwise from +x
 axis at tiltDeg, hYds the perpendicular one, dx/dy = ellipse centre minus target (src/caddie/engine.js
 ellipseSampler reads exactly these).
 
+Good-shot ring (C17, D92): the same still also carries every shot as a dot. `good_ring` reads the dots,
+drops the ones whose depth is more than the club's good-shot window from the median depth (the window
+and the mishit rate come from scripts/read-carries.py, which reads the Shot Distances bar), and fits an
+80% ring (1.794 sigma) to the rest; the 30% ring is drawn from it in the app. The Shot Pattern ring above
+stays as `wYds`... and is what the engine draws a mishit from.
+
 Usage:  python3 scripts/fit-ell80.py data/extracted/2026-10-04-ell80.json [--check]
 """
 import sys, json, numpy as np
@@ -128,18 +134,55 @@ def run(path, y0c, y1c, widthYd, depthYd, out_png=None):
     return res
 
 
-FIELDS = ("wYds", "hYds", "tiltDeg", "dxYds", "dyYds", "isotropyPct")
+K80 = 1.794  # sqrt(-2 ln 0.2): the 80% contour of a 2-D normal
+MIN_GOOD_DOTS = 5  # fewer good dots than this and the split is not trusted: the club keeps its Shot Pattern ring
+
+def read_dots(path, y0c, y1c):
+    """Shot dots in the plot, pixel (x, y), y down. Dots fused to the ring are missed (~10%)."""
+    a = np.asarray(Image.open(path).convert("RGB")).astype(int)[y0c:y1c]
+    m = (a[..., 1] > 150) & (a[..., 1] - a[..., 0] > 25) & (a[..., 2] > 90)
+    yy, xx = np.mgrid[-2:3, -2:3]
+    o = ndimage.binary_opening(m, structure=(xx ** 2 + yy ** 2) <= 5)
+    lab, n = ndimage.label(o)
+    c = np.array(ndimage.center_of_mass(o, lab, range(1, n + 1)))
+    return c[:, 1], c[:, 0]  # x, y (y relative to the plot's top)
+
+def good_ring(e, r, stats):
+    """80% ring (SP frame, yards) of the dots that pass the depth cut, plus the mishit rate."""
+    y0, y1 = e["plotYpx"]
+    dx_, dy_ = read_dots(os.path.join(ROOT, e["frame"]), y0, y1)
+    s = e["wYds"] / (2 * r["px"]["a"])
+    X = (dx_ - r["px"]["cross"][0]) * s
+    Y = (dy_ - (r["px"]["cross"][1] - y0)) * s   # + = short
+    keep = np.abs(Y - np.median(Y)) <= stats["windowYds"]
+    X, Y = X[keep], Y[keep]
+    if keep.sum() < MIN_GOOD_DOTS:   # too few to fit: the Shot Pattern ring stands and nothing is drawn as a mishit
+        return dict(goodWYds=e["wYds"], goodHYds=e["hYds"], goodTiltDeg=e["tiltDeg"], goodDxYds=e["dxYds"],
+                    goodDots=int(keep.sum()), mishitRate=0.0, goodWindowYds=stats["windowYds"])
+    w, v = np.linalg.eigh(np.cov(np.vstack([X, Y])))
+    th = np.arctan2(v[1, 1], v[0, 1])
+    return dict(goodWYds=round(float(2 * K80 * np.sqrt(w[1])), 1), goodHYds=round(float(2 * K80 * np.sqrt(w[0])), 1),
+                goodTiltDeg=round(float(np.degrees(th) % 180), 1), goodDxYds=round(float(X.mean()), 1),
+                goodDots=int(keep.sum()), mishitRate=stats["mishitRate"], goodWindowYds=stats["windowYds"])
+
+FIELDS = ("wYds", "hYds", "tiltDeg", "dxYds", "dyYds", "isotropyPct",
+          "goodWYds", "goodHYds", "goodTiltDeg", "goodDxYds", "goodDots", "mishitRate", "goodWindowYds")
 
 if __name__ == "__main__":
     import os
     path = sys.argv[1]
     check = "--check" in sys.argv
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("read_carries", os.path.join(root, "scripts", "read-carries.py"))
+    rc = importlib.util.module_from_spec(spec); spec.loader.exec_module(rc)
+    ROOT = root
     doc = json.load(open(path))
     stale = []
     for e in doc["entries"]:
         y0, y1 = e["plotYpx"]
         r = run(os.path.join(root, e["frame"]), y0, y1, e["bboxWYds"], e["bboxDYds"])
+        r.update(good_ring(e, r, rc.entry_stats(e, root)))
         for k in FIELDS:
             if e.get(k) != r[k]:
                 stale.append((e["club"], k, e.get(k), r[k]))

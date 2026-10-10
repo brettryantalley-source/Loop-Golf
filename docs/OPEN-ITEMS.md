@@ -2,9 +2,9 @@
 
 The one list of everything still unresolved. It merges the eleven Loop chats open on Oct 4: seven
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
-morning of Oct 4 (C17–C19 and an addition to C3). Duplicates are merged and anything already shipped is
-dropped. State: **v22.18** (C1, D91; v22.17.4 = C16, D90), 349 tests, decisions D1–D91; the next
-decision is **D92**.
+morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3). Duplicates are merged and anything already shipped is
+dropped. State: **v22.21** (C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 354 tests, decisions D1–D92; the next
+decision is **D93**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -18,7 +18,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** answer **Q1**, then say **"go with the leans"** or change any **R**.
-2. **Next code chat:** **C17 → C2 → C3 → C4**, then **C19**.
+2. **Next code chat:** **C2 → C3 → C4**, then **C19**.
 3. **Next round:** the **F** list.
 
 ---
@@ -46,7 +46,10 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 | R9 | Native app for a gap-free GPS trail (P1) | **Not now**; live with the gaps | Capacitor wrapper: $99/yr Apple Developer, plus a Mac or a macOS build runner |
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.18 · Oct 5** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.21 · Oct 10** (once merged).
+- **F12.** The two rings (v22.21): outer 80%, inner dashed best 30%, good shots only. Report whether the
+  5i–9i rings look right, and whether the wedges (10% window; GW 40%, LW 71% mishits) now play too
+  cautious or too bold. SAFE attempts more from the trees (D92).
 - **F11.** Read the new line above the action button on every call. When it says something that
   doesn't match what you'd do, dictate a Note (F7) with the line's exact words.
 - **F2.** The putting flow, start to finish. It has never been used on a course.
@@ -110,7 +113,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | C13 | Woodmont calibration | F9, Q3 | Sonnet |
 | C14 | History data | S1–S3, Q2 | Sonnet |
 | C15 | Woodmont trace → OSM | C13, R8 | Sonnet |
-| C17 | Smaller rings: 80% + best 30%, good shots only | nothing (R11 answered: split) | Opus |
 | C18 | Pinch to zoom on the caddie map | nothing | Opus |
 | C19 | Remove `Enter yards` | nothing (R10 answered: remove) | Sonnet |
 
@@ -361,31 +363,6 @@ The trace converts to OSM ways (`golf=hole`, `green`, `tee`, `fairway`, `bunker`
 for tracing from Esri imagery and its import and automated-edit guidelines, and review each feature by
 hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY`.
 
-### C17. Smaller rings: 80% + best 30%, good shots only (Brett, Oct 4; R11: split, Brett Oct 5)
-- **Brett, Oct 4:** "The dispersion circles are just too crazy. Too big & oddly shaped." Two rings:
-  the 80% ring, and an inner ring for his best 30%. "The caddy [should] automatically ignore any
-  shots that are not within 20 yards of the iron's target distance," and the distance should be
-  "based on accurate data, but slightly skewed toward above average."
-- **Today:** the 7-iron's 80% ellipse is 64 × 35 yds, tilted 34° (Shot Pattern's fit, n 10);
-  the others tilt 58–151°. The driver has no fitted ellipse; its 6.3° spread gives an 80% ring
-  ~114 yds wide. The tilts are what make the rings look odd.
-- **Build** (R11, Brett Oct 5: split them out, not ignore them):
-  1. Per club, split the shots: **good** = within 20 yds of the club's distance; the rest are
-     mishits. The Shot Pattern stills show each shot as a dot, so `scripts/fit-ell80.py` can read
-     the dots, drop the mishits, and refit the ring on the good shots. Loop's own logged shots add
-     to it later.
-  2. The club's distance = the median of the good shots. Mishits pull today's median down, so this
-     lands slightly above it, which is Brett's "skewed toward above average".
-  3. The engine draws from the good-shot pattern, plus a mishit at its measured rate (a new
-     `mishitRate` per club, built by `scripts/build-profile.mjs`), so a topped 7-iron still costs
-     what it costs.
-  4. Draw two rings: 80% (outer) and 30% (inner, √(−2 ln 0.7)σ ≈ 0.47× the 80% ring), from the
-     good-shot fit.
-- Profile rebuild: `npm run build:profile`, `--check`. Engine change: a D-number. Bump BUILD and
-  CACHE.
-- **Check first:** whether the stills' dots can be read reliably at the batch's resolution. If
-  not, S5/S6-style data (per-shot carries) is the fallback.
-
 ### C18. Pinch to zoom on the caddie map (Brett, Oct 4)
 - Gestures are off on purpose (`interactive: false`, `src/caddie/mapLayer.jsx`; addendum §4.1),
   so one finger drags the target and the pin without moving the map. Only marked-green mode turns
@@ -423,11 +400,11 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D92.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D93.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (349 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C17, the smaller
-> rings. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (354 pass).
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C2, the course shapes
+> on the satellite map. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.

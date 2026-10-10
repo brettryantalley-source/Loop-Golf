@@ -110,7 +110,7 @@ feet as integers as printed; degrees to 2 decimals.
 
 `ell80` — Shot Pattern's 80% dispersion ellipse (UI addendum §5.1), from
 `data/extracted/<batch>-ell80.json`; applied to every entry of the club while the source says
-`lies: all`; `null` when unmeasured.
+`lies: all`; `null` when unmeasured. Since v22.21 (C17, D92) `wYds`/`hYds`/`tiltDeg`/`dxYds` are the 80% ring of the club's **good** shots; the ring Shot Pattern printed rides on `allWYds`/`allHYds`/`allTiltDeg`/`allDxYds`, with `mishitRate`, `goodWindowYds` and `goodDots` (a club with under 5 good dots keeps one ring and `mishitRate: 0`). `bboxWYds`/`bboxDYds` are still what Shot Pattern printed.
 
 ### Where each entry comes from
 

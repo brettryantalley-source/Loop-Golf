@@ -15,6 +15,7 @@ import {
   zoomForPxPerYd, cameraKey, mapModeFor, NOTICE_NO_SATELLITE, overlayModel, rayEnd, targetMarkerHit, TARGET_MARKER_R, fallbackMapModel, tagsOf, pxPerYdAt,
   NOTICE_NO_SATELLITE_MARKED, NOTICE_MARK_GREEN, markCamera, pinViewCamera, pinViewKey, pinMarkerHit, visibleRegion, satelliteFailure, satelliteCheckLine } from "./overlay.js";
 import { ellipseSampler, ELL80_K, recommend } from "./engine.js";
+import { DEFAULT_CONFIG } from "./config.js";
 import { loadProfile, resolveEntry } from "./profile.js";
 import { makeSamples } from "./random.js";
 import { pointInRing } from "./course.js";
@@ -60,12 +61,16 @@ test("ellipseScreen: addendum §5.3 centre, rotation and semi-axes", () => {
 
 /* ---------- T33 ---------- */
 
+/** C17 (D92): ell80's w/h/tilt/dx are the good-shot ring; the ring Shot Pattern printed rides on all*. */
+const printed = (entry) => entry.ell80.allWYds == null ? entry
+  : { ...entry, ell80: { ...entry.ell80, wYds: entry.ell80.allWYds, hYds: entry.ell80.allHYds, tiltDeg: entry.ell80.allTiltDeg, dxYds: entry.ell80.allDxYds } };
+
 test("T33: projected ellipse bbox equals Shot Pattern's Width × Depth within 1 yd", () => {
   const list = ell80Entries().filter((x) => x.entry.ell80.sdMult === 1);
   assert.ok(list.length >= 4, "PW, 9i, 2Hy, 4Hy carry ell80");
   for (const px of [0.8, 2.37, 6.5]) {
     for (const { club, lie, raw, entry } of list) {
-      const ell = ellipseFromEntry(entry);
+      const ell = ellipseFromEntry(printed(entry));
       const e = ellipseScreen({ target: { x: 180, y: 400 }, ...ell, thetaDeg: 0, pxPerYd: px });
       const b = ellipseBbox(e);
       near(b.width / px, raw.bboxWYds, 1, `${club}/${lie} width @${px}`);
@@ -124,7 +129,7 @@ test("T34: 10,000 engine samples from an ell80 entry → 80% ± 1% inside the dr
 test("ellipseFromEntry: σ fallback (no ell80) covers 80% of the engine's normal draws", () => {
   const entry = resolveEntry(P, "Dr", "full", "tee");
   assert.equal(entry.ell80, null, "driver has no measured ellipse yet");
-  const ell = ellipseFromEntry(entry);
+  const ell = ellipseFromEntry(entry, { config: { ...DEFAULT_CONFIG, RING_DRAW_CAP_YDS: Infinity } });
   assert.equal(ell.tiltDeg, 90); assert.equal(ell.source, "profile");
   const sLat = entry.carry * Math.tan(entry.lateralSdDeg * Math.PI / 180);
   near(ell.w, 2 * K80 * entry.distSd, 1e-9, "w = along axis"); near(ell.h, 2 * K80 * sLat, 1e-9, "h = lateral axis");
@@ -138,7 +143,7 @@ test("ellipseFromEntry: σ fallback (no ell80) covers 80% of the engine's normal
   }
   assert.ok(Math.abs(inside / S.length - 0.8) <= 0.01, `${inside / 100}%`);
   // bad lie: +15% both axes, 5 yds short, flagged for the dispersion line
-  const bad = ellipseFromEntry(entry, { lieQuality: "bad" });
+  const bad = ellipseFromEntry(entry, { lieQuality: "bad", config: { ...DEFAULT_CONFIG, RING_DRAW_CAP_YDS: Infinity } });
   near(bad.w, ell.w * 1.15, 1e-9, "bad w"); near(bad.dy - ell.dy, 5, 1e-9, "bad dy"); assert.equal(bad.scaled, true);
 });
 
@@ -283,7 +288,7 @@ test("overlay draw order (§4.2) and palettes (§4.3)", () => {
   const parts = model.map((n) => n.attrs?.["data-part"] ?? n.tag);
   assert.deepEqual(parts, ["defs", "pin", "cur", "ball"]);
   const cur = model.find((n) => n.attrs?.["data-part"] === "cur");
-  assert.deepEqual(cur.children.map((n) => n.attrs["data-part"]), ["previous", "other", "corridor", "leave", "ellipse", "hatch", "target"]);
+  assert.deepEqual(cur.children.map((n) => n.attrs["data-part"]), ["previous", "other", "corridor", "leave", "ellipse", "ellipse-inner", "hatch", "target"]);
   assert.ok(model.find((n) => n.attrs?.["data-part"] === "ball").children.some((c) => c.attrs["data-part"] === "accuracy"), "accuracy ring > 8 m");
   const json = JSON.stringify(model);
   assert.ok(!json.includes("#1E6B3A"), "no ink green on satellite");
@@ -480,4 +485,38 @@ test("intent on the map: the start-line ray leaves the ball on its bearing, the 
   assert.deepEqual(rayEnd({ x: 0, y: 0 }, 90, 10), { x: 10, y: 10 * Math.cos(Math.PI / 2) });
   assert.equal(targetMarkerHit({ x: 100, y: 100 }, { x: 120, y: 110 }), true);
   assert.equal(targetMarkerHit({ x: 100, y: 100 }, { x: 130, y: 100 }), false);
+});
+
+/* ---------- C17 (D92): two rings, good shots only ---------- */
+
+test("C17: the inner ring is the best 30% (0.471 of the 80%); the 30% contour of a normal holds 30% of the draws", () => {
+  const ell = ellipseFromEntry(resolveEntry(P, "7i", "full", "fairway"));
+  near(ell.innerFrac, Math.sqrt(-2 * Math.log(0.7)) / K80, 1e-12, "innerFrac");
+  near(ell.innerFrac, 0.4708, 1e-3, "≈ 0.47");
+  const e = ellipseScreen({ target: { x: 0, y: 0 }, ...ell, w: ell.w * ell.innerFrac, h: ell.h * ell.innerFrac, thetaDeg: 0, pxPerYd: 1 });
+  const S = makeSamples(10000, 11);
+  const sample = ellipseSampler(resolveEntry(P, "7i", "full", "fairway").ell80, 1);
+  let inside = 0;
+  for (const z of S) { const d = sample(z.z1, z.z2); if (pointInEllipse(e, { x: d.lat, y: -d.alongMiss })) inside++; }
+  assert.ok(Math.abs(inside / S.length - 0.3) <= 0.015, `${inside / 100}% inside the inner ring`);
+});
+
+test("C17: the driver's drawn ring is capped; the fitted irons are not", () => {
+  const dr = ellipseFromEntry(resolveEntry(P, "Dr", "full", "tee"));
+  assert.ok(dr.w <= DEFAULT_CONFIG.RING_DRAW_CAP_YDS && dr.h <= DEFAULT_CONFIG.RING_DRAW_CAP_YDS, `${dr.w} × ${dr.h}`);
+  assert.ok(Math.max(dr.w, dr.h) === DEFAULT_CONFIG.RING_DRAW_CAP_YDS, "the wide axis sits on the cap");
+  const iron = resolveEntry(P, "5i", "full", "fairway");
+  const uncapped = ellipseFromEntry(iron, { config: { ...DEFAULT_CONFIG, RING_DRAW_CAP_YDS: Infinity } });
+  assert.deepEqual(ellipseFromEntry(iron), uncapped);
+});
+
+test("C17: a club whose good dots are too few keeps Shot Pattern's ring and draws no mishits; the rest are split", () => {
+  const ring = (id) => Object.values(RAW.clubs.find((c) => c.id === id).entries).map((l) => l?.fairway?.ell80).find(Boolean);
+  for (const id of ["2Hy", "PW"]) { const r = ring(id); assert.equal(r.mishitRate, 0, id); assert.equal(r.allWYds, r.wYds, id); assert.equal(r.allHYds, r.hYds, id); }
+  for (const id of ["5i", "6i", "7i", "8i", "9i", "GW", "SW", "LW"]) {
+    const r = ring(id);
+    assert.ok(r.goodDots >= 5, id);
+    assert.ok(r.mishitRate >= 0 && r.mishitRate < 1, id);
+    assert.ok(r.wYds * r.hYds < r.allWYds * r.allHYds * 1.6 || id === "9i", `${id}: the good ring is not larger than the printed one`);
+  }
 });

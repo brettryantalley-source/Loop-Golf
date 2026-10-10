@@ -660,3 +660,30 @@ test("priceTarget: the club fits the marker's distance and moves with it", () =>
   assert.equal(onGreen.kind, "approach");
   assert.equal(priceTarget(ctx, hole, P, null), null);
 });
+
+/* ---------- C17 (D92): good-shot ring + a mishit draw ---------- */
+
+test("C17: makeSamples' v comes from its own stream — z1, z2 and u are exactly as before it existed", () => {
+  const s = makeSamples(2, 20260928);
+  assert.deepEqual(s.map(({ z1, z2, u }) => ({ z1, z2, u })), [
+    { z1: 0.06904084347546517, z2: 0.3416655311212668, u: 0.6791353551670909 },
+    { z1: -0.5360626780863147, z2: 1.3106779702079852, u: 0.346473113168031 }]);
+  for (const x of makeSamples(500, 3)) assert.ok(x.v >= 0 && x.v < 1);
+});
+
+test("C17: a mishit comes from the printed ring at mishitRate; at 0 the good ring alone prices the shot", () => {
+  const ctx = normalizeContext({ shotNo: 2, ball: { x: 0, y: 150 }, lieType: "fairway", par: 4 }, waterLeftPar4);
+  const samples = makeSamples(DEFAULT_CONFIG.SAMPLES, DEFAULT_CONFIG.SEED);
+  const price = (patch) => {
+    const raw = withClub(RAW, "7i", (c) => Object.assign(c.entries.full.fairway.ell80, patch));
+    const Pl = loadProfile(raw);
+    const cand = generateCandidates(ctx, waterLeftPar4, Pl).find((c) => c.club === "7i");
+    assert.ok(cand, "a 7-iron candidate");
+    return simulateCandidate(cand, ctx, waterLeftPar4, Pl, samples);
+  };
+  const good = price({ mishitRate: 0 });
+  assert.deepEqual(price({ mishitRate: 0, allWYds: 500 }), good, "no mishit draw at rate 0");
+  const wide = price({ mishitRate: 0.3, allWYds: 120, allHYds: 120, allTiltDeg: 0, allDxYds: 0 });
+  assert.ok(wide.expScore > good.expScore, `mishits cost strokes: ${wide.expScore} vs ${good.expScore}`);
+  assert.ok(wide.troubleRate >= good.troubleRate, "and never less trouble");
+});

@@ -23,6 +23,9 @@ const f2 = (n) => Math.round(n * 100) / 100;
 
 /** The 80% contour of a 2-D normal sits at √(−2 ln 0.2) σ = 1.794 σ (addendum §5.2). */
 export const K80 = Math.sqrt(-2 * Math.log(0.2));
+
+/** Inner-ring scale: the contour holding `pct` of a 2-D normal, as a fraction of the 80% one. */
+export const innerRingFrac = (pct) => Math.sqrt(-2 * Math.log(1 - pct)) / K80;
 export const YARDS_PER_METER = 1.0936133;
 /** Low-accuracy threshold for the dashed ring on the ball (addendum §8, geo.js LOW_ACCURACY_M). */
 export const LOW_ACCURACY_M = 8;
@@ -154,15 +157,18 @@ export function ellipseFromEntry(entry, { lieQuality = "standard", config = DEFA
       w: e.wYds * k, h: e.hYds * k, tiltDeg: e.tiltDeg ?? 0,
       dx: e.dxYds ?? 0, dy: (e.dyYds ?? 0) + shortYds,
       source: e.source || "shotPattern", scaled, capturedAt: e.capturedAt ?? null, confidence: e.confidence ?? null,
+      innerFrac: innerRingFrac(config.RING_INNER_PCT ?? DEFAULT_CONFIG.RING_INNER_PCT),
     };
   }
   if (!(entry.distSd > 0) || !(entry.carry > 0) || !Number.isFinite(entry.lateralSdDeg)) return null;
   const sAlong = entry.distSd * qMult;
   const sLat = (entry.lateralSd ?? entry.carry * Math.tan(entry.lateralSdDeg * DEG)) * qMult;   // resolveEntry widens by lie
+  const cap = config.RING_DRAW_CAP_YDS ?? DEFAULT_CONFIG.RING_DRAW_CAP_YDS;
   return {
-    w: 2 * K80 * sAlong, h: 2 * K80 * sLat, tiltDeg: 90,
+    w: Math.min(2 * K80 * sAlong, cap), h: Math.min(2 * K80 * sLat, cap), tiltDeg: 90,
     dx: entry.biasLat || 0, dy: -(entry.biasDist || 0) + shortYds,
     source: "profile", scaled, capturedAt: null, confidence: null,
+    innerFrac: innerRingFrac(config.RING_INNER_PCT ?? DEFAULT_CONFIG.RING_INNER_PCT),
   };
 }
 
@@ -547,6 +553,12 @@ export function overlayModel(input) {
     }
     // 6. the Shot Pattern 80% ellipse
     cur.push(el("ellipse", { "data-part": "ellipse", ...ellipseAttrs(e), fill: P.ellFill, stroke: P.line, strokeWidth: 1.6 }));
+    // 6b. C17: the inner ring, the best RING_INNER_PCT of the shots — an outline only, so the fill is not doubled
+    if (active.ell?.innerFrac > 0) {
+      const ei = ellipseScreen({ target: T, ...active.ell, w: active.ell.w * active.ell.innerFrac, h: active.ell.h * active.ell.innerFrac,
+        thetaDeg: thetaDeg(B, T), pxPerYd: pxPerYdAt(project, active.target) });
+      cur.push(el("ellipse", { "data-part": "ellipse-inner", ...ellipseAttrs(ei), fill: "none", stroke: P.line, strokeWidth: 1.2, strokeDasharray: "4 3" }));
+    }
     // 7. trouble hatch: the same ellipse, hatched, clipped to water / bunkers / trees / outside OB
     const clip = troubleClip(hole, project, viewport);
     if (clip.length) {
