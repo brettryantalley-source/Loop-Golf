@@ -18,9 +18,9 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Brett:** send **S9** (the tee stills as files).
-2. **Next code chat:** C4 and C29 start with a one-page spec for Brett's OK; C24 needs his curve
-   amounts. Then the table's order.
+1. **Brett:** OK (or change) the two drafted specs, `docs/SPEC-C4-headsup.md` and
+   `docs/SPEC-C29-shortgame.md`, and give C24's curve amounts. Then the next code chat builds them.
+2. **Brett:** send **S9** (the tee stills as files).
 3. **Next round:** the **F** list.
 
 ---
@@ -121,15 +121,15 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C4 | Heads-up + aim warning | nothing (C3 shipped, D93) | Opus |
+| C4 | Heads-up + aim warning | Brett's OK on `docs/SPEC-C4-headsup.md` | Opus |
 | C10 | Re-tune the `STRATEGY` thresholds | a round of F7 notes | Opus |
 | C12 | Chicopee hand-trace, Village + Mill | S4 | Opus |
 | C13 | Woodmont calibration | F9, Q3 | Sonnet |
 | C14 | History data | S1–S3, Q2 | Sonnet |
 | C15 | Woodmont trace → OSM | C13 (R8: later) | Sonnet |
 | C22 | Tee rings from good shots (2-hybrid ~100 yds deep) | S9 | Sonnet |
-| C24 | Start line follows the shot shape | nothing | Opus |
-| C29 | A short-game card inside 100 yds | a one-page spec, Brett's OK | Opus |
+| C24 | Start line follows the shot shape | Brett's curve amounts | Opus |
+| C29 | A short-game card inside 100 yds | Brett's OK on `docs/SPEC-C29-shortgame.md` | Opus |
 
 Details for each are under **Build details** below.
 
@@ -163,8 +163,8 @@ service worker answered font requests with `index.html`); reopen only if it come
 ## Build details
 
 ### C4. Heads-up + aim warning (C3 shipped in v22.22, D93)
-Write a one-page spec first (when each one fires, the wording, the shot counts) and get Brett's
-reaction before any code.
+**Spec drafted Oct 10: `docs/SPEC-C4-headsup.md`.** Waits on Brett's OK and its three choices; the
+notes below are what it was drafted from.
 - **Heads-up:** for SAFE's club, one clause on the map's "why" line (v22.18, D91: `whyLine` in `reasons.js`) when a pattern is strong: "Driver: 3 of 4
   left today, aim right-center" · "From 100: you finish short 34% of the time". Silent otherwise.
   Today's pattern speaks only after 2–3 shots agree; otherwise the 10-round history does, and only
@@ -303,8 +303,7 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 - Found Oct 10 (C9 build): from just off the green (about 5–15 yds from its edge, any lie, sand
   included) `recommend()` has no candidate and the caddie says "No club in the profile reaches a
   useful target from here." The card should cover that range too.
-- **Do:** write a one-page spec first (when the card shows, its choices: chip · pitch · bunker ·
-  finesse wedge, what each teaches) and get Brett's OK.
+- **Spec drafted Oct 10: `docs/SPEC-C29-shortgame.md`.** Waits on Brett's OK and its three choices.
 
 ---
 
@@ -328,6 +327,6 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 
 ## Paste into the next chat
 > Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (382 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C4: write its one-page
-> spec (heads-up + aim warning) for my OK. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C4, built from
+> `docs/SPEC-C4-headsup.md` as I OK'd it. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.
