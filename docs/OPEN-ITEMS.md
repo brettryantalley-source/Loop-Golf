@@ -19,7 +19,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Brett:** send **S9** (the tee stills as files).
-2. **Next code chat:** the table's order (C9, C25 need nothing from Brett). Then the table's order.
+2. **Next code chat:** the table's order (C25 needs nothing from Brett). Then the table's order.
 3. **Next round:** the **F** list.
 
 ---
@@ -38,10 +38,12 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.33 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.34 · Oct 10** (once merged).
 - **F18.** From the rough (v22.33, D104): the caddie now plays your rough totals, not the fairway
   ones plus extra roll. A 5-iron finishes ~192, the 4-hybrid ~207, a 7-iron ~175, a PW ~136. Note any
   rough call that feels a club off.
+- **F19.** From a fairway bunker (v22.34, D105; sand more than 40 yds from the green's front): the
+  caddie now stays out of trouble 9 times in 10, so expect more lay-ups. Say if one feels too timid.
 - **F14.** Approach clubs (v22.23, D94): every shot now finishes at its total. From 195 on a warm day
   the call should be a 6-iron; from 207 a 5-iron. Note any call that still feels a club off.
 - **F13.** The caddie's line (v22.22): a dashed line from the ball through where to aim; the yellow
@@ -118,7 +120,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 |---|---|---|---|
 | C4 | Heads-up + aim warning | nothing (C3 shipped, D93) | Opus |
 | C8 | Short / long miss model | nothing (Q1 answered) | Opus |
-| C9 | Fairway bunkers as "no hero" lies | nothing | Sonnet |
 | C10 | Re-tune the `STRATEGY` thresholds | a round of F7 notes | Opus |
 | C12 | Chicopee hand-trace, Village + Mill | S4 | Opus |
 | C13 | Woodmont calibration | F9, Q3 | Sonnet |
@@ -198,13 +199,6 @@ reaction before any code.
   carry, both config values marked uncalibrated. Then see whether the pin rule's ½-stroke guard can
   tighten.
 - **If Q1 = "the app places it":** the split is contaminated. Park C8.
-
-### C9. Fairway bunkers as "no hero" lies (D77 item 2)
-- Today the 9-in-10 rule covers trees and bad or buried rough. Add sand, **fairway bunkers only**:
-  define one as more than ~40 yds from the green, or not touching the green's surround. Pick one
-  definition and record it.
-- The punch-out fallback must never aim away from the green.
-- **Tests:** a fairway bunker with water ahead triggers the rule; a greenside bunker doesn't.
 
 ### C10. Re-tune the `STRATEGY` thresholds (after a round of F7 notes)
 Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/config.js`):
@@ -335,6 +329,9 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   shots with full-shot data?" Not in the repo's notes. Today: a wedge from 120 yds in logs as
   `finesse` (`defaultShotType`, `shotlog.js`), finesse is learned apart from full swings, and
   `shortGame` / putts never reach the full-swing learning (`isShortGameOrPutt`).
+- Found Oct 10 (C9 build): from just off the green (about 5–15 yds from its edge, any lie, sand
+  included) `recommend()` has no candidate and the caddie says "No club in the profile reaches a
+  useful target from here." The card should cover that range too.
 - **Do:** write a one-page spec first (when the card shows, its choices: chip · pitch · bunker ·
   finesse wedge, what each teaches) and get Brett's OK.
 
@@ -355,11 +352,11 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D105.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D106.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (374 pass).
-> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C9, fairway bunkers as
-> "no hero" lies. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (377 pass).
+> Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with C25, the per-club miss
+> summary. Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.

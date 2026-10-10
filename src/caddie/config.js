@@ -175,8 +175,9 @@ export const DEFAULT_CONFIG = Object.freeze({
     clubUpShortWeight: 2,         // tip 4: finishing short of the depth target counts double (club up)
     maxExtraTrouble: 0.05,        // the pin rule yields when its pick finds > 5 points more trouble …
     maxCostStrokes: 0.5,          // … or costs > ½ stroke more than the best-priced shot
-    noHero: true,                 // tip 6: from trees or a bad / buried rough lie, no hero shots
+    noHero: true,                 // tip 6: from trees, a bad / buried rough lie or a fairway bunker, no hero shots
     noHeroMaxTrouble: 0.10,       // "9 out of 10"; nothing that clean → the least trouble (punch out)
+    fairwayBunkerMinYds: 40,      // C9 (D105): sand this far from the front of the green is a fairway bunker → no hero
   },
 
   /* ---- expected strokes (§3.5) ---- */

@@ -168,3 +168,48 @@ test("rules off: SAFE is the plain lowest expected score again (locked rule 1), 
     assert.ok(r.safe.expScore <= minExp + DEFAULT_CONFIG.EXP_TIE_TOLERANCE + 0.006, `${hole.id}: ${r.safe.expScore} vs ${minExp}`);
   }
 });
+
+/* ---------- C9 (v22.34, D105): fairway bunkers are "no hero" lies ---------- */
+
+/** The open par 5 with a fairway bunker 140–170 yds short of the green and water across its front. */
+const fwBunker = { ...openPar5, id: "fairway-bunker", hazards: [
+  { type: "sand", ring: rect(-12, 370, 12, 400) },
+  { type: "water", ring: rect(-40, 490, 40, 524) },
+] };
+/** A long bunker across the front of the green, water behind it. */
+const greenside = { ...openPar5, id: "greenside-bunker", hazards: [
+  { type: "sand", ring: rect(-30, 465, 30, 522) },
+  { type: "water", ring: rect(-40, 556, 40, 580) },
+] };
+
+test("C9: a fairway bunker with water ahead → no hero: SAFE stays clean 9 times in 10, the long club is still priced", async () => {
+  const { whyLine } = await import("./reasons.js");
+  const raw = { shotNo: 3, ball: { x: 0, y: 345 }, lieType: "sand", par: 5 };
+  const r = recommend(raw, fwBunker, P);
+  assert.ok(r.context.distances.front > DEFAULT_CONFIG.STRATEGY.fairwayBunkerMinYds);
+  assert.ok(r.strategy.includes("no-hero"), JSON.stringify(r.strategy));
+  assert.ok(r.safe.troubleRate <= DEFAULT_CONFIG.STRATEGY.noHeroMaxTrouble, `${r.safe.club} trouble ${r.safe.troubleRate}`);
+  assert.ok(r.why.alt && r.why.alt.troubleRate > DEFAULT_CONFIG.STRATEGY.noHeroMaxTrouble, `without the rule: ${r.why.alt?.club}`);
+  assert.ok(r.safe.target.y > raw.ball.y, "the lay-up moves toward the green");
+  assert.match(whyLine(r, {}).text, /from the fairway bunker, it stays clean 9 times in 10/);
+  // the rule switched off: the same spot plays the long club
+  const off = recommend(raw, fwBunker, loadProfile(RAW, mergeConfig({ STRATEGY: { noHero: false } })));
+  assert.equal(off.safe.club, r.why.alt.club);
+});
+
+test("C9: a greenside bunker is not a no-hero lie (D77 item 2), even when most shots find trouble", () => {
+  const r = recommend({ shotNo: 3, ball: { x: 0, y: 490 }, lieType: "sand", par: 5 }, greenside, P);
+  assert.ok(r.context.distances.front <= DEFAULT_CONFIG.STRATEGY.fairwayBunkerMinYds, `${r.context.distances.front} to the front`);
+  assert.ok(r.safe.troubleRate > DEFAULT_CONFIG.STRATEGY.noHeroMaxTrouble, "the rule would have fired on trouble alone");
+  assert.ok(!r.strategy.includes("no-hero"), JSON.stringify(r.strategy));
+});
+
+test("C9: the punch-out never aims away from the green: the least trouble among shots that move toward it", () => {
+  const sit = approachSit({ recovery: true, ball: { x: 0, y: 300 }, green: { x: 0, y: 400 } });
+  const back = cand("SW", { kind: "layup", target: { x: 0, y: 260 }, troubleRate: 0.12, expScore: 5.4 });
+  const fwd = cand("9i", { kind: "layup", target: { x: 5, y: 350 }, troubleRate: 0.2, expScore: 5.0 });
+  const hero = cand("6i", { target: { x: 0, y: 400 }, troubleRate: 0.45, expScore: 4.8 });
+  assert.equal(pickSafe([back, fwd, hero], sit).safe, fwd);
+  assert.equal(pickSafe([back, hero], sit).safe, hero, "only one shot moves toward the green: that is the punch-out");
+  assert.equal(pickSafe([back], sit).safe, back, "nothing moves toward it: the least trouble, as before");
+});

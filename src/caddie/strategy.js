@@ -7,9 +7,10 @@
  * became of it: docs/CADDIE-BRAIN-INTEGRATION.md part 2. Decision record: D76.
  *
  * The simulation still prices every candidate; these rules decide which priced shot is SAFE.
- *   no hero  (tip 6)     From trees, or a bad / buried lie in the rough, SAFE must stay out of
- *                        trouble 9 times in 10 ("only attempt recovery shots you could execute 9
- *                        out of 10 times"). If no shot does, the one with the least trouble: punch out.
+ *   no hero  (tip 6)     From trees, a bad / buried lie in the rough, or a fairway bunker (C9), SAFE
+ *                        must stay out of trouble 9 times in 10 ("only attempt recovery shots you
+ *                        could execute 9 out of 10 times"). If no shot does, the one with the least
+ *                        trouble among those that move toward the green: punch out.
  *   driver   (tip 3)     On a par-4/5 tee, a tie in expected score goes to the driver ("don't
  *                        automatically reach for less club because it feels safer"). A tie only:
  *                        the research's flip threshold (T43) still decides when water makes a shorter
@@ -59,15 +60,34 @@ export function pinDepthClass(pinPos, g, ball, center) {
   return along < g.front + third ? "front" : along > g.back - third ? "back" : "middle";
 }
 
+/**
+ * A fairway bunker (C9, D105): sand more than fairwayBunkerMinYds from the front of the green. One
+ * distance, not "touching the green's surround": OSM rarely draws a surround, and a marked green
+ * has none. A greenside bunker stays a normal lie (D77 item 2: sand both sides of a green leaves no
+ * clean shot, and the punch-out would aim away from it).
+ */
+export function fairwayBunker(ctx, g, cfg = DEFAULT_CONFIG) {
+  return ctx.lieType === "sand" && Number.isFinite(g?.front) && g.front > strategyCfg(cfg).fairwayBunkerMinYds;
+}
+
 /** What the rules need to know about the shot. `g` = greenDistances for ctx.pinPos. */
-export function situationOf(ctx, hole, g) {
+export function situationOf(ctx, hole, g, cfg = DEFAULT_CONFIG) {
   const pin = pinDepthClass(ctx.pinPos, g, ctx.ball, hole.green.center);
   return {
     teeShot: ctx.shotNo === 1 && ctx.par >= 4 && ctx.lieType === "tee",
-    recovery: ctx.lieType === "recovery" || (ctx.lieType === "rough" && (ctx.lieQuality === "bad" || ctx.lieQuality === "buried")),
+    recovery: ctx.lieType === "recovery" || (ctx.lieType === "rough" && (ctx.lieQuality === "bad" || ctx.lieQuality === "buried"))
+      || fairwayBunker(ctx, g, cfg),
     pin,
     depthTargetYds: pin === "middle" ? g.pin : g.center,
+    ball: ctx.ball, green: hole.green.center,
   };
+}
+
+/** C9 (D105): a shot that finishes closer to the green than the ball is now (no ball/green known → true). */
+function towardGreen(c, sit) {
+  if (!sit.ball || !sit.green || !c.target) return true;
+  const d = (p) => Math.hypot(p.x - sit.green.x, p.y - sit.green.y);
+  return d(c.target) < d(sit.ball);
 }
 
 /** Distance between where the club lands on average and where it was aimed — "plays the number". */
@@ -160,8 +180,11 @@ export function pickSafe(scored, sit, cfg = DEFAULT_CONFIG) {
     const clean = scored.filter((c) => c.troubleRate <= S.noHeroMaxTrouble + EPS);
     if (clean.length) pool = clean;
     else {
-      const least = Math.min(...scored.map((c) => c.troubleRate));
-      pool = scored.filter((c) => c.troubleRate <= least + PUNCH_OUT_TOL);
+      // punch out: the least trouble among the shots that move toward the green (C9: never away)
+      const fwd = scored.filter((c) => towardGreen(c, sit));
+      const base = fwd.length ? fwd : scored;
+      const least = Math.min(...base.map((c) => c.troubleRate));
+      pool = base.filter((c) => c.troubleRate <= least + PUNCH_OUT_TOL);
     }
     if (!pool.includes(plainPick(scored, sit, cfg, S).pick)) rules.push("no-hero");
   }

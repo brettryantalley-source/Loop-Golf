@@ -587,7 +587,7 @@ export function recommend(rawCtx, hole, P) {
   }
   const samples = makeSamples(cfg.SAMPLES, cfg.SEED);
   const scored = cands.map((c) => ({ ...c, ...simulateCandidate(c, ctx, hole, P, samples) }));
-  const sit = situationOf(ctx, hole, g);
+  const sit = situationOf(ctx, hole, g, cfg);
   const { safe, aggressive, sameShot, rules } = pickOptions(scored, cfg, sit);
   const geo = { ball: ctx.ball, pin: pinPoint(hole, ctx.ball, ctx.pinPos) };
   const out = {

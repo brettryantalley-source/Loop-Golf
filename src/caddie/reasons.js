@@ -82,6 +82,7 @@ export function oneIn(p) {
 
 function lieWords(lieType, lieQuality) {
   if (lieType === "recovery") return "the trees";
+  if (lieType === "sand") return "the fairway bunker";   // no-hero from sand is a fairway bunker only (C9)
   if (lieQuality === "buried") return "a buried lie";
   if (lieQuality === "bad") return "a bad lie";
   return "here";

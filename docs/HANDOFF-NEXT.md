@@ -10,9 +10,14 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 374 tests (v22.33); must be green
+npm install && npm test    # 377 tests (v22.34); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.34 (Oct 10)
+
+A fairway bunker (sand more than 40 yds from the green's front) is a "no hero" lie; a punch-out
+never aims away from the green (C9, D105). 377 tests.
 
 ## v22.33 (Oct 10)
 
