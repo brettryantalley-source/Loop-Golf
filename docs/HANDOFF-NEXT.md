@@ -14,6 +14,13 @@ npm install && npm test    # 424 tests (v22.53); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
 
+## C40 draft (Oct 11, not shipped)
+
+`scripts/bradshaw-fairways/` grows Bradshaw's OSM fairways from the winter Esri photo; the review sheets are in
+`data/raw/2026-10-11/c40-review/`. Not in the app: the fairway barely separates from the rough in that photo and
+the additions mix real edges with greenish rough. Waits on Brett marking the spots (S10); its README says how to
+ship one hole.
+
 ## v22.53 (Oct 11)
 
 The climb to the target (C44, D124): under To target the rail shows `7 yds down` / `4 yds up` / `level` for the

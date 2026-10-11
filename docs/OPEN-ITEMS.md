@@ -18,7 +18,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Next code chat:** the Oct 11 notes, in order (C34–C39 and C41–C44 shipped in v22.44–v22.53): C40 (the Bradshaw fairway trace) is the last. Older items wait on Brett (F7 notes → C10, S4 → C12,
+1. **Next code chat:** the Oct 11 notes, in order (C34–C39 and C41–C44 shipped in v22.44–v22.53); C40 has a draft and waits on S10. Older items wait on Brett (S10 → C40, F7 notes → C10, S4 → C12,
    F9 + Q3 → C13, S1–S3 + Q2 → C14; C33 once chips are logged).
 2. **Next round:** the **F** list.
 
@@ -154,6 +154,8 @@ after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 - **S6.** A launch-monitor range session: carry for every club, the 2-iron partial, and wedge ½ and
   ¾ swings. → a profile rebuild.
 - **S7.** Your wedge lofts. → a profile rebuild.
+- **S10.** Bradshaw's missing fairway (C40): a screenshot with the spots circled, or a yes / no per hole on the
+  review sheets in `data/raw/2026-10-11/c40-review/` (cyan = what the draft would add).
 - **S8.** Optional: fix two Shot Pattern mis-tags at the source. Lake Arrowhead 9/12 hole 8 reads
   "9i · 287 yds"; Hampton 9/20 hole 6 reads "Unknown Club · 86 yds".
 
@@ -165,7 +167,7 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C40 | Bradshaw fairways traced from the photo (OSM misses turf) | — | Opus |
+| C40 | Bradshaw fairways from the photo (draft in `scripts/bradshaw-fairways/`) | S10 | Opus |
 | C10 | Re-tune the `STRATEGY` thresholds | a round of F7 notes | Opus |
 | C12 | Chicopee hand-trace, Village + Mill | S4 | Opus |
 | C13 | Woodmont calibration | F9, Q3 | Sonnet |
@@ -210,6 +212,11 @@ service worker answered font requests with `index.html`); reopen only if it come
 ### C40. Brett's first Bradshaw round (Oct 11, v22.43; screenshots in `data/raw/2026-10-11/`)
 - **C40.** "Clear places the fairway exists from the satellite image that are not included." Bradshaw's
   fairways are OSM's; trace them from the photo (as Chicopee's were, D74).
+  **Oct 11 overnight: a draft, not shipped.** `scripts/bradshaw-fairways/` grows OSM's fairways from the
+  winter photo; the review sheets (`data/raw/2026-10-11/c40-review/`, OSM yellow, additions cyan) show
+  real edges OSM drew narrow (Blue 4, 8, 9) mixed with greenish rough (White 8, left of Red 2), and on most
+  holes OSM already follows the greener band. Needs Brett (**S10**): which holes, and where — a screenshot
+  with the missing fairway circled, or a yes / no per hole on the sheets.
 
 Answered in chat Oct 11: Chip / Pitch / Wedge (inside ~30 yds, Chip rolls more than it flies, Pitch flies
 more than it rolls; Wedge is 30+ yds to a number and teaches that club's distance); the yellow `?` on the
