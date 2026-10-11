@@ -31,7 +31,7 @@ import { ownLine, aimWarningText, shortGameLine } from "./caddie/reasons.js";
 import { fetchWeather, weatherRefreshDue, weatherTempF } from "./caddie/sensors.js";
 import {
   loadLieOverrides, recordLieOverride, routeShot, newShotRecord, quickLog, detailLog, skipShot, closeOutShot,
-  saveShot, loadShots, allShots, exportShots, importShots, newPuttRecord, quickMade, PUTT_AXES, bareShotRecord,
+  saveShot, loadShots, allShots, exportShots, importShots, newPuttRecord, quickMade, PUTT_AXES, bareShotRecord, setRoundTeaching, roundTeaches,
   autoShotRecord, shotIntent, curveReadback, resultText, deleteShot, bearingInFrame, normIntent, seedShotPatternRecords, SHOTPATTERN_SOURCE,
   defaultShortKind,
 } from "./caddie/shotlog.js";
@@ -87,7 +87,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.56 · Oct 11";
+const BUILD = "v22.57 · Oct 11";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -2322,8 +2322,8 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
      next tap on it calls the same onFix with a fix of the same shape (accuracy 4 m). Everything
      after that — close-out, hole detection, lie inference, the reducer's `fix` — is shared. */
   const fixHandler = React.useRef(null);
-  const getFix = (onFix, onErr) => {
-    if (tapFix) { fixHandler.current = { onFix, onErr }; return; }
+  const getFix = (onFix, onErr, tap = tapFix) => {
+    if (tap) { fixHandler.current = { onFix, onErr }; return; }
     const geo = typeof navigator !== "undefined" ? navigator.geolocation : null;
     if (!geo) { onErr({ code: 2 }); return; }
     let done = false;
@@ -2369,11 +2369,13 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     if (cs.openShot && cs.openShot.id === base.id) dispatch({ type: "logClosed" });
   };
 
-  const locate = (kind) => {
+  // v22.57 (C46, D128): `byHand` arms the map in a live round — the fix is a tap or a hold-and-drag, not GPS
+  const locate = (kind, byHand = false) => {
     const trigger = kind === "retry" ? (cs.trigger || (cs.ball || cs.yards != null ? "ball" : "tee")) : kind;
     const snap = snapshotClosing(trigger);
     closingRef.current = snap;
-    dispatch({ type: kind, tap: tapFix });
+    const tap = tapFix || !!byHand;
+    dispatch({ type: kind, tap, byHand: !!byHand && !tapFix });
     if (trigger === "tee" && weatherRefreshDue(weather)) refreshWeather();
     getFix((fix) => {
       closingRef.current = null;
@@ -2418,7 +2420,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
         if (base) { saveShotHere(closeOutShot(base, { intent: snap.intent }, config)); if (cs.openShot && cs.openShot.id === base.id) dispatch({ type: "logClosed" }); }
       }
       dispatch({ type: "fixError", code: err && err.code });
-    });
+    }, tap);
   };
 
   /* chips: every change recomputes; a lie correction is also stored for §5.6 (§9.4) */
@@ -2441,6 +2443,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   const act = (a) => {
     // v22.15: no previous-shot prompt — I'm at my ball closes the shot itself (§3)
     if (a === "tee" || a === "ball" || a === "retry" || a === "green") locate(a);
+    else if (a === "tapCancel") { fixHandler.current = null; closingRef.current = null; dispatch({ type: "tapCancel" }); }   // v22.57 (C46)
     else if (a === "yards") setYardsOpen("next");
     else if (a === "yardsSame") setYardsOpen("same");
     else if (a === "logshot") openLogSheet();
@@ -2550,6 +2553,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     line: ic(<><circle cx="5" cy="15" r="2" /><path d="M6.5 13.5L16 4" strokeDasharray="2 2.2" /></>),
     shots: ic(<><path d="M7 5h10M7 10h10M7 15h10" /><circle cx="3.5" cy="5" r="1" fill="currentColor" /><circle cx="3.5" cy="10" r="1" fill="currentColor" /><circle cx="3.5" cy="15" r="1" fill="currentColor" /></>),
     details: ic(<><path d="M3 6h14M3 14h14" /><circle cx="8" cy="6" r="2" fill={T.paper} /><circle cx="13" cy="14" r="2" fill={T.paper} /></>),
+    place: ic(<><path d="M10 18c-3.5-4.2-5.5-7.2-5.5-10a5.5 5.5 0 0 1 11 0c0 2.8-2 5.8-5.5 10z" /><circle cx="10" cy="8" r="2" fill="currentColor" /></>),   // v22.57: Place by hand
   };
   const clubFor = (o) => (o ? clubShort(o.club, o.label) : DASH);
 
@@ -2680,6 +2684,14 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
         </button>
         {secondary && (
           <button onClick={() => doAct(secondary.action)} style={{ ...outlinedPill, flex: 1, height: 46, padding: "0 6px", background: T.paper, letterSpacing: "0.08em", fontSize: 10.5, boxShadow: "0 1px 4px rgba(20,28,16,.35)" }}>{secondary.label}</button>
+        )}
+        {/* v22.57 (C46, D128): Place by hand — the same fix as the GPS button, put on the map by a tap or a
+            hold-and-drag; not on a past hole or in test mode, where every fix is a tap already */}
+        {!tapFix && built && (primary.action === "tee" || primary.action === "ball") && !primary.disabled && (
+          <button data-part="place-button" aria-label={COPY.place} onClick={() => locate(primary.action, true)}
+            style={{ ...outlinedPill, flex: "0 0 46px", width: 46, height: 46, padding: 0, background: T.paper, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(20,28,16,.35)" }}>
+            {icons.place}
+          </button>
         )}
       </div>
       <div data-part="hole-switch" style={{ ...card, position: "absolute", left: "50%", transform: "translateX(-50%)", bottom: safe.bottom + 10, height: 44, width: 214, borderRadius: 22, zIndex: 21,
@@ -2818,10 +2830,15 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
             onDone={(changed, deleted, { all: story }) => {
               writeReview(changed, deleted, roundId);
               setShotsRev((x) => x + 1);
+              // v22.57 (C46, D128): a stroke deleted mid-hole — the caddie's shot count and putt count follow
+              for (const id of deleted || []) {
+                const gone = all.find((x) => x.id === id);
+                if (gone) dispatch({ type: "shotDeleted", id, hole: n, shotNo: gone.shotNo, putt: gone.shotType === "putt" || !!gone.putt });
+              }
               // the map's previous-shot lines follow the edited positions (the caddie's ball frame is the review frame)
               const { shots: ss } = splitHole(story, n);
               const lines = ss.map((r) => { const p = recPoints(r, ctx.F, ctx.sameFrame); return p.s && p.e ? { from: p.s, to: p.e } : null; }).filter(Boolean);
-              if (lines.length) dispatch({ type: "lines", hole: n, lines });
+              if (lines.length || (deleted && deleted.length)) dispatch({ type: "lines", hole: n, lines });
               setShotsOpen(false);
             }} />
         );
@@ -3033,6 +3050,7 @@ function ReviewSheet({ mode = "review", n, score = null, records, ctx, clubOrder
   const [open, setOpen] = useState(null);             // the expanded row: record id, or "missing:k"
   const [tool, setTool] = useState(null);             // "place" | "target" | "line" on the mini map
   const [puttCount, setPuttCount] = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);  // v22.57 (C46): the row whose Delete stroke waits for a second tap
   const { shots, putts } = splitHole(recs, n);
   const R = holeReview(shots, putts, mode === "review" ? score : null, n, { puttCount: puttCount ?? undefined });
   const count = R.problems.find((p) => p.type === "count");
@@ -3063,10 +3081,17 @@ function ReviewSheet({ mode = "review", n, score = null, records, ctx, clubOrder
   const delStroke = (row) => {
     if (!row.record) return;
     const id = row.record.id;
+    // v22.57 (C46, D128): two taps — the first arms it, the second deletes (an accidental shot mid-round
+    // goes in two taps; a stray one never deletes)
+    if (confirmDel !== id) { setConfirmDel(id); return; }
+    setConfirmDel(null);
     setRecs(recomputeChain(deleteStroke(recs, id), opts));
     setDeleted((d) => [...d, id]);
     setOpen(null); setTool(null);
   };
+  const delLabel = (row) => (row.record && confirmDel === row.record.id ? "Tap again to delete" : "Delete stroke");
+  const delStyle = (row) => ({ ...RV_TOOL, marginTop: 6, color: row.record && confirmDel === row.record.id ? T.paper : T.double, borderColor: T.double,
+    background: row.record && confirmDel === row.record.id ? T.double : "transparent" });
   const finish = (reviewed) => {
     let out = renumber(recs);
     if (reviewed) out = reviewAll(out).map((r) => (edited.has(r.id) && r.logged === "auto" ? { ...r, logged: "full" } : r));
@@ -3163,9 +3188,9 @@ function ReviewSheet({ mode = "review", n, score = null, records, ctx, clubOrder
                         </>
                       );
                     })()}
-                    {/* Delete / Add keep the story in step with the score — the Review sheet's job; mid-hole the
-                        caddie's shot count is the story, so the Shots list edits rows but never adds or removes one */}
-                    {mode === "review" && row.record && <button data-part="review-delete" onClick={() => delStroke(row)} style={{ ...RV_TOOL, marginTop: 6, color: T.double, borderColor: T.double }}>Delete stroke</button>}
+                    {/* Delete keeps the story in step with the score. v22.57 (C46, D128): mid-hole too — an accidental
+                        shot goes from the Shots list and the caddie's count follows (Add stays Review-only) */}
+                    {row.record && <button data-part="review-delete" onClick={() => delStroke(row)} style={delStyle(row)}>{delLabel(row)}</button>}
                   </div>
                 )}
                 {isOpen && row.kind === "putt" && row.record && !row.record.putt?.made && (
@@ -3174,7 +3199,7 @@ function ReviewSheet({ mode = "review", n, score = null, records, ctx, clubOrder
                       <ScaleSlider key={axis.key} title={axis.label} options={axis.short.map((label, i) => [i - 2, label, axis.options[i]])} value={row.record.putt?.[axis.key] ?? 0}
                         onChange={(val) => patchRec(row.record.id, { putt: { ...row.record.putt, [axis.key]: val } })} />
                     ))}
-                    {mode === "review" && <button onClick={() => delStroke(row)} style={{ ...RV_TOOL, marginTop: 6, color: T.double, borderColor: T.double }}>Delete stroke</button>}
+                    <button data-part="review-delete" onClick={() => delStroke(row)} style={delStyle(row)}>{delLabel(row)}</button>
                   </div>
                 )}
               </div>
@@ -3878,6 +3903,8 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
   const agg = useMemo(() => { try { return aggressionModel(allShots(safeStorage()), history); } catch (e) { return { season: null, rounds: {} }; } }, [history, shotsRev]);
   // v22.16: each round's shot log in one line — Loop's own records and Shot Pattern imports alike.
   const shotLines = useMemo(() => { try { return shotLogLines(allShots(safeStorage())); } catch (e) { return {}; } }, [history, shotsRev]);
+  // v22.57 (C46, D128): which rounds the caddie brain still learns from
+  const teaching = useMemo(() => { const o = {}; try { for (const id of Object.keys(shotLines)) o[id] = roundTeaches(safeStorage(), id); } catch (e) { /* all teach */ } return o; }, [shotLines, shotsRev]);
   const [busy, setBusy] = useState(false);
   const fileRef = React.useRef(null);
   const shotFileRef = React.useRef(null);
@@ -4061,12 +4088,20 @@ function History({ history, stats, cloud, onDelete, onImport, onBack }) {
                 })()}
                 {shotLines[r.id] && (() => {
                   const l = shotLines[r.id];
+                  const teach = teaching[r.id] !== false;
                   return (
                     <div data-part="shot-log-row" style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", columnGap: 6, marginTop: 2, fontFamily: F.label, fontSize: 11, color: T.ink }}>
                       <span>Shots <span style={printed(12)}>{l.swings}</span></span>
                       <span style={{ color: T.muted }}>·</span>
                       <span>Putts <span style={printed(12)}>{l.putts}</span></span>
                       {l.sp > 0 && <><span style={{ color: T.muted }}>·</span><span style={{ ...caps(9, 700, "0.12em"), color: T.muted }}>{l.sp === l.n ? "Shot Pattern" : `${l.sp} Shot Pattern`}</span></>}
+                      <span style={{ flex: 1 }} />
+                      {/* v22.57 (C46, D128): the caddie brain learns from this round, or not. Off keeps the shots
+                          in the log and the Shots list; every learning gate skips them. */}
+                      <button data-part="teach-switch" aria-pressed={teach ? "true" : "false"} onClick={() => { setRoundTeaching(safeStorage(), r.id, !teach); setShotsRev((x) => x + 1); }}
+                        style={{ height: 22, padding: "0 8px", borderRadius: 11, border: `1px solid ${teach ? T.ink : T.double}`, background: "transparent", color: teach ? T.ink : T.double, ...caps(9, 700, "0.12em") }}>
+                        {teach ? "Teaches" : "Ignored"}
+                      </button>
                     </div>
                   );
                 })()}

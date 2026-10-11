@@ -119,7 +119,7 @@ export function defaultIntendedShape(club, history, cfg = DEFAULT_CONFIG) {
   if (!Array.isArray(history) || !history.length || !club) return "straight";
   const counts = { draw: 0, straight: 0, fade: 0 };
   for (const rec of history) {
-    if (rec && rec.club === club && rec.intendedShape in counts) counts[rec.intendedShape]++;
+    if (rec && teaches(rec) && rec.club === club && rec.intendedShape in counts) counts[rec.intendedShape]++;
   }
   let best = "straight", bestN = counts.straight;
   for (const shape of ["draw", "fade"]) {
@@ -625,6 +625,37 @@ export function deleteShot(storage, id, roundId) {
 /** Every shot record in storage, across every round. */
 export function allShots(storage) {
   return loadShots(storage);
+}
+
+/* ---------- v22.57 (C46, D128): a round the brain ignores ---------- */
+
+/** Whether a record may teach the profile. A round switched off on History (`teach: false` on each
+    of its records) stays in the log and the Shots list, but every learning gate skips it. */
+export function teaches(record) {
+  return !!record && record.teach !== false;
+}
+
+/** Whether a round still teaches: false once History's switch is off for it (any record says so). */
+export function roundTeaches(storage, roundId) {
+  if (roundId == null) return true;
+  const list = readShotsMap(storage)[roundId];
+  return !Array.isArray(list) || !list.some((r) => r && r.teach === false);
+}
+
+/** History's switch: `on` false marks every record of the round `teach: false`; true clears the mark.
+    Returns the number of records touched. */
+export function setRoundTeaching(storage, roundId, on) {
+  if (roundId == null) return 0;
+  const all = readShotsMap(storage);
+  const list = all[roundId];
+  if (!Array.isArray(list) || !list.length) return 0;
+  all[roundId] = list.map((r) => {
+    if (!r) return r;
+    if (on) { if (r.teach === false) { const { teach, ...rest } = r; return rest; } return r; }
+    return r.teach === false ? r : { ...r, teach: false };
+  });
+  writeShotsMap(storage, all);
+  return list.length;
 }
 
 /* ---------- §8 export / import ---------- */

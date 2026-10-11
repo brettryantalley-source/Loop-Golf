@@ -10,7 +10,7 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 429 tests (v22.56); must be green
+npm install && npm test    # 434 tests (v22.57); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
 
@@ -21,6 +21,17 @@ node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders wi
 the additions mix real edges with greenish rough. Waits on Brett marking the spots (S10); its README says how to
 ship one hole. The draft was made on the winter photo; since v22.54 the app flies the green Sep 2023 one (D125),
 and `fetch.py` reads the file's `imagery.url`, so a re-run traces on the new photo.
+
+## v22.57 (Oct 11)
+
+Place by hand, hold anywhere, delete mid-hole, a round the brain ignores (C46, D128; Brett's notes after the Bradshaw
+round). On the map a hold of 300 ms anywhere drags the pin (pin view) or the target marker, offset from the finger so it
+stays in view. A pin icon beside `I'm on the tee` / `I'm at my ball` arms the map in a live round: a tap places the ball,
+or a hold lifts a ring above the finger and letting go places it; the notice names the shot (`Shot 3 · …`); `Cancel` backs
+out. The Shots list deletes a stroke mid-hole in two taps and the caddie's count follows. History rows with shots carry a
+`Teaches` / `Ignored` switch: Ignored keeps the records but every learning gate skips them (`teach: false`,
+`teaches()`). Brett flips Oct 11 Bradshaw to Ignored himself. 434 tests; the smoke test covers the hold-and-drag
+placement and the mid-hole delete.
 
 ## v22.56 (Oct 11)
 

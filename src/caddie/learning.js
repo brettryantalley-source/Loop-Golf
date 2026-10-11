@@ -28,6 +28,7 @@
 
 import { DEFAULT_CONFIG, CLUB_FAMILY, lieDistAdj } from "./config.js";
 import { carryFromTotal, _internal as profileInternal } from "./profile.js";
+import { teaches } from "./shotlog.js";
 
 /* ---------- local constants (not yet in config.js) ---------- */
 // TODO(config): move these into DEFAULT_CONFIG (config.js) when that file is next opened.
@@ -315,7 +316,7 @@ export function withinRound(shotsThisRound, config, opts = {}) {
   // Evidence: logged (not skipped), full-swing / finesse shots with derived misses. Short game,
   // putts and recovery shots never count (§4.1; a punch-out's "miss" says nothing about the club).
   const shots = chronological((shotsThisRound || []).filter((s) =>
-    s && s.logged !== "skipped" && !isShortGameOrPutt(s) && swingOf(s) !== "recovery" && (hasMisses(s) || num(s.contact))));
+    s && teaches(s) && s.logged !== "skipped" && !isShortGameOrPutt(s) && swingOf(s) !== "recovery" && (hasMisses(s) || num(s.contact))));
 
   const groups = new Map();
   const add = (kind, key, s) => {
@@ -593,7 +594,7 @@ export function applyShotLog(P, allShots, { now, roundIndexById } = {}, config) 
     return a == null || t == null || (a <= t * (cfg.LEARN_MAX_RATIO ?? 1.3) + 20 && a >= t / 3);
   };
   const eligible = (allShots || []).filter((s) =>
-    s && s.logged !== "skipped" && !isShortGameOrPutt(s) && SWINGS.has(swingOf(s)) && s.club && lieOf(s) && hasMisses(s) && plausible(s));
+    s && teaches(s) && s.logged !== "skipped" && !isShortGameOrPutt(s) && SWINGS.has(swingOf(s)) && s.club && lieOf(s) && hasMisses(s) && plausible(s));
   const idx = roundIndexById || roundIndexFrom(eligible);
   const roundTime = new Map();
   for (const s of eligible) {
@@ -819,7 +820,7 @@ function tally(shots, holeScores) {
 export function aggressionScorecard(shots, holeScores) {
   // v22.16: Shot Pattern imports never know the line played or the engine's price — never counted
   // (the importer also writes linePlayed null; this is the belt to that brace).
-  const list = (shots || []).filter((s) => s && LINES.includes(lineKey(s.linePlayed)) && !isShortGameOrPutt(s) && s.source !== "shotpattern");
+  const list = (shots || []).filter((s) => s && teaches(s) && LINES.includes(lineKey(s.linePlayed)) && !isShortGameOrPutt(s) && s.source !== "shotpattern");
   const season = tally(list, holeScores);
   const rounds = {};
   const ids = [...new Set(list.map((s) => s.roundId))];
@@ -839,7 +840,7 @@ export function aggressionScorecard(shots, holeScores) {
 export function teeShotGrade(records) {
   const out = { safe: 0, aggressive: 0, custom: 0, total: 0 };
   for (const r of records || []) {
-    if (!r || r.shotNo !== 1 || r.logged === "skipped" || r.source === "shotpattern") continue;
+    if (!r || !teaches(r) || r.shotNo !== 1 || r.logged === "skipped" || r.source === "shotpattern") continue;
     if (r.shotType === "putt" || r.putt) continue;
     const k = lineKey(r.linePlayed);
     const key = k === "own" ? "custom" : k;
@@ -900,7 +901,7 @@ export function tendencies(records, { shotTypes = ["full", "finesse", "putt"], b
   const want = new Set(shotTypes);
   const acc = new Map();
   for (const r of records || []) {
-    if (!r || r.logged === "skipped" || assumedEnd(r)) continue;
+    if (!r || !teaches(r) || r.logged === "skipped" || assumedEnd(r)) continue;
     const putt = r.shotType === "putt" || !!r.putt;
     const type = putt ? "putt" : swingOf(r);
     if (!want.has(type)) continue;
@@ -954,7 +955,7 @@ export function missSummary(records, { order = [] } = {}) {
     const tend = tendencies(records, { shotTypes: [swing] });
     const yds = new Map();
     for (const r of records || []) {
-      if (!r || r.logged === "skipped" || r.club == null || swingOf(r) !== swing || !hasMisses(r)) continue;
+      if (!r || !teaches(r) || r.logged === "skipped" || r.club == null || swingOf(r) !== swing || !hasMisses(r)) continue;
       if (!yds.has(r.club)) yds.set(r.club, []);
       yds.get(r.club).push(r);
     }
@@ -1021,7 +1022,7 @@ export function headsUp({ today = [], history = [], club, swing = "full", entry 
   if (!club) return null;
   const C = cfgOf(config);
   const H = { ...DEFAULT_CONFIG.HEADS_UP, ...(C.HEADS_UP || {}) };
-  const mine = (r) => r && r.club === club && r.logged !== "skipped" && !assumedEnd(r) && !isShortGameOrPutt(r) && swingOf(r) === swing;
+  const mine = (r) => r && teaches(r) && r.club === club && r.logged !== "skipped" && !assumedEnd(r) && !isShortGameOrPutt(r) && swingOf(r) === swing;
   const shots = chronological((today || []).filter(mine));
   for (const axis of ["lat", "dist"]) {
     const seen = shots.map((s) => ({ s, v: missSidesOf(s, C)[axis] })).filter((x) => x.v != null).slice(-H.todayOf);
