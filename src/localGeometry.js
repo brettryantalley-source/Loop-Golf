@@ -32,11 +32,32 @@ export function toOverpass(data) {
 }
 
 const PARSED = new WeakMap();
+const ELEV = new WeakMap();
+
+/**
+ * v22.45 (C34, D116): the file's baked USGS 3DEP grid (scripts/fetch-3dep.mjs) as elevation samples
+ * [{ lat, lon, elevM }], the shape sensors.js fetches from Open-Meteo, or null when the file has none.
+ * Cell (i, j) of a row [j, i0, ds] sits at lat0 + j·dLat, lon0 + (i0 + k)·dLon; elevM = (baseDm + d) / 10.
+ */
+export function elevationSamples(data) {
+  const e = data && data.elevation;
+  if (!e || !Array.isArray(e.rows)) return null;
+  if (ELEV.has(data)) return ELEV.get(data);
+  const out = [];
+  for (const [j, i0, ds] of e.rows) {
+    const lat = +(e.lat0 + j * e.dLat).toFixed(7);
+    ds.forEach((d, k) => out.push({ lat, lon: +(e.lon0 + (i0 + k) * e.dLon).toFixed(7), elevM: (e.baseDm + d) / 10 }));
+  }
+  const res = out.length ? out : null;
+  ELEV.set(data, res);
+  return res;
+}
 
 /**
  * The parsed geometry for a club, or null when no local file covers it.
  * registry = the bundled files ([{ apiId, apiIds?, version, ways, … }]); clubId = the club's API id.
  * `version` stamps the cache entry (geo.js saveGeometryCache) so an older cache is replaced once.
+ * `elevation` = the bundled 3DEP samples (v22.45), or null (the app then asks Open-Meteo).
  */
 export function localGeometryFor(registry, clubId) {
   if (clubId == null || !Array.isArray(registry)) return null;
@@ -45,7 +66,7 @@ export function localGeometryFor(registry, clubId) {
   if (!data) return null;
   let geometry = PARSED.get(data);
   if (!geometry) { geometry = parseOverpass(toOverpass(data)); PARSED.set(data, geometry); }
-  return { version: `${data.apiId}@${data.version}`, geometry, name: data.name || null };
+  return { version: `${data.apiId}@${data.version}`, geometry, name: data.name || null, elevation: elevationSamples(data) };
 }
 
 /** The bundled map's own satellite imagery ({ url, tileSize, maxzoom, zooms, probeZoom, credit }), or null (MapTiler). */

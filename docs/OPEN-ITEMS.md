@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 Brett's test notes of Oct 10 (C20–C29), and his notes from the first Bradshaw Farm round, Oct 11 (C34–C44; screenshots in `data/raw/2026-10-11/`). Duplicates are merged and anything already shipped is
-dropped. State: **v22.32** (C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 372 tests, decisions D1–D103; the next
-decision is **D104**.
+dropped. State: **v22.45** (C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 407 tests, decisions D1–D116; the next
+decision is **D117**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -18,8 +18,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Next code chat:** the Oct 11 notes, in order: C34 and C35 first (the caddie's call is wrong), then C36
-   (rings), then the map (C37–C42), then C43–C44. Older items wait on Brett (F7 notes → C10, S4 → C12,
+1. **Next code chat:** the Oct 11 notes, in order (C34 and C35 shipped in v22.45 and v22.44): C36 (rings), then the map (C37–C42), then C43–C44. Older items wait on Brett (F7 notes → C10, S4 → C12,
    F9 + Q3 → C13, S1–S3 + Q2 → C14; C33 once chips are logged).
 2. **Next round:** the **F** list.
 
@@ -37,12 +36,22 @@ R2 muted course shapes plus a Shapes toggle (C2) · R4 leaf-off Chicopee imagery
 · R5 measured rough distances where n ≥ 5, shrunk toward the model (C7) · R6 the 41+ ft three-putt
 rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont upload to OSM later,
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
-- **R10.** (Oct 11, waiting on Brett) Green slopes from free USGS 3DEP lidar (1 m elevation; coverage at
-  each club to be checked): Loop draws its own green-reading arrows and replaces the ~90 m Open-Meteo
-  elevation in Plays. A large build; would become its own C item.
+- **R10.** (Oct 11, waiting on Brett) Green slopes from free USGS 3DEP lidar: Loop draws its own
+  green-reading arrows. The elevation half shipped in v22.45 (D116): the five mapped clubs carry a 20 m
+  3DEP grid (`scripts/fetch-3dep.mjs`; 1 m lidar covers all five). Arrows need a finer grid on each
+  green (~2 m). A large build; would become its own C item.
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.43 · Oct 10** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.45 · Oct 11** (once merged).
+- **F28.** Wind and slope (v22.45, D116): the wind on the Plays badge is now two-thirds of the forecast
+  (a 12 mph forecast reads 8). Set the Wind chip when it feels different; the chip counts in full. Each shot
+  now gets its own climb or drop: off Red 2's tee the green's 19-yd climb no longer shortens the drive, and
+  on the five mapped clubs the slope comes from USGS lidar. Note any call that still feels a club off, with
+  the hole and the wind you felt.
+- **F27.** The ring sits on the target (v22.44, D115): into or with the wind, the caddie's yellow target and
+  its rings should sit together on every call off the tee and from the fairway. An approach can still show a
+  ring short of the pin when no club gets there (from 230 into the wind), and so can a Custom target past the
+  club's reach. Off a long par-5 tee, Aggressive is a real shot (no Driver aimed 340 out).
 - **F18.** From the rough (v22.33, D104): the caddie now plays your rough totals, not the fairway
   ones plus extra roll. A 5-iron finishes ~192, the 4-hybrid ~207, a 7-iron ~175, a PW ~136. Note any
   rough call that feels a club off.
@@ -135,8 +144,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C34 | Distances run long: a 5-iron from 235 (Bradshaw Red 3) | — | Opus |
-| C35 | Bradshaw Red 2 (par 5): 6-iron with To target 117, target outside the ring, Aggressive makes no sense | — | Opus |
 | C36 | Rings: good shots only = within 10 yds of the club's average and its best 65% side to side | — | Opus |
 | C37 | Pan the map with a finger (up / down / left / right) | — | Opus |
 | C38 | Ball at the bottom centre, target up, always (putting from above the hole too) | — | Opus |
@@ -184,24 +191,7 @@ service worker answered font requests with `index.html`); reopen only if it come
 
 ## Build details
 
-### C34–C44. Brett's first Bradshaw round (Oct 11, v22.43; screenshots in `data/raw/2026-10-11/`)
-- **C34.** "The distances still seem really off": on Red 3 the caddie called a 5-iron from 235. Trace the
-  Plays number (wind, temperature, the ~90 m elevation) and the 5-iron's total; D94 put the 5-iron at
-  ~204 on a warm day. **Lead:** Plays looks inflated — 212 to the pin plays 252 (12 into-left, 64°,
-  `bradshaw-red2-2hy-custom-207-ring-short.jpg`), 479 plays 562 (12 into-right). +17–19% from a 12 mph
-  wind and 64° is a lot; check the wind model, the temperature baseline and the ~90 m elevation. It may also
-  be why the ring lands short of the target (C35). The 5-iron call itself (`bradshaw-red3-5iron-custom-235.jpg`):
-  a Custom target at 235 on Red 3, Plays 322 for 343 (12 from right, 64°; plays *shorter* here), and the
-  5-iron's ring sits on the target — so the engine believes a 5-iron finishes ~235. On the same tee the
-  2-hybrid (~233) or 4-hybrid is the club; find why the 5-iron's modelled total is that long.
-- **C35.** `bradshaw-red2-6iron-target117.jpg`: Red 2, par 5, 329 to the pin from a forward pad, Plays 401
-  (14 into, 64°). The call reads 6-iron with To target 117; the yellow target sits ~half-way, well short
-  of the ring. "The dispersion circle and the target are doing very weird things by separating." The
-  Aggressive tee strategy here "makes no sense". Find why the target and the ring part (D93 aim-off, a
-  moved target, or the lay-up target) and why Aggressive chose what it did. More from the same hole: off the
-  tee, Safe = Driver with To target 219 but the ring well past it (`…-tee-driver-safe-219.jpg`); Aggressive =
-  Driver to 340 with the ring ~80 yds short of it (`…-tee-driver-aggr-340.jpg`); a Custom 2-hybrid to 207
-  (6 yds from the pin) with the ring ~40 yds short (`…-2hy-custom-207-ring-short.jpg`).
+### C36–C44. Brett's first Bradshaw round (Oct 11, v22.43; screenshots in `data/raw/2026-10-11/`)
 - **C36.** `bradshaw-red1-pw-dispersion.jpg` (PW from 140) and the 4-hybrid oval
   (`bradshaw-red2-4hy-custom-157-wide-oval.jpg`): too wide. Brett: show
   where he might really hit it, without what he'd call mishits — more than ~10 yds short or long of the
@@ -219,8 +209,8 @@ service worker answered font requests with `index.html`); reopen only if it come
 - **C42.** On the Review sheet (past shots), let the drawn map zoom (`bradshaw-red2-review-sheet-question-mark.jpg`:
   the whole hole fits in a small box).
 - **C43.** Scoring a hole from the caddie: pre-fill the score with the shots logged (one tap to keep).
-- **C44.** Show the elevation change from the ball to the target. Plays already includes it, from
-  Open-Meteo's ~90 m grid (R10 would make it 1 m).
+- **C44.** Show the elevation change from the ball to the target. Plays already includes it: since v22.45
+  each shot's own rise (`playsLike` `riseYds`), from the 3DEP grid on the five mapped clubs (D116).
 
 Answered in chat Oct 11: Chip / Pitch / Wedge (inside ~30 yds, Chip rolls more than it flies, Pitch flies
 more than it rolls; Wedge is 30+ yds to a number and teaches that club's distance); the yellow `?` on the
@@ -342,7 +332,7 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D115.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D117.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat

@@ -33,7 +33,7 @@ const geo = lg.geometry;
 const ring2m2 = (ring) => { let a = 0; for (let i = 0; i < ring.length; i++) { const p = ring[i], q = ring[(i + 1) % ring.length]; a += p[0] * q[1] - q[0] * p[1]; } return Math.abs(a) / 2 / 1.19599; };
 
 test("localGeometryFor: finds the club by API id (string or number), returns null for anything else", () => {
-  assert.equal(lg.version, "tnw4ghn5@1");
+  assert.equal(lg.version, "tnw4ghn5@2");                       // v22.45 (D116): the 3DEP grid bumped it
   assert.ok(localGeometryFor(registry, "tnw4ghn5"));
   assert.equal(localGeometryFor(registry, "somewhere-else"), null);
   assert.equal(localGeometryFor(registry, null), null);
@@ -184,7 +184,7 @@ test("chicopee and woodmont name their own imagery (Wayback, 256-px tiles); othe
   }
   assert.ok(imageryFor([woodmont, chicopee], woodmont.apiId).url.includes("/tile/64001/"), "woodmont: the Oct 10 2025 capture");
   assert.ok(imageryFor([woodmont, chicopee], chicopee.apiId).url.includes("/tile/49059/"), "chicopee: leaf-off (R4, v22.28)");
-  assert.equal(chicopee.version, 3, "bumped so the phones' cached copy refreshes once");
+  assert.equal(chicopee.version, 4, "bumped so the phones' cached copy refreshes once (3: leaf-off, v22.28; 4: the 3DEP grid, v22.45)");
   assert.equal(imageryFor([woodmont, chicopee], "not-a-local-club"), null);
 });
 

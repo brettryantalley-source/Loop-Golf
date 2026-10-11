@@ -10,9 +10,25 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 398 tests (v22.43); must be green
+npm install && npm test    # 407 tests (v22.45); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.45 (Oct 11)
+
+Each shot gets its own slope, the five mapped clubs carry USGS lidar, and the caddie uses two-thirds of the
+forecast wind (C34, D116; Brett's three answers). Red 2's tee shot no longer pays the green's 19-yd climb;
+Red 3's 5-iron to 235 stays (a 17 m drop, downhill at full value). `scripts/fetch-3dep.mjs` bakes a 20 m
+3DEP grid into a bundled map (re-run it for a new one); the grid rides the geometry in memory, never
+localStorage. The Plays badge shows the scaled wind (12 reads 8); the Wind chip counts in full. 407 tests.
+
+## v22.44 (Oct 11)
+
+The ring sits on the target (C35, D115). A fairway shot was sized with the whole hole's wind and slope, so
+on Bradshaw Red 2 the 6-iron's target sat at 117 while it finishes ~159 (the ring); now each shot is sized
+over its own length. A lay-up spot takes only a club that gets within 10 yds of it (Red 2's Aggressive was a
+Driver aimed 344 out). Into 10 mph the SAFE ring–target gap goes from a 14-yd median to 0; the club changes
+on 0–4% of calls. 402 tests.
 
 ## v22.43 (Oct 10)
 

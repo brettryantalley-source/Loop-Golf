@@ -55,7 +55,8 @@ test("engine: a lay-up and the corridor's center sit mid-fairway when the hole l
     green: { ring: rect(-15, 505, 15, 535), center: { x: 0, y: 520 } },
     fairways: [rect(-45, 60, -5, 480)], tees: [], hazards: [], boundary: null, line: [{ x: 0, y: 0 }, { x: 0, y: 520 }],
   };
-  const ctx = normalizeContext({ shotNo: 1, ball: { x: 0, y: 0 }, lieType: "tee", par: 5 }, h);
+  // the second shot, 320 out: from the tee no club reaches a lay-up spot (v22.44, D115)
+  const ctx = normalizeContext({ shotNo: 2, ball: { x: 0, y: 200 }, lieType: "fairway", par: 5 }, h);
   const cands = generateCandidates(ctx, h, P);
   const lay = cands.filter((c) => c.kind === "layup");
   assert.ok(lay.length > 0, "lay-ups generated");

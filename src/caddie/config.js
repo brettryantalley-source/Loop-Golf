@@ -31,6 +31,12 @@ export const DEFAULT_CONFIG = Object.freeze({
     headCap: 0.5,
     tailCap: 0.2,
   },
+  /* v22.45 (C34, D116; Brett, Oct 11: "Two-thirds"): the share of the FORECAST wind the engine uses.
+     Open-Meteo's wind_speed_10m is open-field wind 10 m up (on Oct 11 it matched Cherokee County
+     airport's 10–15 kt); Bradshaw's holes, like most of his, run through trees. A middle guess:
+     trees cut it near the ground, a high shot climbs back into it. Uncalibrated. Brett's Wind chip
+     is his own reading and is never scaled. */
+  FORECAST_WIND_SHARE: 0.67,
   /* Temperature (D36; tuned by integration item 4): rawYds × TEMP_PCT_PER_10F × (TEMP_REF_F − tempF) / 10.
      Cold plays longer (positive), hot plays shorter (negative); 0 at the reference temperature.
      0.85%/10°F = midpoint of Rice (driver +2 yds/10°F on 250 = 0.8%; PW ~1.3/140 = 0.93%). */
@@ -160,6 +166,10 @@ export const DEFAULT_CONFIG = Object.freeze({
   LAYUP_MIN_YDS: 50,
   LAYUP_MAX_YDS: 150,
   LAYUP_STEP_YDS: 5,
+  /* v22.44 (C35, D115): a lay-up spot takes only a club that finishes within this many yards short
+     of it (it already had to stop within LAYUP_STEP_YDS past it). Before, the longest club stood in
+     for any spot beyond its reach. */
+  LAYUP_FIT_YDS: 10,
   /* v22.24 (C31, D95): on shot 1, a ball this close to one of the hole's tee boxes is a tee lie even
      when it was placed with "I'm at my ball" (a fix a few yards off the mapped box read rough, and
      rough takes the full driver and 2-iron away, D86). The Lie chip still wins. */
