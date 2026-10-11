@@ -10,9 +10,14 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 423 tests (v22.50); must be green
+npm install && npm test    # 423 tests (v22.51); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.51 (Oct 11)
+
+The Review map zooms (C42, D122): the Shots list / Review sheet's drawn map opens on the open shot, pinches,
+moves with one finger, and `Fit` goes back. The smoke test exercises it. 423 tests.
 
 ## v22.50 (Oct 11)
 

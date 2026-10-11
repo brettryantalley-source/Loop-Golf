@@ -2,7 +2,8 @@
 /*
  * smoke-caddie.mjs — opens the BUILT app (index.html) in headless Chromium on a restored Woodmont
  * round in test mode, walks the caddie screen through a tee shot, a logged shot, the next ball and a
- * ball by the green (the short-game line and card, C29), a one-finger pan and Fit (C37, satellite only), and fails on any page error. `npm test` never renders CaddieScreen; this catches what it can't
+ * ball by the green (the short-game line and card, C29), a one-finger pan and Fit (C37, satellite only), the Shots list's
+ * map zoom (C42), and fails on any page error. `npm test` never renders CaddieScreen; this catches what it can't
  * (a hook out of order, a value used before it is declared). Not part of `npm test`: it needs
  * Playwright and a Chromium (a cloud session has both).
  *
@@ -132,6 +133,34 @@ await step("next-ball tap", async () => {
 });
 await page.waitForTimeout(2500);
 await shot("4-next-ball");
+// v22.51 (C42, D122): the Shots list's map opens on the shot, moves with a finger, pinches, and Fit puts it back
+await step("review map zoom", async () => {
+  await page.locator('[data-part="shots-button"]').first().click({ timeout: 5000 });
+  await page.locator('[data-part="review-row"][data-kind="shot"] > button').first().click({ timeout: 5000 });
+  const map = page.locator('[data-part="review-map"]').first();
+  await map.waitFor({ timeout: 5000 });
+  const b = await map.boundingBox();
+  const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+  await page.mouse.move(cx, cy); await page.mouse.down(); await page.mouse.move(cx + 40, cy + 30, { steps: 5 }); await page.mouse.up();
+  await page.locator('[data-part="review-fit"]').waitFor({ timeout: 3000 });
+  await page.locator('[data-part="review-fit"]').click();
+  if (await page.locator('[data-part="review-fit"]').count()) throw new Error("Fit did not reset the review map");
+  // a two-finger pinch (pointer events, as a phone sends them)
+  const svgW = async () => (await map.locator("svg path").first().boundingBox())?.width || 0;
+  const w0 = await svgW();
+  await map.evaluate((el, [x, y]) => {
+    const ev = (type, id, dx) => el.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x + dx, clientY: y, bubbles: true, pointerType: "touch", isPrimary: id === 1 }));
+    ev("pointerdown", 1, -20); ev("pointerdown", 2, 20);
+    for (let k = 1; k <= 5; k++) { ev("pointermove", 1, -20 - 8 * k); ev("pointermove", 2, 20 + 8 * k); }
+    ev("pointerup", 1, -60); ev("pointerup", 2, 60);
+  }, [cx, cy]);
+  await page.waitForTimeout(200);
+  const w1 = await svgW();
+  if (!(w1 > w0 * 1.5)) throw new Error(`the pinch did not zoom in (${w0.toFixed(0)} → ${w1.toFixed(0)} px)`);
+  await shot("4b-review-zoomed");
+  console.log(`review map: moved, Fit reset, pinched ${w0.toFixed(0)} → ${w1.toFixed(0)} px`);
+  await page.getByText("Close", { exact: true }).last().click({ timeout: 3000 });
+});
 
 // v22.40 (C29, D111): a ball 22 yds short of hole 1's green — restored, so the camera's framing of the
 // shot before cannot move it: no club call, his short-game numbers instead, and the log card's

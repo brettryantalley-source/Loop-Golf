@@ -87,7 +87,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.50 · Oct 11";
+const BUILD = "v22.51 · Oct 11";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -2874,6 +2874,10 @@ function ReviewMap({ ctx, shots, selId, mode, onTap, onTargetDrop, height = 184 
   const [w, setW] = useState(331);
   const [drag, setDrag] = useState(null);
   const dragRef = React.useRef(null);
+  // v22.51 (C42, D122): pinch to zoom, one finger to move, Fit to come back; the map opens on the shot
+  const [view, setView] = useState(null);               // { center, pxPerYd } once Brett pinched or moved it
+  const touches = React.useRef(new Map());              // pointerId → screen point
+  const pinch = React.useRef(null);
   useEffect(() => {
     const el = boxRef.current;
     if (!el) return undefined;
@@ -2882,52 +2886,96 @@ function ReviewMap({ ctx, shots, selId, mode, onTap, onTargetDrop, height = 184 
     window.addEventListener("resize", read);
     return () => window.removeEventListener("resize", read);
   }, []);
+  useEffect(() => { setView(null); }, [selId]);         // another shot: back to its own framing
   const { geoHole, F, sameFrame, greenPt } = ctx;
   const pts = shots.map((r) => ({ id: r.id, n: r.shotNo, ...recPoints(r, F, sameFrame) }));
   const vp = { width: w, height };
   const camKey = JSON.stringify(pts.map((p) => [p.s, p.e, p.t].map((q) => q && [Math.round(q.x), Math.round(q.y)])));
-  const cam = useMemo(() => {
+  const auto = useMemo(() => {
+    // v22.51 (C42): the selected shot (its ball, end and target) when it has two of them; else the hole and every shot
+    const selP = pts.find((p) => p.id === selId);
+    const own = selP ? [selP.s, selP.e, selP.t].filter(Boolean) : [];
     const list = [];
-    if (geoHole) { list.push(geoHole.tee || { x: 0, y: 0 }); for (const q of geoHole.green?.ring || []) list.push({ x: q[0], y: q[1] }); }
-    if (greenPt) list.push({ x: greenPt.x - 14, y: greenPt.y - 14 }, { x: greenPt.x + 14, y: greenPt.y + 14 });
-    for (const p of pts) for (const q of [p.s, p.e, p.t]) if (q) list.push(q);
+    if (own.length >= 2) list.push(...own);
+    else {
+      if (geoHole) { list.push(geoHole.tee || { x: 0, y: 0 }); for (const q of geoHole.green?.ring || []) list.push({ x: q[0], y: q[1] }); }
+      if (greenPt) list.push({ x: greenPt.x - 14, y: greenPt.y - 14 }, { x: greenPt.x + 14, y: greenPt.y + 14 });
+      for (const p of pts) for (const q of [p.s, p.e, p.t]) if (q) list.push(q);
+    }
     const b = fitBounds(list) || { minX: -40, minY: -40, maxX: 40, maxY: 260 };
     const cx = (b.minX + b.maxX) / 2, cy = (b.minY + b.maxY) / 2;
-    const hw = Math.max(45, (b.maxX - b.minX) / 2 + 12), hh = Math.max(60, (b.maxY - b.minY) / 2 + 12);
+    const minHalf = own.length >= 2 ? 25 : 45;
+    const hw = Math.max(minHalf, (b.maxX - b.minX) / 2 + 12), hh = Math.max(minHalf * 4 / 3, (b.maxY - b.minY) / 2 + 12);
     return cameraFor({ minX: cx - hw, maxX: cx + hw, minY: cy - hh, maxY: cy + hh }, vp, {}, { padding: 10 });
-  }, [w, height, geoHole, greenPt && greenPt.x, camKey]);
+  }, [w, height, geoHole, greenPt && greenPt.x, camKey, selId]);
+  const cam = view || auto;
   const L = linearProjector(cam, vp);
   const base = geoHole ? fallbackMapModel({ hole: geoHole, project: L.project }) : [];
   const sel = pts.find((p) => p.id === selId) || null;
   const selT = drag || sel?.t || null;
   const local = (ev) => { const r = boxRef.current.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; };
+  const startPinch = () => {
+    const [a, b] = [...touches.current.values()];
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    pinch.current = { d0: Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), px0: cam.pxPerYd, anchor: L.unproject(mid) };
+  };
   const down = (ev) => {
     const pt = local(ev);
+    touches.current.set(ev.pointerId, pt);
+    try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch (e) { /* synthetic */ }
+    if (touches.current.size === 2) {                   // a second finger: a pinch, never a tap or a drag
+      if (dragRef.current && !dragRef.current.tap) setDrag(null);
+      dragRef.current = null;
+      startPinch();
+      return;
+    }
+    if (touches.current.size > 2) return;
     const tp = selT ? L.project(selT) : null;
     if (tp && Math.hypot(pt.x - tp.x, pt.y - tp.y) <= 22 && onTargetDrop) {
-      try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch (e) { /* synthetic */ }
       dragRef.current = { id: ev.pointerId, p: selT };
       setDrag(selT);
-    } else dragRef.current = { id: ev.pointerId, tap: pt };
+    } else dragRef.current = { id: ev.pointerId, tap: pt, last: pt, pan: false };
   };
   const move = (ev) => {
+    if (!touches.current.has(ev.pointerId)) return;
+    const pt = local(ev);
+    touches.current.set(ev.pointerId, pt);
+    if (pinch.current && touches.current.size === 2) {
+      const [a, b] = [...touches.current.values()];
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const px = Math.max(0.3, Math.min(15, pinch.current.px0 * Math.hypot(a.x - b.x, a.y - b.y) / pinch.current.d0));
+      const an = pinch.current.anchor;                  // the yard under the fingers stays under them
+      setView({ pxPerYd: px, center: { x: an.x - (mid.x - w / 2) / px, y: an.y + (mid.y - height / 2) / px } });
+      return;
+    }
     const d = dragRef.current;
-    if (!d || d.id !== ev.pointerId || d.tap) return;
-    const q = L.unproject(local(ev));
+    if (!d || d.id !== ev.pointerId) return;
+    if (d.tap) {
+      if (!d.pan && Math.hypot(pt.x - d.tap.x, pt.y - d.tap.y) > 8) d.pan = true;
+      if (d.pan) {
+        setView({ pxPerYd: cam.pxPerYd, center: { x: cam.center.x - (pt.x - d.last.x) / cam.pxPerYd, y: cam.center.y + (pt.y - d.last.y) / cam.pxPerYd } });
+        d.last = pt;
+      }
+      return;
+    }
+    const q = L.unproject(pt);
     d.p = q; setDrag(q);
   };
   const up = (ev) => {
+    touches.current.delete(ev.pointerId);
+    if (pinch.current) { if (touches.current.size < 2) pinch.current = null; return; }
     const d = dragRef.current;
     dragRef.current = null;
     if (!d || d.id !== ev.pointerId) return;
-    if (d.tap) { const pt = local(ev); if (Math.hypot(pt.x - d.tap.x, pt.y - d.tap.y) <= 10 && onTap) onTap(L.unproject(pt)); return; }
+    if (d.tap) { const pt = local(ev); if (!d.pan && Math.hypot(pt.x - d.tap.x, pt.y - d.tap.y) <= 10 && onTap) onTap(L.unproject(pt)); return; }
     setDrag(null);
     if (d.p && onTargetDrop) onTargetDrop(d.p);
   };
+  const cancel = (ev) => { if (ev) touches.current.delete(ev.pointerId); pinch.current = null; dragRef.current = null; setDrag(null); };
   const P = (q) => L.project(q);
   const f1 = (x) => Math.round(x * 10) / 10;
   return (
-    <div ref={boxRef} data-part="review-map" data-mode={mode || "none"} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { dragRef.current = null; setDrag(null); }}
+    <div ref={boxRef} data-part="review-map" data-mode={mode || "none"} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={cancel}
       style={{ position: "relative", width: "100%", height, border: rule, background: T.paper, touchAction: "none", overflow: "hidden", cursor: mode ? "crosshair" : "default" }}>
       <svg width={w} height={height} viewBox={`0 0 ${w} ${height}`} style={{ display: "block", pointerEvents: "none" }} aria-hidden="true">
         {renderNodes(base)}
@@ -2947,6 +2995,8 @@ function ReviewMap({ ctx, shots, selId, mode, onTap, onTargetDrop, height = 184 
         {pts.map((p) => (p.s ? (() => { const a = P(p.s), on = p.id === selId; return <circle key={`b${p.id}`} data-part={on ? "review-ball" : undefined} cx={f1(a.x)} cy={f1(a.y)} r={on ? 6 : 4} fill={T.paper} stroke={T.black} strokeWidth={on ? 1.6 : 1.1} />; })() : null))}
         {pts.length > 0 && (() => { const lastE = pts[pts.length - 1].e; if (!lastE) return null; const a = P(lastE); return <circle cx={f1(a.x)} cy={f1(a.y)} r="3" fill={T.black} />; })()}
       </svg>
+      {view && <button data-part="review-fit" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setView(null); }}
+        style={{ position: "absolute", right: 6, top: 6, height: 26, padding: "0 10px", border: rule, borderRadius: 13, background: T.paper, color: T.ink, ...caps(9, 700, "0.1em") }}>Fit</button>}
     </div>
   );
 }

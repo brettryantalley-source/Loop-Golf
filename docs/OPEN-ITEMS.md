@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 Brett's test notes of Oct 10 (C20–C29), and his notes from the first Bradshaw Farm round, Oct 11 (C34–C44; screenshots in `data/raw/2026-10-11/`). Duplicates are merged and anything already shipped is
-dropped. State: **v22.50** (C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 423 tests, decisions D1–D121; the next
-decision is **D122**.
+dropped. State: **v22.51** (C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 423 tests, decisions D1–D122; the next
+decision is **D123**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -18,7 +18,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Next code chat:** the Oct 11 notes, in order (C34–C39 and C41 shipped in v22.44–v22.50): the map (C40, C42), then C43–C44. Older items wait on Brett (F7 notes → C10, S4 → C12,
+1. **Next code chat:** the Oct 11 notes, in order (C34–C39, C41, C42 shipped in v22.44–v22.51): C43–C44, then C40 (the Bradshaw fairway trace). Older items wait on Brett (F7 notes → C10, S4 → C12,
    F9 + Q3 → C13, S1–S3 + Q2 → C14; C33 once chips are logged).
 2. **Next round:** the **F** list.
 
@@ -42,7 +42,9 @@ after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
   green (~2 m). A large build; would become its own C item.
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.50 · Oct 11** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.51 · Oct 11** (once merged).
+- **F34.** The Shots / Review map (v22.51, D122): it opens on the shot you open (its ball, end and target), pinch to
+  zoom, one finger moves it, `Fit` (top-right) puts it back. Place and the target drag still work.
 - **F33.** Tee boxes in their colours (v22.50, D121): with Shapes on, each tee box is tinted the tee whose card yardage
   its distance to the green matches (within 20 yds): gold, blue, white, red. A box with no match keeps the plain green.
   Only rounds started on v22.50 or later (the round keeps every tee's yardages from Setup). Say where a box has the
@@ -158,7 +160,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | # | Build | Waits on | Model |
 |---|---|---|---|
 | C40 | Bradshaw fairways traced from the photo (OSM misses turf) | — | Opus |
-| C42 | Zoom on the Review sheet's drawn map | — | Sonnet |
 | C43 | Scoring from the caddie: the score pre-fills with the shots logged | — | Sonnet |
 | C44 | Show the elevation change to the target | — | Sonnet |
 | C10 | Re-tune the `STRATEGY` thresholds | a round of F7 notes | Opus |
@@ -202,11 +203,9 @@ service worker answered font requests with `index.html`); reopen only if it come
 
 ## Build details
 
-### C40–C44. Brett's first Bradshaw round (Oct 11, v22.43; screenshots in `data/raw/2026-10-11/`)
+### C40, C43, C44. Brett's first Bradshaw round (Oct 11, v22.43; screenshots in `data/raw/2026-10-11/`)
 - **C40.** "Clear places the fairway exists from the satellite image that are not included." Bradshaw's
   fairways are OSM's; trace them from the photo (as Chicopee's were, D74).
-- **C42.** On the Review sheet (past shots), let the drawn map zoom (`bradshaw-red2-review-sheet-question-mark.jpg`:
-  the whole hole fits in a small box).
 - **C43.** Scoring a hole from the caddie: pre-fill the score with the shots logged (one tap to keep).
 - **C44.** Show the elevation change from the ball to the target. Plays already includes it: since v22.45
   each shot's own rise (`playsLike` `riseYds`), from the 3DEP grid on the five mapped clubs (D116).
@@ -333,7 +332,7 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D122.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D123.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
