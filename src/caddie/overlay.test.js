@@ -244,7 +244,7 @@ test("zoomForPxPerYd: MapLibre zoom from px/yd (512-px world)", () => {
 
 test("T36: SAFE ↔ AGGRESSIVE changes the drawn shot, never the camera", () => {
   const hole = buildHole(hampton, 5, { par: 5, yards: 540 });
-  const ball = { x: 0, y: 230 };   // Oct 4 profile + no full Dr / 2i off the deck (D85, D86): a two-option spot
+  const ball = { x: 0, y: 240 };   // a two-option spot (7i lay-up / 2Hy); 230 until C36 (D117) made it one shot
   const res = recommend({ ball, shotNo: 2, lieType: "fairway", par: 5 }, hole, P);
   assert.ok(res && res.safe && res.aggressive, "engine returns two options here");
   const opts = withEllipses(res, (c, s) => resolveEntry(P, c, s, "fairway"));

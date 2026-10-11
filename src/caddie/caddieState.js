@@ -509,16 +509,17 @@ const signed = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "0");
 
 /**
  * §5.6 — the dispersion line for the drawn ellipse of an option. Before takeover it reads Shot
- * Pattern's source (`Shot Pattern · 80% · Oct 4`, or `Profile spread · 80%` with no ellipse);
- * after the §5.2 takeover the ellipse is Loop's own: `Loop · 80% · {n} shots`.
+ * Pattern's source (`Shot Pattern · good shots · Oct 4`, or `Profile spread · good shots` with no
+ * ellipse); after the §5.2 takeover the ellipse is Loop's own: `Loop · good shots · {n} shots`.
+ * C36 (D117): the ring is the good-shot ring (±10 yds, best 65% across), no longer the 80% ellipse.
  */
 export function dispersionLine(o) {
   if (!o?.ell) return null;
   const b = bboxYds(o.ell);
   const n = o.ell.n ?? o.learningN ?? null;
   const src = o.ell.source === "shotPattern"
-    ? ["Shot Pattern", "80%", shortDate(o.ell.capturedAt)].filter(Boolean).join(" · ")
-    : o.ell.source === "loop" ? (n != null ? `Loop · 80% · ${n} shots` : "Loop · 80%") : "Profile spread · 80%";
+    ? ["Shot Pattern", "good shots", shortDate(o.ell.capturedAt)].filter(Boolean).join(" · ")
+    : o.ell.source === "loop" ? (n != null ? `Loop · good shots · ${n} shots` : "Loop · good shots") : "Profile spread · good shots";
   return { club: clubShort(o.club, o.label), w: Math.round(b.w), d: Math.round(b.d), source: src + (o.ell.scaled ? " · +15% bad lie" : "") };
 }
 

@@ -10,9 +10,20 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 407 tests (v22.45); must be green
+npm install && npm test    # 414 tests (v22.46); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.46 (Oct 11)
+
+The caddie and the map leave out the worst shots (C36, D117; Brett's answers). Every candidate's draws are
+simulated as before, then the 20% that finish farthest from the median draw are dropped (`DROP_WORST_PCT`,
+`keptDraws`) and only the rest are priced; the dots are 40 of the kept draws. The ring is his rule: 20 yds deep
+(±10 of the average finish) and as wide as his best 65% side to side, square to the line (`goodRingFromEntry`;
+the width `ringWYds` measured from Shot Pattern's dots by `scripts/fit-ell80.py`). PW 16 × 20 (was Shot
+Pattern's 36 × 51 ring), 4-hybrid 48 × 20 (was 88 × 38), Driver 47 × 20 (92 × 35). Effect on 1,719 calls:
+SAFE's club changes on 7% (21% of par-4/5 tees, 23% from 230), par chance shown +5.8 points, punch-outs 15 → 8
+of 492 tree spots. 414 tests.
 
 ## v22.45 (Oct 11)
 

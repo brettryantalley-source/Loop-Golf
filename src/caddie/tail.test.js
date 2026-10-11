@@ -17,8 +17,10 @@ import { noWaterPar4, openPar5 } from "../fixtures/synthetic-holes.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const RAW = JSON.parse(readFileSync(join(here, "../profile.json"), "utf8"));
-const P = loadProfile(RAW);
-const Poff = loadProfile(RAW, mergeConfig({ SHORT_TAIL: { ...DEFAULT_CONFIG.SHORT_TAIL, on: false } }));
+// The tail is calibrated on the full spread, before C36 (D117) drops the worst 20% of the draws
+// (which takes most of the tail with it): these profiles price every draw.
+const P = loadProfile(RAW, mergeConfig({ DROP_WORST_PCT: 0 }));
+const Poff = loadProfile(RAW, mergeConfig({ DROP_WORST_PCT: 0, SHORT_TAIL: { ...DEFAULT_CONFIG.SHORT_TAIL, on: false } }));
 const S = makeSamples(4000, 11);
 
 /** Finishes of one candidate: the share more than 10% short of the club's total. */

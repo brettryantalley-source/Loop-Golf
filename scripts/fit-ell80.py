@@ -21,6 +21,10 @@ and the mishit rate come from scripts/read-carries.py, which reads the Shot Dist
 80% ring (1.794 sigma) to the rest; the 30% ring is drawn from it in the app. The Shot Pattern ring above
 stays as `wYds`... and is what the engine draws a mishit from.
 
+Drawn ring (C36, D117): `ring_band` gives the width of the ring the map draws — the band that holds the
+best 65% of the dots side to side, from the median dot (`ringWYds`, `ringDots`). Its depth is fixed in the
+app (10 yds either side of the club's average finish), so nothing else is measured for it.
+
 Usage:  python3 scripts/fit-ell80.py data/extracted/2026-10-04-ell80.json [--check]
 """
 import sys, json, numpy as np
@@ -136,6 +140,8 @@ def run(path, y0c, y1c, widthYd, depthYd, out_png=None):
 
 K80 = 1.794  # sqrt(-2 ln 0.2): the 80% contour of a 2-D normal
 MIN_GOOD_DOTS = 5  # fewer good dots than this and the split is not trusted: the club keeps its Shot Pattern ring
+RING_LAT_PCT = 0.65  # C36 (D117): the drawn ring is as wide as his best 65% side to side (src/caddie/config.js RING_LAT_PCT)
+MIN_RING_DOTS = 5    # fewer dots than this and no band is measured: the app takes the 65% band of the ring's own spread
 
 def read_dots(path, y0c, y1c):
     """Shot dots in the plot, pixel (x, y), y down. Dots fused to the ring are missed (~10%)."""
@@ -165,8 +171,20 @@ def good_ring(e, r, stats):
                 goodTiltDeg=round(float(np.degrees(th) % 180), 1), goodDxYds=round(float(X.mean()), 1),
                 goodDots=int(keep.sum()), mishitRate=stats["mishitRate"], goodWindowYds=stats["windowYds"])
 
+def ring_band(e, r):
+    """C36 (D117): the drawn ring's width — every dot's lateral miss, measured from the median one, and
+    twice the distance that holds the best RING_LAT_PCT of them. Brett's rule, so not fitted to a normal."""
+    y0, y1 = e["plotYpx"]
+    dx_, _ = read_dots(os.path.join(ROOT, e["frame"]), y0, y1)
+    s = r["wYds"] / (2 * r["px"]["a"])
+    X = (dx_ - r["px"]["cross"][0]) * s
+    if len(X) < MIN_RING_DOTS:
+        return dict(ringWYds=None, ringDots=int(len(X)))
+    return dict(ringWYds=round(float(2 * np.quantile(np.abs(X - np.median(X)), RING_LAT_PCT)), 1), ringDots=int(len(X)))
+
 FIELDS = ("wYds", "hYds", "tiltDeg", "dxYds", "dyYds", "isotropyPct",
-          "goodWYds", "goodHYds", "goodTiltDeg", "goodDxYds", "goodDots", "mishitRate", "goodWindowYds")
+          "goodWYds", "goodHYds", "goodTiltDeg", "goodDxYds", "goodDots", "mishitRate", "goodWindowYds",
+          "ringWYds", "ringDots")
 
 if __name__ == "__main__":
     import os
@@ -183,6 +201,7 @@ if __name__ == "__main__":
         y0, y1 = e["plotYpx"]
         r = run(os.path.join(root, e["frame"]), y0, y1, e["bboxWYds"], e["bboxDYds"])
         r.update(good_ring(e, r, rc.entry_stats(e, root)))
+        r.update(ring_band(e, r))
         # C22 (D113): a ring printed at another coverage is scaled to the 80% ring the engine draws
         # (2-D normal contours: radius sqrt(-2 ln(1 - c))); its centre and tilt do not change
         cov = e.get("coverage", 0.8)

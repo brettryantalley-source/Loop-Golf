@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generated": "2026-10-10",
+  "generated": "2026-10-11",
   "sources": {
     "shotPattern": {
       "window": "Casual · Last 10",
@@ -112,7 +112,9 @@
               "capturedAt": "2026-10-10",
               "lies": "Tee (Driving tab); the 2-hybrid fairway entry from the Approach tab",
               "n": 35,
-              "confidence": "medium"
+              "confidence": "medium",
+              "ringWYds": 46.6,
+              "ringDots": 32
             }
           },
           "fairway": null,
@@ -189,7 +191,9 @@
               "capturedAt": "2026-10-10",
               "lies": "Tee (Driving tab); the 2-hybrid fairway entry from the Approach tab",
               "n": 26,
-              "confidence": "medium"
+              "confidence": "medium",
+              "ringWYds": 41.7,
+              "ringDots": 24
             }
           },
           "fairway": null,
@@ -275,7 +279,9 @@
               "capturedAt": "2026-10-10",
               "lies": "Tee (Driving tab); the 2-hybrid fairway entry from the Approach tab",
               "n": 7,
-              "confidence": "low"
+              "confidence": "low",
+              "ringWYds": 47.3,
+              "ringDots": 7
             }
           },
           "fairway": {
@@ -485,7 +491,9 @@
               "capturedAt": "2026-10-10",
               "lies": "Tee (Driving tab); the 2-hybrid fairway entry from the Approach tab",
               "n": 16,
-              "confidence": "medium"
+              "confidence": "medium",
+              "ringWYds": 48,
+              "ringDots": 16
             }
           },
           "fairway": {
@@ -705,7 +713,9 @@
               "capturedAt": "2026-10-04",
               "lies": "Tee & Fairway",
               "n": 12,
-              "confidence": "medium"
+              "confidence": "medium",
+              "ringWYds": 32.3,
+              "ringDots": 11
             },
             "extra": {
               "sheetN": 12,
@@ -881,7 +891,9 @@
               "capturedAt": "2026-10-04",
               "lies": "Tee & Fairway",
               "n": 11,
-              "confidence": "medium"
+              "confidence": "medium",
+              "ringWYds": 26.1,
+              "ringDots": 9
             },
             "extra": {
               "sheetN": 11,
@@ -984,7 +996,9 @@
               "capturedAt": "2026-10-04",
               "lies": "Tee & Fairway",
               "n": 10,
-              "confidence": "medium"
+              "confidence": "medium",
+              "ringWYds": 23.5,
+              "ringDots": 9
             },
             "extra": {
               "sheetN": 10,
@@ -1156,7 +1170,9 @@
               "capturedAt": "2026-10-04",
               "lies": "Tee & Fairway",
               "n": 10,
-              "confidence": "medium"
+              "confidence": "medium",
+              "ringWYds": 15.3,
+              "ringDots": 8
             },
             "extra": {
               "sheetN": 10,
@@ -1328,7 +1344,9 @@
               "capturedAt": "2026-10-04",
               "lies": "Tee & Fairway",
               "n": 12,
-              "confidence": "medium"
+              "confidence": "medium",
+              "ringWYds": 30.1,
+              "ringDots": 10
             },
             "extra": {
               "sheetN": 12,
@@ -1500,7 +1518,9 @@
               "capturedAt": "2026-10-04",
               "lies": "Tee & Fairway",
               "n": 6,
-              "confidence": "low"
+              "confidence": "low",
+              "ringWYds": 15.5,
+              "ringDots": 5
             },
             "extra": {
               "sheetN": 6,
@@ -1681,7 +1701,9 @@
               "capturedAt": "2026-10-04",
               "lies": "Tee & Fairway",
               "n": 15,
-              "confidence": "medium"
+              "confidence": "medium",
+              "ringWYds": 7.8,
+              "ringDots": 14
             },
             "extra": {
               "sheetN": 15,
@@ -1934,7 +1956,9 @@
               "capturedAt": "2026-10-04",
               "lies": "Tee & Fairway",
               "n": 9,
-              "confidence": "medium"
+              "confidence": "medium",
+              "ringWYds": 9.8,
+              "ringDots": 9
             },
             "extra": {
               "sheetN": 9,
@@ -2149,7 +2173,9 @@
               "capturedAt": "2026-10-04",
               "lies": "Tee & Fairway",
               "n": 14,
-              "confidence": "medium"
+              "confidence": "medium",
+              "ringWYds": 7.8,
+              "ringDots": 12
             },
             "extra": {
               "sheetN": 14,

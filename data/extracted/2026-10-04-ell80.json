@@ -60,7 +60,9 @@
       "goodDxYds": 0.0,
       "goodDots": 2,
       "mishitRate": 0.0,
-      "goodWindowYds": 20.0
+      "goodWindowYds": 20.0,
+      "ringWYds": 36.6,
+      "ringDots": 5
     },
     {
       "club": "5i",
@@ -105,7 +107,9 @@
       "goodDxYds": 4.3,
       "goodDots": 9,
       "mishitRate": 0.083,
-      "goodWindowYds": 20.0
+      "goodWindowYds": 20.0,
+      "ringWYds": 32.3,
+      "ringDots": 11
     },
     {
       "club": "6i",
@@ -150,7 +154,9 @@
       "goodDxYds": -1.2,
       "goodDots": 7,
       "mishitRate": 0.0,
-      "goodWindowYds": 20.0
+      "goodWindowYds": 20.0,
+      "ringWYds": 26.1,
+      "ringDots": 9
     },
     {
       "club": "7i",
@@ -195,7 +201,9 @@
       "goodDxYds": 3.1,
       "goodDots": 8,
       "mishitRate": 0.1,
-      "goodWindowYds": 20.0
+      "goodWindowYds": 20.0,
+      "ringWYds": 23.5,
+      "ringDots": 9
     },
     {
       "club": "8i",
@@ -240,7 +248,9 @@
       "goodDxYds": -7.1,
       "goodDots": 8,
       "mishitRate": 0.1,
-      "goodWindowYds": 20.0
+      "goodWindowYds": 20.0,
+      "ringWYds": 15.3,
+      "ringDots": 8
     },
     {
       "club": "9i",
@@ -285,7 +295,9 @@
       "goodDxYds": 2.6,
       "goodDots": 10,
       "mishitRate": 0.167,
-      "goodWindowYds": 20.0
+      "goodWindowYds": 20.0,
+      "ringWYds": 30.1,
+      "ringDots": 10
     },
     {
       "club": "PW",
@@ -330,7 +342,9 @@
       "goodDxYds": 5.2,
       "goodDots": 4,
       "mishitRate": 0.0,
-      "goodWindowYds": 13.4
+      "goodWindowYds": 13.4,
+      "ringWYds": 15.5,
+      "ringDots": 5
     },
     {
       "club": "GW",
@@ -375,7 +389,9 @@
       "goodDxYds": -2.7,
       "goodDots": 10,
       "mishitRate": 0.4,
-      "goodWindowYds": 11.9
+      "goodWindowYds": 11.9,
+      "ringWYds": 7.8,
+      "ringDots": 14
     },
     {
       "club": "SW",
@@ -420,7 +436,9 @@
       "goodDxYds": 3.2,
       "goodDots": 7,
       "mishitRate": 0.222,
-      "goodWindowYds": 9.5
+      "goodWindowYds": 9.5,
+      "ringWYds": 9.8,
+      "ringDots": 9
     },
     {
       "club": "LW",
@@ -465,7 +483,9 @@
       "goodDxYds": 4.5,
       "goodDots": 6,
       "mishitRate": 0.714,
-      "goodWindowYds": 8.0
+      "goodWindowYds": 8.0,
+      "ringWYds": 7.8,
+      "ringDots": 12
     }
   ],
   "notFitted": {

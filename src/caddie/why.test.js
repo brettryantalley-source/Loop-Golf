@@ -134,7 +134,8 @@ test("recommend(): `why` names the deciding rule and the shot SAFE would have be
   assert.equal(tee.why.rule, "par");
   assert.ok(tee.why.alt && tee.why.alt.club !== tee.safe.club, `without the par ranking: ${tee.why.alt?.club}`);
   const c = village1.green.center;
-  const trees = recommend({ shotNo: 2, ball: { x: c.x + 25, y: c.y - 150 }, lieType: "recovery", par: 4, pinPos: "middle" }, village1, P);
+  // C36 (D117): with the worst 20% of draws dropped, a SW lay-up from 150 (25 right) stays clean; 170 out, 30 right, nothing does
+  const trees = recommend({ shotNo: 2, ball: { x: c.x + 30, y: c.y - 170 }, lieType: "recovery", par: 4, pinPos: "middle" }, village1, P);
   assert.equal(trees.why.rule, "no-hero");
   assert.equal(trees.why.punchOut, true);
   assert.equal(whyLine(trees, { family: familyOf }).text, "Punch out: from the trees, nothing stays clean 9 times in 10.");
