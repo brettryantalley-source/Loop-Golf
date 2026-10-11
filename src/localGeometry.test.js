@@ -276,6 +276,17 @@ test("bradshaw: any two nines in either order read their nine map off the names 
   assert.deepEqual(playingOrder(api, api._play).map((k) => g.holes[k].name).slice(0, 2), ["Blue 1", "Blue 2"]);
 });
 
+test("bradshaw: every Red and White hole sees trees, and no Red or White tee starts in them (D126)", () => {
+  const g = localGeometryFor([bradshaw], "xs7ypdb7").geometry;
+  for (let k = 1; k <= 18; k++) {
+    const { trees } = featuresForHole(g, k);
+    assert.ok(trees.length > 0, `${g.holes[k].name} has trees`);
+    const tee = g.holes[k].line[0];
+    const inTrees = trees.some((f) => pointInRing(tee, f.ring) && !(f.inner || []).some((r) => pointInRing(tee, r)));
+    assert.ok(!inTrees, `${g.holes[k].name}'s tee is clear of the trees`);
+  }
+});
+
 test("bradshaw flies the Sep 2023 leaf-on Esri photo (D125)", () => {
   const img = imageryFor([woodmont, bradshaw], "pr605r02");
   assert.ok(img && img.url.includes("/tile/41468/") && img.tileSize === 256);
