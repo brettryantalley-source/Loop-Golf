@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 Brett's test notes of Oct 10 (C20–C29), and his notes from the first Bradshaw Farm round, Oct 11 (C34–C44; screenshots in `data/raw/2026-10-11/`). Duplicates are merged and anything already shipped is
-dropped. State: **v22.44** (C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 402 tests, decisions D1–D115; the next
-decision is **D116**.
+dropped. State: **v22.45** (C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 407 tests, decisions D1–D116; the next
+decision is **D117**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -18,8 +18,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Next code chat:** the Oct 11 notes, in order: C34 first (elevation per shot, lidar, wind share; C35
-   shipped in v22.44), then C36 (rings), then the map (C37–C42), then C43–C44. Older items wait on Brett (F7 notes → C10, S4 → C12,
+1. **Next code chat:** the Oct 11 notes, in order (C34 and C35 shipped in v22.45 and v22.44): C36 (rings), then the map (C37–C42), then C43–C44. Older items wait on Brett (F7 notes → C10, S4 → C12,
    F9 + Q3 → C13, S1–S3 + Q2 → C14; C33 once chips are logged).
 2. **Next round:** the **F** list.
 
@@ -37,12 +36,18 @@ R2 muted course shapes plus a Shapes toggle (C2) · R4 leaf-off Chicopee imagery
 · R5 measured rough distances where n ≥ 5, shrunk toward the model (C7) · R6 the 41+ ft three-putt
 rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont upload to OSM later,
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
-- **R10.** (Oct 11, waiting on Brett) Green slopes from free USGS 3DEP lidar (1 m elevation; coverage at
-  each club to be checked): Loop draws its own green-reading arrows and replaces the ~90 m Open-Meteo
-  elevation in Plays. A large build; would become its own C item.
+- **R10.** (Oct 11, waiting on Brett) Green slopes from free USGS 3DEP lidar: Loop draws its own
+  green-reading arrows. The elevation half shipped in v22.45 (D116): the five mapped clubs carry a 20 m
+  3DEP grid (`scripts/fetch-3dep.mjs`; 1 m lidar covers all five). Arrows need a finer grid on each
+  green (~2 m). A large build; would become its own C item.
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.44 · Oct 11** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.45 · Oct 11** (once merged).
+- **F28.** Wind and slope (v22.45, D116): the wind on the Plays badge is now two-thirds of the forecast
+  (a 12 mph forecast reads 8). Set the Wind chip when it feels different; the chip counts in full. Each shot
+  now gets its own climb or drop: off Red 2's tee the green's 19-yd climb no longer shortens the drive, and
+  on the five mapped clubs the slope comes from USGS lidar. Note any call that still feels a club off, with
+  the hole and the wind you felt.
 - **F27.** The ring sits on the target (v22.44, D115): into or with the wind, the caddie's yellow target and
   its rings should sit together on every call off the tee and from the fairway. An approach can still show a
   ring short of the pin when no club gets there (from 230 into the wind), and so can a Custom target past the
@@ -139,7 +144,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C34 | Distances run long: a 5-iron from 235 (Bradshaw Red 3) | — | Opus |
 | C36 | Rings: good shots only = within 10 yds of the club's average and its best 65% side to side | — | Opus |
 | C37 | Pan the map with a finger (up / down / left / right) | — | Opus |
 | C38 | Ball at the bottom centre, target up, always (putting from above the hole too) | — | Opus |
@@ -187,24 +191,7 @@ service worker answered font requests with `index.html`); reopen only if it come
 
 ## Build details
 
-### C34, C36–C44. Brett's first Bradshaw round (Oct 11, v22.43; screenshots in `data/raw/2026-10-11/`)
-- **C34.** "The distances still seem really off": on Red 3 the caddie called a 5-iron from 235.
-  **Traced Oct 11** (reproduced with the engine on `bradshaw.json`):
-  - **Elevation is the ball → pin climb, charged to every shot.** Red 2 rises 17 m to the green
-    (USGS 3DEP lidar: tee 275.9 m, flat to 250 yds, green 293.2 m), and the tee shot paid all of it.
-    **Do:** each shot's own landing spot (`context.js` hands the engine the samples in the hole frame;
-    `playsLike` takes the target). Brett's Elevation chip still overrides for every shot.
-  - **Open-Meteo's 90 m elevation** reads up to 6 m off the lidar on Red 2 and 3 (Red 3 at 100 yds:
-    303 vs 297.3). **Do (Brett, Oct 11: "Lidar for 5 clubs"):** bake USGS 3DEP samples (ImageServer
-    `getSamples`, 1 m, batches of points) into the five bundled maps (Woodmont, Chicopee, Riverpines,
-    Hampton, Bradshaw), bump each file's `version`; other courses keep Open-Meteo. R10's elevation half;
-    no green arrows.
-  - **Wind (Brett: "Two-thirds"):** Plays 562 for 479 on Red 2 is mostly wind: Open-Meteo's 12 mph
-    matched Cherokee County airport (10–15 kt from the east, gusting 20–30), but that is open-field wind
-    10 m up and Bradshaw's holes run through trees. **Do:** count two-thirds of the forecast/chip wind
-    (a config knob; uncalibrated).
-  - **Downhill (Brett: "Full, as now"):** Red 3's fairway at 235 is 17 m below the tee (lidar), so a
-    5-iron (207) finishes ~222–226 there; that call stands.
+### C36–C44. Brett's first Bradshaw round (Oct 11, v22.43; screenshots in `data/raw/2026-10-11/`)
 - **C36.** `bradshaw-red1-pw-dispersion.jpg` (PW from 140) and the 4-hybrid oval
   (`bradshaw-red2-4hy-custom-157-wide-oval.jpg`): too wide. Brett: show
   where he might really hit it, without what he'd call mishits — more than ~10 yds short or long of the
@@ -222,8 +209,8 @@ service worker answered font requests with `index.html`); reopen only if it come
 - **C42.** On the Review sheet (past shots), let the drawn map zoom (`bradshaw-red2-review-sheet-question-mark.jpg`:
   the whole hole fits in a small box).
 - **C43.** Scoring a hole from the caddie: pre-fill the score with the shots logged (one tap to keep).
-- **C44.** Show the elevation change from the ball to the target. Plays already includes it, from
-  Open-Meteo's ~90 m grid (R10 would make it 1 m).
+- **C44.** Show the elevation change from the ball to the target. Plays already includes it: since v22.45
+  each shot's own rise (`playsLike` `riseYds`), from the 3DEP grid on the five mapped clubs (D116).
 
 Answered in chat Oct 11: Chip / Pitch / Wedge (inside ~30 yds, Chip rolls more than it flies, Pitch flies
 more than it rolls; Wedge is 30+ yds to a number and teaches that club's distance); the yellow `?` on the
@@ -345,7 +332,7 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D116.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D117.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat

@@ -86,7 +86,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.44 · Oct 11";
+const BUILD = "v22.45 · Oct 11";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -238,10 +238,14 @@ const safeStorage = () => { try { return window.localStorage; } catch (e) { retu
    v22.16.3: a club with a bundled trace (LOCAL_GEOMETRY) never asks Overpass and ignores a cache that
    predates the trace; the entry is stamped with the trace's version, so a newer trace replaces it once. */
 const LOCAL_GEOMETRY = [WOODMONT_GEOMETRY, CHICOPEE_GEOMETRY, RIVERPINES_GEOMETRY, HAMPTON_GEOMETRY, BRADSHAW_GEOMETRY];
+/* v22.45 (C34, D116): a bundled map carries its own USGS 3DEP elevation (scripts/fetch-3dep.mjs). It rides
+   on the geometry in memory and is never written to the cache — it is in the bundle already, and ~4,000
+   samples a club would crowd localStorage. Open-Meteo is asked only for courses without one. */
+const withBundledElevation = (g, local) => (g && local && local.elevation ? { ...g, elevation: local.elevation } : g);
 function useCourseMap(course) {
   const apiId = clubIdOf(course);                     // per club: switching routings never refetches
   setImagery(imageryFor(LOCAL_GEOMETRY, apiId));      // v22.16.8: before any tile is prefetched, probed or drawn
-  const [geometry, setGeometry] = useState(() => (apiId != null ? loadGeometryCache(safeStorage(), apiId) : null));
+  const [geometry, setGeometry] = useState(() => (apiId != null ? withBundledElevation(loadGeometryCache(safeStorage(), apiId), localGeometryFor(LOCAL_GEOMETRY, apiId)) : null));
   const [st, setSt] = useState({ phase: "none", done: 0, total: 0 });
   const [retryTick, setRetryTick] = useState(0);
   const forceRefetch = React.useRef(false);
@@ -256,6 +260,7 @@ function useCourseMap(course) {
     // v22.32 (C6, D103): an empty OSM answer is asked again after a week (the club may be mapped since)
     const staleEmpty = !local && emptyGeometryStale(g, Date.now()) ? g : null;
     if (staleEmpty) g = null;
+    g = withBundledElevation(g, local);
     setGeometry(g);                                   // never show the previous course's holes
     (async () => {
       if (!g) {
@@ -266,12 +271,12 @@ function useCourseMap(course) {
           const parsed = local ? local.geometry : await fetchGeometry(anchor.lat, anchor.lon);
           // v22.38 (D109): the map shows now; the elevation below can take seconds on a weak signal,
           // and a caddie opened meanwhile found no holes and fell back to marking greens
-          if (live) setGeometry(parsed);
+          if (live) setGeometry(withBundledElevation(parsed, local));
           // §6.5 / D23: sample elevation once per course at geometry-fetch time, cached alongside
           // it. Best-effort and silent — offline (or Open-Meteo unreachable) leaves elevation
           // absent and the caddie's elevationDeltaYds falls back to 0 (context.js), never throws.
           let elevation = null;
-          if (typeof fetch !== "undefined") {
+          if (typeof fetch !== "undefined" && !(local && local.elevation)) {
             try {
               const pts = elevationSamplePoints(parsed);
               if (pts.length) {
@@ -281,7 +286,7 @@ function useCourseMap(course) {
             } catch (e2) { /* silent — elevation is a nice-to-have */ }
           }
           saveGeometryCache(safeStorage(), apiId, parsed, elevation, local ? local.version : null, Date.now());
-          g = loadGeometryCache(safeStorage(), apiId) || parsed;
+          g = withBundledElevation(loadGeometryCache(safeStorage(), apiId) || parsed, local);
         } catch (e) {
           // an expired empty answer that could not be asked again still says "no holes" (marked greens)
           if (live && staleEmpty) { setGeometry(staleEmpty); setSt({ phase: "no-holes", done: 0, total: 18 }); return; }
@@ -2006,7 +2011,8 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     }
   }, [profile, cs.phase, cs.yards, cs.ball, cs.chips, cs.shotNo, cs.trigger, cs.windOverride, cs.conditionsOverride, pinSet, built, geometry, weather, overrides, n, h.par, roundId, shotsRev]);
   // The saved snapshot (§9.8) is the ShotContext only: §5.5 nudges are recomputed, never stored.
-  if (contextRef) contextRef.current = engine?.ctx ? (({ adjust, nudges, flags, ...rest }) => rest)(engine.ctx) : null;
+  // v22.45 (D116): nor the elevation points the engine prices each landing spot with (hundreds per hole)
+  if (contextRef) contextRef.current = engine?.ctx ? (({ adjust, nudges, flags, elevPts, ...rest }) => rest)(engine.ctx) : null;
 
   /* map mode (§4.3, §8; v22.11 marked green) */
   const sat = useSatellite(mapped ? geometry : null, mapped ? key : null,

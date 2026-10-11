@@ -41,6 +41,10 @@ export function normalizeContext(ctx, hole) {
     pinPos: ctx.pinPos || "middle",
     wind: ctx.wind && ctx.wind.speedMph ? { speedMph: ctx.wind.speedMph, fromDeg: ctx.wind.fromDeg ?? 0 } : null,
     elevationDeltaYds: ctx.elevationDeltaYds ?? 0,
+    // v22.45 (C34, D116): elevation samples in the hole frame ({ x, y, z } yards, context.js
+    // elevationInFrame); with them each shot's rise is ball → its own landing spot
+    elevPts: Array.isArray(ctx.elevPts) && ctx.elevPts.length ? ctx.elevPts : null,
+    elevBallZ: Array.isArray(ctx.elevPts) && ctx.elevPts.length && ctx.ball ? elevAt(ctx.elevPts, ctx.ball) : null,
     tempF: Number.isFinite(ctx.tempF) ? ctx.tempF : null,   // §3.3 — no adjustment when unknown
     elevFt: Number.isFinite(ctx.elevFt) ? ctx.elevFt : null, // ball altitude (ft); null → no altitude term
     // §5.5 within-round corrections, produced by learning.js (S5) and applied here, never stored:
@@ -112,15 +116,46 @@ function altEffect(rawYds, elevFt, cfg) {
   return -rawYds * (cfg.ALT_PCT_PER_1000FT ?? 0) * (elevFt - (cfg.REF_ELEV_FT ?? 0)) / 1000 || 0;   // no −0
 }
 
+/** Elevation (yards) at hole-frame point `p`: inverse-distance (power 2) over the 4 nearest of `pts`. */
+export function elevAt(pts, p) {
+  let best = [];
+  for (const q of pts) {
+    const d = Math.hypot(q.x - p.x, q.y - p.y);
+    if (best.length < 4 || d < best[best.length - 1].d) {
+      best.push({ z: q.z, d });
+      best.sort((a, b) => a.d - b.d);
+      if (best.length > 4) best.pop();
+    }
+  }
+  if (!best.length) return null;
+  if (best[0].d < 0.5) return best[0].z;
+  let w = 0, v = 0;
+  for (const { z, d } of best) { const wi = 1 / (d * d); w += wi; v += wi * z; }
+  return v / w;
+}
+
+/**
+ * The rise (yards, + uphill) from the ball to `target`. v22.45 (C34, D116): from the elevation samples
+ * when the context has them — each shot's own landing spot; before, every shot took the ball → pin
+ * rise (`elevationDeltaYds`), which stays the answer with no samples, no target, or Brett's chip.
+ */
+function riseTo(ctx, target) {
+  if (!ctx.elevPts || !target || !ctx.ball) return ctx.elevationDeltaYds || 0;
+  const a = Number.isFinite(ctx.elevBallZ) ? ctx.elevBallZ : elevAt(ctx.elevPts, ctx.ball), b = elevAt(ctx.elevPts, target);
+  return a == null || b == null ? ctx.elevationDeltaYds || 0 : b - a;
+}
+
 /**
  * Plays-like for a shot of `rawYds` in direction `bearingDeg` (§3.3, minus lie which lives in the
  * entry). `family` scales the wind by loft; omitted (the headline number) → loft multiplier 1.
+ * `target` (v22.45) = where the shot is aimed, for its own rise; omitted → the pin's.
  */
-export function playsLike(rawYds, bearingDeg, ctx, cfg, family) {
+export function playsLike(rawYds, bearingDeg, ctx, cfg, family, target) {
   const w = windEffect(ctx.wind, bearingDeg, rawYds, cfg, family);
   const tempYds = tempEffect(rawYds, ctx.tempF, cfg);
   const altYds = altEffect(rawYds, ctx.elevFt, cfg);
-  return { yds: rawYds + (ctx.elevationDeltaYds || 0) * cfg.ELEV_FACTOR + w.alongYds + tempYds + altYds, wind: w, tempYds, altYds };
+  const riseYds = riseTo(ctx, target);
+  return { yds: rawYds + riseYds * cfg.ELEV_FACTOR + w.alongYds + tempYds + altYds, wind: w, tempYds, altYds, riseYds };
 }
 
 /* ---------- candidates (§3.4, §3.7) ---------- */
@@ -134,7 +169,7 @@ function sameTarget(a, b, tol = 3) { return dist(a, b) <= tol; }
 function landingModel(entry, ball, target, ctx, cfg) {
   const b = bearing(ball, target);
   const raw = dist(ball, target);
-  const pl = playsLike(raw, b, ctx, cfg, entry.family);
+  const pl = playsLike(raw, b, ctx, cfg, entry.family, target);
   const q = cfg.LIE_QUALITY[ctx.lieQuality] || cfg.LIE_QUALITY.standard;
   const nudgeDist = ctx.adjust?.distYds?.[entry.family] || 0;
   const mean = entry.carry + entry.biasDist + q.distYds - (pl.yds - raw) - nudgeDist;
@@ -628,7 +663,7 @@ export function recommend(rawCtx, hole, P) {
   const ctx = normalizeContext(rawCtx, hole);
   if (classify(hole, ctx.ball) === "green") return null;
   const g = greenDistances(hole, ctx.ball, ctx.pinPos);
-  const headline = playsLike(g.pin, bearing(ctx.ball, hole.green.center), ctx, cfg);
+  const headline = playsLike(g.pin, bearing(ctx.ball, hole.green.center), ctx, cfg, undefined, pinPoint(hole, ctx.ball, ctx.pinPos));
   const cands = generateCandidates(ctx, hole, P);
   const context = {
     hole: ctx.hole, par: ctx.par, shotNo: ctx.shotNo,

@@ -735,7 +735,7 @@ test("wind direction: a wind FROM the tee → green bearing is fromDeg 0 (into t
   near(windToHoleFrame((BRG + 180) % 360, BRG), 180, 1e-9);
   near(windToHoleFrame(10, 350), 20, 1e-9);
   const ctx = assembleShotContext({ round: { hole: 1, par: 4, shotNo: 1 }, hole: H1, fix: at(0, 0), weather: { speedMph: 12, dirDeg: BRG, rainMm24h: 0, asOf: NOW } });
-  assert.deepEqual(ctx.wind, { speedMph: 12, fromDeg: 0 });
+  assert.deepEqual(ctx.wind, { speedMph: 8, fromDeg: 0 }, "v22.45 (D116): two-thirds of the forecast's 12 mph");
   const side = assembleShotContext({ round: { hole: 1, shotNo: 1 }, hole: H1, weather: { speedMph: 8, dirDeg: (BRG + 90) % 360 } });
   near(side.wind.fromDeg, 90, 1e-9);
   // wind chip, relative to the shot line

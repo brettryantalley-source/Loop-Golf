@@ -15,6 +15,28 @@ import { dist, ringDistance } from "./course.js";
 import { conditionsFrom, elevationDeltaYds as elevDelta, interpolateElevation, weatherTempF } from "./sensors.js";
 
 const FEET_PER_METER = 3.28084;
+const YARDS_PER_METER = 1.0936133;
+
+/**
+ * v22.45 (C34, D116): the elevation samples near this hole, in its frame — { x, y, z } yards — so the
+ * engine prices each landing spot's own rise or drop (before, every shot paid the ball → pin climb:
+ * Bradshaw Red 2's 19 yds, all of it in the last 200, charged to the tee shot). Kept to the hole's
+ * area (its line, green and the ball, ± 120 yds across and 80 along). null when none fall there.
+ */
+export function elevationInFrame(samples, F, hole, ball) {
+  const list = (Array.isArray(samples) ? samples : samples?.samples || []).filter((s) => Number.isFinite(s?.elevM) && Number.isFinite(s?.lat));
+  if (!list.length || !F) return null;
+  const pts = [...(hole.line || []), hole.tee, hole.green?.center, ball].filter((p) => p && Number.isFinite(p.x));
+  if (!pts.length) return null;
+  const minX = Math.min(...pts.map((p) => p.x)) - 120, maxX = Math.max(...pts.map((p) => p.x)) + 120;
+  const minY = Math.min(...pts.map((p) => p.y)) - 80, maxY = Math.max(...pts.map((p) => p.y)) + 80;
+  const out = [];
+  for (const s of list) {
+    const p = F.toFrame({ lat: s.lat, lon: s.lon ?? s.lng });
+    if (p && p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY) out.push({ x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10, z: Math.round(s.elevM * YARDS_PER_METER * 10) / 10 });
+  }
+  return out.length ? out : null;
+}
 
 const norm360 = (d) => ((d % 360) + 360) % 360;
 const DEG = Math.PI / 180;
@@ -75,7 +97,7 @@ export function chipWind(chip, shotBearingDeg) {
  *   now }      optional clock (ms / Date / ISO) for the time-of-day conditions rules; defaults to
  *              the weather's as-of time, so this module still never reads a clock itself
  * → { hole, par, shotNo, ball, lieType, lieQuality, lieConfidence, conditions, pinPos, wind,
- *     elevationDeltaYds, tempF, elevFt, meta }. `meta` is for the UI (distances, sources, as-of
+ *     elevationDeltaYds, elevPts, tempF, elevFt, meta }. `meta` is for the UI (distances, sources, as-of
  *     times); the engine ignores it. elevFt = the ball's altitude in feet from the elevation
  *     samples (integration item 5), null without samples.
  * ball is null when there is no fix and it is not the first shot — the caller shows the no-GPS state.
@@ -140,17 +162,25 @@ export function assembleShotContext(inputs = {}) {
   let wind = chipWind(chips.wind ?? round.windOverride, shotBearing);
   if (wind !== undefined) sources.wind = "chip";
   else if (weather && Number.isFinite(weather.speedMph) && Number.isFinite(weather.dirDeg)) {
-    wind = weather.speedMph > 0 ? { speedMph: weather.speedMph, fromDeg: windToHoleFrame(weather.dirDeg, hole.bearingDeg ?? 0) } : null;
+    // v22.45 (C34, D116): a share of the forecast. Open-Meteo's is open-field wind 10 m up (it matched
+    // the airport's on Oct 11); holes cut through trees get less. Brett's Wind chip is his own reading
+    // and counts in full.
+    const share = config.FORECAST_WIND_SHARE ?? DEFAULT_CONFIG.FORECAST_WIND_SHARE;
+    const speedMph = Math.round(weather.speedMph * share * 10) / 10;
+    wind = speedMph > 0 ? { speedMph, fromDeg: windToHoleFrame(weather.dirDeg, hole.bearingDeg ?? 0) } : null;
     sources.wind = "weather";
   } else { wind = null; sources.wind = "none"; }
 
-  /* elevation: chip, else sampled target − ball */
-  let elevationDeltaYds = 0;
+  /* elevation: chip, else sampled target − ball. elevationDeltaYds is the pin's (the chip, Plays);
+     elevPts lets the engine take each shot's own landing spot (v22.45, D116). Brett's chip, when set,
+     is the rise for every shot. */
+  let elevationDeltaYds = 0, elevPts = null;
   if (Number.isFinite(chips.elevation)) { elevationDeltaYds = chips.elevation; sources.elevation = "chip"; }
   else if (elevation && ball && F) {
     const d = elevDelta(elevation, F.toLatLng(ball), F.toLatLng(target));
     elevationDeltaYds = d ?? 0;
     sources.elevation = d == null ? "none" : "sampled";
+    if (d != null) elevPts = elevationInFrame(elevation, F, hole, ball);
   } else sources.elevation = "none";
 
   /* altitude of the ball (item 5): interpolated from the samples, metres → feet; null without them */
@@ -167,7 +197,7 @@ export function assembleShotContext(inputs = {}) {
 
   return {
     hole: holeKey, par: round.par ?? hole.par, shotNo,
-    ball, lieType, lieQuality, lieConfidence, conditions, pinPos, wind, elevationDeltaYds, tempF, elevFt,
+    ball, lieType, lieQuality, lieConfidence, conditions, pinPos, wind, elevationDeltaYds, elevPts, tempF, elevFt,
     meta: {
       nine: round.nine ?? null, trigger, lie, penalty, sources, distances: dists,
       ballGps: fixLL ? { lat: fixLL.lat, lng: fixLL.lon, accuracyM: fix.accuracyM ?? null } : null,
