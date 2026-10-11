@@ -9,8 +9,8 @@ const SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './icon-loop-512.png',
-  './apple-touch-icon-180.png',
+  './icon-loop-v2-512.png',
+  './apple-touch-icon-v2-180.png',
   // MapLibre GL 5.24 (v22 caddie map) — loaded on first use of the caddie screen.
   './vendor/maplibre-gl.js',
   './vendor/maplibre-gl.css',
