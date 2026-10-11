@@ -11,7 +11,7 @@ import { dirname, join } from "node:path";
 
 import {
   K80, thetaDeg, ellipseScreen, supportPoints, pointInEllipse, ellipsePolygon, ellipseBbox, bboxYds,
-  ellipseFromEntry, withEllipses, ellipseInFrame, fitBounds, cameraPoints, cameraFor, linearProjector,
+  ellipseFromEntry, patternRingFromEntry, withEllipses, ellipseInFrame, fitBounds, cameraPoints, cameraFor, linearProjector,
   zoomForPxPerYd, cameraKey, mapModeFor, NOTICE_NO_SATELLITE, overlayModel, rayEnd, targetMarkerHit, TARGET_MARKER_R, fallbackMapModel, tagsOf, pxPerYdAt,
   NOTICE_NO_SATELLITE_MARKED, NOTICE_MARK_GREEN, markCamera, pinViewCamera, pinViewKey, pinMarkerHit, visibleRegion, satelliteFailure, satelliteCheckLine } from "./overlay.js";
 import { ellipseSampler, ELL80_K, recommend } from "./engine.js";
@@ -270,7 +270,7 @@ function fullModel(palette, extra = {}) {
   const hole = buildHole(hampton, 18, { par: 4 });
   const ball = { x: 2, y: 150 };
   const pin = distances(hole, ball, "back").pinPoint;
-  const safe = { target: { x: 0, y: 300 }, kind: "layup", ell: ellipseFromEntry(resolveEntry(P, "9i", "full", "fairway")) };
+  const safe = { target: { x: 0, y: 300 }, kind: "layup", ell: patternRingFromEntry(resolveEntry(P, "9i", "full", "fairway")) };
   const aggressive = { target: { x: pin.x, y: pin.y - 4 }, kind: "approach", ell: ellipseFromEntry(resolveEntry(P, "4Hy", "full", "fairway")) };
   const vp = { width: 375, height: 812 };
   const cam = cameraFor(fitBounds(cameraPoints({ hole, ball, pin, options: { safe, aggressive } })), vp, { top: 96, right: 106, bottom: 128 });
@@ -297,12 +297,19 @@ test("overlay draw order (§4.2) and palettes (§4.3)", () => {
   const parts = model.map((n) => n.attrs?.["data-part"] ?? n.tag);
   assert.deepEqual(parts, ["defs", "pin", "cur", "ball"]);
   const cur = model.find((n) => n.attrs?.["data-part"] === "cur");
-  assert.deepEqual(cur.children.map((n) => n.attrs["data-part"]), ["previous", "other", "aim-line", "corridor", "leave", "ellipse", "ellipse-inner", "hatch", "target"]);
-  // v22.29 (C21): with dots, they sit on the ellipse, under the hatch and the target ring
-  const withDots = fullModel("satellite", { dots: [{ x: 0, y: 300 }, { x: 5, y: 305 }] }).model.find((n) => n.attrs?.["data-part"] === "cur");
+  // C45 (D126): Shot Pattern's 100% ring under its 70% ring
+  assert.deepEqual(cur.children.map((n) => n.attrs["data-part"]), ["previous", "other", "aim-line", "corridor", "leave", "ellipse-outer", "ellipse", "hatch", "target"]);
+  const outer = cur.children.find((n) => n.attrs["data-part"] === "ellipse-outer").attrs, ring = cur.children.find((n) => n.attrs["data-part"] === "ellipse").attrs;
+  assert.ok(outer.strokeDasharray && outer.opacity < 1 && outer.fill === "none", "the 100% ring: faint and dotted");
+  assert.ok(!ring.strokeDasharray && ring.strokeWidth > outer.strokeWidth, "the 70% ring: solid and heavier");
+  // v22.29 (C21): with dots, they sit on the ellipse, under the hatch and the target ring; C45: coloured by lie
+  const withDots = fullModel("satellite", { dots: [{ x: 0, y: 300, tone: "fairway" }, { x: 5, y: 305, tone: "rough" }, { x: 9, y: 301, tone: "trouble" }, { x: 2, y: 299, tone: null }] })
+    .model.find((n) => n.attrs?.["data-part"] === "cur");
   {
     const parts = withDots.children.map((n) => n.attrs["data-part"]);
-    assert.ok(parts.indexOf("dots") > parts.indexOf("ellipse-inner") && parts.indexOf("dots") < parts.indexOf("hatch"), parts.join(","));
+    assert.ok(parts.indexOf("dots") > parts.indexOf("ellipse") && parts.indexOf("dots") < parts.indexOf("hatch"), parts.join(","));
+    const fills = withDots.children.find((n) => n.attrs["data-part"] === "dots").children.map((c) => c.attrs.fill);
+    assert.deepEqual(fills, ["#4CC27A", "#F2C94C", "#E5484D", "#F4F0E4"], "green / yellow / red, and the plain line colour with no lie");
   }
   assert.ok(model.find((n) => n.attrs?.["data-part"] === "ball").children.some((c) => c.attrs["data-part"] === "accuracy"), "accuracy ring > 8 m");
   const json = JSON.stringify(model);

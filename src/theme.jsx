@@ -20,6 +20,9 @@ export const T = {
   fillHalf:  "#E6E4DF",
   teeBlue:   "#4F6E8F",   // v22.8: blue tee markers
   teeRed:    "#A3352B",   // v22.8: red/burgundy tee markers — same value as `double` (the "lost" red); kept as its own name for callers that mean "tee colour" rather than "lost"
+  dotFairway: "#4CC27A",  // v22.55 (D126): a shot dot on the map that finishes on the fairway or green
+  dotRough:   "#F2C94C",  // … in the rough (the yellow above)
+  dotTrouble: "#E5484D",  // … OB, water, a bunker or the trees (brighter than `double` so it reads on satellite)
 };
 
 /* Tee marker tints — muted brand, not literal. The label carries the meaning.

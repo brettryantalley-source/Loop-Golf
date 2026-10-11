@@ -25,7 +25,7 @@ import { loadProfile, resolveEntry, shortBandFor } from "./caddie/profile.js";
 import { MapLayer, useSatellite, prefetchTiles, satelliteCheck, setImagery, TILE_PREFETCH_ENABLED, renderNodes } from "./caddie/mapLayer.jsx";
 /* Caddie (S3b, v22): the engine, its inputs and the screen's state + render model. */
 import { assembleShotContext, frameBearing } from "./caddie/context.js";
-import { recommend, windEffect, priceTarget, landingDots, aimWarning, riseToTarget } from "./caddie/engine.js";
+import { recommend, windEffect, priceTarget, aimWarning, riseToTarget } from "./caddie/engine.js";
 import { classify } from "./caddie/course.js";
 import { ownLine, aimWarningText, shortGameLine } from "./caddie/reasons.js";
 import { fetchWeather, weatherRefreshDue, weatherTempF } from "./caddie/sensors.js";
@@ -37,7 +37,7 @@ import {
 } from "./caddie/shotlog.js";
 /* v22.15 shot log v2: the hole's story at the score (docs/SPEC-shotlog-v2.md §4, §5). */
 import { holeReview, reviewNeeded, splitHole, placeShot, recomputeChain, setShotIntent, lineFromTap, deleteStroke, renumber, inferredPutts, reviewAll } from "./caddie/review.js";
-import { satelliteCheckLine, fallbackMapModel, fitBounds, cameraFor, linearProjector } from "./caddie/overlay.js";
+import { satelliteCheckLine, fallbackMapModel, fitBounds, cameraFor, linearProjector, patternDots } from "./caddie/overlay.js";
 import { fetchElevationSamples, elevationSamplePoints } from "./caddie/sensors.js";
 import { DEFAULT_CONFIG, mergeConfig } from "./caddie/config.js";
 /* v22.17: the breadcrumb trail's stops, the round's notes, the tee-shot grade (pure models; storage injected). */
@@ -87,7 +87,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.54 · Oct 11";
+const BUILD = "v22.55 · Oct 11";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -2266,12 +2266,14 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   // v22.37 (C24, D108): the start line allows for the shape on screen (his usual one unless he picked another)
   const activeCurve = movedOptions?.[optKey] ? (intentNow(movedOptions[optKey]).curveYds || 0) : 0;
   const drawnOptions = activeCurve ? { ...movedOptions, [optKey]: { ...movedOptions[optKey], curveYds: activeCurve } } : movedOptions;
-  // v22.29 (C21, D100): the dots inside the ring for the option drawn (its own target when moved)
+  // v22.29 (C21, D100): the dots inside the ring for the option drawn (its own target when moved).
+  // C45 (v22.55, D126): his real Shot Pattern shots, filled to 40, coloured by where they finish —
+  // no colours in marked-green mode, where the hole is a synthetic one with no lies
   const dotsOpt = drawnOptions?.[optKey] || null;
   const ringDots = useMemo(() => {
-    if (!dotsOpt || !engine?.ctx || !built || !profile || pinView) return [];
-    try { return landingDots(engine.ctx, built, profile, dotsOpt); } catch (e) { return []; }
-  }, [engine, built, profile, pinView, dotsOpt?.club, dotsOpt?.swingType, dotsOpt?.kind, dotsOpt?.target?.x, dotsOpt?.target?.y]);
+    if (!dotsOpt?.ell || !engine?.ctx?.ball || !built || pinView) return [];
+    try { return patternDots(dotsOpt, engine.ctx.ball, noGeo ? null : built, { n: config.RING_DOTS, seed: config.SEED }); } catch (e) { return []; }
+  }, [engine, built, noGeo, pinView, config, dotsOpt?.club, dotsOpt?.swingType, dotsOpt?.ell, dotsOpt?.target?.x, dotsOpt?.target?.y]);
   // v22.53 (C44, D124): the climb or drop from the ball to the option drawn (its own target when moved)
   const riseLine = useMemo(() => {
     if (!dotsOpt?.target || !engine?.ctx || !built || pinView) return null;

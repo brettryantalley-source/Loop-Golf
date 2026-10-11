@@ -26,6 +26,9 @@ const SCREENS_REL = `data/extracted/${BATCH}-screens.json`;
 const ELL80_REL = `data/extracted/${BATCH}-ell80.json`;
 // C22 (D113): the Oct 10 tee rings (Driver, 2-iron, 2-hybrid, 4-hybrid) and the 2-hybrid's fairway still
 const ELL80_TEE_REL = "data/extracted/2026-10-10-ell80.json";
+// C45 (D126): what the map draws — Shot Pattern's 70% ring, its dashed 100% ring and every shot dot
+// (scripts/read-pattern.py; the Oct 11 70% tee screenshots, the ell80 stills for the rest)
+const PATTERN_REL = "data/extracted/2026-10-11-pattern.json";
 const REPORT_PATH = path.join(ROOT, REPORT_REL);
 const SCREENS_PATH = path.join(ROOT, SCREENS_REL);
 const ELL80_PATH = path.join(ROOT, ELL80_REL);
@@ -141,6 +144,7 @@ const reportText = fs.readFileSync(REPORT_PATH, "utf8");
 const screensDoc = JSON.parse(fs.readFileSync(SCREENS_PATH, "utf8"));
 const ell80Doc = JSON.parse(fs.readFileSync(ELL80_PATH, "utf8"));
 const ell80TeeDoc = JSON.parse(fs.readFileSync(path.join(ROOT, ELL80_TEE_REL), "utf8"));
+const patternDoc = JSON.parse(fs.readFileSync(path.join(ROOT, PATTERN_REL), "utf8"));
 
 // Transcribed values are keyed by meaning (approach.clubSheets.fairway.5i, putting.direction.4-6 …),
 // never by screen number; the file says which recording and frames each block was read from.
@@ -729,6 +733,22 @@ for (const key of Object.keys(ell80ByClubLie)) {
   const tee = ell80ByClubLie[`${club}|tee`];
   if (lie === "fairway" && (ell80ByClubLie[key].goodDots ?? 0) < MIN_SIGMA_N && (tee?.goodDots ?? 0) >= MIN_SIGMA_N) delete ell80ByClubLie[key];
 }
+// C45 (v22.55, D126; Brett Oct 11): the map draws Shot Pattern's own rings — the 70% ring solid, the
+// dashed one that holds every shot faint and dotted — and his real shots as dots. DISPLAY ONLY: the
+// engine still prices from the rings above. Read by scripts/read-pattern.py; SP frame, yards from the "+".
+const ringOf = (r) => ({ wYds: r.wYds, hYds: r.hYds, tiltDeg: r.tiltDeg, dxYds: r.dxYds, dyYds: r.dyYds });
+for (const p of patternDoc.entries) {
+  const e = ell80ByClubLie[`${p.club}|${p.lie}`];
+  if (!e) continue;
+  e.pattern = {
+    ring70: ringOf(p.ring70),
+    ring100: ringOf(p.ring100),
+    dots: p.dots,
+    n: p.n ?? p.dots.length,
+    printedCoverage: p.coverage,
+    capturedAt: p.frame.includes("2026-10-11") ? patternDoc.batch : p.capturedAt,
+  };
+}
 function ell80For(id, lie) {
   return ell80ByClubLie[`${id}|${lie}`] ?? null;
 }
@@ -1177,6 +1197,7 @@ const sources = {
       lies: ell80Doc.resolvedFilters.lies,
       capturedAt: ell80Doc.batch,
     },
+    pattern: { file: PATTERN_REL, capturedAt: patternDoc.batch },
   },
   launchMonitor: { date: null, notes: "none — carries derived from totals (spec §3.3)" },
   tangent: { role: "historical baseline only", used: false },
