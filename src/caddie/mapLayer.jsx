@@ -307,6 +307,7 @@ const r1 = (n) => Math.round(n * 10) / 10;
  *                 Locating and Yards entered keep the last camera with no ball drawn, §8). Default:
  *                 ball / options.
  *   attributionBottom  px from the bottom of the map to the attribution (default insets.bottom − 10 = 6 above the bar)
+ *   teeColors     v22.50 (C41): a colour per hole.tees box (theme teeTintFor value, or null) — the tee it most likely is
  *
  * v22.11:
  *   markAt        {lat, lon} — marked-green mode before the green is marked (hole must be null):
@@ -341,7 +342,7 @@ export function MapLayer({
   previousShots = [], insets = {}, fallback = false, onPinTap, onMapTap, onSatelliteFail, recomputing = false, attributionBottom,
   fitBall, fitOptions, markAt = null, onMarkGreen, onRemark, pinView = false, onPinDrag, onPinDrop,
   intentMarker = null, startLineDeg = null, onTargetDrag, onTargetDrop, lineMode = false, onLineTap, onFakeTap = null, fakeAt = null, testBorder = false,
-  labels = [], trail = [], stops = [], onStopTap = null, dots = [],
+  labels = [], trail = [], stops = [], onStopTap = null, dots = [], teeColors = null,
 }) {
   const camBall = fitBall !== undefined ? fitBall : ball;
   const camOptions = fitOptions !== undefined ? fitOptions : options;
@@ -521,8 +522,8 @@ export function MapLayer({
     intent: inPinView || markMode ? null : { marker: markerDrawn, lineDeg: startLineDeg, dragging: !!tdrag },
     dots: inPinView || markMode ? [] : dots,
   }) : [];
-  const base = hole && drawn && project ? fallbackMapModel({ hole, project }) : [];
-  const shapes = hole && satellite && shapesOn && project && !markMode ? satShapesModel({ hole, project }) : [];
+  const base = hole && drawn && project ? fallbackMapModel({ hole, project, teeColors }) : [];
+  const shapes = hole && satellite && shapesOn && project && !markMode ? satShapesModel({ hole, project, teeColors }) : [];
 
   /* ---------- pointer input: tap, long-press (re-mark), press-hold-drag (pin view), one-finger pan ---------- */
   const TAP_SLOP_PX = 8, HOLD_MS = 300, LONG_MS = 600;

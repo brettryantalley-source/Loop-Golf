@@ -10,9 +10,15 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 419 tests (v22.49); must be green
+npm install && npm test    # 423 tests (v22.50); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.50 (Oct 11)
+
+Tee boxes in their tee's colour (C41, D121). Setup stores every tee's yardages on the course (`teeCard`); the
+caddie measures each tee box to the green along the hole's line and tints it the nearest card tee within 20 yds
+(`src/caddie/teeboxes.js`). On Bradshaw every box on the tee end matched within a few yards. 423 tests.
 
 ## v22.49 (Oct 11)
 

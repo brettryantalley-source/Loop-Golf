@@ -837,7 +837,7 @@ const FB = { fillWon: "#DCEBDC", fillHalf: "#E6E4DF", hair: "#A9C7B4", muted: "#
  * trees (muted @ 35%) · fairways + nearby fairways + tees (fillWon) · green (fillWon) ·
  * water (hair @ 60%) · bunkers (fillHalf); every polygon with a 1 px ink outline. No text.
  */
-export function fallbackMapModel({ hole, project }) {
+export function fallbackMapModel({ hole, project, teeColors = null }) {
   if (!hole) return [];
   // v22.11: a marked green's synthetic hole has no real fairway to draw — only the green Brett
   // marked. Painting the 40-yd engine corridor would pass it off as course data.
@@ -854,7 +854,7 @@ export function fallbackMapModel({ hole, project }) {
     ...hz.filter((h) => h.type === "trees").map((h) => poly(h.ring, FB.muted, { fillOpacity: 0.35 })),
     ...(hole.nearby?.fairways || []).map((r) => poly(r, FB.fillWon)),
     ...(hole.fairways || []).map((r) => poly(r, FB.fillWon)),
-    ...(hole.tees || []).map((r) => poly(r, FB.fillWon)),
+    ...(hole.tees || []).map((r, i) => poly(r, teeFill(teeColors?.[i], 0.85) || FB.fillWon)),   // v22.50 (C41)
     poly(hole.green?.ring, FB.fillWon),
     ...hz.filter((h) => h.type === "water").map((h) => poly(h.ring, FB.hair, { fillOpacity: 0.6 })),
     ...hz.filter((h) => h.type === "sand").map((h) => poly(h.ring, FB.fillHalf)),
@@ -876,11 +876,21 @@ export const SHAPE_STYLE = Object.freeze({
 });
 
 /**
+ * v22.50 (C41, D121): a tee box's fill in its tee's colour. `color` is a CSS hex (#RRGGBB) or
+ * "PAPER" (the white tee, theme.jsx teeTintFor); anything else → null (the box keeps its plain tint).
+ */
+export function teeFill(color, alpha) {
+  if (color === "PAPER") return `rgba(244,240,228,${alpha})`;
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(color || ""));
+  return m ? `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${alpha})` : null;
+}
+
+/**
  * The hole's shapes as tinted layers for the satellite map (R2: muted, a Shapes toggle). Order:
  * tree edges, fairways (this hole's and the nearby ones), tees, green, water, sand. Nothing on a
  * marked green (no course data to show). Shapes only (T37).
  */
-export function satShapesModel({ hole, project }) {
+export function satShapesModel({ hole, project, teeColors = null }) {
   if (!hole || hole.synthetic || !project) return [];
   const poly = (ring, st, part) => {
     const pts = (ring || []).map((q) => project(Array.isArray(q) ? { x: q[0], y: q[1] } : q));
@@ -891,7 +901,8 @@ export function satShapesModel({ hole, project }) {
     ...hz.filter((h) => h.type === "trees").map((h) => poly(h.ring, SHAPE_STYLE.trees, "shape-trees")),
     ...(hole.nearby?.fairways || []).map((r) => poly(r, SHAPE_STYLE.fairway, "shape-fairway")),
     ...(hole.fairways || []).map((r) => poly(r, SHAPE_STYLE.fairway, "shape-fairway")),
-    ...(hole.tees || []).map((r) => poly(r, SHAPE_STYLE.tee, "shape-tee")),
+    // v22.50 (C41): a box matched to a card tee is filled in that tee's colour
+    ...(hole.tees || []).map((r, i) => { const f = teeFill(teeColors?.[i], 0.7); return poly(r, f ? { ...SHAPE_STYLE.tee, fill: f } : SHAPE_STYLE.tee, "shape-tee"); }),
     poly(hole.green?.ring, SHAPE_STYLE.green, "shape-green"),
     ...hz.filter((h) => h.type === "water").map((h) => poly(h.ring, SHAPE_STYLE.water, "shape-water")),
     ...hz.filter((h) => h.type === "sand").map((h) => poly(h.ring, SHAPE_STYLE.sand, "shape-sand")),
