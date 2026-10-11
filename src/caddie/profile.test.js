@@ -37,6 +37,8 @@ function loggedShot({ round = "r1", club = "7i", lie = "fairway", intended = 170
   return closeOutShot(rec, { endFrame: { x: lat, y: intended + dist }, endLie: "fairway" });
 }
 
+// C45 (D127): `pattern` (the rings and dots the map draws, never read by the engine) is not picked here;
+// pattern.test.js checks it
 const pick = (e) => e && ({ carry: e.carry, total: e.total, roll: e.roll, distSd: e.distSd, lateralSd: e.lateralSd, lateralSdDeg: e.lateralSdDeg,
   biasDist: e.biasDist, biasLat: e.biasLat, sourceLie: e.sourceLie, ell80: e.ell80, provenance: e.provenance });
 

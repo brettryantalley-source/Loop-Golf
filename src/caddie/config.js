@@ -122,26 +122,25 @@ export const DEFAULT_CONFIG = Object.freeze({
      Each candidate's draws are simulated in full (good ring, mishits, short tail, big misses), then
      this share — the draws that finish farthest from where the shot finishes on average (the median
      draw, which is the target on almost every call, D115) — is dropped before anything is priced.
-     Club, target, par chance, trouble, the aim warning and the dots read the rest. 0 = price them all. */
+     Club, target, par chance, trouble and the aim warning read the rest (the map's dots are his real
+     shots since C45, D127). 0 = price them all. */
   DROP_WORST_PCT: 0.20,
-  /* The map's two rings (C17, D92): the outer 80% and an inner ring that holds the best RING_INNER_PCT
-     of the shots. A 2-D normal's p-contour sits at √(−2 ln(1−p)) σ, so the inner ring is
-     √(−2 ln 0.7) / √(−2 ln 0.2) ≈ 0.471 of the outer, computed in overlay.js. */
+  /* The inner ring (C17, D92): the share of the shots it held — √(−2 ln 0.7) / √(−2 ln 0.2) ≈ 0.471 of the
+     80% ring, computed in overlay.js. C45 (v22.56, D127): no longer drawn; the map draws Shot Pattern's
+     70% ring and its 100% ring (overlay.js patternRingFromEntry), which have no tunables — they are
+     read off his screenshots (scripts/read-pattern.py). */
   RING_INNER_PCT: 0.30,
-  /* C36 (v22.46, D117; Brett Oct 11): the drawn ring holds his good shots only — within RING_GOOD_YDS
-     of the club's average finish (so the ring is twice that deep) and inside his best RING_LAT_PCT side
-     to side, square to the shot line. The width is measured from Shot Pattern's dots (`ell80.ringWYds`,
-     scripts/fit-ell80.py); a ring with none takes the 65% band of its lateral spread. DISPLAY ONLY: the
-     engine draws from its own rings and drops its worst DROP_WORST_PCT. */
-  RING_GOOD_YDS: 10,
-  RING_LAT_PCT: 0.65,
   /* A club with no fitted ring is drawn from its σs; its width is capped here so the ring stays
      readable. DISPLAY ONLY — the simulation still uses the uncapped σs. */
   RING_DRAW_CAP_YDS: 70,
-  /* v22.29 (C21, D100): dots inside the ring — this many of the simulation's own draws (the first ones
-     of the fixed seed, so they hold still until the shot moves). C36 (D117): the dots are the draws the
-     caddie keeps, so it simulates RING_DOTS / (1 − DROP_WORST_PCT) and shows the RING_DOTS left. */
+  /* v22.29 (C21, D100): this many dots round the ring, fixed by the seed so they hold still until the
+     shot moves. C45 (v22.56, D127; Brett Oct 11): his real Shot Pattern shots first, then draws from the
+     70% ring up to this many (overlay.js patternDots); engine.js landingDots still gives the caddie's own. */
   RING_DOTS: 40,
+  /* C45 (v22.56, D127; Brett Oct 11: "nor do I want the dispersion circles for [SW] or [LW] because I
+     don't hit them full"): these clubs draw no rings, no dots and no corridor on the map — the target,
+     the start line and the leave line stay. The engine prices them as before. */
+  RING_HIDE_CLUBS: ["SW", "LW"],
   /* Widening when the lie chip says bad / buried: +15% σ, −5 yds (spec default). */
   LIE_QUALITY: {
     good:     { sdMult: 1.0,  distYds: 0 },

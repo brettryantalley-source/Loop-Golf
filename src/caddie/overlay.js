@@ -16,6 +16,8 @@
  */
 
 import { DEFAULT_CONFIG } from "./config.js";
+import { classify } from "./course.js";
+import { mulberry32, makeSamples } from "./random.js";
 
 const DEG = Math.PI / 180;
 const f1 = (n) => Math.round(n * 10) / 10;
@@ -27,19 +29,6 @@ export const K80 = Math.sqrt(-2 * Math.log(0.2));
 /** Inner-ring scale: the contour holding `pct` of a 2-D normal, as a fraction of the 80% one. */
 export const innerRingFrac = (pct) => Math.sqrt(-2 * Math.log(1 - pct)) / K80;
 
-/** C36 (D117): half the width, in σ, of the central band holding `pct` of a normal — Φ⁻¹(½ + pct/2), by bisection. */
-export function bandZ(pct) {
-  const cdf = (z) => 0.5 * (1 + erf(z / Math.SQRT2));
-  let lo = 0, hi = 8;
-  for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (cdf(m) - cdf(-m) < pct) lo = m; else hi = m; }
-  return (lo + hi) / 2;
-}
-/** erf, Abramowitz–Stegun 7.1.26 (|error| < 1.5e-7). */
-function erf(x) {
-  const t = 1 / (1 + 0.3275911 * Math.abs(x));
-  const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
-  return x < 0 ? -y : y;
-}
 export const YARDS_PER_METER = 1.0936133;
 /** Low-accuracy threshold for the dashed ring on the ball (addendum §8, geo.js LOW_ACCURACY_M). */
 export const LOW_ACCURACY_M = 8;
@@ -139,7 +128,7 @@ export function bboxYds(ell) {
 
 /**
  * The 80% ellipse for a resolved entry (profile.js resolveEntry), in the SP frame — the one the
- * engine draws a good shot from. C36 (D117): the map draws goodRingFromEntry, built on this one:
+ * engine draws a good shot from. C45 (D127): the map draws patternRingFromEntry, built on this one:
  * { w, h, tiltDeg, dx, dy, source, scaled, capturedAt, confidence }.
  *
  * ell80 present: w/h/tilt/dx/dy from it. w and h scale by the entry's lie multiplier
@@ -187,47 +176,106 @@ export function ellipseFromEntry(entry, { lieQuality = "standard", config = DEFA
   };
 }
 
+/** The 70% contour of a 2-D normal, √(−2 ln 0.3) σ = 1.552 σ (C45: the ring the map draws). */
+export const K70 = Math.sqrt(-2 * Math.log(0.3));
+
 /**
- * C36 (v22.46, D117; Brett Oct 11: the PW and 4-hybrid rings were "too wide"): the ring the map DRAWS —
- * his good shots only. Within RING_GOOD_YDS of the club's average finish, so twice that deep, and
- * inside his best RING_LAT_PCT side to side; square to the shot line (tilt 0: w across, h along).
- * Width: the band measured from Shot Pattern's dots (ell80.ringWYds, scripts/fit-ell80.py); an ell80
- * with none (Loop's own) gives the RING_LAT_PCT band of its own lateral spread; no ell80, of the
- * entry's σ_lat, capped at RING_DRAW_CAP_YDS. Both axes widen with the lie as the draws do. Centre
- * (dx, dy and the bad lie's 5 yds), source and the inner ring's share are ellipseFromEntry's.
- * DISPLAY ONLY: the engine draws from ell80 and the mishit ring and drops its worst DROP_WORST_PCT.
+ * C45 (v22.56, D127; Brett Oct 11: "the best 70% is the more prominent dispersion circle (and i'd want
+ * the shape to be consistent with the shot pattern shape) with the full 100% being represented in a
+ * faint, dotted line"): the ring the map DRAWS is Shot Pattern's own at 70% coverage — its size, shape
+ * and tilt as printed (entry.pattern.ring70, scripts/read-pattern.py: the sheet for this lie, tee,
+ * fairway or rough, else the nearest lie's, profile.js resolveEntry) — and `outer` is the dashed ring
+ * Shot Pattern draws round every shot (ring100). `dots` are his real shots, yards from the 70% ring's
+ * centre; `outer.dx/dy` is the 100% ring's centre the same way. Everything scales from the lie it was
+ * measured on (entry.patternSdMult) and with the lie chip. Centre (dx, dy and the bad lie's 5 yds),
+ * source and dates are ellipseFromEntry's, so the ring sits where the good-shot ring did (D93, D100).
+ * No pattern (Loop's own ring after takeover, or no ring at all): the 70% contour of ellipseFromEntry's
+ * ring and no outer ring. DISPLAY ONLY: the engine still draws from ell80 and the mishit ring.
  */
-export function goodRingFromEntry(entry, { lieQuality = "standard", config = DEFAULT_CONFIG } = {}) {
+export function patternRingFromEntry(entry, { lieQuality = "standard", config = DEFAULT_CONFIG } = {}) {
   const base = ellipseFromEntry(entry, { lieQuality, config });
   if (!base) return null;
+  const pat = entry.pattern;
+  if (!pat?.ring70) return { ...base, w: base.w * K70 / K80, h: base.h * K70 / K80, innerFrac: 0, outer: null, dots: null, pattern: false };
   const Q = config.LIE_QUALITY || DEFAULT_CONFIG.LIE_QUALITY;
-  const qMult = (Q[lieQuality] || Q.standard).sdMult ?? 1;
-  const e = entry.ell80;
-  const fitted = !!(e && e.wYds > 0 && e.hYds > 0);
-  const k = (fitted ? e.sdMult || 1 : 1) * qMult;
-  const z = bandZ(config.RING_LAT_PCT ?? DEFAULT_CONFIG.RING_LAT_PCT);
-  let w;
-  if (fitted && e.ringWYds > 0) w = e.ringWYds * k;
-  else if (fitted) {
-    // the ring's spread across the shot line: its axes' σs projected on +x (right)
-    const sw = e.wYds / 2 / K80, sh = e.hYds / 2 / K80, t = (e.tiltDeg ?? 0) * DEG;
-    w = 2 * z * Math.hypot(sw * Math.cos(t), sh * Math.sin(t)) * k;
-  } else {
-    const sLat = (entry.lateralSd ?? entry.carry * Math.tan(entry.lateralSdDeg * DEG)) * qMult;   // resolveEntry widens by lie
-    w = Math.min(2 * z * sLat, config.RING_DRAW_CAP_YDS ?? DEFAULT_CONFIG.RING_DRAW_CAP_YDS);
-  }
-  return { ...base, w, h: 2 * (config.RING_GOOD_YDS ?? DEFAULT_CONFIG.RING_GOOD_YDS) * k, tiltDeg: 0 };
+  const k = (entry.patternSdMult || 1) * ((Q[lieQuality] || Q.standard).sdMult ?? 1);
+  const r = pat.ring70, o = pat.ring100;
+  return {
+    ...base, w: r.wYds * k, h: r.hYds * k, tiltDeg: r.tiltDeg, innerFrac: 0,
+    outer: o ? { w: o.wYds * k, h: o.hYds * k, tiltDeg: o.tiltDeg, dx: (o.dxYds - r.dxYds) * k, dy: (o.dyYds - r.dyYds) * k } : null,
+    dots: (pat.dots || []).map(([x, y]) => [(x - r.dxYds) * k, (y - r.dyYds) * k]),
+    pattern: true, patternN: pat.n ?? null, capturedAt: pat.capturedAt ?? base.capturedAt,
+  };
 }
 
 /**
  * Attach the drawn ring to each option of a recommend() result, re-resolving its entry.
  * resolve = (club, swingType) → entry (e.g. (c, s) => resolveEntry(P, c, s, lieType)).
  * Returns { safe, aggressive } with `.ell` on each (aggressive null when sameShot).
- * C36 (D117): the good-shot ring (goodRingFromEntry), no longer the 80% ellipse the engine draws from.
+ * C45 (D127): Shot Pattern's 70% ring with its 100% ring and real shots (patternRingFromEntry).
  */
 export function withEllipses(res, resolve, { lieQuality = "standard", config = DEFAULT_CONFIG } = {}) {
-  const one = (o) => (o ? { ...o, ell: onFinish(goodRingFromEntry(resolve(o.club, o.swingType), { lieQuality, config }), o) } : null);
+  const hide = new Set(config.RING_HIDE_CLUBS ?? DEFAULT_CONFIG.RING_HIDE_CLUBS ?? []);
+  const ring = (o) => {
+    const ell = onFinish(patternRingFromEntry(resolve(o.club, o.swingType), { lieQuality, config }), o);
+    return ell && hide.has(o.club) ? { ...ell, hidden: true } : ell;   // C45 (D127): kept for the camera, not drawn
+  };
+  const one = (o) => (o ? { ...o, ell: ring(o) } : null);
   return { safe: one(res?.safe), aggressive: res?.sameShot ? null : one(res?.aggressive) };
+}
+
+/** C45 (D127): what a dot's finish says — fairway (or the green, or a tee), rough, or trouble. */
+export function dotTone(lie) {
+  if (lie === "fairway" || lie === "green" || lie === "tee") return "fairway";
+  if (lie === "rough") return "rough";
+  return lie ? "trouble" : null;                    // water, ob, sand, trees: what the caddie counts as trouble
+}
+
+/**
+ * C45 (v22.56, D127; Brett Oct 11: "of the 40 shots we want represented, can we color them green, yellow,
+ * and red based on where they land? ... use actual shots and then fill in with simulated shots to get up
+ * to the 40"). The dots for an option on screen (`option.ell` from withEllipses, `option.target`), hole
+ * frame. His real shots first — every one when there are `n` or fewer, else `n` of them picked with a
+ * fixed seed (the Driver's 105) — then draws from the 70% ring's own normal (σ = half-axis / K70), kept
+ * inside the 100% ring, up to `n`. All sit round the ring's centre as Shot Pattern placed them, so the
+ * picture moves with the ring (aim, wind, a moved target). With a hole each dot carries its lie and
+ * `tone` (dotTone); without one (marked-green mode) both are null. → [{ x, y, real, lie, tone }].
+ */
+export function patternDots(option, ball, hole, { n = DEFAULT_CONFIG.RING_DOTS, seed = DEFAULT_CONFIG.SEED } = {}) {
+  const ell = option?.ell, T = option?.target;
+  if (!ell || ell.hidden || !T || !ball || !Number.isFinite(T.x) || !Number.isFinite(ball.x) || !(n > 0)) return [];
+  const fx = T.x - ball.x, fy = T.y - ball.y, L = Math.hypot(fx, fy);
+  if (L < 1e-9) return [];
+  const f = { x: fx / L, y: fy / L }, r = { x: f.y, y: -f.x };            // SP +x = right of the line, +y = short
+  const rnd = mulberry32(seed);
+  let real = (ell.dots || []).slice();
+  if (real.length > n) {
+    for (let i = real.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [real[i], real[j]] = [real[j], real[i]]; }
+    real = real.slice(0, n);
+  }
+  const fill = [];
+  const t = (ell.tiltDeg ?? 0) * DEG, ct = Math.cos(t), st = Math.sin(t);
+  const sa = ell.w / 2 / K70, sb = ell.h / 2 / K70;
+  const O = ell.outer;
+  const inOuter = ([x, y]) => {
+    if (!O) return Math.hypot((x * ct + y * st) / sa, (-x * st + y * ct) / sb) <= 2.5;   // no 100% ring: 2.5 σ
+    const to = (O.tiltDeg ?? 0) * DEG, X = x - O.dx, Y = y - O.dy;
+    const u = (X * Math.cos(to) + Y * Math.sin(to)) / (O.w / 2), v = (-X * Math.sin(to) + Y * Math.cos(to)) / (O.h / 2);
+    return u * u + v * v <= 1;
+  };
+  for (const s of makeSamples(Math.max(0, n - real.length) * 20, seed)) {
+    if (fill.length >= n - real.length) break;
+    const p = [s.z1 * sa * ct - s.z2 * sb * st, s.z1 * sa * st + s.z2 * sb * ct];
+    if (inOuter(p)) fill.push(p);
+  }
+  const cx = ell.dx ?? 0, cy = ell.dy ?? 0;
+  const place = ([x, y], isReal) => {
+    const sx = cx + x, sy = cy + y;
+    const p = { x: T.x + r.x * sx - f.x * sy, y: T.y + r.y * sx - f.y * sy };
+    const lie = hole ? classify(hole, p) : null;
+    return { x: f1(p.x), y: f1(p.y), real: isReal, lie, tone: dotTone(lie) };
+  };
+  return [...real.map((d) => place(d, true)), ...fill.map((d) => place(d, false))];
 }
 
 /**
@@ -580,17 +628,19 @@ export function pinMarkerHit(pinPx, pt, radius = PIN_MARKER_HIT_PX) {
 const PAPER = "#F4F0E4", INK = "#1E6B3A", YELLOW = "#F2C94C", BLACK = "#1F1F1F", PENCIL = "#3F3F3F";
 const FILL_LOST = "#F1DAD6", DOUBLE = "#A3352B";
 const HALO = "rgba(20,28,16,.45)";
+/* C45 (D127): the dots' colours — theme.jsx T.dotFairway / dotRough / dotTrouble, copied as above. */
+const DOT_FILL = { fairway: "#4CC27A", rough: "#F2C94C", trouble: "#E5484D" };
 
 export const PALETTES = {
   satellite: {
     line: PAPER, halo: HALO, ringHalo: "rgba(20,28,16,.5)", ballHalo: "rgba(20,28,16,.35)",
     corridorFill: "rgba(244,240,228,.12)", ellFill: "rgba(244,240,228,.14)", pole: PAPER, prev: PAPER,
-    hatchLine: FILL_LOST, hatchBg: "rgba(163,53,43,.28)", ringEdge: null,
+    hatchLine: FILL_LOST, hatchBg: "rgba(163,53,43,.28)", ringEdge: null, dotEdge: "rgba(255,255,255,.9)",
   },
   paper: {
     line: INK, halo: null, ringHalo: null, ballHalo: null,
     corridorFill: "rgba(30,107,58,.08)", ellFill: "rgba(30,107,58,.10)", pole: INK, prev: PENCIL,
-    hatchLine: DOUBLE, hatchBg: "rgba(163,53,43,.12)", ringEdge: BLACK,
+    hatchLine: DOUBLE, hatchBg: "rgba(163,53,43,.12)", ringEdge: BLACK, dotEdge: BLACK,
   },
 };
 
@@ -638,7 +688,7 @@ export function troubleRings(hole) {
  *          pin, active (option with target/kind/ell), other (the ghosted option; null when sameShot),
  *          previousShots [{from, to}], palette "satellite"|"paper", idPrefix, redrawKey, recomputing }
  * Draw order (§4.2): pin · [cur: previous shots · other option · the caddie's start line (C3) ·
- * corridor · leave line · ellipse · dots (C21) · trouble hatch · target ring] · intent · ball. The `cur` group
+ * corridor · leave line · 100% ring · 70% ring · dots (C21, C45) · trouble hatch · target ring] · intent · ball. The `cur` group
  * carries the redraw fade.
  */
 export function overlayModel(input) {
@@ -710,8 +760,9 @@ export function overlayModel(input) {
   const defs = [];
   if (se) {
     const { e, T, left, right } = se;
+    const rings = !active.ell?.hidden;   // C45 (D127): SW and LW draw no corridor, rings, dots or hatch
     // 4. corridor: ball → the ellipse's left and right support points
-    cur.push(el("g", { "data-part": "corridor" }, [
+    if (rings) cur.push(el("g", { "data-part": "corridor" }, [
       el("path", { d: pathD([B, left, right]), fill: P.corridorFill, stroke: "none" }),
       ...haloLine(B, left, 1.3, P, { opacity: 0.95 }),
       ...haloLine(B, right, 1.3, P, { opacity: 0.95 }),
@@ -720,23 +771,26 @@ export function overlayModel(input) {
     if (active.kind === "layup" && pin) {
       cur.push(el("g", { "data-part": "leave" }, haloLine(T, project(pin), 1.4, P, { strokeDasharray: "5 6", opacity: 0.92 })));
     }
-    // 6. the ring (C36, D117: the good-shot ring); dashed since v22.46 (Brett, Oct 11: dashed outside, solid inside)
-    cur.push(el("ellipse", { "data-part": "ellipse", ...ellipseAttrs(e), fill: P.ellFill, stroke: P.line, strokeWidth: 1.6, strokeDasharray: "4 3" }));
-    // 6b. C17: the inner ring, the best RING_INNER_PCT of the shots — an outline only, so the fill is not doubled; solid
-    if (active.ell?.innerFrac > 0) {
-      const ei = ellipseScreen({ target: T, ...active.ell, w: active.ell.w * active.ell.innerFrac, h: active.ell.h * active.ell.innerFrac,
+    // 6. C45 (v22.56, D127): Shot Pattern's 100% ring, faint and dotted, under its 70% ring, solid —
+    //    the prominent one (Brett, Oct 11). The corridor, hatch and camera read the 70% ring.
+    if (rings && active.ell?.outer) {
+      const o = active.ell.outer;
+      const eo = ellipseScreen({ target: T, dx: active.ell.dx + o.dx, dy: active.ell.dy + o.dy, w: o.w, h: o.h, tiltDeg: o.tiltDeg,
         thetaDeg: thetaDeg(B, T), pxPerYd: pxPerYdAt(project, active.target) });
-      cur.push(el("ellipse", { "data-part": "ellipse-inner", ...ellipseAttrs(ei), fill: "none", stroke: P.line, strokeWidth: 1.2 }));
+      cur.push(el("ellipse", { "data-part": "ellipse-outer", ...ellipseAttrs(eo), fill: "none", stroke: P.line, strokeWidth: 1.3, strokeDasharray: "0.1 4.5", strokeLinecap: "round", opacity: 0.6 }));
     }
-    // 6c. v22.29 (C21, D100): dots — where the simulation's draws finish (engine.js landingDots)
-    if (dots && dots.length) {
+    if (rings) cur.push(el("ellipse", { "data-part": "ellipse", ...ellipseAttrs(e), fill: P.ellFill, stroke: P.line, strokeWidth: 2 }));
+    // 6c. dots — C45 (D127): his real shots, filled to 40 from the 70% ring (overlay.js patternDots), each
+    //     coloured by where it finishes: fairway green, rough yellow, trouble red (none without a hole)
+    if (rings && dots && dots.length) {
       cur.push(el("g", { "data-part": "dots" }, dots.filter((d) => d && Number.isFinite(d.x)).map((d) => {
         const q = project(d);
-        return el("circle", { cx: f1(q.x), cy: f1(q.y), r: 2, fill: P.line, opacity: 0.85, ...(P.halo ? { stroke: P.halo, strokeWidth: 0.6 } : {}) });
+        const fill = DOT_FILL[d.tone] || P.line;
+        return el("circle", { cx: f1(q.x), cy: f1(q.y), r: 2.6, fill, stroke: P.dotEdge, strokeWidth: 0.9, ...(d.tone ? { "data-tone": d.tone } : {}) });
       })));
     }
     // 7. trouble hatch: the same ellipse, hatched, clipped to water / bunkers / trees / outside OB
-    const clip = troubleClip(hole, project, viewport);
+    const clip = rings ? troubleClip(hole, project, viewport) : [];
     if (clip.length) {
       defs.push(el("pattern", { id: hatchId, width: 5, height: 5, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, [
         el("rect", { width: 5, height: 5, fill: P.hatchBg }),

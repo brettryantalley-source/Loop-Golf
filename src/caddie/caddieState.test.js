@@ -290,10 +290,10 @@ test("details: options table, Aggressive delta / ≈ same, finesse line, dispers
   assert.equal(neg.details.rows[1].delta, "−0.2"); assert.equal(neg.details.rows[1].selected, true); assert.equal(neg.rail.club, "9-iron");
   const fin = caddieView({ state: ready, res: fakeRes({ safe: { club: "LW", label: "Lob wedge", swingType: "finesse" } }), ballXY: { x: 0, y: 0 } });
   assert.equal(fin.rail.finesse, true); assert.equal(fin.rail.club, "LW");
-  // dispersion from a real Shot Pattern entry: C36 (D117) the good-shot ring, 15.5 (the PW's best 65% across) × 20 (±10 yds)
+  // dispersion from a real Shot Pattern entry: C45 (D127) Shot Pattern's own ring at 70%, 41 × 43 as printed on Oct 11
   const e = resolveEntry(P, "PW", "full", "fairway");
   const opts = withEllipses({ safe: { club: "PW", swingType: "full" }, sameShot: true }, () => e);
-  assert.deepEqual(dispersionLine({ ...opts.safe, label: "Pitching wedge" }), { club: "PW", w: 16, d: 20, source: "Shot Pattern · good shots · Oct 4" });
+  assert.deepEqual(dispersionLine({ ...opts.safe, label: "Pitching wedge" }), { club: "PW", w: 41, d: 43, source: "Shot Pattern · 70% of 7 shots · Oct 11" });
   const bad = withEllipses({ safe: { club: "PW", swingType: "full" }, sameShot: true }, () => e, { lieQuality: "bad" });
   assert.match(dispersionLine(bad.safe).source, / · \+15% bad lie$/);
   assert.equal(clubShort("2Hy"), "2-hybrid"); assert.equal(clubShort("Dr"), "Driver");
@@ -726,7 +726,7 @@ test("S5 nudge line: nothing without evidence; one miss, skipped shots and other
   assert.deepEqual(pre.details.today, []);
 });
 
-test("S5 dispersion line: Shot Pattern's source before takeover, `Loop · good shots · {n} shots` after", () => {
+test("S5 dispersion line: Shot Pattern's source before takeover, `Loop · 70% · {n} shots` after", () => {
   const N = DEFAULT_CONFIG.TAKEOVER_N;
   const pwShots = (n) => Array.from({ length: n }, (_, i) => closedShot({ round: `r${1 + (i % 3)}`, club: "PW", hole: 1 + (i % 18), intended: 140, dist: ((i * 7) % 11) - 6, lat: ((i * 5) % 9) - 3 }));
   const history = [{ id: "r1", date: "2026-09-20T12:00:00Z" }, { id: "r2", date: "2026-09-22T12:00:00Z" }, { id: "r3", date: "2026-09-25T12:00:00Z" }];
@@ -736,13 +736,13 @@ test("S5 dispersion line: Shot Pattern's source before takeover, `Loop · good s
     const opts = ellipsesFor({ safe: { club: "PW", swingType: "full", label: "Pitching wedge" }, sameShot: true }, resolve);
     return dispersionLine(opts.safe);
   };
-  assert.equal(line(pwShots(N - 1)).source, "Shot Pattern · good shots · Oct 4", "below takeover Shot Pattern's ellipse and date stay");
+  assert.equal(line(pwShots(N - 1)).source, "Shot Pattern · 70% of 7 shots · Oct 11", "below takeover Shot Pattern's ellipse and date stay");
   const after = line(pwShots(N + 2));
-  assert.equal(after.source, `Loop · good shots · ${N + 2} shots`);
+  assert.equal(after.source, `Loop · 70% · ${N + 2} shots`);
   assert.ok(after.w > 0 && after.d > 0);
   // the plain σ ellipse keeps its wording
-  assert.equal(dispersionLine({ club: "7i", label: "7-iron", ell: { w: 20, h: 10, tiltDeg: 90, dx: 0, dy: 0, source: "profile" } }).source, "Profile spread · good shots");
-  assert.equal(dispersionLine({ club: "7i", ell: { w: 20, h: 10, tiltDeg: 0, dx: 0, dy: 0, source: "loop", n: 31, scaled: true } }).source, "Loop · good shots · 31 shots · +15% bad lie");
+  assert.equal(dispersionLine({ club: "7i", label: "7-iron", ell: { w: 20, h: 10, tiltDeg: 90, dx: 0, dy: 0, source: "profile" } }).source, "Profile spread · 70%");
+  assert.equal(dispersionLine({ club: "7i", ell: { w: 20, h: 10, tiltDeg: 0, dx: 0, dy: 0, source: "loop", n: 31, scaled: true } }).source, "Loop · 70% · 31 shots · +15% bad lie");
 });
 
 test("S5 overlays: finished rounds only, newest = 1; the round in progress and deleted rounds weigh 0", () => {

@@ -1,0 +1,2382 @@
+{
+  "batch": "2026-10-11",
+  "source": "Shot Pattern club sheets (Shot Pattern · Dispersion), screenshots Brett sent Oct 11 (data/raw/2026-10-11/sp70/): the Driver, 2-iron, 2-hybrid and 4-hybrid on the Driving tab at 9:42-9:43 am; the irons, wedges and 2-hybrid from Tee & Fairway and the 5-, 7-, 8-, 9-iron, PW and GW from the Rough on the Approach tab at 11:06-11:16; Coverage 70% (GW and 6-iron from the fairway at 80%). The 4-hybrid from the fairway reads its tee pattern. No SW or LW: Brett does not hit them full and wants no rings for them.",
+  "method": "scripts/read-pattern.py: the solid ring (conic fit, as fit-ell80.py) at its printed coverage and scaled to 70% (2-D normal contours, as Shot Pattern's own slider does); the faint dashed ring that holds every shot; every dot, yards from the '+'. Pixels -> yards from the printed Width x Depth labels.",
+  "frame": "Shot Pattern club plot: +x right, +y short. wYds is the full axis at tiltDeg clockwise from +x; hYds the perpendicular axis. dx, dy = centre relative to the target cross; dots [x, y] the same way.",
+  "entries": [
+    {
+      "club": "Dr",
+      "lie": "tee",
+      "n": 117,
+      "frame": "data/raw/2026-10-11/sp70/sp-tee-dr-70.webp",
+      "capturedAt": "9:42 am",
+      "coverage": 0.7,
+      "plotPx": [
+        45,
+        525,
+        875,
+        1295
+      ],
+      "bboxWYds": 91,
+      "bboxDYds": 85,
+      "addDotsPx": [
+        [
+          415,
+          782
+        ],
+        [
+          503,
+          776
+        ],
+        [
+          333,
+          873
+        ],
+        [
+          333,
+          920
+        ]
+      ],
+      "note": "117 shots; four dots sit under the Width and Depth labels (added by eye); the dense middle hides about a dozen more",
+      "ring": {
+        "wYds": 91.8,
+        "hYds": 84.1,
+        "tiltDeg": 21.7,
+        "dxYds": 3.9,
+        "dyYds": -0.1
+      },
+      "ring70": {
+        "wYds": 91.8,
+        "hYds": 84.1,
+        "tiltDeg": 21.7,
+        "dxYds": 3.9,
+        "dyYds": -0.1
+      },
+      "ring100": {
+        "wYds": 235.0,
+        "hYds": 214.4,
+        "tiltDeg": 20.3,
+        "dxYds": 4.1,
+        "dyYds": -0.0
+      },
+      "dots": [
+        [
+          -4.7,
+          -89.5
+        ],
+        [
+          -22.5,
+          -43.7
+        ],
+        [
+          -31.6,
+          -43.4
+        ],
+        [
+          38.0,
+          -42.6
+        ],
+        [
+          12.3,
+          -41.5
+        ],
+        [
+          -14.2,
+          -40.7
+        ],
+        [
+          5.9,
+          -38.0
+        ],
+        [
+          0.2,
+          -36.9
+        ],
+        [
+          -44.5,
+          -36.5
+        ],
+        [
+          13.1,
+          -34.6
+        ],
+        [
+          -7.2,
+          -32.0
+        ],
+        [
+          15.7,
+          -31.2
+        ],
+        [
+          17.6,
+          -30.5
+        ],
+        [
+          29.3,
+          -29.0
+        ],
+        [
+          -14.2,
+          -28.2
+        ],
+        [
+          -5.1,
+          -26.7
+        ],
+        [
+          21.0,
+          -26.7
+        ],
+        [
+          8.1,
+          -25.6
+        ],
+        [
+          1.3,
+          -24.8
+        ],
+        [
+          -15.0,
+          -24.4
+        ],
+        [
+          -12.3,
+          -23.3
+        ],
+        [
+          8.1,
+          -21.0
+        ],
+        [
+          0.9,
+          -20.6
+        ],
+        [
+          35.4,
+          -20.3
+        ],
+        [
+          -40.3,
+          -16.8
+        ],
+        [
+          -6.2,
+          -16.1
+        ],
+        [
+          -1.3,
+          -15.0
+        ],
+        [
+          21.8,
+          -15.0
+        ],
+        [
+          -22.5,
+          -14.6
+        ],
+        [
+          1.3,
+          -14.2
+        ],
+        [
+          -5.9,
+          -13.8
+        ],
+        [
+          -16.8,
+          -13.4
+        ],
+        [
+          -15.0,
+          -10.0
+        ],
+        [
+          18.7,
+          -9.7
+        ],
+        [
+          41.1,
+          -9.3
+        ],
+        [
+          23.7,
+          -8.5
+        ],
+        [
+          4.7,
+          -7.0
+        ],
+        [
+          9.7,
+          -6.2
+        ],
+        [
+          -18.4,
+          -5.9
+        ],
+        [
+          0.9,
+          -5.9
+        ],
+        [
+          29.7,
+          -5.9
+        ],
+        [
+          41.8,
+          -5.5
+        ],
+        [
+          -3.6,
+          -4.7
+        ],
+        [
+          -33.1,
+          -2.1
+        ],
+        [
+          5.5,
+          -2.1
+        ],
+        [
+          44.9,
+          -1.3
+        ],
+        [
+          15.0,
+          -0.9
+        ],
+        [
+          -44.9,
+          -0.6
+        ],
+        [
+          -29.5,
+          -0.6
+        ],
+        [
+          -26.7,
+          -0.6
+        ],
+        [
+          -16.8,
+          -0.6
+        ],
+        [
+          48.7,
+          -0.2
+        ],
+        [
+          60.8,
+          -0.2
+        ],
+        [
+          46.4,
+          0.9
+        ],
+        [
+          9.3,
+          1.7
+        ],
+        [
+          -5.9,
+          2.5
+        ],
+        [
+          13.8,
+          2.5
+        ],
+        [
+          -18.0,
+          2.8
+        ],
+        [
+          48.3,
+          3.6
+        ],
+        [
+          -9.3,
+          4.0
+        ],
+        [
+          -0.2,
+          4.0
+        ],
+        [
+          32.4,
+          4.0
+        ],
+        [
+          7.8,
+          5.9
+        ],
+        [
+          3.2,
+          6.6
+        ],
+        [
+          29.0,
+          6.6
+        ],
+        [
+          -45.2,
+          7.4
+        ],
+        [
+          -36.2,
+          8.9
+        ],
+        [
+          -23.5,
+          9.7
+        ],
+        [
+          12.3,
+          10.0
+        ],
+        [
+          58.9,
+          10.0
+        ],
+        [
+          40.7,
+          11.5
+        ],
+        [
+          48.3,
+          11.5
+        ],
+        [
+          2.5,
+          11.9
+        ],
+        [
+          -28.2,
+          12.7
+        ],
+        [
+          55.5,
+          13.4
+        ],
+        [
+          -5.9,
+          13.8
+        ],
+        [
+          -1.7,
+          14.2
+        ],
+        [
+          16.8,
+          14.2
+        ],
+        [
+          -41.8,
+          16.5
+        ],
+        [
+          25.9,
+          16.5
+        ],
+        [
+          -27.1,
+          16.8
+        ],
+        [
+          24.4,
+          20.3
+        ],
+        [
+          63.0,
+          20.6
+        ],
+        [
+          0.2,
+          23.3
+        ],
+        [
+          52.8,
+          23.3
+        ],
+        [
+          48.7,
+          25.2
+        ],
+        [
+          27.1,
+          27.3
+        ],
+        [
+          4.0,
+          29.0
+        ],
+        [
+          16.1,
+          31.2
+        ],
+        [
+          32.4,
+          32.7
+        ],
+        [
+          10.0,
+          33.5
+        ],
+        [
+          4.7,
+          33.9
+        ],
+        [
+          -3.2,
+          35.0
+        ],
+        [
+          80.1,
+          39.6
+        ],
+        [
+          -64.6,
+          42.6
+        ],
+        [
+          30.5,
+          42.6
+        ],
+        [
+          -42.6,
+          43.7
+        ],
+        [
+          9.3,
+          44.9
+        ],
+        [
+          -41.1,
+          46.8
+        ],
+        [
+          26.3,
+          49.2
+        ],
+        [
+          59.6,
+          57.7
+        ],
+        [
+          -64.9,
+          72.1
+        ],
+        [
+          -7.6,
+          107.0
+        ],
+        [
+          -16.8,
+          -47.1
+        ],
+        [
+          16.5,
+          -49.4
+        ],
+        [
+          -47.9,
+          -12.7
+        ],
+        [
+          -47.9,
+          5.1
+        ]
+      ],
+      "dotsFound": 103,
+      "dotsInside100": 1.0,
+      "isotropyPct": 0.4,
+      "px": {
+        "cross": [
+          459.5,
+          906.5
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          469.9,
+          906.2,
+          121.3,
+          111.0
+        ],
+        "ring100": [
+          470.4,
+          906.5,
+          310.3,
+          283.1
+        ]
+      },
+      "ring100Src": "dashed ring"
+    },
+    {
+      "club": "2i",
+      "lie": "tee",
+      "n": 26,
+      "frame": "data/raw/2026-10-11/sp70/sp-tee-2i-70.webp",
+      "capturedAt": "9:43 am",
+      "coverage": 0.7,
+      "plotPx": [
+        45,
+        395,
+        875,
+        1175
+      ],
+      "bboxWYds": 76,
+      "bboxDYds": 78,
+      "note": "shot count scrolled off; 26 dots read, the 26 of the Oct 10 still",
+      "ring": {
+        "wYds": 58.6,
+        "hYds": 91.8,
+        "tiltDeg": 43.4,
+        "dxYds": -8.6,
+        "dyYds": 0.0
+      },
+      "ring70": {
+        "wYds": 58.6,
+        "hYds": 91.8,
+        "tiltDeg": 43.4,
+        "dxYds": -8.6,
+        "dyYds": 0.0
+      },
+      "ring100": {
+        "wYds": 122.5,
+        "hYds": 191.5,
+        "tiltDeg": 43.4,
+        "dxYds": -8.6,
+        "dyYds": 0.0
+      },
+      "dots": [
+        [
+          -29.7,
+          -29.7
+        ],
+        [
+          -3.0,
+          -29.1
+        ],
+        [
+          -7.2,
+          -28.6
+        ],
+        [
+          0.0,
+          -17.7
+        ],
+        [
+          -32.7,
+          -16.6
+        ],
+        [
+          6.9,
+          -13.6
+        ],
+        [
+          20.8,
+          -13.3
+        ],
+        [
+          -12.2,
+          -12.8
+        ],
+        [
+          -10.3,
+          -12.2
+        ],
+        [
+          23.8,
+          -12.2
+        ],
+        [
+          41.6,
+          -12.2
+        ],
+        [
+          -18.0,
+          -8.0
+        ],
+        [
+          -10.8,
+          -6.9
+        ],
+        [
+          33.5,
+          -6.9
+        ],
+        [
+          10.0,
+          -6.7
+        ],
+        [
+          -3.9,
+          -1.7
+        ],
+        [
+          7.8,
+          -1.4
+        ],
+        [
+          -41.6,
+          0.8
+        ],
+        [
+          -31.6,
+          2.8
+        ],
+        [
+          18.0,
+          7.8
+        ],
+        [
+          -31.9,
+          8.6
+        ],
+        [
+          -15.8,
+          13.9
+        ],
+        [
+          -60.2,
+          32.4
+        ],
+        [
+          -13.6,
+          36.9
+        ],
+        [
+          -27.2,
+          46.4
+        ],
+        [
+          -37.2,
+          81.2
+        ]
+      ],
+      "dotsFound": 26,
+      "dotsInside100": 1.0,
+      "isotropyPct": -0.3,
+      "px": {
+        "cross": [
+          459.0,
+          782.0
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          428.1,
+          782.0,
+          105.8,
+          165.5
+        ],
+        "ring100": [
+          428.0,
+          782.1,
+          220.9,
+          345.3
+        ]
+      },
+      "ring100Src": "dashed ring"
+    },
+    {
+      "club": "2Hy",
+      "lie": "tee",
+      "n": 12,
+      "frame": "data/raw/2026-10-11/sp70/sp-tee-2hy-70.webp",
+      "capturedAt": "9:43 am",
+      "coverage": 0.7,
+      "plotPx": [
+        45,
+        540,
+        875,
+        1310
+      ],
+      "bboxWYds": 69,
+      "bboxDYds": 83,
+      "ring": {
+        "wYds": 68.3,
+        "hYds": 83.5,
+        "tiltDeg": 11.7,
+        "dxYds": -0.7,
+        "dyYds": -0.1
+      },
+      "ring70": {
+        "wYds": 68.3,
+        "hYds": 83.5,
+        "tiltDeg": 11.7,
+        "dxYds": -0.7,
+        "dyYds": -0.1
+      },
+      "ring100": {
+        "wYds": 126.8,
+        "hYds": 155.0,
+        "tiltDeg": 11.7,
+        "dxYds": -0.7,
+        "dyYds": -0.1
+      },
+      "dots": [
+        [
+          7.4,
+          -21.8
+        ],
+        [
+          -4.7,
+          -20.7
+        ],
+        [
+          -16.8,
+          -19.7
+        ],
+        [
+          8.3,
+          -18.5
+        ],
+        [
+          2.8,
+          -12.0
+        ],
+        [
+          4.7,
+          -9.8
+        ],
+        [
+          -26.7,
+          -5.0
+        ],
+        [
+          5.4,
+          -2.5
+        ],
+        [
+          -30.4,
+          1.1
+        ],
+        [
+          28.7,
+          9.6
+        ],
+        [
+          41.5,
+          26.5
+        ],
+        [
+          -28.2,
+          71.9
+        ]
+      ],
+      "dotsFound": 12,
+      "dotsInside100": 1.0,
+      "isotropyPct": -0.1,
+      "px": {
+        "cross": [
+          459.5,
+          923.5
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          456.7,
+          923.2,
+          141.2,
+          172.6
+        ],
+        "ring100": [
+          456.7,
+          923.2,
+          262.0,
+          320.3
+        ]
+      },
+      "ring100Src": "dashed ring"
+    },
+    {
+      "club": "4Hy",
+      "lie": "tee",
+      "n": 16,
+      "frame": "data/raw/2026-10-11/sp70/sp-tee-4hy-70.webp",
+      "capturedAt": "9:43 am",
+      "coverage": 0.7,
+      "plotPx": [
+        45,
+        400,
+        875,
+        1175
+      ],
+      "bboxWYds": 76,
+      "bboxDYds": 60,
+      "addDotsPx": [
+        [
+          238,
+          738
+        ]
+      ],
+      "note": "shot count scrolled off (16 on the Oct 10 still, the same dots); one dot sits under the Depth label, placed from the Oct 10 still where it shows",
+      "ring": {
+        "wYds": 56.5,
+        "hYds": 78.6,
+        "tiltDeg": 111.9,
+        "dxYds": -3.0,
+        "dyYds": -0.0
+      },
+      "ring70": {
+        "wYds": 56.5,
+        "hYds": 78.6,
+        "tiltDeg": 111.9,
+        "dxYds": -3.0,
+        "dyYds": -0.0
+      },
+      "ring100": {
+        "wYds": 89.2,
+        "hYds": 124.3,
+        "tiltDeg": 112.0,
+        "dxYds": -3.0,
+        "dyYds": -0.0
+      },
+      "dots": [
+        [
+          -13.4,
+          -47.5
+        ],
+        [
+          15.0,
+          -23.9
+        ],
+        [
+          -26.9,
+          -22.1
+        ],
+        [
+          -19.9,
+          -11.6
+        ],
+        [
+          19.3,
+          -5.6
+        ],
+        [
+          18.3,
+          -2.7
+        ],
+        [
+          -17.9,
+          3.7
+        ],
+        [
+          -27.4,
+          5.1
+        ],
+        [
+          7.0,
+          11.6
+        ],
+        [
+          10.0,
+          12.4
+        ],
+        [
+          -15.2,
+          13.1
+        ],
+        [
+          27.2,
+          13.4
+        ],
+        [
+          22.5,
+          16.5
+        ],
+        [
+          31.8,
+          20.9
+        ],
+        [
+          -35.6,
+          25.9
+        ],
+        [
+          -43.9,
+          -9.2
+        ]
+      ],
+      "dotsFound": 15,
+      "dotsInside100": 1.0,
+      "isotropyPct": 0.3,
+      "px": {
+        "cross": [
+          459.5,
+          784.5
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          444.2,
+          784.3,
+          142.6,
+          198.3
+        ],
+        "ring100": [
+          444.1,
+          784.4,
+          225.1,
+          313.5
+        ]
+      },
+      "ring100Src": "dashed ring"
+    },
+    {
+      "club": "2Hy",
+      "lie": "fairway",
+      "n": 7,
+      "frame": "data/raw/2026-10-11/sp70/sp-fw-2hy-70.png",
+      "capturedAt": "11:06",
+      "coverage": 0.7,
+      "plotPx": [
+        59,
+        767,
+        1147,
+        1789
+      ],
+      "bboxWYds": 57,
+      "bboxDYds": 96,
+      "ring": {
+        "wYds": 55.8,
+        "hYds": 96.9,
+        "tiltDeg": 172.4,
+        "dxYds": -1.3,
+        "dyYds": 26.6
+      },
+      "ring70": {
+        "wYds": 55.8,
+        "hYds": 96.9,
+        "tiltDeg": 172.4,
+        "dxYds": -1.3,
+        "dyYds": 26.6
+      },
+      "ring100": {
+        "wYds": 125.3,
+        "hYds": 72.2,
+        "tiltDeg": 82.4,
+        "dxYds": -1.3,
+        "dyYds": 26.6
+      },
+      "dots": [
+        [
+          24.2,
+          -6.1
+        ],
+        [
+          -19.1,
+          4.4
+        ],
+        [
+          -12.3,
+          15.7
+        ],
+        [
+          -25.3,
+          15.9
+        ],
+        [
+          15.7,
+          30.6
+        ],
+        [
+          1.6,
+          37.0
+        ],
+        [
+          6.3,
+          88.8
+        ]
+      ],
+      "dotsFound": 7,
+      "dotsInside100": 1.0,
+      "isotropyPct": 0.7,
+      "px": {
+        "cross": [
+          602.5,
+          1275.5
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          596.4,
+          1400.3,
+          130.9,
+          227.2
+        ],
+        "ring100": [
+          596.4,
+          1400.3,
+          293.8,
+          169.3
+        ]
+      },
+      "note": "Approach tab, 7 shots. Not drawn while the profile drops the 2-hybrid's fairway ring (fewer than 5 good shots, D113): from the fairway it reads the tee pattern, 12 shots",
+      "ring100Src": "dashed ring"
+    },
+    {
+      "club": "5i",
+      "lie": "fairway",
+      "n": 17,
+      "frame": "data/raw/2026-10-11/sp70/sp-fw-5i-70.png",
+      "capturedAt": "11:10",
+      "coverage": 0.7,
+      "plotPx": [
+        59,
+        787,
+        1147,
+        1809
+      ],
+      "bboxWYds": 51,
+      "bboxDYds": 36,
+      "ring": {
+        "wYds": 51.2,
+        "hYds": 35.7,
+        "tiltDeg": 172.2,
+        "dxYds": 2.5,
+        "dyYds": 4.3
+      },
+      "ring70": {
+        "wYds": 51.2,
+        "hYds": 35.7,
+        "tiltDeg": 172.2,
+        "dxYds": 2.5,
+        "dyYds": 4.3
+      },
+      "ring100": {
+        "wYds": 83.2,
+        "hYds": 58.0,
+        "tiltDeg": 172.2,
+        "dxYds": 2.5,
+        "dyYds": 4.3
+      },
+      "dots": [
+        [
+          29.8,
+          -19.5
+        ],
+        [
+          -0.9,
+          -11.0
+        ],
+        [
+          -13.0,
+          -5.0
+        ],
+        [
+          -9.2,
+          -4.3
+        ],
+        [
+          7.6,
+          -2.0
+        ],
+        [
+          -2.9,
+          -1.9
+        ],
+        [
+          -0.5,
+          2.7
+        ],
+        [
+          33.4,
+          4.2
+        ],
+        [
+          -2.4,
+          5.4
+        ],
+        [
+          -18.1,
+          6.4
+        ],
+        [
+          -19.4,
+          8.5
+        ],
+        [
+          12.2,
+          9.8
+        ],
+        [
+          30.0,
+          13.3
+        ],
+        [
+          -14.6,
+          17.0
+        ],
+        [
+          11.0,
+          22.8
+        ],
+        [
+          -0.1,
+          26.1
+        ],
+        [
+          0.1,
+          1.3
+        ]
+      ],
+      "dotsFound": 16,
+      "dotsInside100": 1.0,
+      "isotropyPct": 0.3,
+      "px": {
+        "cross": [
+          602.5,
+          1297.0
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          626.6,
+          1338.2,
+          242.9,
+          169.5
+        ],
+        "ring100": [
+          626.6,
+          1338.2,
+          394.7,
+          275.4
+        ]
+      },
+      "addDotsPx": [
+        [
+          603,
+          1309
+        ]
+      ],
+      "note": "one dot sits under the '+', its rim showing (added by eye)",
+      "ring100Src": "dashed ring"
+    },
+    {
+      "club": "6i",
+      "lie": "fairway",
+      "n": 12,
+      "frame": "data/raw/2026-10-11/sp70/sp-fw-6i-80.png",
+      "capturedAt": "11:10",
+      "coverage": 0.8,
+      "plotPx": [
+        59,
+        944,
+        1147,
+        1966
+      ],
+      "bboxWYds": 55,
+      "bboxDYds": 47,
+      "ring": {
+        "wYds": 40.5,
+        "hYds": 59.9,
+        "tiltDeg": 122.7,
+        "dxYds": -6.1,
+        "dyYds": -3.0
+      },
+      "ring70": {
+        "wYds": 35.0,
+        "hYds": 51.8,
+        "tiltDeg": 122.7,
+        "dxYds": -6.1,
+        "dyYds": -3.0
+      },
+      "ring100": {
+        "wYds": 54.8,
+        "hYds": 81.0,
+        "tiltDeg": 122.7,
+        "dxYds": -6.1,
+        "dyYds": -3.0
+      },
+      "dots": [
+        [
+          -17.7,
+          -26.7
+        ],
+        [
+          -32.7,
+          -15.4
+        ],
+        [
+          0.1,
+          -11.2
+        ],
+        [
+          -8.3,
+          -8.4
+        ],
+        [
+          -15.3,
+          -4.3
+        ],
+        [
+          12.5,
+          -3.1
+        ],
+        [
+          -7.2,
+          -1.0
+        ],
+        [
+          12.3,
+          -0.8
+        ],
+        [
+          13.4,
+          0.3
+        ],
+        [
+          -2.8,
+          3.0
+        ],
+        [
+          -28.5,
+          3.4
+        ],
+        [
+          0.4,
+          28.3
+        ]
+      ],
+      "dotsFound": 12,
+      "dotsInside100": 1.0,
+      "isotropyPct": 0.1,
+      "px": {
+        "cross": [
+          602.5,
+          1451.5
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          543.3,
+          1422.6,
+          195.0,
+          288.2
+        ],
+        "ring100": [
+          543.3,
+          1422.7,
+          263.6,
+          389.9
+        ]
+      },
+      "ring100Src": "dashed ring"
+    },
+    {
+      "club": "7i",
+      "lie": "fairway",
+      "n": 14,
+      "frame": "data/raw/2026-10-11/sp70/sp-fw-7i-70.png",
+      "capturedAt": "11:10",
+      "coverage": 0.7,
+      "plotPx": [
+        59,
+        813,
+        1147,
+        1835
+      ],
+      "bboxWYds": 41,
+      "bboxDYds": 86,
+      "ring": {
+        "wYds": 39.1,
+        "hYds": 86.8,
+        "tiltDeg": 170.8,
+        "dxYds": 2.5,
+        "dyYds": 6.8
+      },
+      "ring70": {
+        "wYds": 39.1,
+        "hYds": 86.8,
+        "tiltDeg": 170.8,
+        "dxYds": 2.5,
+        "dyYds": 6.8
+      },
+      "ring100": {
+        "wYds": 81.5,
+        "hYds": 181.1,
+        "tiltDeg": 170.8,
+        "dxYds": 2.4,
+        "dyYds": 6.8
+      },
+      "dots": [
+        [
+          -16.1,
+          -19.3
+        ],
+        [
+          6.1,
+          -7.3
+        ],
+        [
+          -8.7,
+          -1.5
+        ],
+        [
+          4.3,
+          -0.3
+        ],
+        [
+          17.9,
+          -0.1
+        ],
+        [
+          13.8,
+          0.1
+        ],
+        [
+          -8.4,
+          0.3
+        ],
+        [
+          9.4,
+          3.6
+        ],
+        [
+          14.4,
+          16.1
+        ],
+        [
+          10.5,
+          27.5
+        ],
+        [
+          7.1,
+          95.1
+        ],
+        [
+          7.7,
+          -7.1
+        ]
+      ],
+      "dotsFound": 11,
+      "dotsInside100": 1.0,
+      "isotropyPct": -0.2,
+      "px": {
+        "cross": [
+          602.5,
+          1324.5
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          613.1,
+          1353.9,
+          84.6,
+          187.8
+        ],
+        "ring100": [
+          613.1,
+          1353.8,
+          176.2,
+          391.6
+        ]
+      },
+      "addDotsPx": [
+        [
+          636,
+          1294
+        ]
+      ],
+      "note": "two dots overlap above-right of the '+', the second added by eye; one more cannot be seen",
+      "ring100Src": "dashed ring"
+    },
+    {
+      "club": "8i",
+      "lie": "fairway",
+      "n": 15,
+      "frame": "data/raw/2026-10-11/sp70/sp-fw-8i-70.png",
+      "capturedAt": "11:11",
+      "coverage": 0.7,
+      "plotPx": [
+        59,
+        944,
+        1147,
+        1966
+      ],
+      "bboxWYds": 33,
+      "bboxDYds": 27,
+      "ring": {
+        "wYds": 24.5,
+        "hYds": 34.8,
+        "tiltDeg": 119.6,
+        "dxYds": -8.5,
+        "dyYds": -0.0
+      },
+      "ring70": {
+        "wYds": 24.5,
+        "hYds": 34.8,
+        "tiltDeg": 119.6,
+        "dxYds": -8.5,
+        "dyYds": -0.0
+      },
+      "ring100": {
+        "wYds": 51.3,
+        "hYds": 36.1,
+        "tiltDeg": 29.6,
+        "dxYds": -8.5,
+        "dyYds": -0.0
+      },
+      "dots": [
+        [
+          -14.0,
+          -19.0
+        ],
+        [
+          -12.8,
+          -8.0
+        ],
+        [
+          -16.7,
+          -4.9
+        ],
+        [
+          -12.6,
+          -3.9
+        ],
+        [
+          -5.1,
+          -3.2
+        ],
+        [
+          3.6,
+          -2.2
+        ],
+        [
+          4.5,
+          -1.9
+        ],
+        [
+          -22.6,
+          -1.7
+        ],
+        [
+          -31.9,
+          -1.2
+        ],
+        [
+          2.3,
+          2.0
+        ],
+        [
+          -1.9,
+          5.2
+        ],
+        [
+          -12.5,
+          6.0
+        ],
+        [
+          -8.9,
+          14.7
+        ],
+        [
+          1.1,
+          17.8
+        ]
+      ],
+      "dotsFound": 14,
+      "dotsInside100": 1.0,
+      "isotropyPct": 2.6,
+      "px": {
+        "cross": [
+          602.5,
+          1451.5
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          493.5,
+          1451.2,
+          156.9,
+          222.8
+        ],
+        "ring100": [
+          493.5,
+          1451.2,
+          328.7,
+          231.5
+        ]
+      },
+      "ring100Src": "dashed ring"
+    },
+    {
+      "club": "9i",
+      "lie": "fairway",
+      "n": 19,
+      "frame": "data/raw/2026-10-11/sp70/sp-fw-9i-70.png",
+      "capturedAt": "11:11",
+      "coverage": 0.7,
+      "plotPx": [
+        59,
+        859,
+        1147,
+        1881
+      ],
+      "bboxWYds": 36,
+      "bboxDYds": 21,
+      "ring": {
+        "wYds": 20.4,
+        "hYds": 36.3,
+        "tiltDeg": 100.7,
+        "dxYds": 4.9,
+        "dyYds": 2.6
+      },
+      "ring70": {
+        "wYds": 20.4,
+        "hYds": 36.3,
+        "tiltDeg": 100.7,
+        "dxYds": 4.9,
+        "dyYds": 2.6
+      },
+      "ring100": {
+        "wYds": 26.4,
+        "hYds": 47.1,
+        "tiltDeg": 100.6,
+        "dxYds": 4.9,
+        "dyYds": 2.6
+      },
+      "dots": [
+        [
+          -3.6,
+          -2.6
+        ],
+        [
+          -4.2,
+          -0.4
+        ],
+        [
+          -5.2,
+          1.3
+        ],
+        [
+          21.3,
+          1.5
+        ],
+        [
+          -12.9,
+          2.1
+        ],
+        [
+          -4.0,
+          3.7
+        ],
+        [
+          -9.0,
+          4.0
+        ],
+        [
+          12.2,
+          4.9
+        ],
+        [
+          14.6,
+          5.1
+        ],
+        [
+          18.2,
+          6.1
+        ],
+        [
+          19.2,
+          6.1
+        ],
+        [
+          -4.4,
+          6.2
+        ],
+        [
+          -3.8,
+          6.9
+        ],
+        [
+          24.4,
+          10.8
+        ],
+        [
+          -3.1,
+          10.9
+        ],
+        [
+          17.1,
+          12.9
+        ],
+        [
+          5.0,
+          -9.4
+        ]
+      ],
+      "dotsFound": 16,
+      "dotsInside100": 1.0,
+      "isotropyPct": 0.9,
+      "px": {
+        "cross": [
+          602.5,
+          1367.5
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          674.7,
+          1406.0,
+          150.5,
+          268.2
+        ],
+        "ring100": [
+          675.1,
+          1405.9,
+          195.2,
+          348.4
+        ]
+      },
+      "addDotsPx": [
+        [
+          676,
+          1228
+        ]
+      ],
+      "note": "one dot sits under the Width label (added by eye); two more lie exactly on others",
+      "ring100Src": "dashed ring"
+    },
+    {
+      "club": "PW",
+      "lie": "fairway",
+      "n": 7,
+      "frame": "data/raw/2026-10-11/sp70/sp-fw-pw-70.png",
+      "capturedAt": "11:12",
+      "coverage": 0.7,
+      "plotPx": [
+        59,
+        944,
+        1147,
+        1966
+      ],
+      "bboxWYds": 41,
+      "bboxDYds": 43,
+      "ring": {
+        "wYds": 55.1,
+        "hYds": 22.2,
+        "tiltDeg": 46.5,
+        "dxYds": 1.5,
+        "dyYds": 6.5
+      },
+      "ring70": {
+        "wYds": 55.1,
+        "hYds": 22.2,
+        "tiltDeg": 46.5,
+        "dxYds": 1.5,
+        "dyYds": 6.5
+      },
+      "ring100": {
+        "wYds": 28.3,
+        "hYds": 70.4,
+        "tiltDeg": 136.5,
+        "dxYds": 1.5,
+        "dyYds": 6.5
+      },
+      "dots": [
+        [
+          4.1,
+          -5.5
+        ],
+        [
+          -20.5,
+          -4.3
+        ],
+        [
+          4.9,
+          1.1
+        ],
+        [
+          4.4,
+          1.7
+        ],
+        [
+          -7.1,
+          3.0
+        ],
+        [
+          1.5,
+          16.1
+        ],
+        [
+          23.3,
+          33.5
+        ]
+      ],
+      "dotsFound": 7,
+      "dotsInside100": 1.0,
+      "isotropyPct": -1.1,
+      "px": {
+        "cross": [
+          602.5,
+          1451.5
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          621.1,
+          1531.9,
+          339.8,
+          136.6
+        ],
+        "ring100": [
+          621.1,
+          1531.7,
+          174.4,
+          433.7
+        ]
+      },
+      "ring100Src": "dashed ring"
+    },
+    {
+      "club": "GW",
+      "lie": "fairway",
+      "n": 16,
+      "frame": "data/raw/2026-10-11/sp70/sp-fw-gw-80.png",
+      "capturedAt": "11:12",
+      "coverage": 0.8,
+      "plotPx": [
+        59,
+        944,
+        1147,
+        1966
+      ],
+      "bboxWYds": 34,
+      "bboxDYds": 40,
+      "ring": {
+        "wYds": 43.5,
+        "hYds": 29.4,
+        "tiltDeg": 57.3,
+        "dxYds": -0.8,
+        "dyYds": 5.9
+      },
+      "ring70": {
+        "wYds": 37.6,
+        "hYds": 25.4,
+        "tiltDeg": 57.3,
+        "dxYds": -0.8,
+        "dyYds": 5.9
+      },
+      "ring100": {
+        "wYds": 47.5,
+        "hYds": 70.3,
+        "tiltDeg": 147.3,
+        "dxYds": -0.8,
+        "dyYds": 5.9
+      },
+      "dots": [
+        [
+          -3.0,
+          -11.0
+        ],
+        [
+          -2.1,
+          -9.5
+        ],
+        [
+          -0.0,
+          -6.1
+        ],
+        [
+          11.8,
+          0.6
+        ],
+        [
+          -12.4,
+          1.4
+        ],
+        [
+          -7.1,
+          1.5
+        ],
+        [
+          -3.2,
+          3.0
+        ],
+        [
+          -10.4,
+          3.6
+        ],
+        [
+          -4.7,
+          4.6
+        ],
+        [
+          -1.7,
+          5.4
+        ],
+        [
+          11.6,
+          8.2
+        ],
+        [
+          -1.3,
+          9.1
+        ],
+        [
+          -10.7,
+          12.9
+        ],
+        [
+          0.9,
+          14.1
+        ],
+        [
+          -4.8,
+          27.6
+        ],
+        [
+          24.4,
+          28.5
+        ]
+      ],
+      "dotsFound": 16,
+      "dotsInside100": 1.0,
+      "isotropyPct": -0.6,
+      "px": {
+        "cross": [
+          602.5,
+          1451.5
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          593.9,
+          1515.7,
+          237.8,
+          160.6
+        ],
+        "ring100": [
+          593.9,
+          1515.7,
+          259.6,
+          384.6
+        ]
+      },
+      "ring100Src": "dashed ring"
+    },
+    {
+      "club": "7i",
+      "lie": "rough",
+      "n": 5,
+      "frame": "data/raw/2026-10-11/sp70/sp-rough-7i-70.png",
+      "capturedAt": "11:14",
+      "coverage": 0.7,
+      "plotPx": [
+        59,
+        944,
+        1147,
+        1966
+      ],
+      "bboxWYds": 37,
+      "bboxDYds": 52,
+      "ring": {
+        "wYds": 29.5,
+        "hYds": 56.5,
+        "tiltDeg": 152.0,
+        "dxYds": -3.5,
+        "dyYds": 2.2
+      },
+      "ring70": {
+        "wYds": 29.5,
+        "hYds": 56.5,
+        "tiltDeg": 152.0,
+        "dxYds": -3.5,
+        "dyYds": 2.2
+      },
+      "ring100": {
+        "wYds": 29.5,
+        "hYds": 56.5,
+        "tiltDeg": 152.0,
+        "dxYds": -3.5,
+        "dyYds": 2.2
+      },
+      "ring100Src": "farthest dot",
+      "dots": [
+        [
+          -5.0,
+          -17.7
+        ],
+        [
+          -15.0,
+          -4.1
+        ],
+        [
+          -14.6,
+          -0.5
+        ],
+        [
+          12.2,
+          5.5
+        ],
+        [
+          4.9,
+          27.9
+        ]
+      ],
+      "dotsFound": 5,
+      "dotsInside100": 1.0,
+      "isotropyPct": -0.8,
+      "px": {
+        "cross": [
+          602.5,
+          1451.5
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          550.4,
+          1484.8,
+          219.8,
+          421.0
+        ],
+        "ring100": [
+          550.4,
+          1484.8,
+          219.8,
+          421.0
+        ]
+      }
+    },
+    {
+      "club": "8i",
+      "lie": "rough",
+      "n": 6,
+      "frame": "data/raw/2026-10-11/sp70/sp-rough-8i-70.png",
+      "capturedAt": null,
+      "coverage": 0.7,
+      "plotPx": [
+        59,
+        944,
+        1147,
+        1966
+      ],
+      "bboxWYds": 34,
+      "bboxDYds": 53,
+      "note": "the club name is under a navigation banner in the screenshot; Brett confirmed it is the 8-iron (Oct 11)",
+      "ring": {
+        "wYds": 32.9,
+        "hYds": 53.7,
+        "tiltDeg": 168.0,
+        "dxYds": -10.0,
+        "dyYds": -7.8
+      },
+      "ring70": {
+        "wYds": 32.9,
+        "hYds": 53.7,
+        "tiltDeg": 168.0,
+        "dxYds": -10.0,
+        "dyYds": -7.8
+      },
+      "ring100": {
+        "wYds": 42.2,
+        "hYds": 69.0,
+        "tiltDeg": 168.0,
+        "dxYds": -10.0,
+        "dyYds": -7.8
+      },
+      "ring100Src": "dashed ring",
+      "dots": [
+        [
+          -15.4,
+          -19.2
+        ],
+        [
+          -14.6,
+          -19.2
+        ],
+        [
+          -3.6,
+          -13.4
+        ],
+        [
+          -25.5,
+          -11.4
+        ],
+        [
+          6.2,
+          -9.7
+        ],
+        [
+          -7.4,
+          26.1
+        ]
+      ],
+      "dotsFound": 6,
+      "dotsInside100": 1.0,
+      "isotropyPct": -0.2,
+      "px": {
+        "cross": [
+          602.5,
+          1451.5
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          502.3,
+          1373.9,
+          164.0,
+          267.8
+        ],
+        "ring100": [
+          502.4,
+          1373.9,
+          210.7,
+          344.1
+        ]
+      }
+    },
+    {
+      "club": "9i",
+      "lie": "rough",
+      "n": 5,
+      "frame": "data/raw/2026-10-11/sp70/sp-rough-9i-70.png",
+      "capturedAt": "11:15",
+      "coverage": 0.7,
+      "plotPx": [
+        59,
+        944,
+        1147,
+        1966
+      ],
+      "bboxWYds": 20,
+      "bboxDYds": 29,
+      "ring": {
+        "wYds": 17.7,
+        "hYds": 30.4,
+        "tiltDeg": 157.1,
+        "dxYds": -2.4,
+        "dyYds": -5.4
+      },
+      "ring70": {
+        "wYds": 17.7,
+        "hYds": 30.4,
+        "tiltDeg": 157.1,
+        "dxYds": -2.4,
+        "dyYds": -5.4
+      },
+      "ring100": {
+        "wYds": 18.2,
+        "hYds": 31.3,
+        "tiltDeg": 157.1,
+        "dxYds": -2.4,
+        "dyYds": -5.4
+      },
+      "ring100Src": "farthest dot",
+      "dots": [
+        [
+          -6.9,
+          -19.0
+        ],
+        [
+          0.3,
+          -9.0
+        ],
+        [
+          -5.0,
+          -5.3
+        ],
+        [
+          -8.2,
+          2.9
+        ],
+        [
+          7.6,
+          3.4
+        ]
+      ],
+      "dotsFound": 5,
+      "dotsInside100": 1.0,
+      "isotropyPct": -1.2,
+      "px": {
+        "cross": [
+          602.5,
+          1451.5
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          552.4,
+          1341.1,
+          181.8,
+          313.0
+        ],
+        "ring100": [
+          552.4,
+          1341.1,
+          187.2,
+          322.1
+        ]
+      }
+    },
+    {
+      "club": "PW",
+      "lie": "rough",
+      "n": 10,
+      "frame": "data/raw/2026-10-11/sp70/sp-rough-pw-70.png",
+      "capturedAt": "11:15",
+      "coverage": 0.7,
+      "plotPx": [
+        59,
+        944,
+        1147,
+        1966
+      ],
+      "bboxWYds": 43,
+      "bboxDYds": 76,
+      "ring": {
+        "wYds": 40.3,
+        "hYds": 77.4,
+        "tiltDeg": 13.1,
+        "dxYds": 0.9,
+        "dyYds": 9.5
+      },
+      "ring70": {
+        "wYds": 40.3,
+        "hYds": 77.4,
+        "tiltDeg": 13.1,
+        "dxYds": 0.9,
+        "dyYds": 9.5
+      },
+      "ring100": {
+        "wYds": 72.2,
+        "hYds": 138.6,
+        "tiltDeg": 13.1,
+        "dxYds": 0.9,
+        "dyYds": 9.5
+      },
+      "ring100Src": "dashed ring",
+      "dots": [
+        [
+          6.2,
+          -6.6
+        ],
+        [
+          -3.4,
+          -3.5
+        ],
+        [
+          -3.4,
+          -2.0
+        ],
+        [
+          2.6,
+          -1.7
+        ],
+        [
+          -4.8,
+          3.1
+        ],
+        [
+          10.1,
+          4.3
+        ],
+        [
+          32.8,
+          7.5
+        ],
+        [
+          -0.9,
+          7.6
+        ],
+        [
+          -18.8,
+          9.5
+        ],
+        [
+          -11.4,
+          77.5
+        ]
+      ],
+      "dotsFound": 10,
+      "dotsInside100": 1.0,
+      "isotropyPct": -0.1,
+      "px": {
+        "cross": [
+          602.0,
+          1452.0
+        ],
+        "crossSrc": "axes",
+        "ring": [
+          606.9,
+          1503.2,
+          108.3,
+          207.9
+        ],
+        "ring100": [
+          606.9,
+          1503.2,
+          193.9,
+          372.2
+        ]
+      }
+    },
+    {
+      "club": "GW",
+      "lie": "rough",
+      "n": 5,
+      "frame": "data/raw/2026-10-11/sp70/sp-rough-gw-70.png",
+      "capturedAt": "11:16",
+      "coverage": 0.7,
+      "plotPx": [
+        59,
+        944,
+        1147,
+        1966
+      ],
+      "bboxWYds": 30,
+      "bboxDYds": 40,
+      "ring": {
+        "wYds": 21.1,
+        "hYds": 45.3,
+        "tiltDeg": 148.0,
+        "dxYds": -2.2,
+        "dyYds": -4.5
+      },
+      "ring70": {
+        "wYds": 21.1,
+        "hYds": 45.3,
+        "tiltDeg": 148.0,
+        "dxYds": -2.2,
+        "dyYds": -4.5
+      },
+      "ring100": {
+        "wYds": 24.2,
+        "hYds": 52.0,
+        "tiltDeg": 148.0,
+        "dxYds": -2.2,
+        "dyYds": -4.5
+      },
+      "ring100Src": "dashed ring",
+      "dots": [
+        [
+          3.1,
+          -13.7
+        ],
+        [
+          -5.1,
+          -13.2
+        ],
+        [
+          -7.6,
+          -9.3
+        ],
+        [
+          -12.9,
+          -4.0
+        ],
+        [
+          11.7,
+          17.4
+        ]
+      ],
+      "dotsFound": 5,
+      "dotsInside100": 1.0,
+      "isotropyPct": 0.1,
+      "px": {
+        "cross": [
+          602.5,
+          1451.5
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          569.7,
+          1382.6,
+          160.0,
+          343.8
+        ],
+        "ring100": [
+          569.7,
+          1382.6,
+          183.5,
+          394.1
+        ]
+      }
+    },
+    {
+      "club": "5i",
+      "lie": "rough",
+      "n": 8,
+      "frame": "data/raw/2026-10-11/sp70/sp-rough-5i-70.png",
+      "capturedAt": "11:13",
+      "coverage": 0.7,
+      "plotPx": [
+        59,
+        944,
+        1147,
+        1966
+      ],
+      "bboxWYds": 57,
+      "bboxDYds": 62,
+      "ring": {
+        "wYds": 47.3,
+        "hYds": 69.7,
+        "tiltDeg": 38.3,
+        "dxYds": 7.3,
+        "dyYds": 12.9
+      },
+      "ring70": {
+        "wYds": 47.3,
+        "hYds": 69.7,
+        "tiltDeg": 38.3,
+        "dxYds": 7.3,
+        "dyYds": 12.9
+      },
+      "ring100": {
+        "wYds": 56.6,
+        "hYds": 83.5,
+        "tiltDeg": 38.3,
+        "dxYds": 7.3,
+        "dyYds": 12.9
+      },
+      "ring100Src": "dashed ring",
+      "dots": [
+        [
+          3.1,
+          -15.6
+        ],
+        [
+          25.4,
+          -5.0
+        ],
+        [
+          -11.4,
+          3.8
+        ],
+        [
+          15.1,
+          10.6
+        ],
+        [
+          6.1,
+          12.7
+        ],
+        [
+          38.3,
+          15.1
+        ],
+        [
+          -2.3,
+          39.6
+        ],
+        [
+          -16.0,
+          42.4
+        ]
+      ],
+      "dotsFound": 8,
+      "dotsInside100": 1.0,
+      "isotropyPct": 0.2,
+      "px": {
+        "cross": [
+          602.5,
+          1451.5
+        ],
+        "crossSrc": "plus glyph",
+        "ring": [
+          663.1,
+          1559.2,
+          196.7,
+          290.0
+        ],
+        "ring100": [
+          663.1,
+          1559.2,
+          235.5,
+          347.4
+        ]
+      }
+    }
+  ]
+}
