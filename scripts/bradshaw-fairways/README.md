@@ -1,8 +1,9 @@
 # Bradshaw fairways from the photo — DRAFT (C40, Oct 11; not shipped)
 
 Brett, Oct 11: "clear places the fairway exists from the satellite image that are not included."
-This tool grows Bradshaw's OSM fairways from the Esri photo the app shows (Wayback 63116, a winter
-capture: dormant rough, greener fairways). Offline only (numpy, scipy, pillow, scikit-image, shapely);
+This tool grows Bradshaw's OSM fairways from the Esri photo in `bradshaw.json`'s `imagery.url`. The draft below was
+made on Wayback 63116 (a winter capture: dormant rough, greener fairways); since v22.54 the file flies 41468, the
+green Sep 2023 capture (D125), so a re-run uses that photo. Offline only (numpy, scipy, pillow, scikit-image, shapely);
 nothing here is bundled or run by `npm test`.
 
 Order (tiles and masks go to `$WORK`, default `/tmp/bradshaw-fairways`):

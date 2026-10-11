@@ -276,7 +276,7 @@ test("bradshaw: any two nines in either order read their nine map off the names 
   assert.deepEqual(playingOrder(api, api._play).map((k) => g.holes[k].name).slice(0, 2), ["Blue 1", "Blue 2"]);
 });
 
-test("bradshaw flies the Esri photo its traced shapes were drawn on", () => {
+test("bradshaw flies the Sep 2023 leaf-on Esri photo (D125)", () => {
   const img = imageryFor([woodmont, bradshaw], "pr605r02");
-  assert.ok(img && img.url.includes("/tile/63116/") && img.tileSize === 256);
+  assert.ok(img && img.url.includes("/tile/41468/") && img.tileSize === 256);
 });

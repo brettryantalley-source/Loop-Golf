@@ -220,6 +220,7 @@ service worker answered font requests with `index.html`); reopen only if it come
   real edges OSM drew narrow (Blue 4, 8, 9) mixed with greenish rough (White 8, left of Red 2), and on most
   holes OSM already follows the greener band. Needs Brett (**S10**): which holes, and where — a screenshot
   with the missing fairway circled, or a yes / no per hole on the sheets.
+  **v22.54:** Bradshaw now flies the green Sep 2023 photo (D125); the draft and its sheets are from the winter one.
 
 Answered in chat Oct 11: Chip / Pitch / Wedge (inside ~30 yds, Chip rolls more than it flies, Pitch flies
 more than it rolls; Wedge is 30+ yds to a number and teaches that club's distance); the yellow `?` on the
