@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 Brett's test notes of Oct 10 (C20–C29), and his notes from the first Bradshaw Farm round, Oct 11 (C34–C44; screenshots in `data/raw/2026-10-11/`). Duplicates are merged and anything already shipped is
-dropped. State: **v22.45** (C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 407 tests, decisions D1–D116; the next
-decision is **D117**.
+dropped. State: **v22.46** (C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 414 tests, decisions D1–D117; the next
+decision is **D118**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -18,7 +18,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Next code chat:** the Oct 11 notes, in order (C34 and C35 shipped in v22.45 and v22.44): C36 (rings), then the map (C37–C42), then C43–C44. Older items wait on Brett (F7 notes → C10, S4 → C12,
+1. **Next code chat:** the Oct 11 notes, in order (C34–C36 shipped in v22.44–v22.46): the map (C37–C42), then C43–C44. Older items wait on Brett (F7 notes → C10, S4 → C12,
    F9 + Q3 → C13, S1–S3 + Q2 → C14; C33 once chips are logged).
 2. **Next round:** the **F** list.
 
@@ -42,7 +42,12 @@ after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
   green (~2 m). A large build; would become its own C item.
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.45 · Oct 11** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.46 · Oct 11** (once merged).
+- **F29.** Rings and your worst 20% (v22.46, D117): the ring is 20 yds deep (10 either side of the club's average) and
+  as wide as your best 65% side to side — PW ~16 wide, 4-hybrid ~48, Driver ~47. The outer ring is dashed now, the inner solid. The dots are every shot the caddie still
+  counts; it now ignores the worst 20% of its simulated shots, so par chances read ~6 points higher and Safe is bolder
+  (fewer punch-outs; off the tee 2-iron ↔ Driver swaps on ~1 in 5 holes; from ~230 the 4-hybrid over the 2-hybrid).
+  Say whether the rings look like your good shots, and note any call that now feels too bold, with the hole.
 - **F28.** Wind and slope (v22.45, D116): the wind on the Plays badge is now two-thirds of the forecast
   (a 12 mph forecast reads 8). Set the Wind chip when it feels different; the chip counts in full. Each shot
   now gets its own climb or drop: off Red 2's tee the green's 19-yd climb no longer shortens the drive, and
@@ -60,8 +65,6 @@ after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 - **F26.** Bradshaw Farm (v22.43, D114): pick the club, then the two nines the starter gives you (any order).
   The caddie should open on hole 1 with no `Course holes` screen. On White 3 and White 4 (traced from the photo,
   not OSM), check the green's front / back numbers against a sprinkler head or the pin sheet.
-- **F25.** Tee rings (v22.42, D113): the driver, 2-iron and the hybrids draw their good shots now —
-  wide and shallow (the driver 92 × 35), not ~100 yds deep. Say whether they look like your tee shots.
 - **F24.** In-round nudges (v22.41, D112): the why line still says "short with mid irons on 3 and 6
   today", but the club, target and line no longer move for it. Say if you miss the old club-ups.
 - **F23.** The short-game card (v22.40, D111): just off a green the why line shows your up-and-down
@@ -83,9 +86,6 @@ after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
   `Line` and draw your own; Loop learns from whichever you used. Report whether the 8-iron (aims
   ~7 R) and PW (~5 L) finish where the ring says, and whether the crosswind aim (~12 yds into a
   10 mph wind at 150) looks right. SAFE gets bolder in wind (D93).
-- **F12.** The two rings (v22.21): outer 80%, inner dashed best 30%, good shots only. Report whether the
-  5i–9i rings look right, and whether the wedges (10% window; GW 40%, LW 71% mishits) now play too
-  cautious or too bold. SAFE attempts more from the trees (D92).
 - **F11.** Read the new line above the action button on every call. When it says something that
   doesn't match what you'd do, dictate a Note (F7) with the line's exact words.
 - **F2.** The putting flow, start to finish (v22.25, D96: `Missed · next putt`; the first putt's
@@ -144,7 +144,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C36 | Rings: good shots only = within 10 yds of the club's average and its best 65% side to side | — | Opus |
 | C37 | Pan the map with a finger (up / down / left / right) | — | Opus |
 | C38 | Ball at the bottom centre, target up, always (putting from above the hole too) | — | Opus |
 | C39 | Sharper satellite: the photo is too soft | — | Opus |
@@ -191,11 +190,7 @@ service worker answered font requests with `index.html`); reopen only if it come
 
 ## Build details
 
-### C36–C44. Brett's first Bradshaw round (Oct 11, v22.43; screenshots in `data/raw/2026-10-11/`)
-- **C36.** `bradshaw-red1-pw-dispersion.jpg` (PW from 140) and the 4-hybrid oval
-  (`bradshaw-red2-4hy-custom-157-wide-oval.jpg`): too wide. Brett: show
-  where he might really hit it, without what he'd call mishits — more than ~10 yds short or long of the
-  club's average, and outside his best 65% side to side. Today's rings are 80% / 30% of good shots (D92).
+### C37–C44. Brett's first Bradshaw round (Oct 11, v22.43; screenshots in `data/raw/2026-10-11/`)
 - **C37.** He wants to move the map up, down, left and right; today it pinches to zoom only (D98).
 - **C38.** His position always at the bottom centre with the target up, e.g. putting from above the hole
   the hole is at the top of the screen (`bradshaw-red1-putt-from-above-hole.jpg`: today the hole sits below
@@ -233,6 +228,8 @@ Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/con
   0.12-stroke median, with trouble down). Keep it as `scripts/strategy-sweep.mjs` only if Brett wants.
 - Check the D76 × D78 interaction: does the pin rule still change SAFE as often now that SAFE is
   par-ranked?
+- Since v22.46 (D117) every rule reads the best 80% of the draws (the worst 20% are dropped), so
+  "9 in 10" is 9 in 10 of those: punch-outs fell from 15 to 8 of 492 tree spots. Re-run the sweep on that basis.
 - Each change gets a decision row.
 
 ### C12. Chicopee hand-trace, Village + Mill (S4)
@@ -332,11 +329,11 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D117.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D118.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (398 pass).
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (414 pass).
 > Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with whichever item
 > I've sent what it waits on (OPEN-ITEMS, the Waits on column). Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.

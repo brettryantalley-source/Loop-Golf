@@ -26,6 +26,20 @@ export const K80 = Math.sqrt(-2 * Math.log(0.2));
 
 /** Inner-ring scale: the contour holding `pct` of a 2-D normal, as a fraction of the 80% one. */
 export const innerRingFrac = (pct) => Math.sqrt(-2 * Math.log(1 - pct)) / K80;
+
+/** C36 (D117): half the width, in σ, of the central band holding `pct` of a normal — Φ⁻¹(½ + pct/2), by bisection. */
+export function bandZ(pct) {
+  const cdf = (z) => 0.5 * (1 + erf(z / Math.SQRT2));
+  let lo = 0, hi = 8;
+  for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (cdf(m) - cdf(-m) < pct) lo = m; else hi = m; }
+  return (lo + hi) / 2;
+}
+/** erf, Abramowitz–Stegun 7.1.26 (|error| < 1.5e-7). */
+function erf(x) {
+  const t = 1 / (1 + 0.3275911 * Math.abs(x));
+  const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+  return x < 0 ? -y : y;
+}
 export const YARDS_PER_METER = 1.0936133;
 /** Low-accuracy threshold for the dashed ring on the ball (addendum §8, geo.js LOW_ACCURACY_M). */
 export const LOW_ACCURACY_M = 8;
@@ -124,7 +138,8 @@ export function bboxYds(ell) {
 /* ---------- §5.1/§5.2 the drawn ellipse for a resolved profile entry ---------- */
 
 /**
- * The 80% ellipse to DRAW for a resolved entry (profile.js resolveEntry), in the SP frame:
+ * The 80% ellipse for a resolved entry (profile.js resolveEntry), in the SP frame — the one the
+ * engine draws a good shot from. C36 (D117): the map draws goodRingFromEntry, built on this one:
  * { w, h, tiltDeg, dx, dy, source, scaled, capturedAt, confidence }.
  *
  * ell80 present: w/h/tilt/dx/dy from it. w and h scale by the entry's lie multiplier
@@ -173,12 +188,45 @@ export function ellipseFromEntry(entry, { lieQuality = "standard", config = DEFA
 }
 
 /**
- * Attach the drawn ellipse to each option of a recommend() result, re-resolving its entry.
+ * C36 (v22.46, D117; Brett Oct 11: the PW and 4-hybrid rings were "too wide"): the ring the map DRAWS —
+ * his good shots only. Within RING_GOOD_YDS of the club's average finish, so twice that deep, and
+ * inside his best RING_LAT_PCT side to side; square to the shot line (tilt 0: w across, h along).
+ * Width: the band measured from Shot Pattern's dots (ell80.ringWYds, scripts/fit-ell80.py); an ell80
+ * with none (Loop's own) gives the RING_LAT_PCT band of its own lateral spread; no ell80, of the
+ * entry's σ_lat, capped at RING_DRAW_CAP_YDS. Both axes widen with the lie as the draws do. Centre
+ * (dx, dy and the bad lie's 5 yds), source and the inner ring's share are ellipseFromEntry's.
+ * DISPLAY ONLY: the engine draws from ell80 and the mishit ring and drops its worst DROP_WORST_PCT.
+ */
+export function goodRingFromEntry(entry, { lieQuality = "standard", config = DEFAULT_CONFIG } = {}) {
+  const base = ellipseFromEntry(entry, { lieQuality, config });
+  if (!base) return null;
+  const Q = config.LIE_QUALITY || DEFAULT_CONFIG.LIE_QUALITY;
+  const qMult = (Q[lieQuality] || Q.standard).sdMult ?? 1;
+  const e = entry.ell80;
+  const fitted = !!(e && e.wYds > 0 && e.hYds > 0);
+  const k = (fitted ? e.sdMult || 1 : 1) * qMult;
+  const z = bandZ(config.RING_LAT_PCT ?? DEFAULT_CONFIG.RING_LAT_PCT);
+  let w;
+  if (fitted && e.ringWYds > 0) w = e.ringWYds * k;
+  else if (fitted) {
+    // the ring's spread across the shot line: its axes' σs projected on +x (right)
+    const sw = e.wYds / 2 / K80, sh = e.hYds / 2 / K80, t = (e.tiltDeg ?? 0) * DEG;
+    w = 2 * z * Math.hypot(sw * Math.cos(t), sh * Math.sin(t)) * k;
+  } else {
+    const sLat = (entry.lateralSd ?? entry.carry * Math.tan(entry.lateralSdDeg * DEG)) * qMult;   // resolveEntry widens by lie
+    w = Math.min(2 * z * sLat, config.RING_DRAW_CAP_YDS ?? DEFAULT_CONFIG.RING_DRAW_CAP_YDS);
+  }
+  return { ...base, w, h: 2 * (config.RING_GOOD_YDS ?? DEFAULT_CONFIG.RING_GOOD_YDS) * k, tiltDeg: 0 };
+}
+
+/**
+ * Attach the drawn ring to each option of a recommend() result, re-resolving its entry.
  * resolve = (club, swingType) → entry (e.g. (c, s) => resolveEntry(P, c, s, lieType)).
  * Returns { safe, aggressive } with `.ell` on each (aggressive null when sameShot).
+ * C36 (D117): the good-shot ring (goodRingFromEntry), no longer the 80% ellipse the engine draws from.
  */
 export function withEllipses(res, resolve, { lieQuality = "standard", config = DEFAULT_CONFIG } = {}) {
-  const one = (o) => (o ? { ...o, ell: onFinish(ellipseFromEntry(resolve(o.club, o.swingType), { lieQuality, config }), o) } : null);
+  const one = (o) => (o ? { ...o, ell: onFinish(goodRingFromEntry(resolve(o.club, o.swingType), { lieQuality, config }), o) } : null);
   return { safe: one(res?.safe), aggressive: res?.sameShot ? null : one(res?.aggressive) };
 }
 
@@ -608,13 +656,13 @@ export function overlayModel(input) {
     if (active.kind === "layup" && pin) {
       cur.push(el("g", { "data-part": "leave" }, haloLine(T, project(pin), 1.4, P, { strokeDasharray: "5 6", opacity: 0.92 })));
     }
-    // 6. the Shot Pattern 80% ellipse
-    cur.push(el("ellipse", { "data-part": "ellipse", ...ellipseAttrs(e), fill: P.ellFill, stroke: P.line, strokeWidth: 1.6 }));
-    // 6b. C17: the inner ring, the best RING_INNER_PCT of the shots — an outline only, so the fill is not doubled
+    // 6. the ring (C36, D117: the good-shot ring); dashed since v22.46 (Brett, Oct 11: dashed outside, solid inside)
+    cur.push(el("ellipse", { "data-part": "ellipse", ...ellipseAttrs(e), fill: P.ellFill, stroke: P.line, strokeWidth: 1.6, strokeDasharray: "4 3" }));
+    // 6b. C17: the inner ring, the best RING_INNER_PCT of the shots — an outline only, so the fill is not doubled; solid
     if (active.ell?.innerFrac > 0) {
       const ei = ellipseScreen({ target: T, ...active.ell, w: active.ell.w * active.ell.innerFrac, h: active.ell.h * active.ell.innerFrac,
         thetaDeg: thetaDeg(B, T), pxPerYd: pxPerYdAt(project, active.target) });
-      cur.push(el("ellipse", { "data-part": "ellipse-inner", ...ellipseAttrs(ei), fill: "none", stroke: P.line, strokeWidth: 1.2, strokeDasharray: "4 3" }));
+      cur.push(el("ellipse", { "data-part": "ellipse-inner", ...ellipseAttrs(ei), fill: "none", stroke: P.line, strokeWidth: 1.2 }));
     }
     // 6c. v22.29 (C21, D100): dots — where the simulation's draws finish (engine.js landingDots)
     if (dots && dots.length) {

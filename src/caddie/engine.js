@@ -495,6 +495,26 @@ export function shortTailPct(e, cfg = DEFAULT_CONFIG) {
   return model < 1 && target > model ? (target - model) / (1 - model) : 0;
 }
 
+/**
+ * C36 (v22.46, D117): the draws the caddie keeps — all but the `drop` share that finish farthest (yards,
+ * straight line) from the median draw, which is where the shot finishes on average. along / lat = each
+ * draw's flight along and across the ball → target line. → indices, in draw order (the dots keep the
+ * fixed seed's order); ties keep the earlier draw. Every index when drop is 0 or there are under 2 draws.
+ */
+export function keptDraws(along, lat, drop) {
+  const n = along.length;
+  const all = Array.from({ length: n }, (_, i) => i);
+  const k = Math.round(n * (drop > 0 ? Math.min(drop, 1) : 0));
+  if (n < 2 || k <= 0) return all;
+  const median = (a) => {
+    const s = Float64Array.from(a).sort(), m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  };
+  const mA = median(along), mL = median(lat);
+  const d = all.map((i) => Math.hypot(along[i] - mA, lat[i] - mL));
+  return all.sort((a, b) => d[a] - d[b] || a - b).slice(0, Math.max(1, n - k)).sort((a, b) => a - b);
+}
+
 export function simulateCandidate(cand, ctx, hole, P, samples, trace = null) {
   const cfg = P.config;
   const e = cand.entry;
@@ -517,8 +537,11 @@ export function simulateCandidate(cand, ctx, hole, P, samples, trace = null) {
   const T = cfg.SHORT_TAIL || DEFAULT_CONFIG.SHORT_TAIL;
   let sumStrokes = 0, sumBirdie = 0, sumPar = 0, sumDouble = 0, trouble = 0, sumLat = 0;
   const troubleBy = {};                                   // v22.39 (C4, D110): which trouble, for the aim warning
-  const n = samples.length;
-  for (let i = 0; i < n; i++) {
+  // C36 (D117): every draw's flight first (along the line, across it), then the worst DROP_WORST_PCT
+  // are dropped and only the rest are rolled and priced
+  const N = samples.length;
+  const flightAlong = new Float64Array(N), flightLat = new Float64Array(N);
+  for (let i = 0; i < N; i++) {
     const s = samples[i];
     let along, lat;
     if (ell) {
@@ -538,6 +561,12 @@ export function simulateCandidate(cand, ctx, hole, P, samples, trace = null) {
     else if (s.u < e.bigMiss.left + e.bigMiss.right) lat = e.bigMiss.latYds + tailLat;
     // C3: the whole shot, big misses too, starts on the aim line — or on his own Line (C4, D110)
     lat += Number.isFinite(cand.startOffsetYds) ? cand.startOffsetYds : aim.aimOffsetYds;
+    flightAlong[i] = along; flightLat[i] = lat;
+  }
+  const kept = keptDraws(flightAlong, flightLat, cfg.DROP_WORST_PCT ?? DEFAULT_CONFIG.DROP_WORST_PCT);
+  const n = kept.length;
+  for (const i of kept) {
+    const along = flightAlong[i], lat = flightLat[i];
     sumLat += lat;
     let p = { x: ctx.ball.x + lm.dir.x * along + lm.perp.x * lat, y: ctx.ball.y + lm.dir.y * along + lm.perp.y * lat };
     let lie = classify(hole, p);
@@ -557,7 +586,7 @@ export function simulateCandidate(cand, ctx, hole, P, samples, trace = null) {
         if (ql === "sand" || ql === "water" || ql === "trees") break;
       }
     }
-    if (trace) trace.push({ x: p.x, y: p.y });         // v22.29 (C21): where each draw finished
+    if (trace) trace.push({ x: p.x, y: p.y });         // v22.29 (C21): where each kept draw finished (C36)
     const r = priceLanding(hole, P, ctx, ctx.ball, p, lie, k, pin);
     sumStrokes += r.strokes;
     sumBirdie += r.birdie;
@@ -805,9 +834,11 @@ export function priceTarget(rawCtx, hole, P, target, opts = {}) {
 
 /**
  * v22.29 (C21, D100): the dots inside the ring — where `n` of the simulation's own draws finish for
- * an option on screen (recommend()'s or priceTarget's), mishits, big misses and roll included. Same
- * seed, so the dots only move when the shot does. Kept out of recommend() so the shot record's
- * recommendation snapshot stays small. [] when the club isn't in the profile.
+ * an option on screen (recommend()'s or priceTarget's), roll included. Same seed, so the dots only
+ * move when the shot does. Kept out of recommend() so the shot record's recommendation snapshot stays
+ * small. [] when the club isn't in the profile.
+ * C36 (v22.46, D117): the dots are the draws the caddie keeps (its worst DROP_WORST_PCT dropped), so
+ * it simulates n / (1 − DROP_WORST_PCT) and n are left.
  */
 export function landingDots(rawCtx, hole, P, option, n) {
   if (!option?.target || !Number.isFinite(option.target.x)) return [];
@@ -817,7 +848,9 @@ export function landingDots(rawCtx, hole, P, option, n) {
   if (!e) return [];
   const cand = { club: e.club, swing: e.swing, entry: e, kind: option.kind || "approach", target: { x: option.target.x, y: option.target.y } };
   const out = [];
-  simulateCandidate(cand, ctx, hole, P, makeSamples(Number.isFinite(n) ? n : cfg.RING_DOTS ?? DEFAULT_CONFIG.RING_DOTS, cfg.SEED), out);
+  const want = Number.isFinite(n) ? n : cfg.RING_DOTS ?? DEFAULT_CONFIG.RING_DOTS;
+  const drop = Math.min(Math.max(cfg.DROP_WORST_PCT ?? DEFAULT_CONFIG.DROP_WORST_PCT, 0), 0.9);
+  simulateCandidate(cand, ctx, hole, P, makeSamples(Math.round(want / (1 - drop)), cfg.SEED), out);
   return out;
 }
 

@@ -59,7 +59,9 @@
           328
         ],
         "crossSrc": "plus glyph"
-      }
+      },
+      "ringWYds": 46.6,
+      "ringDots": 32
     },
     {
       "club": "2i",
@@ -110,7 +112,9 @@
           559
         ],
         "crossSrc": "plus glyph"
-      }
+      },
+      "ringWYds": 41.7,
+      "ringDots": 24
     },
     {
       "club": "2Hy",
@@ -161,7 +165,9 @@
           304
         ],
         "crossSrc": "plus glyph"
-      }
+      },
+      "ringWYds": 47.3,
+      "ringDots": 7
     },
     {
       "club": "4Hy",
@@ -212,7 +218,9 @@
           571
         ],
         "crossSrc": "plus glyph"
-      }
+      },
+      "ringWYds": 48.0,
+      "ringDots": 16
     },
     {
       "club": "2Hy",
@@ -264,7 +272,9 @@
           589
         ],
         "crossSrc": "plus glyph"
-      }
+      },
+      "ringWYds": 40.5,
+      "ringDots": 7
     }
   ],
   "notFitted": {

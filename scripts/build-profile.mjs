@@ -717,6 +717,8 @@ for (const [doc, e] of [...ell80Doc.entries.map((x) => [ell80Doc, x]), ...ell80T
     n: e.n,
     confidence: e.confidence,
     ...(e.goodDots != null ? { goodDots: e.goodDots } : {}),
+    // C36 (D117): the drawn ring's width, the band holding his best 65% side to side (scripts/fit-ell80.py)
+    ...(e.ringWYds != null ? { ringWYds: e.ringWYds, ringDots: e.ringDots } : {}),
   };
 }
 // C22 (D113): a fairway ring with fewer than MIN_GOOD_DOTS good shots (one ring, mishits and all — the

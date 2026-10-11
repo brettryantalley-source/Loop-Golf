@@ -111,7 +111,7 @@ feet as integers as printed; degrees to 2 decimals.
 
 `ell80` — Shot Pattern's 80% dispersion ellipse (UI addendum §5.1), from
 `data/extracted/<batch>-ell80.json`; applied to every entry of the club while the source says
-`lies: all`; `null` when unmeasured. Since v22.21 (C17, D92) `wYds`/`hYds`/`tiltDeg`/`dxYds` are the 80% ring of the club's **good** shots; the ring Shot Pattern printed rides on `allWYds`/`allHYds`/`allTiltDeg`/`allDxYds`, with `mishitRate`, `goodWindowYds` and `goodDots` (a club with under 5 good dots keeps one ring and `mishitRate: 0`). `bboxWYds`/`bboxDYds` are still what Shot Pattern printed.
+`lies: all`; `null` when unmeasured. Since v22.21 (C17, D92) `wYds`/`hYds`/`tiltDeg`/`dxYds` are the 80% ring of the club's **good** shots; the ring Shot Pattern printed rides on `allWYds`/`allHYds`/`allTiltDeg`/`allDxYds`, with `mishitRate`, `goodWindowYds` and `goodDots` (a club with under 5 good dots keeps one ring and `mishitRate: 0`). `bboxWYds`/`bboxDYds` are still what Shot Pattern printed. Since v22.46 (C36, D117) `ringWYds` is the width of the ring the map draws — twice the distance from the median dot that holds 65% of the dots' lateral misses — with `ringDots` the dots it was read from (absent under 5 dots); the drawn ring is 20 yds deep, set in the app.
 
 ### Where each entry comes from
 
