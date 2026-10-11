@@ -3,14 +3,14 @@
    filled by the Setup prefetch and while playing. Its name stays bogeyman-tiles-v1 (the
    Sep 28 storage-key decision), so tiles saved by v19 carry over. MapLibre is served
    same-origin from vendor/ and is in the shell so the map starts with no signal. */
-const CACHE = 'loop-golf-v22-53';
+const CACHE = 'loop-golf-v22-54';
 const TILES = 'bogeyman-tiles-v1';          // survives app-version bumps; only its own name is kept below
 const SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './icon-loop-512.png',
-  './apple-touch-icon-180.png',
+  './icon-loop-v2-512.png',
+  './apple-touch-icon-v2-180.png',
   // MapLibre GL 5.24 (v22 caddie map) — loaded on first use of the caddie screen.
   './vendor/maplibre-gl.js',
   './vendor/maplibre-gl.css',
