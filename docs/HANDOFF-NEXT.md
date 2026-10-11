@@ -10,7 +10,7 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 424 tests (v22.54); must be green
+npm install && npm test    # 425 tests (v22.55); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
 
@@ -21,6 +21,12 @@ node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders wi
 the additions mix real edges with greenish rough. Waits on Brett marking the spots (S10); its README says how to
 ship one hole. The draft was made on the winter photo; since v22.54 the app flies the green Sep 2023 one (D125),
 and `fetch.py` reads the file's `imagery.url`, so a re-run traces on the new photo.
+
+## v22.55 (Oct 11)
+
+Trees around Bradshaw's Red and White nines (D126): 53 woods traced automatically from the Sep 2023 photo
+(`scripts/bradshaw-trees/`), cut back 20 m from every Red and White tee. The Blue nine still has OSM's two pieces.
+425 tests.
 
 ## v22.54 (Oct 11)
 
