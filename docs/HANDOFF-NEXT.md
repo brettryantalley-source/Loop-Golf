@@ -10,9 +10,15 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 419 tests (v22.48); must be green
+npm install && npm test    # 419 tests (v22.49); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.49 (Oct 11)
+
+One tile level finer (C39, D120). The satellite source is declared at half its tile size (`TILE_DETAIL_SHIFT`),
+so MapLibre draws level 19 on tee and approach views that drew 18 (level 19 was already prefetched). Esri has
+nothing past 19 at the five clubs; no free sharper photo (Georgia's 6-inch is licensed; P10). 419 tests.
 
 ## v22.48 (Oct 11)
 

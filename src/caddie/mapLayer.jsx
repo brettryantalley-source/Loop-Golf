@@ -60,6 +60,14 @@ const MAPTILER_IMAGERY = { url: TILE_URL, tileSize: 512, maxzoom: 18, zooms: PRE
 let IMAGERY = MAPTILER_IMAGERY;
 export function setImagery(img) { IMAGERY = img && typeof img.url === "string" ? { ...MAPTILER_IMAGERY, ...img } : MAPTILER_IMAGERY; }
 export const activeImagery = () => IMAGERY;
+/* v22.49 (C39, D120; Brett Oct 11: "how poor the resolution of the maps are"). MapLibre picks a raster
+   tile level by rounding mapZoom + log2(512 / tileSize), so Esri's 256-px tiles at a caddie view of map
+   zoom 16.5–18.5 (a tee shot to a 150-yd approach) drew level 17 or 18 while level 19 sat in the cache.
+   The source is declared at tileSize / 2^TILE_DETAIL_SHIFT, which takes one level finer at every zoom,
+   still capped at the imagery's maxzoom (19 at all five bundled clubs: Esri has nothing deeper there, and
+   the level 20 at Bradshaw and Riverpines is an older capture). Costs ~4× the tiles per view, already in
+   the prefetch's zoom list. */
+export const TILE_DETAIL_SHIFT = 1;
 export const MAPLIBRE_JS = "./vendor/maplibre-gl.js";
 export const MAPLIBRE_CSS = "./vendor/maplibre-gl.css";
 
@@ -414,7 +422,7 @@ export function MapLayer({
         container: mapBoxRef.current,
         style: {
           version: 8,
-          sources: { sat: { type: "raster", tiles: [IMAGERY.url], tileSize: IMAGERY.tileSize, maxzoom: IMAGERY.maxzoom } },
+          sources: { sat: { type: "raster", tiles: [IMAGERY.url], tileSize: IMAGERY.tileSize / 2 ** TILE_DETAIL_SHIFT, maxzoom: IMAGERY.maxzoom } },
           layers: [
             { id: "bg", type: "background", paint: { "background-color": SAT_BG } },
             { id: "sat", type: "raster", source: "sat", paint: { "raster-fade-duration": 0 } },
