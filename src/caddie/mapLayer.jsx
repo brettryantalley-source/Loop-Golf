@@ -28,7 +28,7 @@
  */
 import {
   cameraKey, cameraFor, cameraForShot, cameraPoints, fitBounds, linearProjector, zoomForPxPerYd, satShapesModel,
-  overlayModel, fallbackMapModel, mapModeFor, markCamera, pinViewCamera, pinViewKey, pinMarkerHit, satelliteFailure, targetMarkerHit,
+  overlayModel, fallbackMapModel, mapModeFor, markCamera, pinViewCamera, pinViewKey, satelliteFailure,
 } from "./overlay.js";
 import { frameOf, pinFromTap, holeFrame, clampToGreen } from "./geo.js";
 import { nearMarkedGreen } from "./greens.js";
@@ -354,6 +354,7 @@ export function MapLayer({
   const [mapGen, setMapGen] = useState(0);                // bumps when a MapLibre map is created
   const [drag, setDrag] = useState(null);                 // v22.11: the pin marker's frame point mid-drag
   const [tdrag, setTdrag] = useState(null);               // v22.15: the target marker's frame point mid-drag
+  const [pdrag, setPdrag] = useState(null);               // v22.57 (C46): the place marker, screen px, mid-drag (armed map)
   const dragRef = useRef(null);
   const pressRef = useRef(null);
   const touchesRef = useRef(new Set());                   // v22.27 (C18): pointers down now (a pinch is two)
@@ -527,10 +528,19 @@ export function MapLayer({
 
   /* ---------- pointer input: tap, long-press (re-mark), press-hold-drag (pin view), one-finger pan ---------- */
   const TAP_SLOP_PX = 8, HOLD_MS = 300, LONG_MS = 600;
+  const PLACE_LIFT_PX = 64;                             // v22.57 (C46, D128): the place marker rides this far above the finger
   const panOk = !!map && pinchOk && !lineMode;          // v22.47 (C37): one finger pans a hole on satellite
   const local = (ev) => { const r = boxRef.current.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; };
   const endDrag = () => { dragRef.current = null; setDrag(null); if (onPinDrag) onPinDrag(null); };
   const endTdrag = () => { dragRef.current = null; setTdrag(null); if (onTargetDrag) onTargetDrag(null); };
+  const endPdrag = () => { dragRef.current = null; setPdrag(null); };
+  // the lat/lng under a screen point (satellite or the drawn frame); null off any projection
+  const latLngAt = (pt) => {
+    let q = null;
+    if (map) { const g = map.unproject([pt.x, pt.y]); q = { lat: g.lat, lon: g.lng }; }
+    else if (unproject && PF) { const g = PF.toLatLng(unproject(pt)); q = { lat: g.lat, lon: g.lon }; }
+    return q && Number.isFinite(q.lat) && Number.isFinite(q.lon) ? q : null;
+  };
   // the start line through a screen point; on the ball (within 20 px) it clears
   const lineAt = (pt) => {
     if (!unproject || !project || !ball || !onLineTap) return;
@@ -549,10 +559,8 @@ export function MapLayer({
     if (si >= 0) { onStopTap(si); return; }
     // v22.15 test mode: armed, the tap is a fix — wherever it lands, and nothing else happens
     if (onFakeTap) {
-      let q = null;
-      if (map) { const g = map.unproject([pt.x, pt.y]); q = { lat: g.lat, lon: g.lng }; }
-      else if (unproject && PF) { const g = PF.toLatLng(unproject(pt)); q = { lat: g.lat, lon: g.lon }; }
-      if (q && Number.isFinite(q.lat) && Number.isFinite(q.lon)) onFakeTap(q);
+      const q = latLngAt(pt);
+      if (q) onFakeTap(q);
       return;
     }
     if (inPinView) return;                                // pin view: a tap does nothing else (B.3)
@@ -576,7 +584,7 @@ export function MapLayer({
     if (touchesRef.current.size > 1) {
       const pr0 = pressRef.current;
       pressRef.current = null;
-      if (pr0) { clearTimeout(pr0.timer); if (pr0.mode === "drag") endDrag(); if (pr0.mode === "tdrag") endTdrag(); }
+      if (pr0) { clearTimeout(pr0.timer); if (pr0.mode === "drag") endDrag(); if (pr0.mode === "tdrag") endTdrag(); if (pr0.mode === "pdrag") endPdrag(); }
       return;
     }
     const pt = local(ev);
@@ -584,12 +592,28 @@ export function MapLayer({
     pressRef.current = pr;
     const pinPx = inPinView && pin && project ? project(pin) : null;
     const tgtPx = !onFakeTap && !inPinView && !markMode && hole && intentMarker && onTargetDrop && project ? project(intentMarker) : null;
+    // v22.57 (C46, D128): hold-then-drag starts ANYWHERE on the map, not only on the marker — the marker
+    // keeps its offset from the finger, so it stays in view while it moves (Brett, Bradshaw Oct 11: the
+    // pin "only works when I cover it with my finger… then I can't see it"). On a marked green the
+    // long-press near the green still re-marks it; everywhere else the hold drags the target.
+    const remarkHere = !inPinView && hole?.synthetic && onRemark && unproject && (() => { const p = unproject(pt); return !!(p && nearMarkedGreen(hole, p)); })();
     if (!onFakeTap && !inPinView && lineMode && hole && unproject && ball && onLineTap) {
       // v22.16.5: Line follows the finger — press anywhere and drag; a tap still sets it in one go
       pr.mode = "line";
       try { boxRef.current.setPointerCapture(pr.id); } catch (e) { /* synthetic events */ }
-    } else if (tgtPx && unproject && targetMarkerHit(tgtPx, pt)) {
-      // v22.15 §2: the target marker — the pin drag's hold-then-drag, anywhere on the map
+    } else if (onFakeTap && !markMode && (map || (unproject && PF))) {
+      // v22.57 (C46): an armed map — a tap is the fix (tap() above); a hold anywhere lifts a marker above the
+      // finger that follows it, and letting go places the ball there
+      pr.timer = setTimeout(() => {
+        if (pressRef.current !== pr) return;
+        pr.mode = "pdrag";
+        try { boxRef.current.setPointerCapture(pr.id); } catch (e) { /* synthetic events */ }
+        dragRef.current = { x: pr.x0, y: pr.y0 - PLACE_LIFT_PX }; setPdrag(dragRef.current);
+      }, HOLD_MS);
+    } else if (remarkHere) {
+      pr.timer = setTimeout(() => { if (pressRef.current === pr) { pr.mode = "long"; onRemark(); } }, LONG_MS);
+    } else if (tgtPx && unproject) {
+      // v22.15 §2: the target marker — the pin drag's hold-then-drag; v22.57: from anywhere on the map
       pr.grab = { dx: tgtPx.x - pt.x, dy: tgtPx.y - pt.y };
       pr.timer = setTimeout(() => {
         if (pressRef.current !== pr) return;
@@ -598,7 +622,8 @@ export function MapLayer({
         dragRef.current = { x: intentMarker.x, y: intentMarker.y }; setTdrag(dragRef.current);
         if (onTargetDrag) onTargetDrag(dragRef.current);
       }, HOLD_MS);
-    } else if (pinPx && unproject && pinMarkerHit(pinPx, pt)) {
+    } else if (pinPx && unproject) {
+      // v22.11 pin view; v22.57: a hold anywhere on the green view moves the pin, offset from the finger
       pr.grab = { dx: pinPx.x - pt.x, dy: pinPx.y - pt.y };
       pr.timer = setTimeout(() => {
         if (pressRef.current !== pr) return;
@@ -607,9 +632,6 @@ export function MapLayer({
         dragRef.current = { x: pin.x, y: pin.y }; setDrag(dragRef.current);
         if (onPinDrag) onPinDrag(dragRef.current);
       }, HOLD_MS);
-    } else if (!inPinView && hole?.synthetic && onRemark && unproject) {
-      const p = unproject(pt);
-      if (p && nearMarkedGreen(hole, p)) pr.timer = setTimeout(() => { if (pressRef.current === pr) { pr.mode = "long"; onRemark(); } }, LONG_MS);
     }
   };
   const onPointerMove = (ev) => {
@@ -629,6 +651,10 @@ export function MapLayer({
     if (pr.mode === "tdrag") {
       const q = unproject ? unproject({ x: pt.x + pr.grab.dx, y: pt.y + pr.grab.dy }) : null;
       if (q) { dragRef.current = { x: q.x, y: q.y }; setTdrag(dragRef.current); if (onTargetDrag) onTargetDrag(dragRef.current); }
+      return;
+    }
+    if (pr.mode === "pdrag") {
+      dragRef.current = { x: pt.x, y: pt.y - PLACE_LIFT_PX }; setPdrag(dragRef.current);
       return;
     }
     if (!pr.moved && Math.hypot(pt.x - pr.x0, pt.y - pr.y0) > TAP_SLOP_PX) {
@@ -651,6 +677,7 @@ export function MapLayer({
     clearTimeout(pr.timer);
     if (pr.mode === "drag") { const p = dragRef.current; endDrag(); if (p && onPinDrop) onPinDrop(p); return; }
     if (pr.mode === "tdrag") { const p = dragRef.current; endTdrag(); if (p && onTargetDrop) onTargetDrop(p); return; }
+    if (pr.mode === "pdrag") { const p = dragRef.current; endPdrag(); const q = p && onFakeTap ? latLngAt(p) : null; if (q) onFakeTap(q); return; }
     if (pr.mode === "line") { lineAt(local(ev)); return; }
     if (pr.mode === "long" || pr.moved) return;
     tap(local(ev));
@@ -663,7 +690,9 @@ export function MapLayer({
     clearTimeout(pr.timer);
     if (pr.mode === "drag") endDrag();                    // the system took the touch: no pin change
     if (pr.mode === "tdrag") endTdrag();
+    if (pr.mode === "pdrag") endPdrag();
   };
+  useEffect(() => { if (!onFakeTap && dragRef.current && pdrag) endPdrag(); }, [!!onFakeTap]);
   useEffect(() => { if (!inPinView && dragRef.current) endDrag(); }, [inPinView]);
 
   const svgStyle = { position: "absolute", left: 0, top: 0, width: "100%", height: "100%", display: "block", overflow: "visible" };
@@ -706,6 +735,15 @@ export function MapLayer({
       <svg data-layer="overlay" style={{ ...svgStyle, pointerEvents: "none" }} width={vp.width} height={vp.height} viewBox={`0 0 ${vp.width} ${vp.height}`} aria-hidden="true">
         {renderNodes(model)}
       </svg>
+      {/* v22.57 (C46, D128): the place marker — a ball ring above the finger while a hold drags it on an armed map */}
+      {pdrag && (
+        <svg data-layer="place" style={{ ...svgStyle, pointerEvents: "none" }} width={vp.width} height={vp.height} viewBox={`0 0 ${vp.width} ${vp.height}`} aria-hidden="true">
+          <line x1={pdrag.x} y1={pdrag.y + 11} x2={pdrag.x} y2={pdrag.y + PLACE_LIFT_PX - 14} stroke={drawn ? T.ink : "#fff"} strokeWidth={1.2} strokeDasharray="2 3" opacity={0.7} />
+          <circle cx={pdrag.x} cy={pdrag.y} r={10} fill="none" stroke={drawn ? T.ink : "#fff"} strokeWidth={2.2} />
+          <circle cx={pdrag.x} cy={pdrag.y} r={10} fill="none" stroke={T.yellow} strokeWidth={1} />
+          <circle cx={pdrag.x} cy={pdrag.y} r={2.4} fill={drawn ? T.ink : "#fff"} />
+        </svg>
+      )}
       {project && !inPinView && !markMode && labels.map((l, i) => {
         const q = l && l.at ? project(l.at) : null;
         if (!q || !Number.isFinite(q.x) || q.x < -40 || q.x > vp.width + 40) return null;

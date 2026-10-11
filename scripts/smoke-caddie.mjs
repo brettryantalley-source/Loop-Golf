@@ -162,6 +162,46 @@ await step("review map zoom", async () => {
   await page.getByText("Close", { exact: true }).last().click({ timeout: 3000 });
 });
 
+// v22.57 (C46, D128): on an armed map a hold anywhere lifts a marker above the finger and letting go places
+// the ball there — the shot count moves on as a tap's would.
+const shotNo = async () => Number((await page.evaluate(() => (document.body.innerText.match(/shot\s*(\d+)/i) || [])[1])) || 0);
+await step("hold-and-drag place", async () => {
+  const before = await shotNo();
+  await logGood();
+  await page.getByText(/^Test mode ·/).first().waitFor({ timeout: 5000 });
+  await page.waitForTimeout(300);
+  await page.mouse.move(200, 520); await page.mouse.down();
+  await page.waitForTimeout(450);                                  // past the 300 ms hold: the marker is up
+  const marker = await page.locator('[data-layer="place"]').count();
+  await page.mouse.move(200, 470, { steps: 5 }); await page.mouse.move(210, 430, { steps: 5 });
+  await page.mouse.up();
+  await page.waitForTimeout(2500);
+  const after = await shotNo();
+  if (!marker) throw new Error("no place marker after the hold");
+  if (after !== before + 1) throw new Error(`the hold-and-drag did not place the ball (shot ${before} → ${after})`);
+  console.log(`place: held, dragged, placed (shot ${before} → ${after})`);
+});
+await shot("4c-placed");
+// v22.57 (C46, D128): Delete stroke from the mid-hole Shots list takes two taps, and the caddie's count follows.
+await step("delete stroke mid-hole", async () => {
+  const before = await shotNo();
+  await page.locator('[data-part="shots-button"]').first().click({ timeout: 5000 });
+  const rows = await page.locator('[data-part="review-row"][data-kind="shot"]').count();
+  await page.locator('[data-part="review-row"][data-kind="shot"] > button').first().click({ timeout: 5000 });
+  const del = page.locator('[data-part="review-delete"]').first();
+  await del.click({ timeout: 3000 });
+  await page.getByText("Tap again to delete").first().waitFor({ timeout: 3000 }).catch(() => { throw new Error("the first tap did not arm Delete stroke"); });
+  await page.getByText("Tap again to delete").first().click({ timeout: 3000 });
+  await page.waitForTimeout(200);
+  const left = await page.locator('[data-part="review-row"][data-kind="shot"]').count();
+  if (left !== rows - 1) throw new Error(`the row did not go (${rows} → ${left})`);
+  await page.locator('[data-part="review-save"]').click({ timeout: 3000 });
+  await page.waitForTimeout(500);
+  const after = await shotNo();
+  if (after !== before - 1) throw new Error(`the shot count did not follow (${before} → ${after})`);
+  console.log(`delete: two taps, ${rows} → ${left} rows, shot ${before} → ${after}`);
+});
+
 // v22.40 (C29, D111): a ball 22 yds short of hole 1's green — restored, so the camera's framing of the
 // shot before cannot move it: no club call, his short-game numbers instead, and the log card's
 // Chip · Pitch · Bunker · Wedge row.

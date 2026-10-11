@@ -70,6 +70,9 @@ export const COPY = Object.freeze({
   review: "Review",
   saveAll: "Save all",
   later: "Later",
+  /* v22.57 (C46, D128): a fix placed by hand on the map */
+  place: "Place by hand",
+  cancel: "Cancel",
 });
 export const NOTICES = Object.freeze({
   nofix: "No GPS fix. Step into the open and tap Try again.",
@@ -88,6 +91,8 @@ export const NOTICES = Object.freeze({
   /* v22.25 (C26, C27, D96): after Log shot */
   testTapBall: "Test mode · tap where the ball finished",
   nextShot: "Shot logged · at your ball, tap I'm at my ball",
+  /* v22.57 (C46, D128): Place by hand — a tap puts the ball there; a hold anywhere drags a marker above the finger */
+  placeTap: (shotNo) => `Shot ${shotNo} · tap where your ball is, or hold anywhere and drag the marker`,
 });
 
 /* ---------- 1. state ---------- */
@@ -161,8 +166,29 @@ export function caddieReducer(s, a) {
     case "retry": {
       const trigger = a.type === "retry" ? (s.trigger || (s.ball || s.yards != null ? "ball" : "tee")) : a.type;
       // test mode (§1): `tap` arms the map — the next tap is the fix; the phase is Locating meanwhile
-      const awaitingTap = a.tap ? { action: a.type, trigger } : null;
+      const awaitingTap = a.tap ? (a.byHand ? { action: a.type, trigger, byHand: true } : { action: a.type, trigger }) : null;
       return { ...s, phase: "locating", prevPhase: s.phase === "locating" ? s.prevPhase : s.phase, trigger, pinView: false, lineMode: false, awaitingTap };
+    }
+    /* v22.57 (C46): Cancel on a Place by hand — back to the phase before Locating, no fix, no shot */
+    case "tapCancel": {
+      if (!s.awaitingTap) return s;
+      const back = s.prevPhase && s.prevPhase !== "locating" ? s.prevPhase : s.ball ? "ready" : s.yards ? "yards" : "pretee";
+      return { ...s, phase: back, prevPhase: null, awaitingTap: null };
+    }
+    /* v22.57 (C46, D128): a stroke deleted from the mid-hole Shots list. A shot before the one being
+       played moves the count down one (the lines are re-sent by the caller); a putt lowers the hole's
+       putt count; the open (unclosed) shot goes if it was the one deleted. */
+    case "shotDeleted": {
+      const hole = Number.isInteger(a.hole) ? a.hole : s.hole;
+      let t = s;
+      if (a.putt) {
+        const n = Math.max(0, (s.putts[hole] || 0) - 1);
+        t = { ...t, putts: { ...s.putts, [hole]: n } };
+      } else if (hole === s.hole && Number.isInteger(a.shotNo) && a.shotNo < s.shotNo && s.shotNo > 1) {
+        t = { ...t, shotNo: s.shotNo - 1 };
+      }
+      if (a.id && t.openShot && t.openShot.id === a.id) t = { ...t, openShot: null };
+      return t;
     }
     /* test mode, Mark green here (§1): the next tap is where the green is — no fix, no shot */
     case "awaitMark":
@@ -933,14 +959,15 @@ export function caddieView({
   // v22.15 §1 test mode: while the map is armed the bar waits for the tap
   if (s.awaitingTap) {
     primary = { label: COPY.tapMap, action: null, disabled: true };
-    secondary = null;
+    secondary = s.awaitingTap.byHand ? { label: COPY.cancel, action: "tapCancel" } : null;   // v22.57 (C46)
     rail.aim = COPY.aimTap;
     rail.shapes = false; rail.line = false; rail.action = null;
   }
 
   // v22.25 (C27): a logged shot not yet closed is the walk to the ball; say what comes next
   const loggedHere = !!s.openShot && s.openShot.hole === s.hole && s.openShot.shotNo === s.shotNo && (view === "ready" || view === "sameshot");
-  const notice = s.awaitingTap ? (s.awaitingTap.trigger === "ball" && s.openShot ? NOTICES.testTapBall : NOTICES.testTap)
+  const notice = s.awaitingTap ? (s.awaitingTap.byHand ? NOTICES.placeTap(s.awaitingTap.trigger === "tee" ? 1 : s.shotNo + 1)
+      : s.awaitingTap.trigger === "ball" && s.openShot ? NOTICES.testTapBall : NOTICES.testTap)
     : loggedHere ? NOTICES.nextShot
     : view === "noprofile" ? NOTICES.noprofile
     : view === "nomap" ? (satFailure && s.ball ? NOTICES.noSatellite(satFailure) : NOTICES.nomap(holeNo))
