@@ -448,8 +448,10 @@ export function MapLayer({
 
   /* v22.11: pan and pinch-zoom only in the mark view (no rotate, no pitch), so a green beyond the
      first 300 yds can be brought on screen and tapped. v22.27 (C18, D98): on a hole, two-finger
-     pinch zooms too (rotation, one-finger pan and double-tap stay off, so one finger still drags the
-     target, the Line and the pin); `Fit` puts the hole's camera back. The pin view stays fixed. */
+     pinch zooms too (rotation and double-tap stay off); `Fit` puts the hole's camera back. The pin
+     view stays fixed. v22.47 (C37, D118): one finger pans the hole too, but through the pointer
+     handlers below, not MapLibre's dragPan, so a press-and-hold on the target still drags it and a
+     Line still draws: MapLibre's dragPan stays off. */
   const pinchOk = !markMode && !!hole && !inPinView;
   useEffect(() => {
     const map = mapRef.current;
@@ -460,7 +462,7 @@ export function MapLayer({
       else { map.dragPan.disable(); map.touchZoomRotate.disable(); map.scrollZoom.disable(); }
     } catch (e) { /* an older MapLibre without a handler: the view stays fixed */ }
   }, [markMode, pinchOk, mapGen]);
-  const [zoomed, setZoomed] = useState(false);            // v22.27: Brett pinched away from the hole's camera
+  const [zoomed, setZoomed] = useState(false);            // v22.27: Brett pinched (v22.47: or panned) away from the hole's camera
   // v22.28 (C2, D99): the course shapes over the satellite, on by default; Brett's choice is kept on the phone
   const [shapesOn, setShapesOn] = useState(() => { try { return localStorage.getItem(SHAPES_KEY) !== "off"; } catch (e) { return true; } });
   const toggleShapes = () => setShapesOn((on) => { try { localStorage.setItem(SHAPES_KEY, on ? "off" : "on"); } catch (e) { /* private mode */ } return !on; });
@@ -512,8 +514,9 @@ export function MapLayer({
   const base = hole && drawn && project ? fallbackMapModel({ hole, project }) : [];
   const shapes = hole && satellite && shapesOn && project && !markMode ? satShapesModel({ hole, project }) : [];
 
-  /* ---------- pointer input: tap, long-press (re-mark), press-hold-drag (pin view) ---------- */
+  /* ---------- pointer input: tap, long-press (re-mark), press-hold-drag (pin view), one-finger pan ---------- */
   const TAP_SLOP_PX = 8, HOLD_MS = 300, LONG_MS = 600;
+  const panOk = !!map && pinchOk && !lineMode;          // v22.47 (C37): one finger pans a hole on satellite
   const local = (ev) => { const r = boxRef.current.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; };
   const endDrag = () => { dragRef.current = null; setDrag(null); if (onPinDrag) onPinDrag(null); };
   const endTdrag = () => { dragRef.current = null; setTdrag(null); if (onTargetDrag) onTargetDrag(null); };
@@ -617,7 +620,17 @@ export function MapLayer({
       if (q) { dragRef.current = { x: q.x, y: q.y }; setTdrag(dragRef.current); if (onTargetDrag) onTargetDrag(dragRef.current); }
       return;
     }
-    if (!pr.moved && Math.hypot(pt.x - pr.x0, pt.y - pr.y0) > TAP_SLOP_PX) { pr.moved = true; clearTimeout(pr.timer); }
+    if (!pr.moved && Math.hypot(pt.x - pr.x0, pt.y - pr.y0) > TAP_SLOP_PX) {
+      pr.moved = true; clearTimeout(pr.timer);
+      // v22.47 (C37, D118): a press that moves before the hold (off the markers, or a quick swipe that
+      // starts on one) pans the satellite map with the finger; the pin view, the mark view, a Line and
+      // the paper map stay as they were
+      if (panOk) { pr.mode = "pan"; pr.lx = pr.x0; pr.ly = pr.y0; setZoomed(true); }
+    }
+    if (pr.mode === "pan" && map) {
+      try { map.panBy([pr.lx - pt.x, pr.ly - pt.y], { animate: false }); } catch (e) { /* removed mid-gesture */ }
+      pr.lx = pt.x; pr.ly = pt.y;
+    }
   };
   const onPointerUp = (ev) => {
     touchesRef.current.delete(ev.pointerId);
@@ -695,12 +708,19 @@ export function MapLayer({
           </div>
         );
       })}
-      {/* v22.28 (C2): the Shapes toggle; v22.27 (C18): after a pinch, Fit puts the hole's camera back */}
+      {/* v22.28 (C2): the Shapes toggle */}
       {satellite && pinchOk && (
         <div style={{ position: "absolute", left: 6, bottom: attrBottom + 22, zIndex: 6, display: "flex", gap: 6 }}
           onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
           <button data-part="map-shapes" aria-pressed={shapesOn ? "true" : "false"} onClick={toggleShapes} style={mapPill(shapesOn)}>Shapes</button>
-          {zoomed && <button data-part="map-fit" onClick={fit} style={mapPill(false)}>Fit</button>}
+        </div>
+      )}
+      {/* v22.27 (C18): after a pinch (v22.47: or a pan), Fit puts the hole's camera back. v22.47 (C37, D118):
+          top-left under the distance box; beside Shapes it sat under the hole pill and could not be seen */}
+      {satellite && pinchOk && zoomed && (
+        <div style={{ position: "absolute", left: 10, top: (insets.top || 0) + 4, zIndex: 6 }}
+          onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
+          <button data-part="map-fit" onClick={fit} style={mapPill(false)}>Fit</button>
         </div>
       )}
       {/* v22.15: test mode — a thin dashed pencil border, so a fake round is never mistaken for a live one */}

@@ -10,9 +10,16 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 414 tests (v22.46); must be green
+npm install && npm test    # 414 tests (v22.47); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.47 (Oct 11)
+
+One finger pans the map (C37, D118; Brett: one finger). On a hole on satellite, a press that moves before the
+target's 300 ms hold pans with the finger; hold the target to drag it, Line mode still draws, two fingers pinch.
+`Fit` moved top-left under the To Pin box: since v22.28 it sat under the hole pill and could not be seen. The
+smoke test now pans and taps `Fit`. 414 tests.
 
 ## v22.46 (Oct 11)
 

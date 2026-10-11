@@ -2,7 +2,7 @@
 /*
  * smoke-caddie.mjs — opens the BUILT app (index.html) in headless Chromium on a restored Woodmont
  * round in test mode, walks the caddie screen through a tee shot, a logged shot, the next ball and a
- * ball by the green (the short-game line and card, C29), and fails on any page error. `npm test` never renders CaddieScreen; this catches what it can't
+ * ball by the green (the short-game line and card, C29), a one-finger pan and Fit (C37, satellite only), and fails on any page error. `npm test` never renders CaddieScreen; this catches what it can't
  * (a hook out of order, a value used before it is declared). Not part of `npm test`: it needs
  * Playwright and a Chromium (a cloud session has both).
  *
@@ -84,6 +84,28 @@ await step("call on screen", async () => {
   throw new Error("no call after I'm on the tee and a tap");
 });
 await shot("2-ready");
+// v22.47 (C37, D118): one finger off the target pans the satellite map, the call stays, `Fit` puts it back.
+// The paper map (no tiles) does not pan, so the check runs only when the satellite map is up.
+await step("one-finger pan", async () => {
+  const before = await page.evaluate(() => {
+    const m = window.__loopMap, box = document.querySelector(".loop-map");
+    return m && box?.dataset.mode === "hole" ? { c: m.getCenter(), tgt: (document.body.innerText.match(/TO TARGET\s*(\d+)/i) || [])[1] } : null;
+  });
+  if (!before) { console.log("pan: skipped (paper map, no satellite)"); return; }
+  await page.mouse.move(250, 560); await page.mouse.down();
+  await page.mouse.move(250, 500, { steps: 4 }); await page.mouse.move(230, 420, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  const after = await page.evaluate(() => ({ c: window.__loopMap.getCenter(), tgt: (document.body.innerText.match(/TO TARGET\s*(\d+)/i) || [])[1] }));
+  if (Math.hypot(after.c.lat - before.c.lat, after.c.lng - before.c.lng) < 1e-5) throw new Error("the map did not move");
+  if (after.tgt !== before.tgt) throw new Error(`the target moved: ${before.tgt} → ${after.tgt}`);
+  await shot("2b-panned");
+  await page.locator('[data-part="map-fit"]').click({ timeout: 3000 });
+  await page.waitForTimeout(300);
+  const back = await page.evaluate(() => window.__loopMap.getCenter());
+  if (Math.hypot(back.lat - before.c.lat, back.lng - before.c.lng) > 1e-6) throw new Error("Fit did not put the camera back");
+  console.log("pan: moved, target held, Fit restored");
+});
 // Log shot → Good shot. Three tries: the screen can still be settling, and a re-render can close the
 // card between the two clicks. `check` runs on the open card before Good shot.
 const logGood = async (check = null) => {
