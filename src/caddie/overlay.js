@@ -696,7 +696,7 @@ export function overlayModel(input) {
     project, viewport = { width: 375, height: 812 }, hole = null, ball = null, accuracyM = null, pin = null,
     active = null, other = null, previousShots = [], palette = "satellite", idPrefix = "ovl", redrawKey = "", recomputing = false,
     pinMarker = false, pinDragging = false,
-    intent = null, dots = [],
+    intent = null, dots = [], endMark = null,
   } = input;
   const P = PALETTES[palette] || PALETTES.satellite;
   const hatchId = `${idPrefix}-hatch`, clipId = `${idPrefix}-trouble`;
@@ -834,6 +834,17 @@ export function overlayModel(input) {
       g.push(el("circle", { cx: f1(M.x), cy: f1(M.y), r: 2.2, fill: P.prev }));
     }
     if (g.length) out.push(el("g", { "data-part": "intent" }, g));
+  }
+
+  // 8c. v22.58 (C47, D129): Catch up — where the shot finished: a small ball inside a dashed pencil ring
+  if (endMark && Number.isFinite(endMark.x)) {
+    const E = project(endMark);
+    const g = [];
+    if (P.halo) g.push(el("circle", { cx: f1(E.x), cy: f1(E.y), r: 10, fill: "none", stroke: P.halo, strokeWidth: 3.4 }));
+    g.push(el("circle", { cx: f1(E.x), cy: f1(E.y), r: 10, fill: "none", stroke: P.prev, strokeWidth: 1.5, strokeDasharray: "3 2.5" }));
+    if (P.ballHalo) g.push(el("circle", { cx: f1(E.x), cy: f1(E.y), r: 5.5, fill: P.ballHalo }));
+    g.push(el("circle", { cx: f1(E.x), cy: f1(E.y), r: 4.4, fill: PAPER, stroke: BLACK, strokeWidth: 1.3 }));
+    out.push(el("g", { "data-part": "end-mark" }, g));
   }
 
   // 9. ball: paper disc r 6, 1.6 black ring, over a r 7.5 dark disc; low accuracy adds a dashed ring

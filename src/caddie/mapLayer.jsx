@@ -336,13 +336,18 @@ const r1 = (n) => Math.round(n * 10) / 10;
  *   trail         [{x,y}] hole frame — the breadcrumb trail, small dots (SPEC-shotlog-v2 §10)
  *   stops         [{x,y,matched}] hole frame — stop rings; hollow = a candidate, filled = a recorded shot
  *   onStopTap(i)  a tap within 22 px of stop i (before anything else but test-mode / armed taps)
+ *
+ * v22.58 (C47, D129) Catch up:
+ *   onPlaceTap(ll)  a tap (not a Line tap, not in the pin view) is where the shot finished, {lat, lon};
+ *                   a hold still drags the target and a swipe still pans — the call stays live under it
+ *   endMark       {x,y} hole frame — where the shot finished: a small ball with a dashed ring
  */
 export function MapLayer({
   hole = null, geometry = null, ball = null, accuracyM = null, pin = null, options = null, active = "safe", sameShot = false,
   previousShots = [], insets = {}, fallback = false, onPinTap, onMapTap, onSatelliteFail, recomputing = false, attributionBottom,
   fitBall, fitOptions, markAt = null, onMarkGreen, onRemark, pinView = false, onPinDrag, onPinDrop,
   intentMarker = null, startLineDeg = null, onTargetDrag, onTargetDrop, lineMode = false, onLineTap, onFakeTap = null, fakeAt = null, testBorder = false,
-  labels = [], trail = [], stops = [], onStopTap = null, dots = [], teeColors = null,
+  labels = [], trail = [], stops = [], onStopTap = null, dots = [], teeColors = null, onPlaceTap = null, endMark = null,
 }) {
   const camBall = fitBall !== undefined ? fitBall : ball;
   const camOptions = fitOptions !== undefined ? fitOptions : options;
@@ -511,7 +516,7 @@ export function MapLayer({
   if (typeof window !== "undefined") window.__loopOverlay = { project, unproject, frame: PF, mode: markMode ? (fakeFrame ? "test" : "mark") : hole ? "hole" : "none" };
   const { active: opt, other } = overlayPair(options, active, sameShot);
   const pinDrawn = (inPinView && drag) || pin;
-  const redrawKey = [active, sameShot ? 1 : 0, opt?.club, opt?.target && `${r1(opt.target.x)},${r1(opt.target.y)}`, opt?.ell && `${r1(opt.ell.w)}x${r1(opt.ell.h)}`, opt?.aimOffsetYds ?? "", opt?.curveYds ?? "",
+  const redrawKey = [active, sameShot ? 1 : 0, endMark ? `${r1(endMark.x)},${r1(endMark.y)}` : "", opt?.club, opt?.target && `${r1(opt.target.x)},${r1(opt.target.y)}`, opt?.ell && `${r1(opt.ell.w)}x${r1(opt.ell.h)}`, opt?.aimOffsetYds ?? "", opt?.curveYds ?? "",
     pin && `${r1(pin.x)},${r1(pin.y)}`, inPinView ? "pv" : ""].join("|");
 
   // the pin view hides the shot (its ellipse and lines would sit on the green) — pin and ball only
@@ -521,7 +526,7 @@ export function MapLayer({
     active: inPinView ? null : opt, other: inPinView ? null : other, previousShots: inPinView ? [] : previousShots,
     palette: drawn ? "paper" : "satellite", idPrefix, redrawKey, recomputing, pinMarker: inPinView, pinDragging: inPinView && !!drag,
     intent: inPinView || markMode ? null : { marker: markerDrawn, lineDeg: startLineDeg, dragging: !!tdrag },
-    dots: inPinView || markMode ? [] : dots,
+    dots: inPinView || markMode ? [] : dots, endMark: inPinView || markMode ? null : endMark,
   }) : [];
   const base = hole && drawn && project ? fallbackMapModel({ hole, project, teeColors }) : [];
   const shapes = hole && satellite && shapesOn && project && !markMode ? satShapesModel({ hole, project, teeColors }) : [];
@@ -565,6 +570,7 @@ export function MapLayer({
     }
     if (inPinView) return;                                // pin view: a tap does nothing else (B.3)
     if (lineMode && hole && unproject && ball && onLineTap) { lineAt(pt); return; }
+    if (onPlaceTap) { const q = latLngAt(pt); if (q) onPlaceTap(q); return; }   // v22.58 (C47): where the shot finished
     if (markMode) {
       if (fakeFrame) return;
       if (!map) return;

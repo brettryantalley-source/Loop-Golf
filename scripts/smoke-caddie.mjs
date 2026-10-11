@@ -3,7 +3,7 @@
  * smoke-caddie.mjs — opens the BUILT app (index.html) in headless Chromium on a restored Woodmont
  * round in test mode, walks the caddie screen through a tee shot, a logged shot, the next ball and a
  * ball by the green (the short-game line and card, C29), a one-finger pan and Fit (C37, satellite only), the Shots list's
- * map zoom (C42), Score hole's pre-filled score (C43), and fails on any page error. `npm test` never renders CaddieScreen; this catches what it can't
+ * map zoom (C42), Score hole's pre-filled score (C43), Catch up through one hole (C47), and fails on any page error. `npm test` never renders CaddieScreen; this catches what it can't
  * (a hook out of order, a value used before it is declared). Not part of `npm test`: it needs
  * Playwright and a Chromium (a cloud session has both).
  *
@@ -255,6 +255,56 @@ await step("score from the caddie: pre-filled", async () => {
   const sc = await page.evaluate(() => JSON.parse(localStorage.getItem("bogeyman-matches:v1")).scores[0]);
   if (sc !== 3) throw new Error(`one tap wrote ${sc}`);
   console.log("score: 3 crossed in from the log, one tap wrote it");
+});
+
+// v22.58 (C47, D129): Catch up — hole 1 played and scored with nothing logged, the caddie on hole 2. ‹ to
+// hole 1 → Catch up → the call from the tee → a tap where the drive finished ✓ → Save (the call's club) → the
+// call from there → a tap on the green ✓ → Save → In the hole: two shots and a putt in the log, the first aimed
+// at the caddie's target (a recommendation and a measured miss), the hole's count on screen, back to hole 2.
+const sc1 = Array(18).fill(null); sc1[0] = 3;
+const pastHole = { ...state, scores: sc1, hole: 1, caddie: serializeCaddie(initialCaddie(2)) };
+const ctx4 = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+await ctx4.route(/open-meteo\.com/, (route) => route.abort().catch(() => {}));
+await ctx4.addInitScript(([s]) => {
+  if (sessionStorage.getItem("smoke-seeded")) return;
+  sessionStorage.setItem("smoke-seeded", "1");
+  localStorage.setItem("bogeyman-matches:v1", s);
+}, [JSON.stringify(pastHole)]);
+page = await ctx4.newPage();
+page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
+page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource|net::ERR/.test(m.text())) errors.push(`console: ${m.text().slice(0, 200)}`); });
+await page.goto(base, { waitUntil: "load" });
+await step("catch up a hole", async () => {
+  const btn = (name) => page.getByRole("button", { name }).first().click({ timeout: 8000 });
+  const tapAt = async (p) => { const q = await page.evaluate((x) => window.__loopOverlay?.project?.(x) || null, p); if (!q) throw new Error("no map projection"); await page.mouse.click(q.x, q.y); };
+  await page.getByLabel("Previous hole").click({ timeout: 15000 });
+  await btn(/^Catch up$/i);
+  // shot 1 opens on the caddie's call from the tee box (the rings, the target), not a tee confirm
+  await page.getByText(CALL).first().waitFor({ timeout: 12000 });
+  const t = h1.tee, g = h1.green.center;
+  await page.waitForTimeout(300);
+  await tapAt({ x: t.x + (g.x - t.x) * 0.6, y: t.y + (g.y - t.y) * 0.6 });
+  await btn(/Finished here/i);
+  await page.locator('[data-part="cu-save"]').click({ timeout: 5000 });
+  await page.waitForTimeout(300);
+  await tapAt(g);
+  await btn(/Finished here/i);
+  await page.locator('[data-part="cu-lies"]').getByText("Green", { exact: true }).click({ timeout: 5000 });
+  await page.locator('[data-part="cu-save"]').click({ timeout: 5000 });
+  await btn(/In the hole/i);
+  await page.getByText("Hole 1 · 2 shots + 1 putt = 3").first().waitFor({ timeout: 5000 });
+  await shot("7-catch-up-done");
+  const log = await page.evaluate(() => (JSON.parse(localStorage.getItem("bogeyman-matches:shots:v1") || "{}")["smoke-round"] || []).filter((r) => r.hole === 1));
+  const shots = log.filter((r) => r.shotType !== "putt"), putts = log.filter((r) => r.shotType === "putt");
+  if (shots.length !== 2 || putts.length !== 1) throw new Error(`the log has ${shots.length} shots + ${putts.length} putts`);
+  if (!shots.every((r) => r.logged === "full" && r.placed && r.end && !r.end.assumed && r.club)) throw new Error("a shot is not a placed, logged, closed record");
+  if (!putts[0].putt.made) throw new Error("the putt is not holed");
+  if (!shots[0].recommendation || !Number.isFinite(shots[0].derived?.distanceMissYds)) throw new Error("the drive was not logged against the call");
+  await btn(/Done · back to 2/i);
+  await page.waitForTimeout(500);
+  const pill = await page.locator('[data-part="hole-switch"]').innerText();
+  if (!/Hole\s*2/.test(pill)) throw new Error(`not back on hole 2: ${pill}`);
+  console.log(`catch up: ${shots.map((r) => `${r.club} ${r.lie?.confirmed}→${r.end?.lie}`).join(", ")}, putt ${putts[0].putt.distanceFt} ft holed; back to hole 2`);
 });
 
 await browser.close();

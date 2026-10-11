@@ -124,6 +124,7 @@ export function initialCaddie(hole = 1) {
     lineMode: false,     // the rail's Line is armed: map taps set the start line (transient)
     greenHole: null,     // the hole Brett said he is on the green of (manual On the green, §6)
     review: null,        // the Review sheet: { hole, next } — next = "finish" | a 0-based hole index | null
+    catchup: null,       // v22.58 (C47, D129): the Catch up chain on a past hole (catchup.js); transient, never persisted
   };
 }
 
@@ -144,7 +145,7 @@ function newHole(s, n) {
     ball: null, ballXY: null, yards: null, opt: "safe", exp: false, chips: {}, pins, logCard: null,
     shots: { ...s.shots, [n]: [] }, context: null, lastPuttFt: null, pinView: false, remark: false,
     // v22.15: intents belong to the shots of one hole and are in their records by now
-    awaitingTap: null, intent: {}, lineMode: false, greenHole: null,
+    awaitingTap: null, intent: {}, lineMode: false, greenHole: null, catchup: null,
   };
 }
 
@@ -327,6 +328,25 @@ export function caddieReducer(s, a) {
     /* lines: the previous-shot lines for a hole rebuilt from its (edited) records */
     case "lines":
       return Number.isInteger(a.hole) && Array.isArray(a.lines) ? { ...s, shots: { ...s.shots, [a.hole]: a.lines.filter((x) => isXY(x?.from) && isXY(x?.to)) } } : s;
+    /* v22.58 (C47, D129): the Catch up chain moved on a step — a.catchup is the next chain state
+       (catchup.js computes it), null ends the chain */
+    /* The chain's ball rides along (a.ball, a.point, a.shotNo, a.lie): on a shot's map steps the caddie is
+       Ready at that ball — the call, the rings, the target, Line — exactly as on the course; a new ball
+       resets the toggle and the chips (the lie Brett gave the shot before becomes its Lie chip). a.ball
+       null puts it back before the ball (the tee confirm, the putts, the count). */
+    case "catchup": {
+      let t = { ...s, catchup: a.catchup ?? null, pinView: false, exp: false, awaitingTap: null };
+      if (a.ball === null) t = { ...t, phase: "pretee", prevPhase: null, ball: null, ballXY: null, lineMode: false };
+      else if (isLL(a.ball)) {
+        const lng = a.ball.lng ?? a.ball.lon;
+        const shotNo = Number.isInteger(a.shotNo) && a.shotNo >= 1 ? a.shotNo : s.shotNo;
+        const same = s.phase === "ready" && s.ball && s.shotNo === shotNo && Math.abs(s.ball.lat - a.ball.lat) < 1e-9 && Math.abs(s.ball.lng - lng) < 1e-9;
+        t = { ...t, phase: "ready", prevPhase: null, trigger: shotNo === 1 ? "tee" : "ball", shotNo,
+          ball: { lat: a.ball.lat, lng, accuracyM: FAKE_ACCURACY_M }, ballXY: isXY(a.point) ? { x: a.point.x, y: a.point.y } : null };
+        if (!same) { t = newBall(t); if (CHIP_LIES_CU.includes(a.lie)) t = { ...t, chips: { lie: a.lie } }; }
+      }
+      return t;
+    }
     case "restore":
       return restoreCaddie(a.state) || s;
     default:
@@ -349,6 +369,8 @@ export const pinSetting = (s, hole = s.hole) => s.pins?.[hole] ?? "middle";
 
 /** v22.15 §1 — a test-mode tap becomes a fix of exactly the real shape (accuracy 4 m). */
 export const FAKE_ACCURACY_M = 4;
+/** v22.58 (C47): the lies a Catch up shot's start can carry as its Lie chip (the tee is inferred) */
+const CHIP_LIES_CU = ["fairway", "rough", "sand", "recovery"];
 export function fakeFix(p) {
   const lng = p?.lng ?? p?.lon;
   return p && Number.isFinite(p.lat) && Number.isFinite(lng) ? { lat: p.lat, lng, accuracyM: FAKE_ACCURACY_M } : null;

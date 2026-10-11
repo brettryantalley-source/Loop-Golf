@@ -264,6 +264,20 @@ The existing bottom sheet: paper, 4px double ink top rule, scrim `rgba(31,31,31,
 | **No satellite** | Tiles not cached and not fetchable | Normal | Fallback drawn map (§4.3) | As Ready | No satellite here. Map drawn from course data. |
 | **No profile** | `profile.json` not loaded and no cached copy | Values `—`; aim `No profile` | No overlay | **Try again** | Profile didn't load. Reconnect and tap Try again. |
 
+### 8.1 Catch up (v22.58, C47, D129)
+
+A past hole on a mapped course, or the card's `Log shots`. The chain lives under `caddie.catchup` (`src/caddie/catchup.js`); every step's bar and notice come from `catchupView`.
+
+| Step | Map | Bar | Notice |
+|---|---|---|---|
+| **Shot** (`end`) | Ready at the shot's start — the call, rings, dots, target, Line. A tap = where it finished (small ball, dashed ring, yards to it and on to the pin) | nothing placed: **Move tee** / **Move ball** (· **Undo**); placed: **✓ Finished here** · **Undo** | `Shot 2 · set the target if you like, then tap where it finished.` / `Shot 2 · 175 yds. Tap again to move it.` |
+| **Move** (`from`) | Armed: a tap or a hold-and-drag places the start | **✓ Tee here** / **✓ Ball here** · **Undo** | `Shot 1 · tap or hold to move the tee.` |
+| **Club** (`club`) | Ready, the call above the sheet | Sheet: Club (the call's club pre-selected, else Loop's guess) · Ended in (read off the map) · **Save shot** · **Undo** | `Shot 2 · 175 yds · pick the club.` |
+| **Putt** (`putt`) | The ball and the pin; feet. Armed: a tap = where it stopped | **In the hole** (· **Undo**); placed: **✓ Next putt** · **Undo** | `Putt 1 · 15 ft · tap where it stopped, or In the hole.` |
+| **Done** (`done`) | The ball on the green | **Score hole N** (unscored) · **Hole N+1 ›** (a past hole next) · **Done · back to N** | `Hole 5 · 4 shots + 2 putts = 6` |
+
+The hole pill's second line reads `shot 2` / `putt 1` / `logged`; a small **Done** pill sits above the bar on every step but the last.
+
 **Enter yards** opens the bottom sheet: title `Yards to pin`, large pencil number (`written(44)`), buttons `−10` `−1` `+1` `+10` as outlined pills, primary `Use 150`. No keyboard. The engine runs club-brain mode (profile only).
 
 **First run:** nothing beyond the engine §6.4 nine-mapping screen. No coach marks.

@@ -10,9 +10,21 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 434 tests (v22.57); must be green
+npm install && npm test    # 443 tests (v22.58); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.58 (Oct 11)
+
+Catch up (C47, D129): a hole logged after the fact as one chain. A past hole on a mapped course opens on `Catch up`; the
+card shows `Log shots` for a hole with nothing logged (the live one too). Each shot opens on the caddie's full call from
+where that ball was (Brett, after the first build: he still wants the rings, the target and the Line while logging) —
+shot 1 on the tee box the card's yardage matches (`Move tee` if it's wrong); a tap is where it finished, `✓ Finished
+here`, the club sheet (the call's club, the lie read off the map), `Save shot`. On the green: feet, a tap where each putt
+stopped, `In the hole`; then the count and `Score hole N` / the next hole. `Undo` goes back one step, across a Save too.
+The records are the ones the course would write (recommendation + his target), placed and closed at both ends, so the
+brain and the Score pre-fill read them. The caddie's bar buttons are compact pills now (Brett: "never this big"), on the
+live caddie too. Pure model in `src/caddie/catchup.js`. 443 tests; the smoke test plays one hole through the chain.
 
 ## C40 draft (Oct 11, not shipped)
 
