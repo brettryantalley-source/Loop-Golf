@@ -3,7 +3,9 @@
  *
  * MapLibre GL (served same-origin from ./vendor, loaded on first use, cached by the service
  * worker) over MapTiler satellite, hole-up: bearing = the hole's tee → green bearing, pitch 0, every
- * gesture off (`interactive: false`). An SVG overlay above the canvas is re-projected through
+ * gesture off (`interactive: false`). v22.48 (C38, D119): with a ball the map turns so ball → target
+ * points up, the ball at the bottom centre (overlay.js cameraForShot); pre-tee and the pin view stay
+ * hole-up. An SVG overlay above the canvas is re-projected through
  * `map.project` whenever the map moves or resizes. With no tiles (§4.3) the same overlay draws over a
  * flat paper map of the OSM polygons in an SVG with its own linear projection — no MapLibre at all.
  *
@@ -25,7 +27,7 @@
  * WebGL context throws "Failed to initialize WebGL" from the constructor (caught → drawn map).
  */
 import {
-  cameraKey, cameraFor, cameraPoints, fitBounds, linearProjector, zoomForPxPerYd, satShapesModel,
+  cameraKey, cameraFor, cameraForShot, cameraPoints, fitBounds, linearProjector, zoomForPxPerYd, satShapesModel,
   overlayModel, fallbackMapModel, mapModeFor, markCamera, pinViewCamera, pinViewKey, pinMarkerHit, satelliteFailure, targetMarkerHit,
 } from "./overlay.js";
 import { frameOf, pinFromTap, holeFrame, clampToGreen } from "./geo.js";
@@ -388,7 +390,7 @@ export function MapLayer({
     camRef.current = {
       key,
       cam: markMode ? null : inPinView ? pinViewCamera(hole, vp, insets, { pin })
-        : hole ? cameraFor(fitBounds(cameraPoints({ hole, ball: camBall, pin, options: camOptions })), vp, insets) : null,
+        : hole ? cameraForShot({ hole, ball: camBall, pin, options: camOptions }, vp, insets) : null,   // v22.48 (C38): ball at the bottom, target up
       mark: markMode ? markCamera(vp, insets, { spanYds: markSpan }) : null,
     };
   }
@@ -400,7 +402,7 @@ export function MapLayer({
     }
     if (!cam || !Fr) return null;
     const c = Fr.toLatLng(cam.center);
-    return { center: [c.lon, c.lat], zoom: zoomForPxPerYd(cam.pxPerYd, Fr.origin.lat), bearing: hole.bearingDeg, pitch: 0 };
+    return { center: [c.lon, c.lat], zoom: zoomForPxPerYd(cam.pxPerYd, Fr.origin.lat), bearing: hole.bearingDeg + (cam.rotDeg || 0), pitch: 0 };
   }, [cam, markCam, Fr, markF, hole, markLat]);
 
   /* the map itself: created once per satellite session, removed when the drawn map takes over */

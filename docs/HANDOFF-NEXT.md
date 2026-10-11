@@ -10,9 +10,16 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 414 tests (v22.47); must be green
+npm install && npm test    # 419 tests (v22.48); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.48 (Oct 11)
+
+Ball at the bottom centre, target up (C38, D119; picked while Brett slept). With a ball, the map turns so ball →
+SAFE's target points up (no call: ball → pin, so on the green the hole is at the top), the ball 10% above the
+bottom of the visible region, zoomed as far in as the framed points allow (`cameraForShot`, `upBearing`;
+`linearProjector` takes `rotDeg`). Pre-tee, the pin view and the mark view are as before. 419 tests.
 
 ## v22.47 (Oct 11)
 
