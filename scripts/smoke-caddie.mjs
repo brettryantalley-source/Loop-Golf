@@ -2,7 +2,8 @@
 /*
  * smoke-caddie.mjs — opens the BUILT app (index.html) in headless Chromium on a restored Woodmont
  * round in test mode, walks the caddie screen through a tee shot, a logged shot, the next ball and a
- * ball by the green (the short-game line and card, C29), and fails on any page error. `npm test` never renders CaddieScreen; this catches what it can't
+ * ball by the green (the short-game line and card, C29), a one-finger pan and Fit (C37, satellite only), the Shots list's
+ * map zoom (C42), Score hole's pre-filled score (C43), and fails on any page error. `npm test` never renders CaddieScreen; this catches what it can't
  * (a hook out of order, a value used before it is declared). Not part of `npm test`: it needs
  * Playwright and a Chromium (a cloud session has both).
  *
@@ -84,6 +85,28 @@ await step("call on screen", async () => {
   throw new Error("no call after I'm on the tee and a tap");
 });
 await shot("2-ready");
+// v22.47 (C37, D118): one finger off the target pans the satellite map, the call stays, `Fit` puts it back.
+// The paper map (no tiles) does not pan, so the check runs only when the satellite map is up.
+await step("one-finger pan", async () => {
+  const before = await page.evaluate(() => {
+    const m = window.__loopMap, box = document.querySelector(".loop-map");
+    return m && box?.dataset.mode === "hole" ? { c: m.getCenter(), tgt: (document.body.innerText.match(/TO TARGET\s*(\d+)/i) || [])[1] } : null;
+  });
+  if (!before) { console.log("pan: skipped (paper map, no satellite)"); return; }
+  await page.mouse.move(250, 560); await page.mouse.down();
+  await page.mouse.move(250, 500, { steps: 4 }); await page.mouse.move(230, 420, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  const after = await page.evaluate(() => ({ c: window.__loopMap.getCenter(), tgt: (document.body.innerText.match(/TO TARGET\s*(\d+)/i) || [])[1] }));
+  if (Math.hypot(after.c.lat - before.c.lat, after.c.lng - before.c.lng) < 1e-5) throw new Error("the map did not move");
+  if (after.tgt !== before.tgt) throw new Error(`the target moved: ${before.tgt} → ${after.tgt}`);
+  await shot("2b-panned");
+  await page.locator('[data-part="map-fit"]').click({ timeout: 3000 });
+  await page.waitForTimeout(300);
+  const back = await page.evaluate(() => window.__loopMap.getCenter());
+  if (Math.hypot(back.lat - before.c.lat, back.lng - before.c.lng) > 1e-6) throw new Error("Fit did not put the camera back");
+  console.log("pan: moved, target held, Fit restored");
+});
 // Log shot → Good shot. Three tries: the screen can still be settling, and a re-render can close the
 // card between the two clicks. `check` runs on the open card before Good shot.
 const logGood = async (check = null) => {
@@ -110,6 +133,34 @@ await step("next-ball tap", async () => {
 });
 await page.waitForTimeout(2500);
 await shot("4-next-ball");
+// v22.51 (C42, D122): the Shots list's map opens on the shot, moves with a finger, pinches, and Fit puts it back
+await step("review map zoom", async () => {
+  await page.locator('[data-part="shots-button"]').first().click({ timeout: 5000 });
+  await page.locator('[data-part="review-row"][data-kind="shot"] > button').first().click({ timeout: 5000 });
+  const map = page.locator('[data-part="review-map"]').first();
+  await map.waitFor({ timeout: 5000 });
+  const b = await map.boundingBox();
+  const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+  await page.mouse.move(cx, cy); await page.mouse.down(); await page.mouse.move(cx + 40, cy + 30, { steps: 5 }); await page.mouse.up();
+  await page.locator('[data-part="review-fit"]').waitFor({ timeout: 3000 });
+  await page.locator('[data-part="review-fit"]').click();
+  if (await page.locator('[data-part="review-fit"]').count()) throw new Error("Fit did not reset the review map");
+  // a two-finger pinch (pointer events, as a phone sends them)
+  const svgW = async () => (await map.locator("svg path").first().boundingBox())?.width || 0;
+  const w0 = await svgW();
+  await map.evaluate((el, [x, y]) => {
+    const ev = (type, id, dx) => el.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x + dx, clientY: y, bubbles: true, pointerType: "touch", isPrimary: id === 1 }));
+    ev("pointerdown", 1, -20); ev("pointerdown", 2, 20);
+    for (let k = 1; k <= 5; k++) { ev("pointermove", 1, -20 - 8 * k); ev("pointermove", 2, 20 + 8 * k); }
+    ev("pointerup", 1, -60); ev("pointerup", 2, 60);
+  }, [cx, cy]);
+  await page.waitForTimeout(200);
+  const w1 = await svgW();
+  if (!(w1 > w0 * 1.5)) throw new Error(`the pinch did not zoom in (${w0.toFixed(0)} → ${w1.toFixed(0)} px)`);
+  await shot("4b-review-zoomed");
+  console.log(`review map: moved, Fit reset, pinched ${w0.toFixed(0)} → ${w1.toFixed(0)} px`);
+  await page.getByText("Close", { exact: true }).last().click({ timeout: 3000 });
+});
 
 // v22.40 (C29, D111): a ball 22 yds short of hole 1's green — restored, so the camera's framing of the
 // shot before cannot move it: no club call, his short-game numbers instead, and the log card's
@@ -137,6 +188,34 @@ await step("short-game card", () => logGood(async () => {
   await page.getByRole("dialog").getByText("LW", { exact: true }).first().click({ timeout: 3000 });   // no call: he names the club
 }));
 const text = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " ").slice(0, 400));
+
+// v22.52 (C43, D123): on the green with two shots and a putt logged, Score hole opens the card with 3 crossed
+// in, and one tap on it writes it.
+const g1 = frameOf(h1).toLatLng(h1.green.center);
+const onGreen = { ...state, caddie: serializeCaddie({ ...initialCaddie(1), phase: "ready", trigger: "ball", shotNo: 3, ball: { lat: g1.lat, lng: g1.lon, accuracyM: 4 } }) };
+const rec = (id, shotNo, shotType = "full") => ({ id, roundId: "smoke-round", hole: 1, shotNo, shotType, club: shotType === "putt" ? "Putter" : "7i", ts: `2026-10-11T10:0${shotNo}:00Z`, reviewed: true });
+const ctx3 = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+await ctx3.route(/open-meteo\.com/, (route) => route.abort().catch(() => {}));
+await ctx3.addInitScript(([s, sh]) => {
+  if (sessionStorage.getItem("smoke-seeded")) return;
+  sessionStorage.setItem("smoke-seeded", "1");
+  localStorage.setItem("bogeyman-matches:v1", s);
+  localStorage.setItem("bogeyman-matches:shots:v1", sh);
+}, [JSON.stringify(onGreen), JSON.stringify({ "smoke-round": [rec("s1", 1), rec("s2", 2), rec("p1", 3, "putt")] })]);
+page = await ctx3.newPage();
+page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
+await page.goto(base, { waitUntil: "load" });
+await step("score from the caddie: pre-filled", async () => {
+  await page.getByText("Score hole 1").first().click({ timeout: 15000 });
+  const cap = await page.locator('[data-part="score-suggested"]').innerText({ timeout: 5000 });
+  if (!/tap 3 to keep/.test(cap)) throw new Error(`caption: ${cap}`);
+  await shot("6-score-suggested");
+  await page.locator('[data-part="chooser"] [data-score="3"]').click();
+  await page.waitForTimeout(500);
+  const sc = await page.evaluate(() => JSON.parse(localStorage.getItem("bogeyman-matches:v1")).scores[0]);
+  if (sc !== 3) throw new Error(`one tap wrote ${sc}`);
+  console.log("score: 3 crossed in from the log, one tap wrote it");
+});
 
 await browser.close();
 server.close();

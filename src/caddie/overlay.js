@@ -332,7 +332,8 @@ export function cameraPoints({ hole, ball, pin, options }) {
 
 /**
  * Fit a hole-frame box into the visible map region. The map bearing is the hole's bearing, so the
- * hole frame's axes ARE the screen's (x right, y up) and a frame box is a screen box.
+ * hole frame's axes ARE the screen's (x right, y up) and a frame box is a screen box. v22.48 (C38):
+ * used hole-up only — pre-tee and the pin view; with a ball the camera is cameraForShot's.
  * viewport {width, height}; insets {top, right, bottom, left} = the region's edges (§3.1:
  * right = rail width, top = safe-top + 49, bottom = bar height + 16); padding inside the region.
  * Returns { center: {x, y} (frame yards at the viewport centre), pxPerYd }.
@@ -349,14 +350,77 @@ export function cameraFor(bounds, { width, height }, insets = {}, { padding = 16
   return { center: { x: bc.x + (width / 2 - rx) / px, y: bc.y - (height / 2 - ry) / px }, pxPerYd: px };
 }
 
-/** Screen ⇄ hole frame for a camera (the fallback map's projection; also what MapLibre agrees with). */
+/**
+ * Screen ⇄ hole frame for a camera (the fallback map's projection; also what MapLibre agrees with).
+ * v22.48 (C38, D119): `rotDeg` (frame degrees, clockwise from +y) is the direction drawn straight up;
+ * 0 = hole-up, as before.
+ */
 export function linearProjector(camera, { width, height }) {
   const { center, pxPerYd: px } = camera;
+  const r = (camera.rotDeg || 0) * DEG, c = Math.cos(r), s = Math.sin(r);
   return {
     pxPerYd: px,
-    project: (p) => ({ x: width / 2 + (p.x - center.x) * px, y: height / 2 - (p.y - center.y) * px }),
-    unproject: (s) => ({ x: center.x + (s.x - width / 2) / px, y: center.y - (s.y - height / 2) / px }),
+    project: (p) => {
+      const dx = p.x - center.x, dy = p.y - center.y;
+      return { x: width / 2 + (dx * c - dy * s) * px, y: height / 2 - (dx * s + dy * c) * px };
+    },
+    unproject: (q) => {
+      const u = (q.x - width / 2) / px, v = -(q.y - height / 2) / px;
+      return { x: center.x + u * c + v * s, y: center.y - u * s + v * c };
+    },
   };
+}
+
+/**
+ * v22.48 (C38, D119; Brett Oct 11: "his position always at the bottom centre with the target up";
+ * putting from above the hole, the hole at the top). The direction drawn up, frame degrees clockwise
+ * from +y: ball → SAFE's target when a call is on screen (the toggle never turns the map, T36), else
+ * ball → the pin (on the green, no call), else ball → the green's centre. 0 (hole-up) with no ball, or
+ * when the ball sits on the point it would face (within `minYds`).
+ */
+export function upBearing({ hole, ball, pin, options }, { minYds = 3 } = {}) {
+  const b = asXY(ball);
+  if (!hole || !b) return 0;
+  for (const t of [options?.safe?.target, pin, hole.green?.center]) {
+    const q = asXY(t);
+    if (q && Number.isFinite(q.x) && Math.hypot(q.x - b.x, q.y - b.y) >= minYds) return Math.atan2(q.x - b.x, q.y - b.y) / DEG;
+  }
+  return 0;
+}
+
+/**
+ * v22.48 (C38, D119): the camera for a hole. With a ball, the map turns so `upBearing` points up and
+ * the ball sits at the bottom centre of the visible region, `ballFrac` of its height above the bottom
+ * edge; the zoom is the largest that keeps every cameraPoints point inside the region with the ball
+ * there (a point behind the ball may fall off the bottom: the ball's margin is all it gets). With no
+ * ball (pre-tee) it is cameraFor's hole-up fit, as before. → { center, pxPerYd, rotDeg }.
+ */
+export function cameraForShot({ hole, ball, pin, options }, viewport, insets = {}, { padding = 16, minPxPerYd = 0.2, maxPxPerYd = 12, ballFrac = 0.1 } = {}) {
+  const pts = cameraPoints({ hole, ball, pin, options });
+  const b = asXY(ball);
+  if (!b) return { ...cameraFor(fitBounds(pts), viewport, insets, { padding, minPxPerYd, maxPxPerYd }), rotDeg: 0 };
+  const rotDeg = upBearing({ hole, ball: b, pin, options });
+  const r = rotDeg * DEG, c = Math.cos(r), s = Math.sin(r);
+  const { width, height } = viewport;
+  const L = (insets.left || 0) + padding, R = width - (insets.right || 0) - padding;
+  const Tp = (insets.top || 0) + padding, Bt = height - (insets.bottom || 0) - padding;
+  const halfW = Math.max(1, (R - L) / 2), rh = Math.max(1, Bt - Tp);
+  const by = Bt - ballFrac * rh;                         // the ball's screen y; its x is the region's centre
+  const up = Math.max(1, by - Tp), down = Math.max(1, Bt - by);
+  let px = maxPxPerYd;
+  for (const p of pts) {
+    const q = asXY(p);
+    if (!q || !Number.isFinite(q.x) || !Number.isFinite(q.y)) continue;
+    const dx = q.x - b.x, dy = q.y - b.y;
+    const u = dx * c - dy * s, v = dx * s + dy * c;       // screen-aligned yards from the ball (v up)
+    if (Math.abs(u) > 1e-6) px = Math.min(px, halfW / Math.abs(u));
+    if (v > 1e-6) px = Math.min(px, up / v);
+    else if (v < -1e-6 && -v * px > down) px = Math.min(px, Math.max(down / -v, minPxPerYd));
+  }
+  px = Math.max(minPxPerYd, Math.min(maxPxPerYd, px));
+  // the viewport centre, in screen-aligned yards from the ball, then back to the frame
+  const cu = (width / 2 - (L + R) / 2) / px, cv = (by - height / 2) / px;
+  return { center: { x: b.x + cu * c + cv * s, y: b.y - cu * s + cv * c }, pxPerYd: px, rotDeg };
 }
 
 /** MapLibre's circumference (2π · 6 371 008.8 m) — the same earth radius geo.js uses. */
@@ -773,7 +837,7 @@ const FB = { fillWon: "#DCEBDC", fillHalf: "#E6E4DF", hair: "#A9C7B4", muted: "#
  * trees (muted @ 35%) · fairways + nearby fairways + tees (fillWon) · green (fillWon) ·
  * water (hair @ 60%) · bunkers (fillHalf); every polygon with a 1 px ink outline. No text.
  */
-export function fallbackMapModel({ hole, project }) {
+export function fallbackMapModel({ hole, project, teeColors = null }) {
   if (!hole) return [];
   // v22.11: a marked green's synthetic hole has no real fairway to draw — only the green Brett
   // marked. Painting the 40-yd engine corridor would pass it off as course data.
@@ -790,7 +854,7 @@ export function fallbackMapModel({ hole, project }) {
     ...hz.filter((h) => h.type === "trees").map((h) => poly(h.ring, FB.muted, { fillOpacity: 0.35 })),
     ...(hole.nearby?.fairways || []).map((r) => poly(r, FB.fillWon)),
     ...(hole.fairways || []).map((r) => poly(r, FB.fillWon)),
-    ...(hole.tees || []).map((r) => poly(r, FB.fillWon)),
+    ...(hole.tees || []).map((r, i) => poly(r, teeFill(teeColors?.[i], 0.85) || FB.fillWon)),   // v22.50 (C41)
     poly(hole.green?.ring, FB.fillWon),
     ...hz.filter((h) => h.type === "water").map((h) => poly(h.ring, FB.hair, { fillOpacity: 0.6 })),
     ...hz.filter((h) => h.type === "sand").map((h) => poly(h.ring, FB.fillHalf)),
@@ -812,11 +876,21 @@ export const SHAPE_STYLE = Object.freeze({
 });
 
 /**
+ * v22.50 (C41, D121): a tee box's fill in its tee's colour. `color` is a CSS hex (#RRGGBB) or
+ * "PAPER" (the white tee, theme.jsx teeTintFor); anything else → null (the box keeps its plain tint).
+ */
+export function teeFill(color, alpha) {
+  if (color === "PAPER") return `rgba(244,240,228,${alpha})`;
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(color || ""));
+  return m ? `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${alpha})` : null;
+}
+
+/**
  * The hole's shapes as tinted layers for the satellite map (R2: muted, a Shapes toggle). Order:
  * tree edges, fairways (this hole's and the nearby ones), tees, green, water, sand. Nothing on a
  * marked green (no course data to show). Shapes only (T37).
  */
-export function satShapesModel({ hole, project }) {
+export function satShapesModel({ hole, project, teeColors = null }) {
   if (!hole || hole.synthetic || !project) return [];
   const poly = (ring, st, part) => {
     const pts = (ring || []).map((q) => project(Array.isArray(q) ? { x: q[0], y: q[1] } : q));
@@ -827,7 +901,8 @@ export function satShapesModel({ hole, project }) {
     ...hz.filter((h) => h.type === "trees").map((h) => poly(h.ring, SHAPE_STYLE.trees, "shape-trees")),
     ...(hole.nearby?.fairways || []).map((r) => poly(r, SHAPE_STYLE.fairway, "shape-fairway")),
     ...(hole.fairways || []).map((r) => poly(r, SHAPE_STYLE.fairway, "shape-fairway")),
-    ...(hole.tees || []).map((r) => poly(r, SHAPE_STYLE.tee, "shape-tee")),
+    // v22.50 (C41): a box matched to a card tee is filled in that tee's colour
+    ...(hole.tees || []).map((r, i) => { const f = teeFill(teeColors?.[i], 0.7); return poly(r, f ? { ...SHAPE_STYLE.tee, fill: f } : SHAPE_STYLE.tee, "shape-tee"); }),
     poly(hole.green?.ring, SHAPE_STYLE.green, "shape-green"),
     ...hz.filter((h) => h.type === "water").map((h) => poly(h.ring, SHAPE_STYLE.water, "shape-water")),
     ...hz.filter((h) => h.type === "sand").map((h) => poly(h.ring, SHAPE_STYLE.sand, "shape-sand")),

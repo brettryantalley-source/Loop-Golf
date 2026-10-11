@@ -3,7 +3,9 @@
  *
  * MapLibre GL (served same-origin from ./vendor, loaded on first use, cached by the service
  * worker) over MapTiler satellite, hole-up: bearing = the hole's tee → green bearing, pitch 0, every
- * gesture off (`interactive: false`). An SVG overlay above the canvas is re-projected through
+ * gesture off (`interactive: false`). v22.48 (C38, D119): with a ball the map turns so ball → target
+ * points up, the ball at the bottom centre (overlay.js cameraForShot); pre-tee and the pin view stay
+ * hole-up. An SVG overlay above the canvas is re-projected through
  * `map.project` whenever the map moves or resizes. With no tiles (§4.3) the same overlay draws over a
  * flat paper map of the OSM polygons in an SVG with its own linear projection — no MapLibre at all.
  *
@@ -25,7 +27,7 @@
  * WebGL context throws "Failed to initialize WebGL" from the constructor (caught → drawn map).
  */
 import {
-  cameraKey, cameraFor, cameraPoints, fitBounds, linearProjector, zoomForPxPerYd, satShapesModel,
+  cameraKey, cameraFor, cameraForShot, cameraPoints, fitBounds, linearProjector, zoomForPxPerYd, satShapesModel,
   overlayModel, fallbackMapModel, mapModeFor, markCamera, pinViewCamera, pinViewKey, pinMarkerHit, satelliteFailure, targetMarkerHit,
 } from "./overlay.js";
 import { frameOf, pinFromTap, holeFrame, clampToGreen } from "./geo.js";
@@ -58,6 +60,14 @@ const MAPTILER_IMAGERY = { url: TILE_URL, tileSize: 512, maxzoom: 18, zooms: PRE
 let IMAGERY = MAPTILER_IMAGERY;
 export function setImagery(img) { IMAGERY = img && typeof img.url === "string" ? { ...MAPTILER_IMAGERY, ...img } : MAPTILER_IMAGERY; }
 export const activeImagery = () => IMAGERY;
+/* v22.49 (C39, D120; Brett Oct 11: "how poor the resolution of the maps are"). MapLibre picks a raster
+   tile level by rounding mapZoom + log2(512 / tileSize), so Esri's 256-px tiles at a caddie view of map
+   zoom 16.5–18.5 (a tee shot to a 150-yd approach) drew level 17 or 18 while level 19 sat in the cache.
+   The source is declared at tileSize / 2^TILE_DETAIL_SHIFT, which takes one level finer at every zoom,
+   still capped at the imagery's maxzoom (19 at all five bundled clubs: Esri has nothing deeper there, and
+   the level 20 at Bradshaw and Riverpines is an older capture). Costs ~4× the tiles per view, already in
+   the prefetch's zoom list. */
+export const TILE_DETAIL_SHIFT = 1;
 export const MAPLIBRE_JS = "./vendor/maplibre-gl.js";
 export const MAPLIBRE_CSS = "./vendor/maplibre-gl.css";
 
@@ -297,6 +307,7 @@ const r1 = (n) => Math.round(n * 10) / 10;
  *                 Locating and Yards entered keep the last camera with no ball drawn, §8). Default:
  *                 ball / options.
  *   attributionBottom  px from the bottom of the map to the attribution (default insets.bottom − 10 = 6 above the bar)
+ *   teeColors     v22.50 (C41): a colour per hole.tees box (theme teeTintFor value, or null) — the tee it most likely is
  *
  * v22.11:
  *   markAt        {lat, lon} — marked-green mode before the green is marked (hole must be null):
@@ -331,7 +342,7 @@ export function MapLayer({
   previousShots = [], insets = {}, fallback = false, onPinTap, onMapTap, onSatelliteFail, recomputing = false, attributionBottom,
   fitBall, fitOptions, markAt = null, onMarkGreen, onRemark, pinView = false, onPinDrag, onPinDrop,
   intentMarker = null, startLineDeg = null, onTargetDrag, onTargetDrop, lineMode = false, onLineTap, onFakeTap = null, fakeAt = null, testBorder = false,
-  labels = [], trail = [], stops = [], onStopTap = null, dots = [],
+  labels = [], trail = [], stops = [], onStopTap = null, dots = [], teeColors = null,
 }) {
   const camBall = fitBall !== undefined ? fitBall : ball;
   const camOptions = fitOptions !== undefined ? fitOptions : options;
@@ -388,7 +399,7 @@ export function MapLayer({
     camRef.current = {
       key,
       cam: markMode ? null : inPinView ? pinViewCamera(hole, vp, insets, { pin })
-        : hole ? cameraFor(fitBounds(cameraPoints({ hole, ball: camBall, pin, options: camOptions })), vp, insets) : null,
+        : hole ? cameraForShot({ hole, ball: camBall, pin, options: camOptions }, vp, insets) : null,   // v22.48 (C38): ball at the bottom, target up
       mark: markMode ? markCamera(vp, insets, { spanYds: markSpan }) : null,
     };
   }
@@ -400,7 +411,7 @@ export function MapLayer({
     }
     if (!cam || !Fr) return null;
     const c = Fr.toLatLng(cam.center);
-    return { center: [c.lon, c.lat], zoom: zoomForPxPerYd(cam.pxPerYd, Fr.origin.lat), bearing: hole.bearingDeg, pitch: 0 };
+    return { center: [c.lon, c.lat], zoom: zoomForPxPerYd(cam.pxPerYd, Fr.origin.lat), bearing: hole.bearingDeg + (cam.rotDeg || 0), pitch: 0 };
   }, [cam, markCam, Fr, markF, hole, markLat]);
 
   /* the map itself: created once per satellite session, removed when the drawn map takes over */
@@ -412,7 +423,7 @@ export function MapLayer({
         container: mapBoxRef.current,
         style: {
           version: 8,
-          sources: { sat: { type: "raster", tiles: [IMAGERY.url], tileSize: IMAGERY.tileSize, maxzoom: IMAGERY.maxzoom } },
+          sources: { sat: { type: "raster", tiles: [IMAGERY.url], tileSize: IMAGERY.tileSize / 2 ** TILE_DETAIL_SHIFT, maxzoom: IMAGERY.maxzoom } },
           layers: [
             { id: "bg", type: "background", paint: { "background-color": SAT_BG } },
             { id: "sat", type: "raster", source: "sat", paint: { "raster-fade-duration": 0 } },
@@ -448,8 +459,10 @@ export function MapLayer({
 
   /* v22.11: pan and pinch-zoom only in the mark view (no rotate, no pitch), so a green beyond the
      first 300 yds can be brought on screen and tapped. v22.27 (C18, D98): on a hole, two-finger
-     pinch zooms too (rotation, one-finger pan and double-tap stay off, so one finger still drags the
-     target, the Line and the pin); `Fit` puts the hole's camera back. The pin view stays fixed. */
+     pinch zooms too (rotation and double-tap stay off); `Fit` puts the hole's camera back. The pin
+     view stays fixed. v22.47 (C37, D118): one finger pans the hole too, but through the pointer
+     handlers below, not MapLibre's dragPan, so a press-and-hold on the target still drags it and a
+     Line still draws: MapLibre's dragPan stays off. */
   const pinchOk = !markMode && !!hole && !inPinView;
   useEffect(() => {
     const map = mapRef.current;
@@ -460,7 +473,7 @@ export function MapLayer({
       else { map.dragPan.disable(); map.touchZoomRotate.disable(); map.scrollZoom.disable(); }
     } catch (e) { /* an older MapLibre without a handler: the view stays fixed */ }
   }, [markMode, pinchOk, mapGen]);
-  const [zoomed, setZoomed] = useState(false);            // v22.27: Brett pinched away from the hole's camera
+  const [zoomed, setZoomed] = useState(false);            // v22.27: Brett pinched (v22.47: or panned) away from the hole's camera
   // v22.28 (C2, D99): the course shapes over the satellite, on by default; Brett's choice is kept on the phone
   const [shapesOn, setShapesOn] = useState(() => { try { return localStorage.getItem(SHAPES_KEY) !== "off"; } catch (e) { return true; } });
   const toggleShapes = () => setShapesOn((on) => { try { localStorage.setItem(SHAPES_KEY, on ? "off" : "on"); } catch (e) { /* private mode */ } return !on; });
@@ -509,11 +522,12 @@ export function MapLayer({
     intent: inPinView || markMode ? null : { marker: markerDrawn, lineDeg: startLineDeg, dragging: !!tdrag },
     dots: inPinView || markMode ? [] : dots,
   }) : [];
-  const base = hole && drawn && project ? fallbackMapModel({ hole, project }) : [];
-  const shapes = hole && satellite && shapesOn && project && !markMode ? satShapesModel({ hole, project }) : [];
+  const base = hole && drawn && project ? fallbackMapModel({ hole, project, teeColors }) : [];
+  const shapes = hole && satellite && shapesOn && project && !markMode ? satShapesModel({ hole, project, teeColors }) : [];
 
-  /* ---------- pointer input: tap, long-press (re-mark), press-hold-drag (pin view) ---------- */
+  /* ---------- pointer input: tap, long-press (re-mark), press-hold-drag (pin view), one-finger pan ---------- */
   const TAP_SLOP_PX = 8, HOLD_MS = 300, LONG_MS = 600;
+  const panOk = !!map && pinchOk && !lineMode;          // v22.47 (C37): one finger pans a hole on satellite
   const local = (ev) => { const r = boxRef.current.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; };
   const endDrag = () => { dragRef.current = null; setDrag(null); if (onPinDrag) onPinDrag(null); };
   const endTdrag = () => { dragRef.current = null; setTdrag(null); if (onTargetDrag) onTargetDrag(null); };
@@ -617,7 +631,17 @@ export function MapLayer({
       if (q) { dragRef.current = { x: q.x, y: q.y }; setTdrag(dragRef.current); if (onTargetDrag) onTargetDrag(dragRef.current); }
       return;
     }
-    if (!pr.moved && Math.hypot(pt.x - pr.x0, pt.y - pr.y0) > TAP_SLOP_PX) { pr.moved = true; clearTimeout(pr.timer); }
+    if (!pr.moved && Math.hypot(pt.x - pr.x0, pt.y - pr.y0) > TAP_SLOP_PX) {
+      pr.moved = true; clearTimeout(pr.timer);
+      // v22.47 (C37, D118): a press that moves before the hold (off the markers, or a quick swipe that
+      // starts on one) pans the satellite map with the finger; the pin view, the mark view, a Line and
+      // the paper map stay as they were
+      if (panOk) { pr.mode = "pan"; pr.lx = pr.x0; pr.ly = pr.y0; setZoomed(true); }
+    }
+    if (pr.mode === "pan" && map) {
+      try { map.panBy([pr.lx - pt.x, pr.ly - pt.y], { animate: false }); } catch (e) { /* removed mid-gesture */ }
+      pr.lx = pt.x; pr.ly = pt.y;
+    }
   };
   const onPointerUp = (ev) => {
     touchesRef.current.delete(ev.pointerId);
@@ -695,12 +719,19 @@ export function MapLayer({
           </div>
         );
       })}
-      {/* v22.28 (C2): the Shapes toggle; v22.27 (C18): after a pinch, Fit puts the hole's camera back */}
+      {/* v22.28 (C2): the Shapes toggle */}
       {satellite && pinchOk && (
         <div style={{ position: "absolute", left: 6, bottom: attrBottom + 22, zIndex: 6, display: "flex", gap: 6 }}
           onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
           <button data-part="map-shapes" aria-pressed={shapesOn ? "true" : "false"} onClick={toggleShapes} style={mapPill(shapesOn)}>Shapes</button>
-          {zoomed && <button data-part="map-fit" onClick={fit} style={mapPill(false)}>Fit</button>}
+        </div>
+      )}
+      {/* v22.27 (C18): after a pinch (v22.47: or a pan), Fit puts the hole's camera back. v22.47 (C37, D118):
+          top-left under the distance box; beside Shapes it sat under the hole pill and could not be seen */}
+      {satellite && pinchOk && zoomed && (
+        <div style={{ position: "absolute", left: 10, top: (insets.top || 0) + 4, zIndex: 6 }}
+          onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
+          <button data-part="map-fit" onClick={fit} style={mapPill(false)}>Fit</button>
         </div>
       )}
       {/* v22.15: test mode — a thin dashed pencil border, so a fake round is never mistaken for a live one */}

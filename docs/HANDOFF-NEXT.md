@@ -10,9 +10,57 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 414 tests (v22.46); must be green
+npm install && npm test    # 424 tests (v22.53); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## C40 draft (Oct 11, not shipped)
+
+`scripts/bradshaw-fairways/` grows Bradshaw's OSM fairways from the winter Esri photo; the review sheets are in
+`data/raw/2026-10-11/c40-review/`. Not in the app: the fairway barely separates from the rough in that photo and
+the additions mix real edges with greenish rough. Waits on Brett marking the spots (S10); its README says how to
+ship one hole.
+
+## v22.53 (Oct 11)
+
+The climb to the target (C44, D124): under To target the rail shows `7 yds down` / `4 yds up` / `level` for the
+option drawn, the rise Plays already counts (`riseToTarget`, `riseText`). 424 tests.
+
+## v22.52 (Oct 11)
+
+Score hole pre-fills the logged strokes (C43, D123): the card opens with shots + putts from the log crossed in,
+one tap writes it; leaving the hole without a tap does not. The smoke test covers it. 423 tests.
+
+## v22.51 (Oct 11)
+
+The Review map zooms (C42, D122): the Shots list / Review sheet's drawn map opens on the open shot, pinches,
+moves with one finger, and `Fit` goes back. The smoke test exercises it. 423 tests.
+
+## v22.50 (Oct 11)
+
+Tee boxes in their tee's colour (C41, D121). Setup stores every tee's yardages on the course (`teeCard`); the
+caddie measures each tee box to the green along the hole's line and tints it the nearest card tee within 20 yds
+(`src/caddie/teeboxes.js`). On Bradshaw every box on the tee end matched within a few yards. 423 tests.
+
+## v22.49 (Oct 11)
+
+One tile level finer (C39, D120). The satellite source is declared at half its tile size (`TILE_DETAIL_SHIFT`),
+so MapLibre draws level 19 on tee and approach views that drew 18 (level 19 was already prefetched). Esri has
+nothing past 19 at the five clubs; no free sharper photo (Georgia's 6-inch is licensed; P10). 419 tests.
+
+## v22.48 (Oct 11)
+
+Ball at the bottom centre, target up (C38, D119; picked while Brett slept). With a ball, the map turns so ball →
+SAFE's target points up (no call: ball → pin, so on the green the hole is at the top), the ball 10% above the
+bottom of the visible region, zoomed as far in as the framed points allow (`cameraForShot`, `upBearing`;
+`linearProjector` takes `rotDeg`). Pre-tee, the pin view and the mark view are as before. 419 tests.
+
+## v22.47 (Oct 11)
+
+One finger pans the map (C37, D118; Brett: one finger). On a hole on satellite, a press that moves before the
+target's 300 ms hold pans with the finger; hold the target to drag it, Line mode still draws, two fingers pinch.
+`Fit` moved top-left under the To Pin box: since v22.28 it sat under the hole pill and could not be seen. The
+smoke test now pans and taps `Fit`. 414 tests.
 
 ## v22.46 (Oct 11)
 
