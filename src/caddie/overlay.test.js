@@ -297,7 +297,7 @@ test("overlay draw order (§4.2) and palettes (§4.3)", () => {
   const parts = model.map((n) => n.attrs?.["data-part"] ?? n.tag);
   assert.deepEqual(parts, ["defs", "pin", "cur", "ball"]);
   const cur = model.find((n) => n.attrs?.["data-part"] === "cur");
-  // C45 (D126): Shot Pattern's 100% ring under its 70% ring
+  // C45 (D127): Shot Pattern's 100% ring under its 70% ring
   assert.deepEqual(cur.children.map((n) => n.attrs["data-part"]), ["previous", "other", "aim-line", "corridor", "leave", "ellipse-outer", "ellipse", "hatch", "target"]);
   const outer = cur.children.find((n) => n.attrs["data-part"] === "ellipse-outer").attrs, ring = cur.children.find((n) => n.attrs["data-part"] === "ellipse").attrs;
   assert.ok(outer.strokeDasharray && outer.opacity < 1 && outer.fill === "none", "the 100% ring: faint and dotted");

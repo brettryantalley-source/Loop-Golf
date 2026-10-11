@@ -290,10 +290,10 @@ test("details: options table, Aggressive delta / ≈ same, finesse line, dispers
   assert.equal(neg.details.rows[1].delta, "−0.2"); assert.equal(neg.details.rows[1].selected, true); assert.equal(neg.rail.club, "9-iron");
   const fin = caddieView({ state: ready, res: fakeRes({ safe: { club: "LW", label: "Lob wedge", swingType: "finesse" } }), ballXY: { x: 0, y: 0 } });
   assert.equal(fin.rail.finesse, true); assert.equal(fin.rail.club, "LW");
-  // dispersion from a real Shot Pattern entry: C45 (D126) Shot Pattern's own ring at 70% — its 36 × 51 at 80% × 0.865
+  // dispersion from a real Shot Pattern entry: C45 (D127) Shot Pattern's own ring at 70%, 41 × 43 as printed on Oct 11
   const e = resolveEntry(P, "PW", "full", "fairway");
   const opts = withEllipses({ safe: { club: "PW", swingType: "full" }, sameShot: true }, () => e);
-  assert.deepEqual(dispersionLine({ ...opts.safe, label: "Pitching wedge" }), { club: "PW", w: 31, d: 44, source: "Shot Pattern · 70% of 6 shots · Oct 4" });
+  assert.deepEqual(dispersionLine({ ...opts.safe, label: "Pitching wedge" }), { club: "PW", w: 41, d: 43, source: "Shot Pattern · 70% of 7 shots · Oct 11" });
   const bad = withEllipses({ safe: { club: "PW", swingType: "full" }, sameShot: true }, () => e, { lieQuality: "bad" });
   assert.match(dispersionLine(bad.safe).source, / · \+15% bad lie$/);
   assert.equal(clubShort("2Hy"), "2-hybrid"); assert.equal(clubShort("Dr"), "Driver");
@@ -736,7 +736,7 @@ test("S5 dispersion line: Shot Pattern's source before takeover, `Loop · 70% ·
     const opts = ellipsesFor({ safe: { club: "PW", swingType: "full", label: "Pitching wedge" }, sameShot: true }, resolve);
     return dispersionLine(opts.safe);
   };
-  assert.equal(line(pwShots(N - 1)).source, "Shot Pattern · 70% of 6 shots · Oct 4", "below takeover Shot Pattern's ellipse and date stay");
+  assert.equal(line(pwShots(N - 1)).source, "Shot Pattern · 70% of 7 shots · Oct 11", "below takeover Shot Pattern's ellipse and date stay");
   const after = line(pwShots(N + 2));
   assert.equal(after.source, `Loop · 70% · ${N + 2} shots`);
   assert.ok(after.w > 0 && after.d > 0);

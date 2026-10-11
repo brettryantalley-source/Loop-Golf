@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 read-pattern.py — reads Shot Pattern's two rings and every shot dot off a club-sheet still
-(C45, v22.55, D126; Brett Oct 11: "the best 70% is the more prominent dispersion circle (and i'd want the
+(C45, v22.56, D127; Brett Oct 11: "the best 70% is the more prominent dispersion circle (and i'd want the
 shape to be consistent with the shot pattern shape) with the full 100% being represented in a faint,
 dotted line ... use actual shots and then fill in with simulated shots to get up to the 40").
 
@@ -19,11 +19,13 @@ Width x Depth), the target "+", and one dot per shot. Measured here:
            sqrt(-2 ln(1 - c))): its 2-iron reads 88 x 90 at 80% and 76 x 78 at 70%, 0.864 against
            0.865. A still printed at 70% is ring70 as is.
   ring100  the dashed ring: the dim-green pixels outside the solid ring, off the box and off the dots,
-           fitted the same way. Coverage does not move it.
+           fitted the same way. Coverage does not move it. It is the solid ring's own shape grown to the
+           farthest shot; where it lies on the solid ring and cannot be fitted, it is drawn that way.
   dots     every dot, yards from the "+", found as a green disc inside a white rim (two dots that
            overlap each keep most of their rim). A dot under a printed label cannot be seen: the entry
            names it in `addDotsPx` (placed by eye on what shows of its rim), and `dotsFound` counts the
-           ones read. The Driver's 117 overlap so much that 101 are read; the app shows 40 of them.
+           ones read. The Driver's 117 overlap so much that 103 are read (107 with the four under its labels); the
+           app shows 40 of them.
 Frame (as fit-ell80.py): +x right, +y SHORT (screen down), tilt clockwise from +x, wYds the full axis at
 tiltDeg, hYds the perpendicular one, dx/dy = centre minus the "+". Pixels -> yards from the printed labels
 (the solid ring's bounding box); `isotropyPct` is how far the two scales disagree.
@@ -38,6 +40,8 @@ from scipy import ndimage
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _spec = importlib.util.spec_from_file_location("fit_ell80", os.path.join(ROOT, "scripts", "fit-ell80.py"))
 F = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(F)   # fit_conic, conic_params, ell_dist
+
+PEAK_WIN, MIN_SEP = 7, 4   # px on a 920-px still: a dot's peak wins this window; two dots this close are one
 
 def contour(c):
     """Radius of the 2-D normal contour holding c of the shots, in sigma."""
@@ -73,7 +77,8 @@ def read(e, png_dir=None):
     p = fit_trimmed(xs.astype(float), ys.astype(float), [0.06] * 4)
     cx, cy, ea, eb, th = p
 
-    # 2. the "+": the white plus glyph nearest the ring's centre (empty corners tell it from a letter);
+    # 2. the "+": the white plus glyph nearest the ring's centre — a bar across its middle row and its
+    #    middle column, four empty corners, a thin fill (two touching dots' white rims are none of that);
     #    the grey hairlines' crossing when no glyph shows (a dot can wash it out)
     cross = None
     for thr, src in ((225, "plus glyph"), (190, "plus glyph (relaxed threshold)")):
@@ -81,12 +86,16 @@ def read(e, png_dir=None):
         wl, wn = ndimage.label(white)
         best = None
         for i in range(1, wn + 1):
-            yy, xx = np.nonzero(wl == i)
+            blob = wl == i
+            yy, xx = np.nonzero(blob)
             h, w = yy.max() - yy.min() + 1, xx.max() - xx.min() + 1
             if not (12 * k <= h <= 34 * k and 12 * k <= w <= 34 * k and abs(h - w) <= 4 * k): continue
+            box = blob[yy.min():yy.max() + 1, xx.min():xx.max() + 1]
             c = max(2, int(round(3 * k)))
-            if white[yy.min():yy.min() + c, xx.min():xx.min() + c].any() or white[yy.max() - c + 1:yy.max() + 1, xx.max() - c + 1:xx.max() + 1].any():
-                continue
+            if box[:c, :c].any() or box[:c, -c:].any() or box[-c:, :c].any() or box[-c:, -c:].any(): continue
+            mr, mc, b = h // 2, w // 2, max(1, int(round(1.5 * k)))
+            if box[mr - b:mr + b + 1].any(axis=0).mean() < 0.8 or box[:, mc - b:mc + b + 1].any(axis=1).mean() < 0.8: continue
+            if box.mean() > 0.45: continue
             gx, gy = float(xx.min() + xx.max()) / 2, float(yy.min() + yy.max()) / 2
             d = np.hypot(gx - cx, gy - cy)
             if best is None or d < best[0]: best = (d, gx, gy)
@@ -113,11 +122,11 @@ def read(e, png_dir=None):
     f = ndimage.convolve(fill, disk); r = ndimage.convolve(rim, rim_k)
     score = f * (0.4 + r)
     pk = (f >= 0.6) & (r >= 0.25) & reg
-    peaks = pk & (score == ndimage.maximum_filter(np.where(pk, score, 0), size=max(3, int(round(9 * k)) | 1)))
+    peaks = pk & (score == ndimage.maximum_filter(np.where(pk, score, 0), size=max(3, int(round(PEAK_WIN * k)) | 1)))
     lab, n = ndimage.label(peaks)
     found = []
     for (py, px) in ndimage.center_of_mass(peaks, lab, range(1, n + 1)):
-        if all(np.hypot(px - q[0], py - q[1]) > 5 * k for q in found): found.append((px, py))
+        if all(np.hypot(px - q[0], py - q[1]) > MIN_SEP * k for q in found): found.append((px, py))
     dots_px = found + [tuple(d) for d in e.get("addDotsPx", [])]
 
     # 5. the dashed 100% ring: dim green, outside the solid ring, off the box and off the dots
@@ -131,10 +140,27 @@ def read(e, png_dir=None):
     ok &= ~onBox
     for (dx_, dy_) in dots_px:
         ok &= np.hypot(xf - dx_, yf - dy_) > 10 * k
-    p100 = fit_trimmed(xf[ok], yf[ok], [0.3, 0.15, 0.08, 0.05, 0.05])
+    # Shot Pattern draws it as the solid ring's own shape, centre and tilt, grown to the farthest shot. When
+    # it sits (almost) on the solid ring — few shots, all close, as on the 7-iron from the rough — there
+    # are too few pixels to fit, or the fit wanders: then it is drawn that way, the solid ring grown to
+    # the farthest dot (`ring100Src`: "farthest dot"; else "dashed ring").
+    ring100Src = "dashed ring"
+    try:
+        p100 = fit_trimmed(xf[ok], yf[ok], [0.3, 0.15, 0.08, 0.05, 0.05]) if ok.sum() >= 40 else None
+    except (np.linalg.LinAlgError, IndexError, ValueError):
+        p100 = None
+    if p100 is not None:
+        g = np.sqrt(p100[2] * p100[3] / (ea * eb))                     # how much bigger, by area
+        off = np.hypot(p100[0] - cx, p100[1] - cy) / np.sqrt(ea * eb)    # centre shift, in ring radii
+        shape = abs(np.log((p100[2] / p100[3]) / (ea / eb))) if abs(np.sin(p100[4] - th)) < 0.5 else abs(np.log((p100[3] / p100[2]) / (ea / eb)))
+        if not (g >= 1.0 and off < 0.12 and shape < 0.25): p100 = None
+    if p100 is None:
+        dd = F.ell_dist(p, np.array([d[0] for d in dots_px], float), np.array([d[1] for d in dots_px], float)) if dots_px else np.array([1.0])
+        g = max(1.0, float(dd.max()))
+        p100, ring100Src = (cx, cy, ea * g, eb * g, th), "farthest dot"
 
     cov = e.get("coverage", 0.7)
-    out = dict(ring=ring_fields(p, cross, s), ring100=ring_fields(p100, cross, s))
+    out = dict(ring=ring_fields(p, cross, s), ring100=ring_fields(p100, cross, s), ring100Src=ring100Src)
     k70 = contour(0.7) / contour(cov)
     r70 = dict(out["ring"]); r70["wYds"] = round(r70["wYds"] * k70, 1); r70["hYds"] = round(r70["hYds"] * k70, 1)
     out["ring70"] = r70
@@ -160,7 +186,7 @@ def read(e, png_dir=None):
         im.crop((x0c, y0c, x1c, y1c)).save(os.path.join(png_dir, f"{e['club']}-{e['lie']}.png"))
     return out
 
-FIELDS = ("ring", "ring70", "ring100", "dots", "dotsFound", "dotsInside100", "isotropyPct", "px")
+FIELDS = ("ring", "ring70", "ring100", "ring100Src", "dots", "dotsFound", "dotsInside100", "isotropyPct", "px")
 
 if __name__ == "__main__":
     path = sys.argv[1]

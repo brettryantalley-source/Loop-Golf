@@ -262,6 +262,10 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
   const ellHit = firstNonNull(chain, "ell80");
   const ell80 = ellHit ? { ...ellHit.value, sdMult } : null;
   if (ell80) provenance.ell80 = provFor(chain.find((c) => c.lie === ellHit.lie).entry, "ell80", clubId, swing, ellHit.lie);
+  // C45 (v22.56, D127): what the map draws — Shot Pattern's rings and real shots measured from this lie,
+  // else from the nearest lie in the chain, widened from the lie they were measured on (LIE_SD_MULT).
+  // None once Loop's own ring has taken over: the map then draws that one. The engine never reads it.
+  const patHit = ell80?.source === "loop" ? null : firstNonNull(chain, "pattern");
 
   return {
     club: clubId,
@@ -282,6 +286,9 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
     biasLat: fields.biasLatYds ?? 0,
     bigMiss,
     ell80,
+    pattern: patHit ? patHit.value : null,
+    patternLie: patHit ? patHit.lie : null,
+    patternSdMult: patHit ? (cfg.LIE_SD_MULT[lie] ?? 1) / (cfg.LIE_SD_MULT[patHit.lie] ?? 1) : null,
     fields,
     provenance,
     // C8 (D107): the shots behind shortPct (its own entry's n, or the loop's), for the short tail's shrink

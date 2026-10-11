@@ -1,5 +1,5 @@
 /*
- * pattern.test.js — v22.55 (C45, D126): the map draws Shot Pattern's own rings and Brett's real shots.
+ * pattern.test.js — v22.56 (C45, D127): the map draws Shot Pattern's own rings and Brett's real shots.
  * Brett, Oct 11 (the Driver, 2-iron, 2-hybrid and 4-hybrid at 70% coverage): "the best 70% is the more
  * prominent dispersion circle (and i'd want the shape to be consistent with the shot pattern shape) with
  * the full 100% being represented in a faint, dotted line ... of the 40 shots we want represented, can we
@@ -14,7 +14,7 @@ import { dirname, join } from "node:path";
 
 import { DEFAULT_CONFIG } from "./config.js";
 import { loadProfile, resolveEntry } from "./profile.js";
-import { patternRingFromEntry, ellipseFromEntry, withEllipses, patternDots, dotTone, bboxYds, K70, K80 } from "./overlay.js";
+import { patternRingFromEntry, ellipseFromEntry, withEllipses, patternDots, dotTone, bboxYds, K70, K80, overlayModel, linearProjector } from "./overlay.js";
 import { openPar5, waterRightPar4 } from "../fixtures/synthetic-holes.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -35,10 +35,22 @@ test("C45: the 70% ring is the one Shot Pattern printed — its Width × Depth f
     near(b.w, w, 1.5, `${club} width`); near(b.d, d, 1.5, `${club} depth`);
     assert.equal(r.pattern, true); assert.equal(r.capturedAt, "2026-10-11");
   }
-  // the rest come from their 80% stills, scaled to 70% as Shot Pattern's slider does (2-iron: 88 → 76)
+  // the approach clubs from the Tee & Fairway sheets, the 70% ones as printed
+  for (const [club, w, d] of [["5i", 51, 36], ["7i", 41, 86], ["8i", 33, 27], ["9i", 36, 21], ["PW", 41, 43]]) {
+    const b = bboxYds(ring(club, "fairway"));
+    near(b.w, w, 1.5, `${club} fairway width`); near(b.d, d, 1.5, `${club} fairway depth`);
+  }
+  // a sheet printed at 80% is scaled to 70% as Shot Pattern's own slider does (2-iron: 88 → 76)
   near(K70 / K80, 0.865, 0.001, "70% / 80% contour");
-  const pw = bboxYds(ring("PW", "fairway"));
-  near(pw.w, 36 * K70 / K80, 1.5, "PW width"); near(pw.d, 51 * K70 / K80, 1.5, "PW depth");
+  for (const [club, w, d] of [["GW", 34, 40], ["6i", 55, 47]]) {
+    const b = bboxYds(ring(club, "fairway"));
+    near(b.w, w * K70 / K80, 1.5, `${club} width`); near(b.d, d * K70 / K80, 1.5, `${club} depth`);
+  }
+  // from the rough, each club's own Rough sheet
+  for (const [club, w, d] of [["5i", 57, 62], ["7i", 37, 52], ["8i", 34, 53], ["9i", 20, 29], ["PW", 43, 76], ["GW", 30, 40]]) {
+    const r = ring(club, "rough"), b = bboxYds(r);
+    near(b.w, w, 1.5, `${club} rough width`); near(b.d, d, 1.5, `${club} rough depth`);
+  }
   // its tilt is Shot Pattern's, not square to the line
   assert.ok(Math.abs(ring("4Hy", "tee").tiltDeg - 112) < 2, "4-hybrid tilted as printed");
   // the 4-hybrid from the fairway reads its tee pattern (the lie chain, D113)
@@ -46,9 +58,11 @@ test("C45: the 70% ring is the one Shot Pattern printed — its Width × Depth f
 });
 
 test("C45: the 100% ring holds every real shot, and the real shots are all of them", () => {
-  for (const [club, lie, n] of [["Dr", "tee", 117], ["2i", "tee", 26], ["2Hy", "tee", 12], ["4Hy", "tee", 16], ["GW", "fairway", 15], ["PW", "fairway", 6]]) {
+  for (const [club, lie, n] of [["Dr", "tee", 117], ["2i", "tee", 26], ["2Hy", "tee", 12], ["4Hy", "tee", 16], ["GW", "fairway", 16], ["PW", "fairway", 7],
+    ["5i", "fairway", 17], ["9i", "fairway", 19], ["PW", "rough", 10], ["7i", "rough", 5]]) {
     const r = ring(club, lie);
-    assert.ok(r.outer && r.outer.w > r.w && r.outer.h > r.h, `${club}: the 100% ring is bigger`);
+    // the 7-iron's 5 rough shots sit inside its 70% ring: its 100% ring is that ring
+    assert.ok(r.outer && r.outer.w * r.outer.h >= r.w * r.h * 0.99, `${club} ${lie}: the 100% ring is no smaller`);   // by area: a fit may swap the axes
     for (const d of r.dots) assert.ok(inside(r.outer, r.outer.dx, r.outer.dy, d, 1.05), `${club}: dot ${d} inside the 100% ring`);
     assert.equal(r.patternN, n, `${club}: Shot Pattern's shot count`);
     assert.ok(r.dots.length >= Math.min(n, 100) * 0.85, `${club}: ${r.dots.length} of ${n} shots read`);
@@ -61,14 +75,24 @@ test("C45: a bad lie widens the rings and spreads the shots, as it does the draw
   const a = ring("7i", "fairway"), b = ring("7i", "fairway", { lieQuality: "bad" });
   near(b.w, a.w * 1.15, 1e-9, "w"); near(b.outer.h, a.outer.h * 1.15, 1e-9, "outer h");
   near(b.dots[0][0], a.dots[0][0] * 1.15, 1e-9, "dot x"); near(b.dy - a.dy, 5, 1e-9, "5 yds short");
-  // the rough reads the fairway pattern widened by the lie multiplier
-  const rough = resolveEntry(P, "7i", "full", "rough");
-  near(patternRingFromEntry(rough).w, a.w * rough.ell80.sdMult, 1e-9, "rough");
+  // from the rough a club with a Rough sheet draws it as measured; one without reads the fairway's, widened
+  const own = resolveEntry(P, "7i", "full", "rough");
+  assert.equal(own.patternLie, "rough"); assert.equal(own.patternSdMult, 1);
+  assert.equal(own.pattern.n, 5);
+  const borrowed = resolveEntry(P, "6i", "full", "rough");
+  assert.equal(borrowed.patternLie, "fairway");
+  near(patternRingFromEntry(borrowed).w, ring("6i", "fairway").w * DEFAULT_CONFIG.LIE_SD_MULT.rough, 1e-9, "6i rough");
+  // a bunker reads the rough sheet, widened from the rough to the sand
+  const sand = resolveEntry(P, "PW", "full", "sand");
+  assert.equal(sand.patternLie, "rough");
+  near(sand.patternSdMult, DEFAULT_CONFIG.LIE_SD_MULT.sand / DEFAULT_CONFIG.LIE_SD_MULT.rough, 1e-12, "sand from rough");
+  // the engine's own numbers do not move with any of it
+  assert.equal(own.ell80.source, "shotPattern"); assert.equal(own.ell80.pattern, undefined);
 });
 
 test("C45: no pattern (Loop's own ring) → the 70% contour of that ring, no 100% ring, no real shots", () => {
   const e = resolveEntry(P, "PW", "full", "fairway");
-  const loop = { ...e, ell80: { ...e.ell80, pattern: undefined, source: "loop" } };
+  const loop = { ...e, pattern: null, patternSdMult: null, ell80: { ...e.ell80, source: "loop" } };
   const r = patternRingFromEntry(loop), base = ellipseFromEntry(loop);
   near(r.w, base.w * K70 / K80, 1e-9, "w"); near(r.h, base.h * K70 / K80, 1e-9, "h");
   assert.equal(r.outer, null); assert.equal(r.dots, null); assert.equal(r.pattern, false);
@@ -119,4 +143,23 @@ test("C45: each dot is coloured by where it finishes — fairway green, rough ye
   for (const d of wet) if (d.x >= 28 && d.x <= 90 && d.y >= 200 && d.y <= 340) assert.equal(d.tone, "trouble");
   // no hole (marked-green mode): no lie, no colour
   assert.ok(patternDots(dr, ball, null).every((d) => d.lie === null && d.tone === null));
+});
+
+test("C45: SW and LW draw no rings, dots or corridor — Brett does not hit them full", () => {
+  const ball = { x: 0, y: 300 };
+  for (const club of DEFAULT_CONFIG.RING_HIDE_CLUBS) {
+    const o = withEllipses({ safe: { club, swingType: "finesse", target: { x: 0, y: 360 }, kind: "approach" }, sameShot: true },
+      () => resolveEntry(P, club, "finesse", "fairway")).safe;
+    assert.equal(o.ell.hidden, true, `${club} hidden`);
+    assert.deepEqual(patternDots(o, ball, openPar5), [], `${club}: no dots`);
+    const { project } = linearProjector({ center: { x: 0, y: 330 }, pxPerYd: 3 }, { width: 375, height: 812 });
+    const cur = overlayModel({ project, hole: openPar5, ball, active: o, dots: [{ x: 0, y: 360, tone: "fairway" }] })
+      .find((n) => n.attrs?.["data-part"] === "cur").children.map((n) => n.attrs["data-part"]);
+    for (const part of ["corridor", "ellipse", "ellipse-outer", "dots", "hatch"]) assert.ok(!cur.includes(part), `${club}: no ${part}`);
+    assert.ok(cur.includes("target"), `${club}: the target stays`);
+  }
+  // the rest still draw theirs
+  const pw = withEllipses({ safe: { club: "PW", swingType: "full", target: { x: 0, y: 430 }, kind: "approach" }, sameShot: true },
+    () => resolveEntry(P, "PW", "full", "fairway")).safe;
+  assert.ok(!pw.ell.hidden);
 });

@@ -26,8 +26,8 @@ const SCREENS_REL = `data/extracted/${BATCH}-screens.json`;
 const ELL80_REL = `data/extracted/${BATCH}-ell80.json`;
 // C22 (D113): the Oct 10 tee rings (Driver, 2-iron, 2-hybrid, 4-hybrid) and the 2-hybrid's fairway still
 const ELL80_TEE_REL = "data/extracted/2026-10-10-ell80.json";
-// C45 (D126): what the map draws — Shot Pattern's 70% ring, its dashed 100% ring and every shot dot
-// (scripts/read-pattern.py; the Oct 11 70% tee screenshots, the ell80 stills for the rest)
+// C45 (D127): what the map draws — Shot Pattern's 70% ring, its dashed 100% ring and every shot dot
+// (scripts/read-pattern.py; Brett's Oct 11 screenshots: tee shots, approaches from the tee and fairway, the rough)
 const PATTERN_REL = "data/extracted/2026-10-11-pattern.json";
 const REPORT_PATH = path.join(ROOT, REPORT_REL);
 const SCREENS_PATH = path.join(ROOT, SCREENS_REL);
@@ -733,14 +733,15 @@ for (const key of Object.keys(ell80ByClubLie)) {
   const tee = ell80ByClubLie[`${club}|tee`];
   if (lie === "fairway" && (ell80ByClubLie[key].goodDots ?? 0) < MIN_SIGMA_N && (tee?.goodDots ?? 0) >= MIN_SIGMA_N) delete ell80ByClubLie[key];
 }
-// C45 (v22.55, D126; Brett Oct 11): the map draws Shot Pattern's own rings — the 70% ring solid, the
-// dashed one that holds every shot faint and dotted — and his real shots as dots. DISPLAY ONLY: the
-// engine still prices from the rings above. Read by scripts/read-pattern.py; SP frame, yards from the "+".
+// C45 (v22.56, D127; Brett Oct 11): the map draws Shot Pattern's own rings — the 70% ring solid, the
+// dashed one that holds every shot faint and dotted — and his real shots as dots, per club and lie (tee,
+// fairway, rough). DISPLAY ONLY: the engine still prices from the rings above. Read by
+// scripts/read-pattern.py; SP frame, yards from the "+". Attached to the entry of its own lie (below);
+// profile.js resolveEntry reads it through the lie chain.
 const ringOf = (r) => ({ wYds: r.wYds, hYds: r.hYds, tiltDeg: r.tiltDeg, dxYds: r.dxYds, dyYds: r.dyYds });
+const patternByClubLie = {};
 for (const p of patternDoc.entries) {
-  const e = ell80ByClubLie[`${p.club}|${p.lie}`];
-  if (!e) continue;
-  e.pattern = {
+  patternByClubLie[`${p.club}|${p.lie}`] = {
     ring70: ringOf(p.ring70),
     ring100: ringOf(p.ring100),
     dots: p.dots,
@@ -1034,6 +1035,15 @@ const clubs = CLUB_ORDER.map((id) => {
     entries,
   };
 });
+// C45 (D127): each full-swing entry with a Shot Pattern sheet of its own lie carries it as `pattern`
+for (const c of clubs) {
+  for (const lie of ["tee", "fairway", "rough"]) {
+    const pat = patternByClubLie[`${c.id}|${lie}`];
+    if (!pat) continue;
+    if (!c.entries.full?.[lie]) throw new Error(`build-profile: a ${c.id} ${lie} pattern but no ${c.id}.full.${lie} entry`);
+    c.entries.full[lie].pattern = pat;
+  }
+}
 
 /* ---------------------------------------------------------------------- */
 /* approachBuckets / approachAggregate                                     */

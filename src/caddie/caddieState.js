@@ -510,7 +510,7 @@ const signed = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "0");
 /**
  * §5.6 — the dispersion line for the drawn ellipse of an option. Before takeover it reads Shot
  * Pattern's source; after the §5.2 takeover the ellipse is Loop's own: `Loop · 70% · {n} shots`.
- * C45 (v22.55, D126): the ring is Shot Pattern's 70% ring (`Shot Pattern · 70% of 117 shots · Oct 11`),
+ * C45 (v22.56, D127): the ring is Shot Pattern's 70% ring (`Shot Pattern · 70% of 117 shots · Oct 11`),
  * no longer the good-shot ring; with no pattern, the 70% contour of the engine's ring.
  */
 export function dispersionLine(o) {

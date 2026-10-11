@@ -128,7 +128,7 @@ export function bboxYds(ell) {
 
 /**
  * The 80% ellipse for a resolved entry (profile.js resolveEntry), in the SP frame — the one the
- * engine draws a good shot from. C45 (D126): the map draws patternRingFromEntry, built on this one:
+ * engine draws a good shot from. C45 (D127): the map draws patternRingFromEntry, built on this one:
  * { w, h, tiltDeg, dx, dy, source, scaled, capturedAt, confidence }.
  *
  * ell80 present: w/h/tilt/dx/dy from it. w and h scale by the entry's lie multiplier
@@ -180,13 +180,14 @@ export function ellipseFromEntry(entry, { lieQuality = "standard", config = DEFA
 export const K70 = Math.sqrt(-2 * Math.log(0.3));
 
 /**
- * C45 (v22.55, D126; Brett Oct 11: "the best 70% is the more prominent dispersion circle (and i'd want
+ * C45 (v22.56, D127; Brett Oct 11: "the best 70% is the more prominent dispersion circle (and i'd want
  * the shape to be consistent with the shot pattern shape) with the full 100% being represented in a
  * faint, dotted line"): the ring the map DRAWS is Shot Pattern's own at 70% coverage — its size, shape
- * and tilt as printed (ell80.pattern.ring70, scripts/read-pattern.py) — and `outer` is the dashed ring
+ * and tilt as printed (entry.pattern.ring70, scripts/read-pattern.py: the sheet for this lie, tee,
+ * fairway or rough, else the nearest lie's, profile.js resolveEntry) — and `outer` is the dashed ring
  * Shot Pattern draws round every shot (ring100). `dots` are his real shots, yards from the 70% ring's
- * centre; `outer.dx/dy` is the 100% ring's centre the same way. Everything scales with the lie as the
- * draws do (the entry's lie multiplier × the lie chip's). Centre (dx, dy and the bad lie's 5 yds),
+ * centre; `outer.dx/dy` is the 100% ring's centre the same way. Everything scales from the lie it was
+ * measured on (entry.patternSdMult) and with the lie chip. Centre (dx, dy and the bad lie's 5 yds),
  * source and dates are ellipseFromEntry's, so the ring sits where the good-shot ring did (D93, D100).
  * No pattern (Loop's own ring after takeover, or no ring at all): the 70% contour of ellipseFromEntry's
  * ring and no outer ring. DISPLAY ONLY: the engine still draws from ell80 and the mishit ring.
@@ -194,10 +195,10 @@ export const K70 = Math.sqrt(-2 * Math.log(0.3));
 export function patternRingFromEntry(entry, { lieQuality = "standard", config = DEFAULT_CONFIG } = {}) {
   const base = ellipseFromEntry(entry, { lieQuality, config });
   if (!base) return null;
-  const pat = entry.ell80?.pattern;
+  const pat = entry.pattern;
   if (!pat?.ring70) return { ...base, w: base.w * K70 / K80, h: base.h * K70 / K80, innerFrac: 0, outer: null, dots: null, pattern: false };
   const Q = config.LIE_QUALITY || DEFAULT_CONFIG.LIE_QUALITY;
-  const k = (entry.ell80.sdMult || 1) * ((Q[lieQuality] || Q.standard).sdMult ?? 1);
+  const k = (entry.patternSdMult || 1) * ((Q[lieQuality] || Q.standard).sdMult ?? 1);
   const r = pat.ring70, o = pat.ring100;
   return {
     ...base, w: r.wYds * k, h: r.hYds * k, tiltDeg: r.tiltDeg, innerFrac: 0,
@@ -211,14 +212,19 @@ export function patternRingFromEntry(entry, { lieQuality = "standard", config = 
  * Attach the drawn ring to each option of a recommend() result, re-resolving its entry.
  * resolve = (club, swingType) → entry (e.g. (c, s) => resolveEntry(P, c, s, lieType)).
  * Returns { safe, aggressive } with `.ell` on each (aggressive null when sameShot).
- * C45 (D126): Shot Pattern's 70% ring with its 100% ring and real shots (patternRingFromEntry).
+ * C45 (D127): Shot Pattern's 70% ring with its 100% ring and real shots (patternRingFromEntry).
  */
 export function withEllipses(res, resolve, { lieQuality = "standard", config = DEFAULT_CONFIG } = {}) {
-  const one = (o) => (o ? { ...o, ell: onFinish(patternRingFromEntry(resolve(o.club, o.swingType), { lieQuality, config }), o) } : null);
+  const hide = new Set(config.RING_HIDE_CLUBS ?? DEFAULT_CONFIG.RING_HIDE_CLUBS ?? []);
+  const ring = (o) => {
+    const ell = onFinish(patternRingFromEntry(resolve(o.club, o.swingType), { lieQuality, config }), o);
+    return ell && hide.has(o.club) ? { ...ell, hidden: true } : ell;   // C45 (D127): kept for the camera, not drawn
+  };
+  const one = (o) => (o ? { ...o, ell: ring(o) } : null);
   return { safe: one(res?.safe), aggressive: res?.sameShot ? null : one(res?.aggressive) };
 }
 
-/** C45 (D126): what a dot's finish says — fairway (or the green, or a tee), rough, or trouble. */
+/** C45 (D127): what a dot's finish says — fairway (or the green, or a tee), rough, or trouble. */
 export function dotTone(lie) {
   if (lie === "fairway" || lie === "green" || lie === "tee") return "fairway";
   if (lie === "rough") return "rough";
@@ -226,7 +232,7 @@ export function dotTone(lie) {
 }
 
 /**
- * C45 (v22.55, D126; Brett Oct 11: "of the 40 shots we want represented, can we color them green, yellow,
+ * C45 (v22.56, D127; Brett Oct 11: "of the 40 shots we want represented, can we color them green, yellow,
  * and red based on where they land? ... use actual shots and then fill in with simulated shots to get up
  * to the 40"). The dots for an option on screen (`option.ell` from withEllipses, `option.target`), hole
  * frame. His real shots first — every one when there are `n` or fewer, else `n` of them picked with a
@@ -237,7 +243,7 @@ export function dotTone(lie) {
  */
 export function patternDots(option, ball, hole, { n = DEFAULT_CONFIG.RING_DOTS, seed = DEFAULT_CONFIG.SEED } = {}) {
   const ell = option?.ell, T = option?.target;
-  if (!ell || !T || !ball || !Number.isFinite(T.x) || !Number.isFinite(ball.x) || !(n > 0)) return [];
+  if (!ell || ell.hidden || !T || !ball || !Number.isFinite(T.x) || !Number.isFinite(ball.x) || !(n > 0)) return [];
   const fx = T.x - ball.x, fy = T.y - ball.y, L = Math.hypot(fx, fy);
   if (L < 1e-9) return [];
   const f = { x: fx / L, y: fy / L }, r = { x: f.y, y: -f.x };            // SP +x = right of the line, +y = short
@@ -622,7 +628,7 @@ export function pinMarkerHit(pinPx, pt, radius = PIN_MARKER_HIT_PX) {
 const PAPER = "#F4F0E4", INK = "#1E6B3A", YELLOW = "#F2C94C", BLACK = "#1F1F1F", PENCIL = "#3F3F3F";
 const FILL_LOST = "#F1DAD6", DOUBLE = "#A3352B";
 const HALO = "rgba(20,28,16,.45)";
-/* C45 (D126): the dots' colours — theme.jsx T.dotFairway / dotRough / dotTrouble, copied as above. */
+/* C45 (D127): the dots' colours — theme.jsx T.dotFairway / dotRough / dotTrouble, copied as above. */
 const DOT_FILL = { fairway: "#4CC27A", rough: "#F2C94C", trouble: "#E5484D" };
 
 export const PALETTES = {
@@ -754,8 +760,9 @@ export function overlayModel(input) {
   const defs = [];
   if (se) {
     const { e, T, left, right } = se;
+    const rings = !active.ell?.hidden;   // C45 (D127): SW and LW draw no corridor, rings, dots or hatch
     // 4. corridor: ball → the ellipse's left and right support points
-    cur.push(el("g", { "data-part": "corridor" }, [
+    if (rings) cur.push(el("g", { "data-part": "corridor" }, [
       el("path", { d: pathD([B, left, right]), fill: P.corridorFill, stroke: "none" }),
       ...haloLine(B, left, 1.3, P, { opacity: 0.95 }),
       ...haloLine(B, right, 1.3, P, { opacity: 0.95 }),
@@ -764,18 +771,18 @@ export function overlayModel(input) {
     if (active.kind === "layup" && pin) {
       cur.push(el("g", { "data-part": "leave" }, haloLine(T, project(pin), 1.4, P, { strokeDasharray: "5 6", opacity: 0.92 })));
     }
-    // 6. C45 (v22.55, D126): Shot Pattern's 100% ring, faint and dotted, under its 70% ring, solid —
+    // 6. C45 (v22.56, D127): Shot Pattern's 100% ring, faint and dotted, under its 70% ring, solid —
     //    the prominent one (Brett, Oct 11). The corridor, hatch and camera read the 70% ring.
-    if (active.ell?.outer) {
+    if (rings && active.ell?.outer) {
       const o = active.ell.outer;
       const eo = ellipseScreen({ target: T, dx: active.ell.dx + o.dx, dy: active.ell.dy + o.dy, w: o.w, h: o.h, tiltDeg: o.tiltDeg,
         thetaDeg: thetaDeg(B, T), pxPerYd: pxPerYdAt(project, active.target) });
       cur.push(el("ellipse", { "data-part": "ellipse-outer", ...ellipseAttrs(eo), fill: "none", stroke: P.line, strokeWidth: 1.3, strokeDasharray: "0.1 4.5", strokeLinecap: "round", opacity: 0.6 }));
     }
-    cur.push(el("ellipse", { "data-part": "ellipse", ...ellipseAttrs(e), fill: P.ellFill, stroke: P.line, strokeWidth: 2 }));
-    // 6c. dots — C45 (D126): his real shots, filled to 40 from the 70% ring (overlay.js patternDots), each
+    if (rings) cur.push(el("ellipse", { "data-part": "ellipse", ...ellipseAttrs(e), fill: P.ellFill, stroke: P.line, strokeWidth: 2 }));
+    // 6c. dots — C45 (D127): his real shots, filled to 40 from the 70% ring (overlay.js patternDots), each
     //     coloured by where it finishes: fairway green, rough yellow, trouble red (none without a hole)
-    if (dots && dots.length) {
+    if (rings && dots && dots.length) {
       cur.push(el("g", { "data-part": "dots" }, dots.filter((d) => d && Number.isFinite(d.x)).map((d) => {
         const q = project(d);
         const fill = DOT_FILL[d.tone] || P.line;
@@ -783,7 +790,7 @@ export function overlayModel(input) {
       })));
     }
     // 7. trouble hatch: the same ellipse, hatched, clipped to water / bunkers / trees / outside OB
-    const clip = troubleClip(hole, project, viewport);
+    const clip = rings ? troubleClip(hole, project, viewport) : [];
     if (clip.length) {
       defs.push(el("pattern", { id: hatchId, width: 5, height: 5, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, [
         el("rect", { width: 5, height: 5, fill: P.hatchBg }),

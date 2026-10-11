@@ -93,7 +93,7 @@ test("C3: both rings centre on the target; the drift shows only when it is under
   assert.ok(Math.hypot(se.e.cx - T.x, se.e.cy - T.y) < 0.01, "the drawn centre is the target");
   const m = overlayModel({ project, hole: openPar5, ball, pin: GREEN, active: on });
   const cur = m.find((n) => n.attrs?.["data-part"] === "cur").children;
-  // C45 (D126): the 70% ring and Shot Pattern's 100% ring round it (the two share a centre within a fraction of a yard)
+  // C45 (D127): the 70% ring and Shot Pattern's 100% ring round it (the two share a centre within a fraction of a yard)
   const ring = cur.find((n) => n.attrs["data-part"] === "ellipse"), outer = cur.find((n) => n.attrs["data-part"] === "ellipse-outer");
   assert.deepEqual([ring.attrs.cx, ring.attrs.cy], [Math.round(T.x * 10) / 10, Math.round(T.y * 10) / 10]);
   assert.ok(Math.hypot(outer.attrs.cx - T.x, outer.attrs.cy - T.y) < 1, `the 100% ring centres there too: ${outer.attrs.cx},${outer.attrs.cy}`);

@@ -10,7 +10,7 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 427 tests (v22.55); must be green
+npm install && npm test    # 429 tests (v22.56); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
 
@@ -22,13 +22,19 @@ the additions mix real edges with greenish rough. Waits on Brett marking the spo
 ship one hole. The draft was made on the winter photo; since v22.54 the app flies the green Sep 2023 one (D125),
 and `fetch.py` reads the file's `imagery.url`, so a re-run traces on the new photo.
 
+## v22.56 (Oct 11)
+
+Shot Pattern's own rings and his real shots on the map (C45, D127). The map draws Shot Pattern's 70% ring as printed
+(size, shape, tilt), solid, and its 100% ring faint and dotted; the 40 dots are his real shots (filled from the 70%
+ring when he has fewer than 40), green on the fairway, yellow in the rough, red in trouble. Read off his Oct 11 club
+sheets by `scripts/read-pattern.py`: tee shots, approaches from the tee and fairway, and the rough, each lie its own;
+SW and LW draw no rings. Display only: the caddie still prices from the Oct 4 / Oct 10 rings. 429 tests.
+
 ## v22.55 (Oct 11)
 
-Shot Pattern's own rings and his real shots on the map (C45, D126). The map draws Shot Pattern's 70% ring as printed
-(size, shape, tilt), solid, and its 100% ring faint and dotted; the 40 dots are his real shots (filled from the 70%
-ring when he has fewer than 40), green on the fairway, yellow in the rough, red in trouble. Read off the stills by
-`scripts/read-pattern.py` (the four tee clubs from his Oct 11 70% screenshots). Display only: the caddie still prices
-from the Oct 4 / Oct 10 rings. 427 tests.
+Trees around Bradshaw's Red and White nines (D126): 53 woods traced automatically from the Sep 2023 photo
+(`scripts/bradshaw-trees/`), cut back 20 m from every Red and White tee. The Blue nine still has OSM's two pieces.
+425 tests.
 
 ## v22.54 (Oct 11)
 

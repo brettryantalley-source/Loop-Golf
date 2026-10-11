@@ -4,7 +4,7 @@
  * hit it — within 10 yds of the club's average and his best 65% side to side — and "my worst 20% of
  * shots should be completely ignored by the caddy" and left off the map. The dots show every draw the
  * caddie keeps. Run: npm test
- * C45 (v22.55, D126): the map no longer draws the good-shot ring; its tests went with it (the drawn
+ * C45 (v22.56, D127): the map no longer draws the good-shot ring; its tests went with it (the drawn
  * rings and dots are pattern.test.js's). The caddie still drops its worst 20%.
  */
 import { test } from "node:test";

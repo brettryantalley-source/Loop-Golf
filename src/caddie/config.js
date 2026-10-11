@@ -123,10 +123,10 @@ export const DEFAULT_CONFIG = Object.freeze({
      this share — the draws that finish farthest from where the shot finishes on average (the median
      draw, which is the target on almost every call, D115) — is dropped before anything is priced.
      Club, target, par chance, trouble and the aim warning read the rest (the map's dots are his real
-     shots since C45, D126). 0 = price them all. */
+     shots since C45, D127). 0 = price them all. */
   DROP_WORST_PCT: 0.20,
   /* The inner ring (C17, D92): the share of the shots it held — √(−2 ln 0.7) / √(−2 ln 0.2) ≈ 0.471 of the
-     80% ring, computed in overlay.js. C45 (v22.55, D126): no longer drawn; the map draws Shot Pattern's
+     80% ring, computed in overlay.js. C45 (v22.56, D127): no longer drawn; the map draws Shot Pattern's
      70% ring and its 100% ring (overlay.js patternRingFromEntry), which have no tunables — they are
      read off his screenshots (scripts/read-pattern.py). */
   RING_INNER_PCT: 0.30,
@@ -134,9 +134,13 @@ export const DEFAULT_CONFIG = Object.freeze({
      readable. DISPLAY ONLY — the simulation still uses the uncapped σs. */
   RING_DRAW_CAP_YDS: 70,
   /* v22.29 (C21, D100): this many dots round the ring, fixed by the seed so they hold still until the
-     shot moves. C45 (v22.55, D126; Brett Oct 11): his real Shot Pattern shots first, then draws from the
+     shot moves. C45 (v22.56, D127; Brett Oct 11): his real Shot Pattern shots first, then draws from the
      70% ring up to this many (overlay.js patternDots); engine.js landingDots still gives the caddie's own. */
   RING_DOTS: 40,
+  /* C45 (v22.56, D127; Brett Oct 11: "nor do I want the dispersion circles for [SW] or [LW] because I
+     don't hit them full"): these clubs draw no rings, no dots and no corridor on the map — the target,
+     the start line and the leave line stay. The engine prices them as before. */
+  RING_HIDE_CLUBS: ["SW", "LW"],
   /* Widening when the lie chip says bad / buried: +15% σ, −5 yds (spec default). */
   LIE_QUALITY: {
     good:     { sdMult: 1.0,  distYds: 0 },
