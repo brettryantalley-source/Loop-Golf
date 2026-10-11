@@ -10,7 +10,7 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 424 tests (v22.53); must be green
+npm install && npm test    # 424 tests (v22.54); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
 
@@ -19,7 +19,15 @@ node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders wi
 `scripts/bradshaw-fairways/` grows Bradshaw's OSM fairways from the winter Esri photo; the review sheets are in
 `data/raw/2026-10-11/c40-review/`. Not in the app: the fairway barely separates from the rough in that photo and
 the additions mix real edges with greenish rough. Waits on Brett marking the spots (S10); its README says how to
-ship one hole.
+ship one hole. The draft was made on the winter photo; since v22.54 the app flies the green Sep 2023 one (D125),
+and `fetch.py` reads the file's `imagery.url`, so a re-run traces on the new photo.
+
+## v22.54 (Oct 11)
+
+Bradshaw flies a green photo (D125): Esri Wayback release 41468, a Sep 23 2023 leaf-on capture with short shadows,
+in place of the Nov 2025 winter photo. Brett picked it from the nine captures Esri holds. The shapes line up on it; all 27 greens
+checked, and White 4's re-traced (it missed its back-right lobe); two bunkers with no sand removed (Red 9, Blue 7).
+424 tests.
 
 ## v22.53 (Oct 11)
 
