@@ -3,7 +3,7 @@
  * smoke-caddie.mjs — opens the BUILT app (index.html) in headless Chromium on a restored Woodmont
  * round in test mode, walks the caddie screen through a tee shot, a logged shot, the next ball and a
  * ball by the green (the short-game line and card, C29), a one-finger pan and Fit (C37, satellite only), the Shots list's
- * map zoom (C42), and fails on any page error. `npm test` never renders CaddieScreen; this catches what it can't
+ * map zoom (C42), Score hole's pre-filled score (C43), and fails on any page error. `npm test` never renders CaddieScreen; this catches what it can't
  * (a hook out of order, a value used before it is declared). Not part of `npm test`: it needs
  * Playwright and a Chromium (a cloud session has both).
  *
@@ -188,6 +188,34 @@ await step("short-game card", () => logGood(async () => {
   await page.getByRole("dialog").getByText("LW", { exact: true }).first().click({ timeout: 3000 });   // no call: he names the club
 }));
 const text = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " ").slice(0, 400));
+
+// v22.52 (C43, D123): on the green with two shots and a putt logged, Score hole opens the card with 3 crossed
+// in, and one tap on it writes it.
+const g1 = frameOf(h1).toLatLng(h1.green.center);
+const onGreen = { ...state, caddie: serializeCaddie({ ...initialCaddie(1), phase: "ready", trigger: "ball", shotNo: 3, ball: { lat: g1.lat, lng: g1.lon, accuracyM: 4 } }) };
+const rec = (id, shotNo, shotType = "full") => ({ id, roundId: "smoke-round", hole: 1, shotNo, shotType, club: shotType === "putt" ? "Putter" : "7i", ts: `2026-10-11T10:0${shotNo}:00Z`, reviewed: true });
+const ctx3 = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+await ctx3.route(/open-meteo\.com/, (route) => route.abort().catch(() => {}));
+await ctx3.addInitScript(([s, sh]) => {
+  if (sessionStorage.getItem("smoke-seeded")) return;
+  sessionStorage.setItem("smoke-seeded", "1");
+  localStorage.setItem("bogeyman-matches:v1", s);
+  localStorage.setItem("bogeyman-matches:shots:v1", sh);
+}, [JSON.stringify(onGreen), JSON.stringify({ "smoke-round": [rec("s1", 1), rec("s2", 2), rec("p1", 3, "putt")] })]);
+page = await ctx3.newPage();
+page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
+await page.goto(base, { waitUntil: "load" });
+await step("score from the caddie: pre-filled", async () => {
+  await page.getByText("Score hole 1").first().click({ timeout: 15000 });
+  const cap = await page.locator('[data-part="score-suggested"]').innerText({ timeout: 5000 });
+  if (!/tap 3 to keep/.test(cap)) throw new Error(`caption: ${cap}`);
+  await shot("6-score-suggested");
+  await page.locator('[data-part="chooser"] [data-score="3"]').click();
+  await page.waitForTimeout(500);
+  const sc = await page.evaluate(() => JSON.parse(localStorage.getItem("bogeyman-matches:v1")).scores[0]);
+  if (sc !== 3) throw new Error(`one tap wrote ${sc}`);
+  console.log("score: 3 crossed in from the log, one tap wrote it");
+});
 
 await browser.close();
 server.close();

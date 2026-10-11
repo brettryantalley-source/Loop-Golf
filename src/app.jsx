@@ -87,7 +87,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.51 · Oct 11";
+const BUILD = "v22.52 · Oct 11";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -1236,13 +1236,17 @@ function SideTotal({ label, t }) {
   );
 }
 
-function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExit, onCaddie, onScored, reviewInfo, onReview }) {
+function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExit, onCaddie, onScored, reviewInfo, onReview, suggested = null }) {
   const [confirmExit, setConfirmExit] = useState(false);
   const [pending, setPending] = useState(null);          // { hole, v } — chosen, not written
   const m = useMemo(() => evalMatch(scores, ghost.holes), [scores, ghost]);
   const h = course.holes[hole];
   const par = h.par;
   const pend = pending && pending.hole === hole ? pending.v : null;
+  /* v22.52 (C43, D123): Score hole from the caddie opens the card with the strokes logged there already
+     crossed in — one tap on it writes it. Unlike a tapped score, leaving the hole does not write it. */
+  const sugg = suggested && suggested.hole === hole && scores[hole] == null && pend == null && suggested.v > 0 ? suggested.v : null;
+  const shown = pend ?? sugg;
 
   useEffect(() => { setPending(null); }, [hole]);
 
@@ -1281,7 +1285,7 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
     if (next != null) setHole(next);
   };
   const rv = scores[hole] != null && reviewInfo ? reviewInfo(hole + 1) : null;
-  const tap = (v) => { if (pend === v) commit(v); else setPending({ hole, v }); };
+  const tap = (v) => { if (pend === v || (pend == null && sugg === v)) commit(v); else setPending({ hole, v }); };
   /* Leaving for the caddie is navigation too: a pending score is written, never dropped. */
   const goCaddie = () => { if (pend != null) write(pend); if (onCaddie) onCaddie(); };
 
@@ -1396,15 +1400,20 @@ function Play({ course, ghost, scores, setScores, hole, setHole, onFinish, onExi
             <span style={caps(9, 400, "0.14em")}>You</span>
             <span style={{ width: 44, height: 44, border: rule, background: T.yellow, display: "flex", alignItems: "center", justifyContent: "center",
               position: "relative", ...written(24) }}>
-              {scores[hole] != null ? scores[hole] : pend != null ? pend : ""}
-              {pend != null && scores[hole] == null && <PencilX size={44} seed={pend} filtered={false} />}
+              {scores[hole] != null ? scores[hole] : shown != null ? shown : ""}
+              {shown != null && scores[hole] == null && <PencilX size={44} seed={shown} filtered={false} />}
             </span>
           </div>
         </div>
 
         <div style={{ width: "100%", paddingTop: 6 }}>
           <style dangerouslySetInnerHTML={{ __html: STRIP_CSS }} />
-          <ScoreStrip hole={hole} par={par} focus={scores[hole] ?? pend ?? par} pend={pend} onTap={tap} />
+          <ScoreStrip hole={hole} par={par} focus={scores[hole] ?? shown ?? par} pend={shown} onTap={tap} />
+          {sugg != null && (
+            <div data-part="score-suggested" style={{ textAlign: "center", fontFamily: F.label, fontSize: 11, color: T.ink, marginTop: 2 }}>
+              Logged: {suggested.shots} {suggested.shots === 1 ? "shot" : "shots"} + {suggested.putts} {suggested.putts === 1 ? "putt" : "putts"} · tap <span style={printed(12)}>{sugg}</span> to keep
+            </div>
+          )}
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", width: "100%", paddingTop: 4 }}>
@@ -4248,7 +4257,20 @@ function App() {
     setScreen("caddie");
   };
   // ‹ Card and Score hole N → the scorecard on the caddie's hole (§2).
-  const openCard = (n) => { setHole(Math.max(0, Math.min(17, (n || (caddie ? caddie.hole : hole + 1)) - 1))); dispatchRetro({ type: "reset", state: null }); setScreen("play"); };
+  const openCard = (n) => { setHole(Math.max(0, Math.min(17, (n || (caddie ? caddie.hole : hole + 1)) - 1))); dispatchRetro({ type: "reset", state: null }); setScoreHint(null); setScreen("play"); };
+  /* v22.52 (C43, D123): Score hole from the caddie — the card opens with the hole's logged strokes
+     (shots + putts + any penalty strokes an import carries) crossed in, one tap to keep */
+  const [scoreHint, setScoreHint] = useState(null);
+  const scoreFromCaddie = (n) => {
+    openCard(n);
+    if (!roundId || !Number.isInteger(n)) return;
+    try {
+      const { shots, putts } = splitHole(loadShots(safeStorage(), roundId), n);
+      const pen = [...shots, ...putts].reduce((a, r) => a + (Number.isInteger(r.penalty) && r.penalty > 0 ? r.penalty : 0), 0);
+      const v = shots.length + putts.length + pen;
+      if (v > 0) setScoreHint({ hole: n - 1, v, shots: shots.length + pen, putts: putts.length });
+    } catch (e) { /* no log: an ordinary card */ }
+  };
   // Finalize: persist the finished round, then a soft (editable) transition to summary.
   const finalize = (finalScores) => {
     const rec = buildRecord({ id: roundId || newId(), date: nowISO() }, course, diff, finalScores, ghost);
@@ -4310,9 +4332,9 @@ function App() {
       {screen === "setup" && <Setup course={course} setCourse={setCourse} diff={diff} setDiff={setDiff} stats={stats} history={history} onStart={start} onHistory={() => setScreen("history")} courseMap={courseMap}
         testMode={testMode} setTestMode={setTestMode} />}
       {screen === "play" && course && ghost && <Play course={course} ghost={ghost} scores={scores} setScores={setScores} hole={hole} setHole={setHole} onFinish={finalize} onExit={exitRound} onCaddie={openCaddie}
-        onScored={onScored} reviewInfo={reviewInfo} onReview={(n) => { if (caddie) dispatchCaddie({ type: "reviewOpen", hole: n, next: null }); }} />}
+        onScored={onScored} reviewInfo={reviewInfo} onReview={(n) => { if (caddie) dispatchCaddie({ type: "reviewOpen", hole: n, next: null }); }} suggested={scoreHint} />}
       {screen === "caddie" && course && caddie && <Caddie key={retro ? `past-${retro.hole}` : "live"} course={course} geometry={courseMap.geometry} profile={profile} cs={retro || caddie} dispatch={retro ? dispatchRetro : dispatchCaddie}
-        weather={weather} setWeather={setWeather} contextRef={retro ? null : caddieCtx} roundId={roundId} onCard={() => openCard(retro ? retro.hole : undefined)} onScore={(n) => openCard(n)} onRetryProfile={() => setProfile(loadCaddieProfile())}
+        weather={weather} setWeather={setWeather} contextRef={retro ? null : caddieCtx} roundId={roundId} onCard={() => openCard(retro ? retro.hole : undefined)} onScore={(n) => scoreFromCaddie(n)} onRetryProfile={() => setProfile(loadCaddieProfile())}
         testMode={testMode} past={!!retro} liveHole={caddie.hole} onHole={(m) => goHole(m)} />}
       {caddie && caddie.review && course && (screen === "play" || screen === "caddie") && (() => {
         const n = caddie.review.hole;

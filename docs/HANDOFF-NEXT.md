@@ -10,9 +10,14 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 423 tests (v22.51); must be green
+npm install && npm test    # 423 tests (v22.52); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.52 (Oct 11)
+
+Score hole pre-fills the logged strokes (C43, D123): the card opens with shots + putts from the log crossed in,
+one tap writes it; leaving the hole without a tap does not. The smoke test covers it. 423 tests.
 
 ## v22.51 (Oct 11)
 
