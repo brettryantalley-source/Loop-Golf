@@ -3,7 +3,7 @@
 The one list of everything still unresolved. It merges the eleven Loop chats open on Oct 4: seven
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
-and Brett's test notes of Oct 10 (C20–C29). Duplicates are merged and anything already shipped is
+Brett's test notes of Oct 10 (C20–C29), and his notes from the first Bradshaw Farm round, Oct 11 (C34–C44; screenshots in `data/raw/2026-10-11/`). Duplicates are merged and anything already shipped is
 dropped. State: **v22.32** (C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 372 tests, decisions D1–D103; the next
 decision is **D104**.
 
@@ -18,8 +18,9 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Next code chat:** nothing is left that needs nothing from Brett; see **Brett** below (F7 notes → C10,
-   S4 → C12, F9 + Q3 → C13, S1–S3 + Q2 → C14) and C33 once chips are logged.
+1. **Next code chat:** the Oct 11 notes, in order: C34 and C35 first (the caddie's call is wrong), then C36
+   (rings), then the map (C37–C42), then C43–C44. Older items wait on Brett (F7 notes → C10, S4 → C12,
+   F9 + Q3 → C13, S1–S3 + Q2 → C14; C33 once chips are logged).
 2. **Next round:** the **F** list.
 
 ---
@@ -36,6 +37,9 @@ R2 muted course shapes plus a Shapes toggle (C2) · R4 leaf-off Chicopee imagery
 · R5 measured rough distances where n ≥ 5, shrunk toward the model (C7) · R6 the 41+ ft three-putt
 rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont upload to OSM later,
 after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
+- **R10.** (Oct 11, waiting on Brett) Green slopes from free USGS 3DEP lidar (1 m elevation; coverage at
+  each club to be checked): Loop draws its own green-reading arrows and replaces the ~90 m Open-Meteo
+  elevation in Plays. A large build; would become its own C item.
 
 ### On the next round (F)
 - **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.43 · Oct 10** (once merged).
@@ -131,6 +135,17 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
+| C34 | Distances run long: a 5-iron from 235 (Bradshaw Red 3) | — | Opus |
+| C35 | Bradshaw Red 2 (par 5): 6-iron with To target 117, target outside the ring, Aggressive makes no sense | — | Opus |
+| C36 | Rings: good shots only = within 10 yds of the club's average and its best 65% side to side | — | Opus |
+| C37 | Pan the map with a finger (up / down / left / right) | — | Opus |
+| C38 | Ball at the bottom centre, target up, always (putting from above the hole too) | — | Opus |
+| C39 | Sharper satellite: the photo is too soft | — | Opus |
+| C40 | Bradshaw fairways traced from the photo (OSM misses turf) | — | Opus |
+| C41 | Tee boxes shaded the colour of the tee they most likely are | — | Sonnet |
+| C42 | Zoom on the Review sheet's drawn map | — | Sonnet |
+| C43 | Scoring from the caddie: the score pre-fills with the shots logged | — | Sonnet |
+| C44 | Show the elevation change to the target | — | Sonnet |
 | C10 | Re-tune the `STRATEGY` thresholds | a round of F7 notes | Opus |
 | C12 | Chicopee hand-trace, Village + Mill | S4 | Opus |
 | C13 | Woodmont calibration | F9, Q3 | Sonnet |
@@ -168,6 +183,48 @@ service worker answered font requests with `index.html`); reopen only if it come
 ---
 
 ## Build details
+
+### C34–C44. Brett's first Bradshaw round (Oct 11, v22.43; screenshots in `data/raw/2026-10-11/`)
+- **C34.** "The distances still seem really off": on Red 3 the caddie called a 5-iron from 235. Trace the
+  Plays number (wind, temperature, the ~90 m elevation) and the 5-iron's total; D94 put the 5-iron at
+  ~204 on a warm day. **Lead:** Plays looks inflated — 212 to the pin plays 252 (12 into-left, 64°,
+  `bradshaw-red2-2hy-custom-207-ring-short.jpg`), 479 plays 562 (12 into-right). +17–19% from a 12 mph
+  wind and 64° is a lot; check the wind model, the temperature baseline and the ~90 m elevation. It may also
+  be why the ring lands short of the target (C35). The 5-iron call itself (`bradshaw-red3-5iron-custom-235.jpg`):
+  a Custom target at 235 on Red 3, Plays 322 for 343 (12 from right, 64°; plays *shorter* here), and the
+  5-iron's ring sits on the target — so the engine believes a 5-iron finishes ~235. On the same tee the
+  2-hybrid (~233) or 4-hybrid is the club; find why the 5-iron's modelled total is that long.
+- **C35.** `bradshaw-red2-6iron-target117.jpg`: Red 2, par 5, 329 to the pin from a forward pad, Plays 401
+  (14 into, 64°). The call reads 6-iron with To target 117; the yellow target sits ~half-way, well short
+  of the ring. "The dispersion circle and the target are doing very weird things by separating." The
+  Aggressive tee strategy here "makes no sense". Find why the target and the ring part (D93 aim-off, a
+  moved target, or the lay-up target) and why Aggressive chose what it did. More from the same hole: off the
+  tee, Safe = Driver with To target 219 but the ring well past it (`…-tee-driver-safe-219.jpg`); Aggressive =
+  Driver to 340 with the ring ~80 yds short of it (`…-tee-driver-aggr-340.jpg`); a Custom 2-hybrid to 207
+  (6 yds from the pin) with the ring ~40 yds short (`…-2hy-custom-207-ring-short.jpg`).
+- **C36.** `bradshaw-red1-pw-dispersion.jpg` (PW from 140) and the 4-hybrid oval
+  (`bradshaw-red2-4hy-custom-157-wide-oval.jpg`): too wide. Brett: show
+  where he might really hit it, without what he'd call mishits — more than ~10 yds short or long of the
+  club's average, and outside his best 65% side to side. Today's rings are 80% / 30% of good shots (D92).
+- **C37.** He wants to move the map up, down, left and right; today it pinches to zoom only (D98).
+- **C38.** His position always at the bottom centre with the target up, e.g. putting from above the hole
+  the hole is at the top of the screen (`bradshaw-red1-putt-from-above-hole.jpg`: today the hole sits below
+  the ball).
+- **C39.** "Still really bothered by how poor the resolution of the maps are." Check what zoom Esri serves
+  at each club (maxzoom is 19 today) and whether a sharper source is free.
+- **C40.** "Clear places the fairway exists from the satellite image that are not included." Bradshaw's
+  fairways are OSM's; trace them from the photo (as Chicopee's were, D74).
+- **C41.** Shade each tee box the colour of the tee it most likely is (Gold / Blue / White / Red), from its
+  distance to the green against the card.
+- **C42.** On the Review sheet (past shots), let the drawn map zoom (`bradshaw-red2-review-sheet-question-mark.jpg`:
+  the whole hole fits in a small box).
+- **C43.** Scoring a hole from the caddie: pre-fill the score with the shots logged (one tap to keep).
+- **C44.** Show the elevation change from the ball to the target. Plays already includes it, from
+  Open-Meteo's ~90 m grid (R10 would make it 1 m).
+
+Answered in chat Oct 11: Chip / Pitch / Wedge (inside ~30 yds, Chip rolls more than it flies, Pitch flies
+more than it rolls; Wedge is 30+ yds to a number and teaches that club's distance); the yellow `?` on the
+Review sheet (a shot Loop logged that he hasn't confirmed); free green-reading maps (none known; R10).
 
 ### C10. Re-tune the `STRATEGY` thresholds (after a round of F7 notes)
 Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/config.js`):
@@ -285,11 +342,11 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D114.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D115.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (394 pass).
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (398 pass).
 > Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with whichever item
 > I've sent what it waits on (OPEN-ITEMS, the Waits on column). Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.
