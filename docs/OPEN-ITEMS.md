@@ -198,9 +198,12 @@ Details for each are under **Build details** below.
 
 ## Never closed from `HANDOFF-NEXT.md` (low priority)
 Broadie baseline checked against the book (D1–D2) · Overpass / Open-Meteo field names and CORS ·
-MapTiler offline-caching terms (D19) · iOS PWA geolocation on first run · D31 target clamp (`Plays`
-doesn't move on a distance nudge) · finesse carries for GW / SW / LW · Ironwood OSM tracing (prompt
+MapTiler offline-caching terms (D19) · iOS PWA geolocation on first run · finesse carries for GW / SW / LW · Ironwood OSM tracing (prompt
 handed to Brett Sep 29). Pencil-filter performance on the phone is now checked in F5.
+
+**Closed Oct 11:** D31's target clamp (a distance nudge moving the target without moving `Plays`) — since
+v22.41 (D112) in-round nudges no longer move the club, target or line (`NUDGES_MOVE_CALL: false`); reopen only if
+that flag is turned back on.
 
 **Presumed closed:** the wrong fonts Brett saw around Sep 28. v21.4 fixed the known cause (the
 service worker answered font requests with `index.html`); reopen only if it comes back.
