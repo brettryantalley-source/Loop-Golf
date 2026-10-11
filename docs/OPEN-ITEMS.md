@@ -178,6 +178,7 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
+| C47 | Catch up: chained map entry for a hole (Shot Pattern's "Add Shots with Map Entry") | Brett's GO on the flow below | Opus |
 | C40 | Bradshaw fairways from the photo (draft in `scripts/bradshaw-fairways/`) | S10 | Opus |
 | C10 | Re-tune the `STRATEGY` thresholds | a round of F7 notes | Opus |
 | C12 | Chicopee hand-trace, Village + Mill | S4 | Opus |
@@ -326,6 +327,45 @@ Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/con
 The trace converts to OSM ways (`golf=hole`, `green`, `tee`, `fairway`, `bunker`). Check OSM's terms
 for tracing from Esri imagery and its import and automated-edit guidelines, and review each feature by
 hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY`.
+
+### C47. Catch up: chained map entry for a hole (Brett, Oct 11 evening, three Shot Pattern screen recordings)
+- **What Brett wants:** logging a finished hole, or 3–4 holes he had no time for, as easy as Shot Pattern's
+  `Add Shots with Map Entry`: one chain per hole, one tap per step, the map moving on by itself, nothing to
+  find. Loop has the pieces (past-hole `Place shot N`, D80; the Log shot sheet; Place / Target / Line and
+  Delete stroke in the Shots list; Place by hand, D128) but they are separate screens the caddie flow leads
+  with, not a chain.
+- **Shot Pattern's chain, as recorded** (`scoring_after_hole_1/2/3.mov`, Oct 11): the hole sheet says
+  `No shots yet on this hole` → `Add Shots with Map Entry` → **Set Tee Location** (tap, ✓) → **Select
+  Target** (a ring on the line, ball → target and target → hole yards, a club-carry column on the right, ✓)
+  → **Set Shot Result** (drag where it finished, dashed line from the target, `Undo`, ✓) → **Select Club &
+  Save Shot** (club grid + `Ending Lie`, `Save Shot`) → the next shot starts there → on the green the ring
+  reads feet (`10 ft`) → **Set Hole Location** (the pin) → **Mark Putt Result** (`In the Hole` / `2 ft
+  Remaining`) → the **Shot List** (`1 Tee · 440 yds to hole / Driver · 289 yds to Fairway`, with `Location`
+  `Club` `Target` chips to edit each) and **Edit Hole** (location, par, `Delete All Shots`).
+- **Loop's version (proposal, waits on Brett's GO):**
+  1. **Entry.** On a past hole the bar's primary is `Catch up` (replaces `Place shot 1`). From the card, a hole
+     with no shots offers `Log shots`. The chain's header is `Hole N · shot K` with ‹ › to move holes, so 3–4
+     holes go one after another without leaving the chain.
+  2. **Per shot, three steps, one tap each.** *Where from:* shot 1 is pre-placed on the hole's tee box (the
+     card tee's box, D121); every later shot starts where the one before finished. A tap or a hold-and-drag
+     (D128) moves it; ✓. *Where it finished:* tap or hold-and-drag; the labels read ball → end yards and end →
+     pin; `Undo` steps back one; ✓. *Club and lie:* the club grid with the caddie's own guess pre-selected
+     from the yards and the profile (Shot Pattern has no guess), the lie inferred from the geometry and shown
+     (one tap to change, as the chips do); `Save` moves to the next shot. A target is NOT asked (Shot
+     Pattern's Select Target); the Shots list's `Target` tool stays for the shots he wants priced.
+  3. **On the green.** The ring and labels read feet; `In` or a tap where the putt finished, Shot Pattern's
+     `Mark Putt Result`. The hole is the pin set on the hole (D49) or the green's centre.
+  4. **Done** at any step writes what is there; leaving the hole closes the open shot on the green as today
+     (§4.5). The Shots list is the Shot List: it already edits Place / Target / Line, club and Delete stroke;
+     add `Delete all shots` for the hole (Shot Pattern's Edit Hole).
+  5. **Records:** the same `bareShotRecord` → `closeOutShot` path, `logged: "full"`, placed ends (never
+     `end.assumed`), so the Score hole pre-fill (D123), Review and the brain read them as logged shots.
+- **Not in it:** no GPS on a past hole (D80 stands); no par editing (the card has it); the tee auto-placement
+  needs the tee boxes (D121) and falls back to a tap where there are none.
+- **Do:** spec the states in `docs/SPEC-caddie-UI.md` §8 first (a `catchup` phase in `caddieState.js` with
+  `from` / `end` / `club` steps), the view model's bar and notice per step, tests on the reducer, then the
+  screen; the smoke test runs one hole through the chain. Opus. Show Brett the flow on the Woodmont test
+  round before polishing.
 
 ### C33. Short-game bands learn from Loop's chips (C29, D111)
 - Since v22.40 chips, pitches and bunker shots are logged as `shotType: "shortGame"` with a
