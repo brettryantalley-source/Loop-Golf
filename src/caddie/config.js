@@ -160,6 +160,10 @@ export const DEFAULT_CONFIG = Object.freeze({
   LAYUP_MIN_YDS: 50,
   LAYUP_MAX_YDS: 150,
   LAYUP_STEP_YDS: 5,
+  /* v22.44 (C35, D115): a lay-up spot takes only a club that finishes within this many yards short
+     of it (it already had to stop within LAYUP_STEP_YDS past it). Before, the longest club stood in
+     for any spot beyond its reach. */
+  LAYUP_FIT_YDS: 10,
   /* v22.24 (C31, D95): on shot 1, a ball this close to one of the hole's tee boxes is a tee lie even
      when it was placed with "I'm at my ball" (a fix a few yards off the mapped box read rough, and
      rough takes the full driver and 2-iron away, D86). The Lie chip still wins. */

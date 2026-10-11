@@ -10,9 +10,18 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 398 tests (v22.43); must be green
+npm install && npm test    # 402 tests (v22.44); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.44 (Oct 11)
+
+The ring sits on the target (C35, D115). A fairway shot was sized with the whole hole's wind and slope, so
+on Bradshaw Red 2 the 6-iron's target sat at 117 while it finishes ~159 (the ring); now each shot is sized
+over its own length. A lay-up spot takes only a club that gets within 10 yds of it (Red 2's Aggressive was a
+Driver aimed 344 out). Into 10 mph the SAFE ring–target gap goes from a 14-yd median to 0; the club changes
+on 0–4% of calls. Next: C34 (elevation per shot, USGS lidar for the five mapped clubs, two-thirds wind;
+findings and Brett's answers in OPEN-ITEMS). 402 tests.
 
 ## v22.43 (Oct 10)
 
