@@ -14,7 +14,8 @@ import { dirname, join } from "node:path";
 
 import { DEFAULT_CONFIG, mergeConfig } from "./config.js";
 import { loadProfile } from "./profile.js";
-import { recommend, playsLike, normalizeContext, elevAt, generateCandidates } from "./engine.js";
+import { recommend, playsLike, normalizeContext, elevAt, generateCandidates, riseToTarget } from "./engine.js";
+import { riseText } from "./caddieState.js";
 import { assembleShotContext } from "./context.js";
 import { interpolateElevation } from "./sensors.js";
 import { buildHole, frameOf } from "./geo.js";
@@ -96,4 +97,21 @@ test("C34: two-thirds of the forecast wind; Brett's Wind chip counts in full", (
   assert.equal(full.wind.speedMph, 12, "the knob");
   const chip = red2Ctx(red2.tee, { weather, chips: { wind: { direction: "Into", speed: 12 } } });
   assert.equal(chip.wind.speedMph, 12, "his own reading is not scaled");
+});
+
+/* ---------- v22.53 (C44, D124): the climb to the target, shown ---------- */
+
+test("C44: the screen's rise is the one Plays counts for that shot; worded up / down / level", () => {
+  const hole = { id: "flat", par: 4, tee: { x: 0, y: 0 }, green: { center: { x: 0, y: 400 }, ring: [{ x: -10, y: 390 }, { x: 10, y: 390 }, { x: 10, y: 410 }, { x: -10, y: 410 }] }, hazards: [], fairways: [] };
+  // samples: the ground climbs 1 yd every 20 yds up the hole
+  const elevPts = [];
+  for (let y = -40; y <= 440; y += 20) for (const x of [-40, 0, 40]) elevPts.push({ x, y, z: y / 20 });
+  const ctx = { shotNo: 2, par: 4, ball: { x: 0, y: 100 }, lieType: "fairway", elevPts };
+  const r = riseToTarget(ctx, hole, { x: 0, y: 260 });
+  assert.ok(Math.abs(r - 8) < 0.5, `rise ${r}`);
+  assert.equal(riseToTarget(ctx, hole, null), null);
+  assert.equal(riseText(8.2), "8 yds up");
+  assert.equal(riseText(-4.6), "5 yds down");
+  assert.equal(riseText(0.4), "level");
+  assert.equal(riseText(null), null);
 });

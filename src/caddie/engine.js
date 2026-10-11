@@ -146,6 +146,15 @@ function riseTo(ctx, target) {
 }
 
 /**
+ * v22.53 (C44, D124): the rise (yards, + uphill) from the ball to an option's target, for the screen —
+ * the same number Plays already counts for that shot (riseTo). null without a target.
+ */
+export function riseToTarget(rawCtx, hole, target) {
+  if (!target || !Number.isFinite(target.x) || !Number.isFinite(target.y)) return null;
+  return riseTo(normalizeContext(rawCtx, hole), target);
+}
+
+/**
  * Plays-like for a shot of `rawYds` in direction `bearingDeg` (§3.3, minus lie which lives in the
  * entry). `family` scales the wind by loft; omitted (the headline number) → loft multiplier 1.
  * `target` (v22.45) = where the shot is aimed, for its own rise; omitted → the pin's.

@@ -10,9 +10,14 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 423 tests (v22.52); must be green
+npm install && npm test    # 424 tests (v22.53); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.53 (Oct 11)
+
+The climb to the target (C44, D124): under To target the rail shows `7 yds down` / `4 yds up` / `level` for the
+option drawn, the rise Plays already counts (`riseToTarget`, `riseText`). 424 tests.
 
 ## v22.52 (Oct 11)
 

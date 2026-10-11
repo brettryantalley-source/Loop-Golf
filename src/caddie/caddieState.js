@@ -648,6 +648,8 @@ export function windText(w, tempF) {
   return `${Math.round(w.speedMph)} ${REL[w.relative] || w.relative || ""}`.trim() + suffix;
 }
 export const elevText = (n) => (Number.isFinite(n) ? `${signed(Math.round(n))} yds` : DASH);
+/** v22.53 (C44, D124): the climb to the target under To target — `6 yds up`, `4 yds down`, `level` (under a yard); null without one. */
+export const riseText = (yds) => (!Number.isFinite(yds) ? null : Math.abs(yds) < 1 ? "level" : `${Math.round(Math.abs(yds))} yds ${yds > 0 ? "up" : "down"}`);
 
 /**
  * The six chips. inferred = { lieType, lieConfidence, quality, wind, elevation, conditions, tempF }

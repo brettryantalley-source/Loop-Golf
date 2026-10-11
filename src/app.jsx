@@ -25,7 +25,7 @@ import { loadProfile, resolveEntry, shortBandFor } from "./caddie/profile.js";
 import { MapLayer, useSatellite, prefetchTiles, satelliteCheck, setImagery, TILE_PREFETCH_ENABLED, renderNodes } from "./caddie/mapLayer.jsx";
 /* Caddie (S3b, v22): the engine, its inputs and the screen's state + render model. */
 import { assembleShotContext, frameBearing } from "./caddie/context.js";
-import { recommend, windEffect, priceTarget, landingDots, aimWarning } from "./caddie/engine.js";
+import { recommend, windEffect, priceTarget, landingDots, aimWarning, riseToTarget } from "./caddie/engine.js";
 import { classify } from "./caddie/course.js";
 import { ownLine, aimWarningText, shortGameLine } from "./caddie/reasons.js";
 import { fetchWeather, weatherRefreshDue, weatherTempF } from "./caddie/sensors.js";
@@ -47,7 +47,7 @@ import { newNote, saveNote, loadNotes } from "./caddie/notes.js";
 import {
   COPY, GPS_TIMEOUT_MS, initialCaddie, caddieReducer, caddieHoleFor, serializeCaddie, restoreCaddie, pinSetting, pinPointFor,
   pinFromMapTap, pickerModel, syntheticHole, clubBrainContext, mapInput, caddieView, defaultNineMap, geometryKeyFor, scorecardOrder, detectedHoleNo,
-  clubShort, ellipsesFor, withinRoundCtx, learningOverlays, aggressionModel, pinFromDrag, fakeFix, intentSet, DASH,
+  clubShort, ellipsesFor, withinRoundCtx, learningOverlays, aggressionModel, pinFromDrag, fakeFix, intentSet, DASH, riseText,
 } from "./caddie/caddieState.js";
 /* v22.11: marked-green mode — the caddie on a hole OpenStreetMap does not have. */
 import { loadGreens, saveGreen, greenFor, greenSlot, markedGreenHole, markedGreenContext, anchorFrame, toSyntheticFrame, markedEndLie } from "./caddie/greens.js";
@@ -87,7 +87,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.52 · Oct 11";
+const BUILD = "v22.53 · Oct 11";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -2272,6 +2272,11 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     if (!dotsOpt || !engine?.ctx || !built || !profile || pinView) return [];
     try { return landingDots(engine.ctx, built, profile, dotsOpt); } catch (e) { return []; }
   }, [engine, built, profile, pinView, dotsOpt?.club, dotsOpt?.swingType, dotsOpt?.kind, dotsOpt?.target?.x, dotsOpt?.target?.y]);
+  // v22.53 (C44, D124): the climb or drop from the ball to the option drawn (its own target when moved)
+  const riseLine = useMemo(() => {
+    if (!dotsOpt?.target || !engine?.ctx || !built || pinView) return null;
+    try { return riseText(riseToTarget(engine.ctx, built, dotsOpt.target)); } catch (e) { return null; }
+  }, [engine, built, pinView, dotsOpt?.target?.x, dotsOpt?.target?.y]);
   const toLLxy = (p) => { if (!Fr || !p) return null; const q = Fr.toLatLng(p); return { lat: q.lat, lng: q.lon }; };
   const setTarget = (p) => { if (dragRaf.current) { cancelAnimationFrame(dragRaf.current); dragRaf.current = null; } dragNext.current = null; setDragTarget(null); if (p) dispatch({ type: "intent", patch: { target: { x: p.x, y: p.y }, targetLabel: "own target", targetLL: toLLxy(p) } }); };
   const setLine = (p) => {
@@ -2618,6 +2623,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
             {r.finesse && <span style={{ fontSize: 10, color: T.ink }}>{COPY.finesse}</span>}
             <span style={{ ...k9, marginTop: 7 }}>To target</span>
             <span data-part="to-target" style={r.toTargetPencil ? { ...written(22), lineHeight: 1, marginTop: 3 } : { ...printed(20), color: T.ink, lineHeight: 1, marginTop: 4 }}>{r.toTarget}</span>
+            {riseLine && <span data-part="to-target-rise" style={{ fontSize: 10, color: T.ink, marginTop: 3, whiteSpace: "nowrap" }}>{riseLine}</span>}
           </div>
         )}
         {r.shapes && (
