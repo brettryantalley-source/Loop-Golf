@@ -347,7 +347,7 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (414 pass).
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (424 pass).
 > Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with whichever item
 > I've sent what it waits on (OPEN-ITEMS, the Waits on column). Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.
