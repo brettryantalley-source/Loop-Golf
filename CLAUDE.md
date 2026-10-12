@@ -51,6 +51,7 @@ A self-contained single-page web app (golf side game). Brett plays head-to-head 
   - `teeboxes.js` — which tee each tee box most likely is, from its distance to the green against the card (v22.50, D121).
   - `profile.test.js` — tests for `profile.js`'s overlay/fallback resolution chain.
 - `scripts/read-pattern.py` — offline tool (numpy/scipy/pillow): reads Shot Pattern's 70% ring, its dashed 100% ring and every shot dot off the club-sheet stills into `data/extracted/2026-10-11-pattern.json`, from Brett's Oct 11 club sheets (`data/raw/2026-10-11/sp70/`: tee shots, approaches from the tee and fairway, the rough; none for SW or LW). `scripts/build-profile.mjs` puts each on the profile entry of its own lie as `pattern`, which the map draws (v22.56, D127), and since v22.59 (R11, D130) prices that entry from it: `ell80` is the sheet's ring plus every shot, which the engine draws from (`shotsSampler`).
+- `scripts/lidar-offset.py` — offline tool (numpy/scipy/pillow/scikit-image): slides a bundled map's bunkers over a 1 m USGS lidar raster to measure how far the map sits from the ground (v22.60+, C13, D132: all five within a metre, `shiftM` stays [0, 0]).
 - `scripts/fit-ell80.py`, `scripts/read-carries.py` — offline measurement tools (numpy/scipy/pillow), not in the build: the first fits Shot Pattern's 80% ellipse and the good-shot ring from the stills, plus the drawn ring's width (the best 65% side to side, `ringWYds`, v22.46, D117), the second reads carries off the Shot Distances bar (v22.21, D92).
 - `src/profile.json` — v2, BUILT (never hand-edited) by `scripts/build-profile.mjs` from `data/extracted/2026-10-04-*` (the Oct 4 Last-10 batch, D85), the tee rings in `data/extracted/2026-10-10-ell80.json` (D113) and the Oct 11 club sheets in `data/extracted/2026-10-11-pattern.json` (D130); contract is `docs/PROFILE-v2.md`. `scripts/fit-ell80.py` — offline tool (numpy/scipy/pillow) that measures Shot Pattern's 80% ellipses from stills into `data/extracted/<batch>-ell80.json`; not part of the build.
 - `src/shotpattern.json` — GENERATED (never hand-edited) by `scripts/import-shotpattern.mjs` (`npm run import:shots`, `--check`) from `data/extracted/rounds/*/shots.json`: Shot Pattern's per-round Shot Lists as Loop shot records, seeded into the shot log on the phone (v22.16, D66–D69). `src/historyFix.js` — rewrites a stored round from a local card and recomputes the ghost by calling the frozen engine (D70).
@@ -234,7 +235,7 @@ Entries in the COURSES array use `mk(pars, strokeIndex)`:
   → `Fake my location`; every fix becomes a map tap through the real code path.
 - Spec: `docs/SPEC-caddie.md` (locked) + `docs/SPEC-caddie-UI.md` (the UI addendum, §8 states / §13
   flags). Decisions made along the way that override the spec live in `docs/DECISIONS-caddie.md`
-  (D1–D131) — read it, don't copy it into other docs. Course-management sources: `docs/research/`
+  (D1–D132) — read it, don't copy it into other docs. Course-management sources: `docs/research/`
   (the Sep 29 evidence-graded research and the Oct 3 Wicked Smart Golf notes; where they disagree the
   guide wins, Brett Oct 3) → `docs/CADDIE-BRAIN-INTEGRATION.md` parts 1 and 2.
 - Refresh workflow (spec §5.8): after a round, export the shot log or a Shot Pattern export →

@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 Brett's test notes of Oct 10 (C20–C29), and his notes from the first Bradshaw Farm round, Oct 11 (C34–C44; screenshots in `data/raw/2026-10-11/`), and his notes after the Bradshaw round that afternoon (C46). Duplicates are merged and anything already shipped is
-dropped. State: **v22.60** (R10, D131; v22.59 = R11, D130; v22.58 = C47, D129; v22.57 = C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 451 tests, decisions D1–D131; the next
-decision is **D132**.
+dropped. State: **v22.60** (R10, D131; v22.59 = R11, D130; v22.58 = C47, D129; v22.57 = C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90; C13 closed Oct 12 without a build, D132), 451 tests, decisions D1–D132; the next
+decision is **D133**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -18,8 +18,9 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Next code chat:** every Code item waits on something from Brett (C47 shipped in v22.58, R11 in v22.59, R10 in
-   v22.60): S10 → C40, F7 notes → C10, S4 → C12, F9 → C13, S1–S3 → C14; C33 once chips are logged.
+1. **Next code chat:** Brett, Oct 12: what he'd send (S, F7 notes, F9) isn't coming soon and must not hold up the
+   builds. Each Code item below goes ahead without it, in the table's order (his pick): C12 → C40 → C33 → C10. C13
+   closed by lidar (D132). C14 is the only one that can't (it is his old rounds): parked until he sends them.
 2. **Next round:** the **F** list.
 
 ---
@@ -36,15 +37,14 @@ matters: no OB to trace (C13 step 3 dropped).
 R2 muted course shapes plus a Shapes toggle (C2) · R4 leaf-off Chicopee imagery, Wayback 49059 (C11)
 · R5 measured rough distances where n ≥ 5, shrunk toward the model (C7) · R6 the 41+ ft three-putt
 rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont upload to OSM later,
-after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
+after C13 (P11) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
 - **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.60 · Oct 12** (once merged).
 - **F41.** Reading the green (v22.60, D131): on the green (and in the pin view, and on Catch up's putts) arrows point
   downhill over the green — white under 1.5%, yellow 1.5–3%, red 3% and up — and the line above the buttons reads the
   putt: "Putt: uphill 1.5% · breaks left to right 3.0%". From USGS lidar, 2 m apart. Say where an arrow or a read
-  disagrees with what the ball does, with the hole. Woodmont's greens are traced by hand (C13), so its reads are the
-  least certain.
+  disagrees with what the ball does, with the hole. Woodmont's map sits within a metre of the lidar (D132).
 - **F40.** The caddie on your Oct 11 shots (v22.59, D130): every club with a sheet now plays from your real shots. Expect
   Driver off more par-4/5 tees (193 of 246 on the mapped holes, was 161), lower par chances from 175–200 out (about 8–11
   points), the 6-iron called less from 200 in the rough (5-iron or 7-iron instead), and slightly higher ones from 120–150 in
@@ -156,11 +156,10 @@ after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
 - **F8.** After the round, report Summary's **Tee shots: Safe · Aggressive · Custom**. More Custom
   than either of the others means the calls aren't landing. Then export the shot log from History
   for a code chat.
-- **F9.** At **Woodmont:** stand on the middle of three greens and read the distance to the middle
-  (it should be 0–3 yds). Export the shot log afterward. → C13.
 - **F10.** At **Ironwood:** report the exact text of Setup's `Satellite check` line.
 
 ### Things to send (S)
+None of these holds up a build (Brett, Oct 12); each makes one better when it comes.
 - **S1.** Shot Pattern screen recordings of five rounds: Sugar Creek 7/26, Chicopee Mill/School 7/17,
   Woodmont 6/27, Riverpines 6/21, Woodmont 6/17. → C14.
 - **S2.** GHIN rounds from before May 16: at least two, hole-by-hole or just the differentials. → C14.
@@ -185,13 +184,11 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C40 | Bradshaw fairways from the photo (draft in `scripts/bradshaw-fairways/`) | S10 | Opus |
-| C10 | Re-tune the `STRATEGY` thresholds | a round of F7 notes | Opus |
-| C12 | Chicopee hand-trace, Village + Mill | S4 | Opus |
-| C13 | Woodmont calibration | F9 | Sonnet |
-| C14 | History data | S1–S3 | Sonnet |
-| C15 | Woodmont trace → OSM | C13 (R8: later) | Sonnet |
-| C33 | Short-game bands learn from Loop's chips | a few rounds of chips + putts logged | Sonnet |
+| C12 | Chicopee Village + Mill trees from the photo (S4 would sharpen it) | — | Opus |
+| C40 | Bradshaw fairways from the photo, the clear misses only (S10 would sharpen it) | — | Opus |
+| C33 | Short-game bands learn from Loop's chips; silent until chips + putts are logged | — | Sonnet |
+| C10 | Re-tune the `STRATEGY` thresholds from the sweep (F7 notes would sharpen it) | — | Opus |
+| C14 | History data | S1–S3 (parked: not coming soon, Brett Oct 12) | Sonnet |
 
 Details for each are under **Build details** below.
 
@@ -210,6 +207,11 @@ Details for each are under **Build details** below.
 - **P9.** Spec Loop's map from another golf app's screen recording. Needs the video as a file (the
   cloud blocks YouTube). D81 already rebuilt the map from Shot Pattern recordings, so confirm it is
   still wanted.
+- **P11.** Woodmont's trace → OSM (was C15; R8: later). It publishes under Brett's OSM account, so it waits on him.
+  The trace converts to OSM ways (`golf=hole`, `green`, `tee`, `fairway`, `bunker`); check OSM's terms for tracing
+  from Esri imagery and its import and automated-edit guidelines, and review each feature by hand. The app keeps
+  using the bundled file until Woodmont leaves `LOCAL_GEOMETRY`. Since D132 the trace is known to sit within a
+  metre of the ground.
 - **P10.** A sharper photo than Esri's (D120): Georgia's 6-inch statewide imagery is licensed to government only;
   county orthos (Cherokee's own 6-inch is from 2006) would need each county's terms; NAIP is ~1 m, worse. Revisit if a
   free source turns up.
@@ -289,27 +291,6 @@ Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/con
 - **Done when:** Brett confirms on the phone that the red hatching inside the ellipse is only real
   trees and hazards on every Village and Mill hole.
 
-### C13. Woodmont calibration (F9)
-- **State:** `src/localGeometry/woodmont.json` (v22.16.3, D73) holds 18 holes, 18 greens, 58 tee boxes
-  (40 are estimated ovals, `q: est`), 17 fairways, 44 bunkers, 2 lakes and 9 creek stretches; no OB,
-  no trees. It was traced from Esri imagery (stated accuracy 8.47 m) and has never been checked on a
-  phone; since v22.17.3 the app shows it over that same Esri photo (D88). `shiftM` [east, north]
-  metres moves the whole trace; bump `version` to replace the
-  phones' cache entry (stamped `local: "tnw4ghn5@1"`).
-1. **Offset:** from the round's shot-log export, compare the fixes logged on each green (and tee) with
-   the polygons. Take the median east/north offset over the 18 holes, put it in `shiftM`, set
-   `version` 2. Check whether History's export includes the trail (`bogeyman-matches:trail:v1:{roundId}`).
-   If GPS says the trace is right and the tiles disagree, that's the tile provider's offset: tell Brett
-   before shifting for it.
-2. **Tees:** 8, 15 and 18 are the least certain. After the shift, refit the ovals from the first-shot
-   fixes, or retrace from a summer Wayback capture.
-3. **OB:** none to trace (Q3, Brett Oct 12: no OB at Woodmont that matters); OB stays off.
-4. **Greens and the lidar (v22.60, D131):** the slope arrows sit on the traced greens; after the shift, check that
-   each green's lidar grid still lands on it (`gridForGreen` matches by centroid within 25 yds; re-run
-   `scripts/fetch-green-slopes.mjs woodmont` if the shift is more than a few yards).
-- **The tracing pipeline** is saved in `scripts/woodmont-trace/`; its README gives the order, and
-  `register_wayback.py` is the leaf-on step. A retrace starts there.
-
 ### C14. History data (S1–S3)
 - **Q2, card totals (answered Oct 12):** both cards stay (Beachwood 84, Chicopee 7/17 80): GHIN's 86 and 81 are
   right, but nobody knows which holes. If Brett ever sends GHIN's hole-by-hole, fix `scores` / `cardTotal` in
@@ -329,11 +310,6 @@ Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/con
   recording isn't a repeat first: two of Oct 1's five were the 8/15 round again. Two parallel
   subagents, one round each, worked well; the check is `holesShort: []` plus strokes-gained sums that
   match the Summary tab. Data-only commits don't bump the build tag.
-
-### C15. Woodmont trace → OSM (C13, R8)
-The trace converts to OSM ways (`golf=hole`, `green`, `tee`, `fairway`, `bunker`). Check OSM's terms
-for tracing from Esri imagery and its import and automated-edit guidelines, and review each feature by
-hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY`.
 
 ### C33. Short-game bands learn from Loop's chips (C29, D111)
 - Since v22.40 chips, pitches and bunker shots are logged as `shotType: "shortGame"` with a
@@ -363,11 +339,11 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D132.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D133.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
 > Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (451 pass).
 > Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with whichever item
-> I've sent what it waits on (OPEN-ITEMS, the Waits on column). Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
+> is first in the Code table (none waits on me; Brett, Oct 12). Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.
