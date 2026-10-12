@@ -10,9 +10,15 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 457 tests (v22.64); must be green
+npm install && npm test    # 458 tests (v22.65); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.65 (Oct 12)
+
+R12 (Brett: "r12lean", D138): the pin rule's pick also yields when it costs more than 0.15 strokes and saves under 2
+points of trouble (`pinFreeStrokes`, `pinMinTroubleSaved`). The sweep: the pin rule now moves 1,026 approaches
+(was 1,132), at a median 0.00 strokes. 458 tests.
 
 ## C10's sweep (Oct 12, no build)
 
