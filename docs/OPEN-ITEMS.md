@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 Brett's test notes of Oct 10 (C20–C29), and his notes from the first Bradshaw Farm round, Oct 11 (C34–C44; screenshots in `data/raw/2026-10-11/`), and his notes after the Bradshaw round that afternoon (C46). Duplicates are merged and anything already shipped is
-dropped. State: **v22.60** (R10, D131; v22.59 = R11, D130; v22.58 = C47, D129; v22.57 = C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90; C13 closed Oct 12 without a build, D132), 451 tests, decisions D1–D132; the next
-decision is **D133**.
+dropped. State: **v22.61** (C12's trees, D133; v22.60 = R10, D131; v22.59 = R11, D130; v22.58 = C47, D129; v22.57 = C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90; C13 closed Oct 12 without a build, D132), 452 tests, decisions D1–D133; the next
+decision is **D134**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -19,8 +19,8 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Next code chat:** Brett, Oct 12: what he'd send (S, F7 notes, F9) isn't coming soon and must not hold up the
-   builds. Each Code item below goes ahead without it, in the table's order (his pick): C12 → C40 → C33 → C10. C13
-   closed by lidar (D132). C14 is the only one that can't (it is his old rounds): parked until he sends them.
+   builds. Each Code item below goes ahead without it, in the table's order (his pick): C40 → C33 → C10, then C12's fairways. C13
+   closed by lidar (D132); Chicopee's trees from lidar in v22.61 (D133). C14 is the only one that can't (it is his old rounds): parked until he sends them.
 2. **Next round:** the **F** list.
 
 ---
@@ -40,7 +40,11 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (P11) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.60 · Oct 12** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.61 · Oct 12**.
+- **F42.** Chicopee's trees (v22.61, D133): the dark tree tint is now USGS lidar — anything over 3 m tall within 75 m
+  of a hole — instead of a guess from the photo's colour. Village 1's corridor no longer reads as trees (the caddie
+  punched out from the middle of it on Oct 4). Say where the tint covers open ground or misses trees, with the hole;
+  the lidar is from 2018, so a tree cut since still shows.
 - **F41.** Reading the green (v22.60, D131): on the green (and in the pin view, and on Catch up's putts) arrows point
   downhill over the green — white under 1.5%, yellow 1.5–3%, red 3% and up — and the line above the buttons reads the
   putt: "Putt: uphill 1.5% · breaks left to right 3.0%". From USGS lidar, 2 m apart. Say where an arrow or a read
@@ -184,10 +188,10 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C12 | Chicopee Village + Mill trees from the photo (S4 would sharpen it) | — | Opus |
 | C40 | Bradshaw fairways from the photo, the clear misses only (S10 would sharpen it) | — | Opus |
 | C33 | Short-game bands learn from Loop's chips; silent until chips + putts are logged | — | Sonnet |
 | C10 | Re-tune the `STRATEGY` thresholds from the sweep (F7 notes would sharpen it) | — | Opus |
+| C12 | Chicopee fairways (trees done from lidar, D133); Village 1 has none mapped | — (S4 would let them be hand traced) | Opus |
 | C14 | History data | S1–S3 (parked: not coming soon, Brett Oct 12) | Sonnet |
 
 Details for each are under **Build details** below.
@@ -267,29 +271,16 @@ Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/con
   "9 in 10" is 9 in 10 of those: punch-outs fell from 15 to 8 of 492 tree spots. Re-run the sweep on that basis.
 - Each change gets a decision row.
 
-### C12. Chicopee hand-trace, Village + Mill (S4)
-- **Village 1's 6% par** (Brett, Oct 10; D94): points on its line 150 and 200 yds out classify as
-  trees, so SAFE punches out at a 10% par chance. Re-run that check after the trace.
-- The current trace is automatic segmentation (D74 v2): rough and cart paths show as trees inside the
-  ellipse.
-- **Method learned Oct 3:**
-  - Georeference each screenshot by hand, using control points: the OSM greens, bunkers and tee boxes
-    already in `chicopee.json` line up with the imagery. Automatic matching against Esri (SIFT / ECC)
-    failed, because Apple and Esri imagery look too different. Use 3+ features per hole and check the
-    residual; a 2-point tee + pin fit was ~9% off in scale.
-  - Scale cue: the white tee → target → pin line carries yardages (e.g. 287 yd + 80 yd); about
-    5 px/yd at the native 1206-px width.
-  - Mask the UI (top bar, tool columns, bottom pill, target button, labels, numbered circles). Never
-    trace under it.
-  - Per hole: fairway outline, playable-turf edge (where the trees start), bunkers, water, OB where
-    visible, green edge. Everything outside the turf edge near the hole is trees.
-  - Write into `chicopee.json` and bump `version` so the phone's cache refreshes once. Keep the 27 hole
-    ways' OSM `id`s so hole keys and the saved nine map don't change. The School nine stays as is.
-  - Check with a node script: build all 18 holes (`buildHole`) and run `recommend` from each tee; SAFE
-    should land on fairway. Render an overlay sheet per hole for Brett to check before shipping.
-- Pilot Village 1 and show Brett the overlay before doing the rest.
-- **Done when:** Brett confirms on the phone that the red hatching inside the ellipse is only real
-  trees and hazards on every Village and Mill hole.
+### C12. Chicopee fairways (trees done, D133)
+- **Trees:** done from USGS lidar in v22.61 (D133, `scripts/lidar-trees/`): Village 1's line no longer reads trees.
+- **Fairways:** still the automatic turf corridor eroded 8 m (D74), and Village 1 has none mapped, so its corridor
+  reads rough. Lidar can't tell fairway from rough. Options: the C40 method (grow the fairway from the photo, kept
+  inside the lidar's open corridor), or hand-trace from S4's screenshots if they come.
+- **Hand-trace method learned Oct 3** (S4): georeference each screenshot by hand with 3+ control points (the OSM
+  greens, bunkers and tee boxes line up; automatic SIFT / ECC against Esri failed), scale cue ~5 px/yd at the native
+  1206-px width from the tee → target → pin yardages, mask the UI, never trace under it. Keep the 27 hole ways' OSM
+  `id`s; bump `version`; check with `buildHole` + `recommend` from each tee (SAFE should land on fairway) and a review
+  sheet per hole.
 
 ### C14. History data (S1–S3)
 - **Q2, card totals (answered Oct 12):** both cards stay (Beachwood 84, Chicopee 7/17 80): GHIN's 86 and 81 are

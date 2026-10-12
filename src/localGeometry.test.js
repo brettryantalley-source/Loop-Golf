@@ -184,8 +184,35 @@ test("chicopee and woodmont name their own imagery (Wayback, 256-px tiles); othe
   }
   assert.ok(imageryFor([woodmont, chicopee], woodmont.apiId).url.includes("/tile/64001/"), "woodmont: the Oct 10 2025 capture");
   assert.ok(imageryFor([woodmont, chicopee], chicopee.apiId).url.includes("/tile/49059/"), "chicopee: leaf-off (R4, v22.28)");
-  assert.equal(chicopee.version, 4, "bumped so the phones' cached copy refreshes once (3: leaf-off, v22.28; 4: the 3DEP grid, v22.45)");
+  assert.equal(chicopee.version, 5, "bumped so the phones' cached copy refreshes once (3: leaf-off, v22.28; 4: the 3DEP grid, v22.45; 5: the lidar trees, v22.61)");
   assert.equal(imageryFor([woodmont, chicopee], "not-a-local-club"), null);
+});
+
+test("chicopee: the trees are USGS lidar (D133) — every tee is clear of them, and Village 1's line no longer runs through them", () => {
+  const woods = chicopee.ways.filter((w) => w.tags?.natural === "wood");
+  assert.ok(woods.length > 200 && woods.every((w) => w.q === "lidar"), "no photo-traced woods left (D74)");
+  assert.match(chicopee.source.woods, /3DEP lidar/);
+  const g = localGeometryFor([chicopee], "c3jm8n4d").geometry;
+  for (const k of Object.keys(g.holes)) {
+    const { trees } = featuresForHole(g, k);
+    const tee = g.holes[k].line[0];
+    assert.ok(!trees.some((f) => pointInRing(tee, f.ring) && !(f.inner || []).some((r) => pointInRing(tee, r))), `${g.holes[k].name}'s tee is clear of the trees`);
+  }
+  // Oct 4 (D74, C12): 9 of 12 points on Village 1's line read trees, so SAFE punched out from the middle of its corridor
+  const k = Object.keys(g.holes).find((x) => g.holes[x].name === "Village 1");
+  const h = buildHole(g, k, { par: 4 });
+  const [a, b] = [h.line[0], h.line[h.line.length - 1]];
+  let n = 0;
+  for (let i = 0; i < h.line.length - 1; i++) {
+    const p = h.line[i], q = h.line[i + 1], L = Math.hypot(q.x - p.x, q.y - p.y);
+    for (let s = 0; s < L; s += 10) {
+      const pt = { x: p.x + ((q.x - p.x) * s) / L, y: p.y + ((q.y - p.y) * s) / L };
+      if (Math.hypot(pt.x - a.x, pt.y - a.y) < 40 || Math.hypot(pt.x - b.x, pt.y - b.y) < 20) continue;
+      n++;
+      assert.notEqual(classify(h, pt), "trees", `Village 1, ${Math.round(Math.hypot(b.x - pt.x, b.y - pt.y))} yds out`);
+    }
+  }
+  assert.ok(n > 25, `${n} points checked`);
 });
 
 /* v22.17.3 (D88–D89): Riverpines and Hampton ride their own OSM snapshot + Esri photo. */

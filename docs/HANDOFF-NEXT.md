@@ -10,9 +10,17 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 451 tests (v22.60); must be green
+npm install && npm test    # 452 tests (v22.61); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.61 (Oct 12)
+
+Chicopee's trees from USGS lidar (C12's trees, D133). `scripts/lidar-trees/` grids Georgia's 2018 point cloud at 1 m
+and keeps anything over 3 m tall within 75 m of a hole line, off the mapped turf: 344 pieces replace D74's 303
+photo-segmented ones, `version` 5. Village 1's line no longer reads trees (9 of 12 points did); SAFE's tee club changes
+on 3 of 27. The punch-out case in `why.test.js` moved from Village 1 to Village 8. Chicopee's fairways are still D74's
+(C12 stays open for them). 452 tests.
 
 ## C13 closed by lidar (Oct 12, no build)
 
