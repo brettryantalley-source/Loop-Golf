@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 Brett's test notes of Oct 10 (C20–C29), and his notes from the first Bradshaw Farm round, Oct 11 (C34–C44; screenshots in `data/raw/2026-10-11/`), and his notes after the Bradshaw round that afternoon (C46). Duplicates are merged and anything already shipped is
-dropped. State: **v22.64** (C33, the short-game bands learn from his chips, D136; v22.63 = C40, Bradshaw's fairways, D135; v22.62 = lidar trees at the other four clubs, D134; v22.61 = C12's trees, D133; v22.60 = R10, D131; v22.59 = R11, D130; v22.58 = C47, D129; v22.57 = C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90; C13 closed Oct 12 without a build, D132), 457 tests, decisions D1–D136; the next
-decision is **D137**.
+dropped. State: **v22.64**; C10's sweep Oct 12, no change (D137) (v22.64 = C33, the short-game bands learn from his chips, D136; v22.63 = C40, Bradshaw's fairways, D135; v22.62 = lidar trees at the other four clubs, D134; v22.61 = C12's trees, D133; v22.60 = R10, D131; v22.59 = R11, D130; v22.58 = C47, D129; v22.57 = C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90; C13 closed Oct 12 without a build, D132), 457 tests, decisions D1–D137; the next
+decision is **D138**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -19,7 +19,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Next code chat:** Brett, Oct 12: what he'd send (S, F7 notes, F9) isn't coming soon and must not hold up the
-   builds. Each Code item below goes ahead without it, in the table's order (his pick): C10, then C12's fairways. C40 shipped in v22.63 (D135), C33 in v22.64 (D136). C13
+   builds. Each Code item below goes ahead without it, C12's fairways next. C40 shipped in v22.63 (D135), C33 in v22.64 (D136), C10's sweep found nothing broken (D137, R12). C13
    closed by lidar (D132); Every mapped club's trees from lidar in v22.61–v22.62 (D133–D134). C14 is the only one that can't (it is his old rounds): parked until he sends them.
 2. **Next round:** the **F** list.
 
@@ -32,6 +32,15 @@ None open. Answered Oct 12: **Q2** — GHIN's totals (Beachwood 86, Chicopee 7/1
 know which holes: both cards stay as Shot Pattern has them (84, 80; the differentials already use GHIN's gross;
 Beachwood's match stays a loss either way, Chicopee's stays W 5–3 on the card). **Q3** — no OB at Woodmont that
 matters: no OB to trace (C13 step 3 dropped).
+
+### Recommendation waiting on you
+- **R12. The pin rule and your par chance** (C10's sweep, D137). On about 1 approach in 3 the caddie plays to the middle
+  of the green instead of its best-priced shot (the guide's front / back pin rule). Half the time that's free. On ~320
+  of 3,447 sweep calls it costs 0.15–0.5 strokes and 9–16 points of par chance, and saves 0–4 points of trouble — mostly
+  from 175 in the rough and 90 in the trees. **Lean:** let the guide win only where it saves trouble: the pin rule
+  yields when its pick costs more than 0.15 strokes and saves under 2 points of trouble (about 250 calls go back to the
+  best-priced shot). **Or** keep it as is (the guide wins, Oct 3). Your F7 notes on front / back pins would settle it.
+  To re-run: `node scripts/strategy-sweep.mjs` (about 30 min).
 
 ### Recommendations: all accepted Oct 10 ("go with the leans")
 R2 muted course shapes plus a Shapes toggle (C2) · R4 leaf-off Chicopee imagery, Wayback 49059 (C11)
@@ -194,7 +203,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C10 | Re-tune the `STRATEGY` thresholds from the sweep (F7 notes would sharpen it) | — | Opus |
 | C12 | Chicopee fairways (trees done from lidar, D133); Village 1 has none mapped | — (S4 would let them be hand traced) | Opus |
 | C14 | History data | S1–S3 (parked: not coming soon, Brett Oct 12) | Sonnet |
 
@@ -244,27 +252,6 @@ service worker answered font requests with `index.html`); reopen only if it come
 Chip / Pitch / Wedge (inside ~30 yds, Chip rolls more than it flies, Pitch flies
 more than it rolls; Wedge is 30+ yds to a number and teaches that club's distance); the yellow `?` on the
 Review sheet (a shot Loop logged that he hasn't confirmed); free green-reading maps (none known; R10).
-
-### C10. Re-tune the `STRATEGY` thresholds (after a round of F7 notes)
-Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/config.js`):
-
-| Knob | Now | What it sets |
-|---|---|---|
-| `maxCostStrokes` | 0.5 | How much a guide rule may cost, by the engine's price, before Brett's numbers overrule it |
-| `maxExtraTrouble` | 0.05 | How much extra trouble the pin rule may add |
-| `clubUpShortWeight` | 2 | How much worse a short finish counts than a long one |
-| `attackClubs` | PW GW SW LW | The only clubs that may aim at a middle flag |
-| `noHeroMaxTrouble` | 0.10 | The guide's own "9 in 10"; keep unless Brett says otherwise |
-
-- Re-run the coverage sweep on Woodmont, Chicopee and the Hampton fixture: `recommend()` at 90 / 120
-  / 150 / 175 yds, three pins, fairway / rough / trees, rules on vs all off. Report how often each rule
-  fires, its median cost and the change in trouble (Oct 3: the rules moved SAFE half the time, at a
-  0.12-stroke median, with trouble down). Keep it as `scripts/strategy-sweep.mjs` only if Brett wants.
-- Check the D76 × D78 interaction: does the pin rule still change SAFE as often now that SAFE is
-  par-ranked?
-- Since v22.46 (D117) every rule reads the best 80% of the draws (the worst 20% are dropped), so
-  "9 in 10" is 9 in 10 of those: punch-outs fell from 15 to 8 of 492 tree spots. Re-run the sweep on that basis.
-- Each change gets a decision row.
 
 ### C12. Chicopee fairways (trees done, D133)
 - **Trees:** done from USGS lidar in v22.61 (D133, `scripts/lidar-trees/`): Village 1's line no longer reads trees.
