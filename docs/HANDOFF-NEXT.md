@@ -14,6 +14,14 @@ npm install && npm test    # 451 tests (v22.60); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
 
+## C13 closed by lidar (Oct 12, no build)
+
+Brett, Oct 12: what he'd send isn't coming soon and must not hold up the builds; his GO to merge and go on with the
+recommended answers. C13 without F9 (D132): `scripts/lidar-offset.py` slides each bundled map's bunkers over a 1 m USGS
+lidar raster; all five clubs sit within a metre of the ground (Woodmont 0.0 m over 44 bunkers), so `shiftM` stays
+[0, 0] and F9 is dropped. Woodmont's tee ovals stay (lidar can't place a tee). C15 → P11 (it publishes under his OSM
+account). The Code table now runs C12 → C40 → C33 → C10 with nothing from Brett; C14 is parked until he sends S1–S3.
+
 ## v22.60 (Oct 12)
 
 Reading the green from USGS lidar (R10, D131). `scripts/fetch-green-slopes.mjs` baked a 2 m 3DEP grid over every green
