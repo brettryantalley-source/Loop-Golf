@@ -110,7 +110,8 @@ test("today's clause: under half a club says the yards; another family's nudge s
 /* ---------- the engine's facts ---------- */
 
 const chicopee = parseOverpass(toOverpass(JSON.parse(readFileSync(join(here, "../localGeometry/chicopee.json"), "utf8"))));
-const village1 = (() => { const k = Object.keys(chicopee.holes).find((x) => chicopee.holes[x].name === "Village 1"); return buildHole(chicopee, k, { par: 4 }); })();
+const holeNamed = (name) => { const k = Object.keys(chicopee.holes).find((x) => chicopee.holes[x].name === name); return buildHole(chicopee, k, { par: 4 }); };
+const village8 = holeNamed("Village 8");
 // The tee shot the par ranking decides moves as the profile does (Chicopee Village 1 until v22.33, D104;
 // Mill 3 until v22.42, C22 / D113): take the first par-4/5 tee shot on the bundled maps where it decides.
 const parTee = (() => {
@@ -133,10 +134,10 @@ test("recommend(): `why` names the deciding rule and the shot SAFE would have be
   assert.deepEqual(tee.strategy, ["par"]);
   assert.equal(tee.why.rule, "par");
   assert.ok(tee.why.alt && tee.why.alt.club !== tee.safe.club, `without the par ranking: ${tee.why.alt?.club}`);
-  const c = village1.green.center;
-  // C36 (D117): with the worst 20% of draws dropped, a SW lay-up from 150 (25 right) stays clean; R11 (D130): on his
-  // Oct 11 shots so does one from 170 out, 30 right; 190 out, 30 right, nothing does
-  const trees = recommend({ shotNo: 2, ball: { x: c.x + 30, y: c.y - 190 }, lieType: "recovery", par: 4, pinPos: "middle" }, village1, P);
+  // Village 1 punched out from 190 out, 30 right until v22.61: the lidar trees (D133) hug its corridor, and from there
+  // a lay-up stays clean. Village 8, 190 out and 20 left, in the trees on its left, still has nothing that does.
+  const c = village8.green.center;
+  const trees = recommend({ shotNo: 2, ball: { x: c.x - 20, y: c.y - 190 }, lieType: "recovery", par: 4, pinPos: "middle" }, village8, P);
   assert.equal(trees.why.rule, "no-hero");
   assert.equal(trees.why.punchOut, true);
   assert.equal(whyLine(trees, { family: familyOf }).text, "Punch out: from the trees, nothing stays clean 9 times in 10.");
