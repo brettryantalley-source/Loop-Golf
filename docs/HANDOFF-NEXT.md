@@ -10,9 +10,16 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 453 tests (v22.62); must be green
+npm install && npm test    # 454 tests (v22.63); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.63 (Oct 12)
+
+Bradshaw's fairways where OSM drew them narrow (C40, D135). The draft re-run with the lidar trees kept out, on the
+winter photo (Wayback 63116, dormant rough), since on the Sep 2023 one fairway and rough barely separate; only clear
+pieces ship (`ship.py`: d′ ≥ 2.8, log-likelihood ≥ 6, ≥ 150 m², touching OSM's fairway), unioned into the OSM way.
+Seven fairways (Blue 3, 4, 6, 8, 9, White 1), +6.5%; no tee call moves. `version` 6. 454 tests.
 
 ## v22.62 (Oct 12)
 
@@ -65,14 +72,6 @@ stopped, `In the hole`; then the count and `Score hole N` / the next hole. `Undo
 The records are the ones the course would write (recommendation + his target), placed and closed at both ends, so the
 brain and the Score pre-fill read them. The caddie's bar buttons are compact pills now (Brett: "never this big"), on the
 live caddie too. Pure model in `src/caddie/catchup.js`. 443 tests; the smoke test plays one hole through the chain.
-
-## C40 draft (Oct 11, not shipped)
-
-`scripts/bradshaw-fairways/` grows Bradshaw's OSM fairways from the winter Esri photo; the review sheets are in
-`data/raw/2026-10-11/c40-review/`. Not in the app: the fairway barely separates from the rough in that photo and
-the additions mix real edges with greenish rough. Waits on Brett marking the spots (S10); its README says how to
-ship one hole. The draft was made on the winter photo; since v22.54 the app flies the green Sep 2023 one (D125),
-and `fetch.py` reads the file's `imagery.url`, so a re-run traces on the new photo.
 
 ## v22.57 (Oct 11)
 
