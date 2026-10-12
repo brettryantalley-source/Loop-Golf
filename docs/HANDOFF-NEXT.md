@@ -10,9 +10,15 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 452 tests (v22.61); must be green
+npm install && npm test    # 453 tests (v22.62); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.62 (Oct 12)
+
+Lidar trees at the other four clubs (D134): Woodmont (had none), Bradshaw (all 27; D126's photo trace replaced),
+Riverpines and Hampton (OSM's three pieces each kept). SAFE's tee club changes on 4 / 2 / 3 / 5 holes; par chances
+drop where trees line a fairway. +557 KB of map, tee calls ~15–30% slower in node at three clubs. 453 tests.
 
 ## v22.61 (Oct 12)
 

@@ -33,7 +33,7 @@ const geo = lg.geometry;
 const ring2m2 = (ring) => { let a = 0; for (let i = 0; i < ring.length; i++) { const p = ring[i], q = ring[(i + 1) % ring.length]; a += p[0] * q[1] - q[0] * p[1]; } return Math.abs(a) / 2 / 1.19599; };
 
 test("localGeometryFor: finds the club by API id (string or number), returns null for anything else", () => {
-  assert.equal(lg.version, "tnw4ghn5@2");                       // v22.45 (D116): the 3DEP grid bumped it
+  assert.equal(lg.version, "tnw4ghn5@3");                       // v22.45 (D116): the 3DEP grid bumped it; v22.62 (D134): the lidar trees
   assert.ok(localGeometryFor(registry, "tnw4ghn5"));
   assert.equal(localGeometryFor(registry, "somewhere-else"), null);
   assert.equal(localGeometryFor(registry, null), null);
@@ -44,7 +44,9 @@ test("localGeometryFor: finds the club by API id (string or number), returns nul
 test("the file expands to Overpass JSON that parseOverpass reads with no warning beyond 'no boundary'", () => {
   const el = toOverpass(woodmont).elements;
   assert.equal(el.length, woodmont.ways.length);
-  assert.ok(el.every((e) => e.type === "way" && e.id < 0 && e.geometry.every((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon))));
+  // a wood with a clearing in it (D134) is a multipolygon relation; everything else a way
+  const pts = (e) => e.type === "way" ? e.geometry : e.members.flatMap((m) => m.geometry);
+  assert.ok(el.every((e) => (e.type === "way" || (e.type === "relation" && e.tags.natural === "wood")) && e.id < 0 && pts(e).every((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon))));
   assert.deepEqual(geo.warnings, ["no leisure=golf_course boundary — OB off"]);
   assert.equal(geo.boundary, null, "OSM's club outline is not bundled: it cuts through holes 4 and 7 and would call them out of bounds");
 });
@@ -108,11 +110,12 @@ test("lie inference reads the traced shapes: a green's centre is green, a bunker
 
 test("no feature wanders: every point of the trace is within 1.5 km of the club and no coordinate is NaN", () => {
   const a = geo.holes[1].line[0];
-  for (const w of woodmont.ways) for (const [lat, lon] of w.pts) {
+  const rings = (w) => w.outer ? [...w.outer, ...(w.inner || [])] : [w.pts];
+  for (const w of woodmont.ways) for (const r of rings(w)) for (const [lat, lon] of r) {
     assert.ok(Number.isFinite(lat) && Number.isFinite(lon));
     assert.ok(haversineM({ lat, lon }, a) < 1500, `${w.tags.golf} point ${lat},${lon}`);
   }
-  for (const w of woodmont.ways) if (w.tags.golf !== "hole") assert.deepEqual(w.pts[0], w.pts[w.pts.length - 1], `${w.tags.golf} ring is closed`);
+  for (const w of woodmont.ways) if (w.tags.golf !== "hole") for (const r of rings(w)) assert.deepEqual(r[0], r[r.length - 1], `${w.tags.golf || w.tags.natural} ring is closed`);
 });
 
 test("shiftM moves everything together and by the right amount", () => {
@@ -213,6 +216,22 @@ test("chicopee: the trees are USGS lidar (D133) — every tee is clear of them, 
     }
   }
   assert.ok(n > 25, `${n} points checked`);
+});
+
+test("every bundled map's trees are USGS lidar (D133–D134): no photo-traced woods left, OSM's kept, every tee clear of them", () => {
+  const clubs = ["woodmont", "chicopee", "riverpines", "hampton", "bradshaw"].map((n) => [n, JSON.parse(readFileSync(join(here, "localGeometry", `${n}.json`), "utf8"))]);
+  for (const [n, data] of clubs) {
+    const woods = data.ways.filter((w) => w.tags?.natural === "wood");
+    assert.ok(woods.filter((w) => w.q === "lidar").length > 150, `${n}: lidar woods`);
+    assert.ok(woods.every((w) => w.q === "lidar" || w.q === "osm"), `${n}: no photo-traced woods (D74, D126)`);
+    assert.match(data.source.woods, /3DEP lidar/, n);
+    const g = localGeometryFor([data], data.apiId).geometry;
+    for (const k of Object.keys(g.holes)) {
+      const tee = g.holes[k].line[0];
+      const { trees } = featuresForHole(g, k);
+      assert.ok(!trees.some((f) => pointInRing(tee, f.ring) && !(f.inner || []).some((r) => pointInRing(tee, r))), `${n} ${g.holes[k].name || k}: the tee is clear of the trees`);
+    }
+  }
 });
 
 /* v22.17.3 (D88–D89): Riverpines and Hampton ride their own OSM snapshot + Esri photo. */
