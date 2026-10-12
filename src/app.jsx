@@ -47,7 +47,7 @@ import { newNote, saveNote, loadNotes } from "./caddie/notes.js";
 import {
   COPY, GPS_TIMEOUT_MS, initialCaddie, caddieReducer, caddieHoleFor, serializeCaddie, restoreCaddie, pinSetting, pinPointFor,
   pinFromMapTap, pickerModel, syntheticHole, clubBrainContext, mapInput, caddieView, defaultNineMap, geometryKeyFor, scorecardOrder, detectedHoleNo,
-  clubShort, ellipsesFor, withinRoundCtx, learningOverlays, aggressionModel, pinFromDrag, fakeFix, intentSet, DASH, riseText,
+  clubShort, ellipsesFor, withinRoundCtx, learningOverlays, shortGameLearning, aggressionModel, pinFromDrag, fakeFix, intentSet, DASH, riseText,
 } from "./caddie/caddieState.js";
 /* v22.11: marked-green mode — the caddie on a hole OpenStreetMap does not have. */
 import { loadGreens, saveGreen, greenFor, greenSlot, markedGreenHole, markedGreenContext, anchorFrame, toSyntheticFrame, markedEndLie } from "./caddie/greens.js";
@@ -91,7 +91,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.63 · Oct 12";
+const BUILD = "v22.64 · Oct 12";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -1544,8 +1544,10 @@ function loadCaddieProfile() { try { return loadProfile(PROFILE_JSON, loadCaddie
 function withLearning(base, history) {
   if (!base) return base;
   try {
-    const overlays = learningOverlays(base, allShots(safeStorage()), history, Date.now());
-    return overlays ? loadProfile(PROFILE_JSON, base.config, { overlays }) : base;
+    const shots = allShots(safeStorage()), now = Date.now();
+    const overlays = learningOverlays(base, shots, history, now);
+    const shortGame = shortGameLearning(base, shots, history, now);     // C33 (v22.64, D136)
+    return overlays || shortGame ? loadProfile(PROFILE_JSON, base.config, { overlays, shortGame }) : base;
   } catch (e) { console.warn("learning overlays failed", e); return base; }
 }
 

@@ -10,9 +10,16 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 454 tests (v22.63); must be green
+npm install && npm test    # 457 tests (v22.64); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.64 (Oct 12)
+
+The short-game bands learn from his chips (C33, D136). A logged chip, pitch or bunker shot with its putts logged says
+up and down or not, and the leave (putt 1's length); a hole with no putt logged after the chip, a shot missing, or a card
+score that isn't the strokes logged says nothing. Per band, shrunk toward Shot Pattern's with SHRINK_K, finished rounds
+only; the up-and-down from inside 50 and the short-game line read it. Silent until he logs chips. 457 tests.
 
 ## v22.63 (Oct 12)
 

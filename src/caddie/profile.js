@@ -48,8 +48,14 @@ export function loadProfile(json, config = DEFAULT_CONFIG, opts = {}) {
   for (const b of json.approachBuckets) (buckets[b.lie] ||= []).push(b);
   for (const lie of Object.keys(buckets)) buckets[lie].sort((a, b) => a.fromYds - b.fromYds);
   const putting = [...json.putting].sort((a, b) => a.fromFt - b.fromFt);
+  // C33 (v22.64, D136): `opts.shortGame` = learning.js shortGameOverlays — a band Loop has chips in reads the
+  // shrunk up-and-down and leave, its `n` counts them too, and `learned` keeps the overlay
   const shortGame = {};
-  for (const b of json.shortGame?.bands || []) (shortGame[b.lie] ||= []).push(b);
+  for (const b of json.shortGame?.bands || []) {
+    const ov = opts?.shortGame?.[`${b.lie}|${b.fromYds}`];
+    const band = ov ? { ...b, upDownPct: ov.upDownPct ?? b.upDownPct, medianProximityFt: ov.medianProximityFt ?? b.medianProximityFt, n: (b.n || 0) + ov.n, learned: ov } : b;
+    (shortGame[b.lie] ||= []).push(band);
+  }
   const P = {
     raw: json,
     config,

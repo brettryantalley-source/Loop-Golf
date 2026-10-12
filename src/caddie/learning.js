@@ -693,6 +693,96 @@ export function applyShotLog(P, allShots, { now, roundIndexById } = {}, config) 
   return out;
 }
 
+/* ---------- C33 (v22.64, D136): the short-game bands learn from Loop's chips ---------- */
+
+/** The short-game band a lie reads (profile.js SHORT_LIE): the trees and a recovery lie play from the rough's band. */
+const SHORT_BAND_LIE = { tee: "fairway", fairway: "fairway", rough: "rough", sand: "bunker", recovery: "rough", trees: "rough" };
+
+/**
+ * What one logged chip, pitch or bunker shot says: did he get up and down, and how far did it leave him.
+ * `hole` = the round's records on that hole (the chip among them); putts are numbered on their own (putt 1, 2 …), shots
+ * by stroke. Up and down = holed in two from it: holed itself (`end.holed`, Catch up's "In the hole"), or it is the last
+ * shot off the green and putt 1 went in. Another shot after it (chipped again) is not; nor is putt 1 missed. It says
+ * nothing — a putt nobody logged must never read as an up-and-down — when no putt is logged after it, a shot is missing
+ * in between, or the card's `score` for the hole (when known) isn't the strokes logged. leaveFt = putt 1's length
+ * (0 when holed), else null.
+ */
+export function chipOutcome(chip, hole, score = null) {
+  const recs = (hole || []).filter((r) => r && r !== chip && r.id !== chip?.id && r.logged !== "skipped");
+  const putts = recs.filter((r) => r.shotType === "putt").sort((a, b) => (a.shotNo ?? 0) - (b.shotNo ?? 0));
+  const shots = recs.filter((r) => r.shotType !== "putt" && Number.isFinite(r.shotNo));
+  if (Number.isFinite(score) && score !== shots.length + 1 + putts.length) return null;
+  if (chip?.end?.holed === true) return putts.length ? null : { upDown: true, leaveFt: 0 };
+  if (shots.some((r) => r.shotNo === chip.shotNo + 1)) return { upDown: false, leaveFt: null };
+  if (shots.some((r) => r.shotNo > chip.shotNo)) return null;
+  const p1 = putts[0];
+  if (!p1 || (Number.isFinite(p1.shotNo) && p1.shotNo !== 1)) return null;
+  const ft = p1.putt?.distanceFt;
+  return { upDown: p1.putt?.made === true, leaveFt: Number.isFinite(ft) && ft >= 0 ? ft : null };
+}
+
+/**
+ * The short-game bands' overlays for profile.js `loadProfile(json, config, { shortGame })`: each band Loop has chips
+ * in, its up-and-down rate and median leave shrunk toward Shot Pattern's band with SHRINK_K (D85's rule for the
+ * bands), recency-weighted like the clubs (§5.3: only finished rounds, newest first). A chip teaches when its round
+ * does (`teaches`, D128), it starts inside the bands (< 50 yds) on a lie with a band, and its outcome is known
+ * (`chipOutcome`, checked against the card's hole score: `scoresByRound` = { roundId: holeScores }). Shot Pattern's own records are already in the bands and never count twice. → { "lie|fromYds":
+ * overlay } or {} when nothing qualifies.
+ */
+export function shortGameOverlays(P, allShots, { now, roundIndexById, scoresByRound } = {}, config) {
+  const cfg = cfgOf(config ?? P?.config);
+  const K = cfg.SHRINK_K ?? DEFAULT_CONFIG.SHRINK_K;
+  const nowMs = now == null ? null : now instanceof Date ? now.getTime() : typeof now === "number" ? now : Date.parse(now);
+  const mine = (allShots || []).filter((s) => s && teaches(s) && s.source !== "shotpattern" && s.roundId != null && s.hole != null);
+  const byHole = new Map();
+  for (const s of mine) { const k = `${s.roundId}|${s.hole}`; if (!byHole.has(k)) byHole.set(k, []); byHole.get(k).push(s); }
+  const chips = mine.filter((s) => s.logged !== "skipped" && swingOf(s) === "shortGame" && Number.isFinite(s.shotNo));
+  const idx = roundIndexById || roundIndexFrom(chips);
+  const roundTime = new Map();
+  for (const s of mine) {
+    const t = s.ts ? Date.parse(s.ts) : NaN;
+    if (Number.isFinite(t) && (!roundTime.has(s.roundId) || t > roundTime.get(s.roundId))) roundTime.set(s.roundId, t);
+  }
+  const weightOf = (roundId) => {
+    const ago = idx[roundId];
+    if (ago == null) return 0;
+    const t = roundTime.get(roundId);
+    return recencyWeight(ago, nowMs != null && t != null ? (nowMs - t) / MONTH_MS : null, cfg);
+  };
+  const acc = new Map();
+  for (const c of chips) {
+    const d = c.start?.distanceToPinYds, lie = SHORT_BAND_LIE[lieOf(c)];
+    if (!Number.isFinite(d) || !lie) continue;
+    const band = (P?.shortGame?.[lie] || []).find((b) => d >= b.fromYds && d < b.toYds);
+    if (!band) continue;
+    const score = scoresByRound?.[c.roundId]?.[c.hole - 1];
+    const o = chipOutcome(c, byHole.get(`${c.roundId}|${c.hole}`), Number.isFinite(score) ? score : null);
+    const w = weightOf(c.roundId);
+    if (!o || !(w > 0)) continue;
+    const key = `${lie}|${band.fromYds}`;
+    if (!acc.has(key)) acc.set(key, { band, lie, ud: [], udW: [], leave: [], leaveW: [], ids: [] });
+    const a = acc.get(key);
+    a.ud.push(o.upDown ? 1 : 0); a.udW.push(w); a.ids.push(c.id ?? null);
+    if (o.leaveFt != null) { a.leave.push(o.leaveFt); a.leaveW.push(w); }
+  }
+  const out = {};
+  for (const [key, a] of acc) {
+    const { band } = a;
+    const personal = { upDownPct: wMean(a.ud, a.udW), leaveFt: a.leave.length ? wMedian(a.leave, a.leaveW) : null };
+    const upDownPct = shrink(personal.upDownPct, band.upDownPct, wSum(a.udW), K);
+    const leave = shrink(personal.leaveFt, band.medianProximityFt, wSum(a.leaveW), K);
+    out[key] = {
+      key, lie: a.lie, fromYds: band.fromYds, toYds: band.toYds,
+      n: a.ud.length, nEff: wSum(a.udW),
+      upDownPct: upDownPct == null ? null : Math.round(upDownPct * 1000) / 1000,
+      medianProximityFt: leave == null ? null : Math.round(leave * 10) / 10,
+      personal, prior: { upDownPct: band.upDownPct ?? null, medianProximityFt: band.medianProximityFt ?? null },
+      shotIds: a.ids,
+    };
+  }
+  return out;
+}
+
 /**
  * The entry numbers the engine would use for club × swing × lie: a deep copy of the Shot Pattern
  * entry with the overlay merged in. Below takeover, the shrunk numbers replace the Shot Pattern
