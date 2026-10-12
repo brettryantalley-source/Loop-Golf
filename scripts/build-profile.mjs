@@ -16,6 +16,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_CONFIG, CLUB_FAMILY, lieDistAdj } from "../src/caddie/config.js";
+import { shotsSampler, keptDraws } from "../src/caddie/engine.js";
+import { makeSamples } from "../src/caddie/random.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -755,6 +757,114 @@ function ell80For(id, lie) {
 }
 
 /* ---------------------------------------------------------------------- */
+/* R11: the Oct 11 sheets price the shot too                               */
+/* ---------------------------------------------------------------------- */
+
+// R11 (v22.59, D130; Brett Oct 11, after the numbers: "your real shots", "rough sheet alone", the Driver's big
+// misses not added again): the engine prices each club × lie that has an Oct 11 sheet from that sheet, not from
+// the Oct 4 / Oct 10 rings — a later batch replaces an earlier one for the same club and lie (D113's rule).
+// It draws from his real shots (the dots), resampled with a small kernel (engine.js shotsSampler); the worst
+// 20% are still dropped (D117), so his own worst shots are what goes. Shot Pattern's 70% ring is the spread
+// of EVERY shot on the sheet (the dots' covariance reproduces each ring to ~0.5 yd), so it holds the mishits
+// and, off the tee, the big misses: a tee entry priced from its sheet carries bigMiss 0, the PDF's rates kept
+// on `bigMiss.pdf`. A rough sheet is read alone (5–10 shots). SW and LW have no sheet and keep their rings.
+// `--model=off` builds the profile as it was before R11 and `--out=` writes elsewhere (for a before/after).
+const argOf = (name) => {
+  const a = process.argv.find((x) => x.startsWith(`--${name}=`));
+  return a ? a.slice(name.length + 3) : null;
+};
+const PATTERN_PRICING = argOf("model") ?? "shots";
+if (!["shots", "off"].includes(PATTERN_PRICING)) throw new Error(`build-profile: --model=${PATTERN_PRICING}?`);
+
+const K70 = Math.sqrt(-2 * Math.log(0.3));
+const K80 = Math.sqrt(-2 * Math.log(0.2));
+const DEG = Math.PI / 180;
+/** σ² covariance (SP frame) of a ring drawn at the `k` contour. */
+function covOfRing(r, k) {
+  const a = r.wYds / 2 / k, b = r.hYds / 2 / k, t = r.tiltDeg * DEG, c = Math.cos(t), s = Math.sin(t);
+  return { xx: a * a * c * c + b * b * s * s, yy: a * a * s * s + b * b * c * c, xy: (a * a - b * b) * c * s };
+}
+/** The ring at the `k` contour of a σ² covariance: w along the major axis, tilt clockwise from +x (SP frame). */
+function ringOfCov(C, k) {
+  const m = (C.xx + C.yy) / 2, d = Math.hypot((C.xx - C.yy) / 2, C.xy);
+  const t = (0.5 * Math.atan2(2 * C.xy, C.xx - C.yy)) / DEG;
+  return { wYds: round(2 * k * Math.sqrt(m + d), 1), hYds: round(2 * k * Math.sqrt(Math.max(0, m - d)), 1), tiltDeg: round(((t % 180) + 180) % 180, 1) };
+}
+const medianOf = (a) => {
+  const s = [...a].sort((x, y) => x - y), m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+// D113's rule needs the good shots: a dot within the club's window of the median dot (D92: 20 yds; wedges 10% of the median, min 8)
+const WEDGES = new Set(["PW", "GW", "SW", "LW"]);
+const windowFor = (club, medianYds) => (WEDGES.has(club) ? Math.max(8, 0.1 * medianYds) : 20);
+
+/** One sheet as the engine's model: the ring (σ² cov + centre) and his shots, the depth centred on the median shot. */
+function sheetModel(p, medianYds) {
+  const D = p.dots;
+  const medY = medianOf(D.map((d) => d[1]));
+  const win = windowFor(p.club, medianYds);
+  return {
+    n: p.n ?? D.length, nDots: D.length,
+    C: covOfRing(p.ring70, K70), dyMeasured: p.ring70.dyYds,
+    goodDots: D.filter((d) => Math.abs(d[1] - medY) <= win).length,
+    // totalMedianYds is a median and already holds the shortfall to the target (D85), as the rings' dyYds 0 does
+    shots: D.map(([x, y]) => [x, y - medY]),
+  };
+}
+
+/**
+ * Mean across of the draws the engine KEEPS from these shots: the engine's own sampler on its fixed
+ * samples (SAMPLES, SEED), D117's keptDraws, nothing aimed off — so the aim (aimFor reads dxYds) puts
+ * the kept draws on the target. (For a lopsided club — the 9-iron: nine shots ~4 left, eight spread 5–24
+ * right — the mean of every shot would aim the kept ones off it.)
+ */
+function keptMeanX(shots) {
+  const draw = shotsSampler({ shots, sdMult: 1 });
+  const S = makeSamples(DEFAULT_CONFIG.SAMPLES, DEFAULT_CONFIG.SEED);
+  const along = new Float64Array(S.length), lat = new Float64Array(S.length);
+  S.forEach((s, i) => { const d = draw(s.z1, s.z2, s.v); along[i] = d.alongMiss; lat[i] = d.lat; });
+  const kept = keptDraws(along, lat, DEFAULT_CONFIG.DROP_WORST_PCT);
+  return kept.reduce((a, i) => a + lat[i], 0) / kept.length;
+}
+
+/** Width × depth of the box round a ring (SP frame: width across, depth along). */
+function bboxOf(r) {
+  const a = r.wYds / 2, b = r.hYds / 2, t = r.tiltDeg * DEG;
+  return [round(2 * Math.hypot(a * Math.cos(t), b * Math.sin(t)), 1), round(2 * Math.hypot(a * Math.sin(t), b * Math.cos(t)), 1)];
+}
+
+/** The ell80 the engine prices from: the sheet's ring at 80% (the short tail and the camera read it) and every shot. */
+function ell80FromModel(M, p) {
+  const ring = ringOfCov(M.C, K80);
+  const [bw, bd] = bboxOf(ring);
+  return {
+    ...ring, dxYds: round(keptMeanX(M.shots), 1),
+    dyYds: 0, dyMeasuredYds: M.dyMeasured,
+    // the box of the ring priced (all shots, 80%); what Shot Pattern printed, at its coverage, rides alongside
+    bboxWYds: bw, bboxDYds: bd, printedCoverage: p.coverage, printedBboxYds: [p.bboxWYds, p.bboxDYds],
+    source: "shotPattern", capturedAt: patternDoc.batch,
+    lies: p.lie === "tee" ? "Driving" : p.lie === "rough" ? "Rough" : "Tee & Fairway",
+    n: M.n, confidence: null, model: "shots",
+    shots: M.shots.map(([x, y]) => [round(x, 1), round(y, 1)]),
+  };
+}
+
+const patternModels = {};   // club|lie → model, for the clubs Shot Pattern measured on Oct 11
+for (const p of patternDoc.entries) {
+  const median = p.lie === "tee" ? bagMapping[REPORT_CLUB_NAME[p.club]]?.median : sheetFor("fairway", p.club)?.medianYds;
+  patternModels[`${p.club}|${p.lie}`] = { p, M: sheetModel(p, median ?? 150) };
+}
+/** The Oct 11 ell80 for club × lie; undefined = R11 leaves that entry's ring alone, null = drop it (D113). */
+function pricedEll80(id, lie) {
+  if (PATTERN_PRICING === "off") return undefined;
+  const hit = patternModels[`${id}|${lie}`];
+  if (!hit) return undefined;
+  // D113's rule, unchanged: a fairway sheet with under 5 good shots gives way to the club's tee sheet
+  if (lie === "fairway" && hit.M.goodDots < MIN_SIGMA_N && (patternModels[`${id}|tee`]?.M.goodDots ?? 0) >= MIN_SIGMA_N) return null;
+  return ell80FromModel(hit.M, hit.p);
+}
+
+/* ---------------------------------------------------------------------- */
 /* Entry builders                                                         */
 /* ---------------------------------------------------------------------- */
 
@@ -1042,6 +1152,14 @@ for (const c of clubs) {
     if (!pat) continue;
     if (!c.entries.full?.[lie]) throw new Error(`build-profile: a ${c.id} ${lie} pattern but no ${c.id}.full.${lie} entry`);
     c.entries.full[lie].pattern = pat;
+    // R11: and the engine prices from it (pricedEll80; undefined = the Oct 4 / Oct 10 ring stays)
+    const e = c.entries.full[lie];
+    const ell = pricedEll80(c.id, lie);
+    if (ell === undefined) continue;
+    e.ell80 = ell;
+    if (lie === "tee" && ell && (e.bigMiss?.left || e.bigMiss?.right)) {
+      e.bigMiss = { left: 0, right: 0, latYds: e.bigMiss.latYds, pdf: { left: e.bigMiss.left, right: e.bigMiss.right }, rule: "in the Oct 11 sheet's shots" };
+    }
   }
 }
 
@@ -1326,6 +1444,7 @@ for (const p of profile.putting) {
 const json = JSON.stringify(profile, null, 2) + "\n";
 
 const check = process.argv.includes("--check");
+const OUT_ARG = argOf("out");
 if (check) {
   const existing = fs.existsSync(OUT_PATH) ? fs.readFileSync(OUT_PATH, "utf8") : null;
   // "generated" changes daily; compare with that one field normalized out.
@@ -1336,6 +1455,7 @@ if (check) {
   }
   console.log("build-profile --check: src/profile.json is up to date.");
 } else {
-  fs.writeFileSync(OUT_PATH, json);
-  console.log(`build-profile: wrote ${path.relative(ROOT, OUT_PATH)}`);
+  const out = OUT_ARG ? path.resolve(OUT_ARG) : OUT_PATH;
+  fs.writeFileSync(out, json);
+  console.log(`build-profile: wrote ${path.relative(ROOT, out)}${PATTERN_PRICING === "off" ? " (as before R11)" : ""}`);
 }

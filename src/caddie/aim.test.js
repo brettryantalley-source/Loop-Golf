@@ -38,9 +38,10 @@ function approach(club, Pr = P, wind = null) {
 
 test("C3: an 8-iron to the middle aims ~7 yds right and its average shot finishes within 2 yds of the middle", () => {
   const { e, sim } = approach("8i");
-  assert.equal(e.ell80.dxYds, -7.1, "the good-shot ring sits 7.1 yds left (D92)");
-  assert.ok(Math.abs(sim.aimOffsetYds - 7.1) < 1e-9, `aims ${sim.aimOffsetYds} right`);
-  assert.equal(sim.patternYds, -7.1);
+  // R11 (D130): his Oct 11 8-iron shots — the 80% the caddie keeps sit 6.9 yds left on average
+  assert.equal(e.ell80.dxYds, -6.9, "the kept shots sit 6.9 yds left");
+  assert.ok(Math.abs(sim.aimOffsetYds - 6.9) < 1e-9, `aims ${sim.aimOffsetYds} right`);
+  assert.equal(sim.patternYds, -6.9);
   assert.ok(Math.abs(sim.meanLatYds) <= 2, `finishes ${sim.meanLatYds.toFixed(1)} from the middle`);
   // without the aim-off the same shot finishes left of the middle by about the pattern
   const before = approach("8i", Pna).sim;
@@ -55,8 +56,9 @@ test("C3 / R3: the aim-off includes the crosswind; a drift under 2 yds is aimed 
   assert.ok(w.windYds > 3, `a 10 mph wind from the left pushes it ${w.windYds.toFixed(1)} right`);
   assert.ok(Math.abs(w.aimOffsetYds + (w.patternYds + w.windYds)) < 1e-9, "aim = −(pattern + wind)");
   assert.ok(Math.abs(w.meanLatYds) <= 2, `with the wind: ${w.meanLatYds.toFixed(1)}`);
-  const six = approach("6i").sim;                      // 6-iron ring: 1.2 yds left
-  assert.equal(six.aimOffsetYds, 0, "under PATTERN_AIM_MIN_YDS: aimed at the target");
+  const five = approach("5i").sim;                     // R11 (D130): the 5-iron's kept shots sit 1.8 yds right
+  assert.equal(five.patternYds, 1.8);
+  assert.equal(five.aimOffsetYds, 0, "under PATTERN_AIM_MIN_YDS: aimed at the target");
   assert.deepEqual(aimFor({ ell80: { dxYds: -1.2 } }, 0, P.config), { patternYds: -1.2, windYds: 0, aimOffsetYds: 0 });
   assert.deepEqual(aimFor({ ell80: { dxYds: -1.2 } }, -1, P.config), { patternYds: -1.2, windYds: -1, aimOffsetYds: 2.2 });
   assert.deepEqual(aimFor({ biasLat: null }, 0, P.config), { patternYds: 0, windYds: 0, aimOffsetYds: 0 }, "no ring, no bias: straight");
@@ -75,23 +77,29 @@ test("C3: every shot aims off — off the tee only the wind moves it; Brett's ow
   assert.equal(own.aimOffsetYds, Math.abs(pat) >= 2 ? -pat : 0, `${own.club}: the marker is where it finishes`);
 });
 
-test("C3: both rings centre on the target; the drift shows only when it is under the floor", () => {
+test("C3 / R11: the rings sit where his shots land from the caddie's aim; the drift shows only when it is under the floor", () => {
   const resolve = (c, s) => resolveEntry(P, c, s, "fairway");
   const ball = { x: 0, y: 375 };
   const opt = (club, o) => ({ club, swingType: "full", kind: "approach", target: { ...GREEN, label: "green, center" }, ...o });
-  const on = withEllipses({ safe: opt("8i", { aimOffsetYds: 7.1, patternYds: -7.1, windYds: 0 }), sameShot: true }, resolve).safe;
-  assert.equal(on.ell.dx, 0, "8-iron: aimed out, the ring sits on the target");
-  const windy = withEllipses({ safe: opt("8i", { aimOffsetYds: 2.1, patternYds: -7.1, windYds: 5 }), sameShot: true }, resolve).safe;
-  assert.equal(windy.ell.dx, 0, "with the wind in the aim too");
-  const six = withEllipses({ safe: opt("6i", { aimOffsetYds: 0, patternYds: -1.2, windYds: 0 }), sameShot: true }, resolve).safe;
-  assert.equal(six.ell.dx, -1.2, "6-iron: under the floor, the ring keeps its 1.2 yds left");
+  // R11 (D130): the caddie aims the 80% it keeps (6.9 left) onto the target; the ring is the average of every
+  // shot on the sheet (8.5 left), so aimed 6.9 right it sits 1.6 left of the target — where they land
+  const on = withEllipses({ safe: opt("8i", { aimOffsetYds: 6.9, patternYds: -6.9, windYds: 0 }), sameShot: true }, resolve).safe;
+  assert.equal(on.ell.dx, -1.6, "8-iron: aimed out, the ring 1.6 yds left of the target");
+  const windy = withEllipses({ safe: opt("8i", { aimOffsetYds: 1.9, patternYds: -6.9, windYds: 5 }), sameShot: true }, resolve).safe;
+  assert.equal(windy.ell.dx, -1.6, "with the wind in the aim too");
+  const seven = withEllipses({ safe: opt("7i", { aimOffsetYds: -6.5, patternYds: 6.5, windYds: 0 }), sameShot: true }, resolve).safe;
+  assert.equal(seven.ell.dx, -4, "7-iron: aimed 6.5 left for its kept shots, every shot averages 2.5 right of the aim");
+  const five = withEllipses({ safe: opt("5i", { aimOffsetYds: 0, patternYds: 1.8, windYds: 0 }), sameShot: true }, resolve).safe;
+  assert.equal(five.ell.dx, 2.5, "5-iron: under the floor, aimed straight, the ring keeps its 2.5 yds right");
   // v22.29 (C21, D100): along the line, the rings sit where the club's average shot finishes
-  const long = withEllipses({ safe: opt("8i", { aimOffsetYds: 7.1, patternYds: -7.1, windYds: 0, meanYds: 169, toTargetYds: 162 }), sameShot: true }, resolve).safe;
+  const long = withEllipses({ safe: opt("8i", { aimOffsetYds: 6.9, patternYds: -6.9, windYds: 0, meanYds: 169, toTargetYds: 162 }), sameShot: true }, resolve).safe;
   assert.equal(long.ell.dy, -7, "finishes 7 past the target: the ring moves 7 long (SP +y = short)");
   const { project } = linearProjector({ center: { x: 0, y: 460 }, pxPerYd: 2 }, { width: 375, height: 812 });
-  const se = screenEllipseFor(on, ball, project), T = project(GREEN);
+  // the 8-iron with no aim-off of its own drawn on the target: the ring's centre is the target
+  const centred = { ...on, ell: { ...on.ell, dx: 0 } };
+  const se = screenEllipseFor(centred, ball, project), T = project(GREEN);
   assert.ok(Math.hypot(se.e.cx - T.x, se.e.cy - T.y) < 0.01, "the drawn centre is the target");
-  const m = overlayModel({ project, hole: openPar5, ball, pin: GREEN, active: on });
+  const m = overlayModel({ project, hole: openPar5, ball, pin: GREEN, active: centred });
   const cur = m.find((n) => n.attrs?.["data-part"] === "cur").children;
   // C45 (D127): the 70% ring and Shot Pattern's 100% ring round it (the two share a centre within a fraction of a yard)
   const ring = cur.find((n) => n.attrs["data-part"] === "ellipse"), outer = cur.find((n) => n.attrs["data-part"] === "ellipse-outer");

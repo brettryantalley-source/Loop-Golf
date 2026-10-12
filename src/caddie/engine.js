@@ -359,6 +359,77 @@ export function ellipseSampler(ell, qualityMult = 1) {
   };
 }
 
+/** Weighted quantile of `vals` (weights `ws`), q in [0, 1]. */
+function wQuantile(vals, ws, q) {
+  const idx = vals.map((_, i) => i).sort((a, b) => vals[a] - vals[b]);
+  const tot = ws.reduce((a, b) => a + b, 0);
+  let acc = 0;
+  for (const i of idx) { acc += ws[i]; if (acc >= q * tot) return vals[i]; }
+  return vals[idx[idx.length - 1]];
+}
+
+/**
+ * R11: his real shots as the dispersion — `ell.shots` = [[x, y, w?], ...] in Shot Pattern's frame (+x
+ * right, +y short; the depth already centred on the median shot, scripts/build-profile.mjs), `w` an
+ * optional weight (a rough sheet shrunk toward the fairway's, D104's SHRINK_K). A draw picks a shot by
+ * `v` (weighted) and moves it by a small kernel so the draws are not stacked on a handful of points
+ * (a smoothed bootstrap): per axis (across, along), σ_k = min(σ, IQR / 1.349) — Silverman's robust
+ * scale, so one 50-yd mishit does not blur every good shot — and h = n_eff^(−1/6) (2-D). Each shot is
+ * pulled toward the mean by a = √(1 − (h σ_k / σ)²), so the shots' own mean and spread are kept exactly.
+ * The lie (ell.sdMult) and the lie quality widen the draw round the mean, as ellipseSampler does.
+ * Returns (z1, z2, v) → { lat, alongMiss } (alongMiss > 0 = long), the same frame as ellipseSampler.
+ */
+export function shotsSampler(ell, qualityMult = 1) {
+  const { S, n, cum, tot, mx, my, X, Y } = shotsModel(ell.shots);
+  const scale = (ell.sdMult || 1) * qualityMult;
+  return (z1, z2, v) => {
+    const t = v * tot;
+    let lo = 0, hi = n - 1;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (cum[m] > t) hi = m; else lo = m + 1; }
+    const ex = X.pull * (S[lo][0] - mx) + X.kern * z1, ey = Y.pull * (S[lo][1] - my) + Y.kern * z2;
+    return { lat: mx + scale * ex, alongMiss: -(my + scale * ey) };
+  };
+}
+
+const SHOTS_MODEL = new WeakMap();   // ell.shots array → its kernel model (resolveEntry copies ell80, not the array)
+/** The shots' weights, mean and per-axis kernel (shotsSampler), memoised per shots array. */
+function shotsModel(shots) {
+  const hit = SHOTS_MODEL.get(shots);
+  if (hit) return hit;
+  const S = shots, n = S.length;
+  const ws = S.map((s) => (Number.isFinite(s[2]) ? s[2] : 1));
+  const cum = new Float64Array(n);
+  let tot = 0, tot2 = 0, mx = 0, my = 0;
+  for (let i = 0; i < n; i++) { tot += ws[i]; tot2 += ws[i] * ws[i]; cum[i] = tot; mx += ws[i] * S[i][0]; my += ws[i] * S[i][1]; }
+  mx /= tot; my /= tot;
+  const nEff = (tot * tot) / tot2;
+  const h = Math.pow(Math.max(nEff, 1), -1 / 6);
+  const axis = (k, m) => {
+    let v = 0;
+    for (let i = 0; i < n; i++) v += ws[i] * (S[i][k] - m) ** 2;
+    const sd = Math.sqrt((v / tot) * (nEff > 1 ? nEff / (nEff - 1) : 1));
+    const vals = S.map((s) => s[k]);
+    const iqr = wQuantile(vals, ws, 0.75) - wQuantile(vals, ws, 0.25);
+    const sk = Math.min(sd, iqr > 0 ? iqr / 1.349 : sd);
+    const r = sd > 0 ? Math.min(1, (h * sk) / sd) : 0;
+    return { kern: h * sk, pull: Math.sqrt(1 - r * r) };
+  };
+  const M = { S, n, ws, cum, tot, mx, my, X: axis(0, mx), Y: axis(1, my) };
+  SHOTS_MODEL.set(shots, M);
+  return M;
+}
+
+/** R11: the share of the shots model's draws that finish more than `over` yds short (the lie they were measured on). */
+function shotsShortShare(ell, over) {
+  const { S, n, ws, tot, my, Y } = shotsModel(ell.shots);
+  let s = 0;
+  for (let i = 0; i < n; i++) {
+    const y = my + Y.pull * (S[i][1] - my);               // + = short
+    s += ws[i] * (Y.kern > 0 ? 1 - phi((over - y) / Y.kern) : y > over ? 1 : 0);
+  }
+  return s / tot;
+}
+
 /* ---------- score distribution (D78) ----------
  *
  * expScore needs only the mean strokes to hole out; SAFE = "most likely to make par" (D78) needs
@@ -491,7 +562,9 @@ export function shortTailPct(e, cfg = DEFAULT_CONFIG) {
     return sd > 0 ? 1 - phi((over - (ell.dyYds || 0)) / sd) : 0;     // y + = short
   };
   let model;
-  if (e.ell80) {
+  if (Array.isArray(e.ell80?.shots) && e.ell80.shots.length >= 2) {
+    model = shotsShortShare(e.ell80, over);             // R11: his shots, as the simulation draws them
+  } else if (e.ell80) {
     const m = e.ell80.mishitRate > 0 && e.ell80.allWYds > 0 ? e.ell80.mishitRate : 0;
     const all = { ...e.ell80, wYds: e.ell80.allWYds, hYds: e.ell80.allHYds, tiltDeg: e.ell80.allTiltDeg };
     model = (1 - m) * along(e.ell80) + (m ? m * along(all) : 0);
@@ -532,6 +605,8 @@ export function simulateCandidate(cand, ctx, hole, P, samples, trace = null) {
   const roll = lm.roll;
   const aim = aimFor(e, lm.wind.crossYds, cfg);
   // Dispersion core: the ell80 ellipse when measured (UI addendum §5.2), else σ-distance × σ-lateral.
+  // R11: his real shots when the profile carries them (ell80.shots, the Oct 11 sheets).
+  const shots = Array.isArray(e.ell80?.shots) && e.ell80.shots.length >= 2 ? shotsSampler(e.ell80, lm.sdMult) : null;
   const ell = e.ell80 ? ellipseSampler(e.ell80, lm.sdMult) : null;
   // C17 (D92): ell80 is the good-shot ring; a mishit (mishitRate of the shots) comes from the ring
   // Shot Pattern printed for all of the club's shots, which carries the mishits too.
@@ -554,7 +629,7 @@ export function simulateCandidate(cand, ctx, hole, P, samples, trace = null) {
     const s = samples[i];
     let along, lat;
     if (ell) {
-      const d = mishit && s.v < e.ell80.mishitRate ? mishit(s.z1, s.z2) : ell(s.z1, s.z2);
+      const d = shots ? shots(s.z1, s.z2, s.v) : mishit && s.v < e.ell80.mishitRate ? mishit(s.z1, s.z2) : ell(s.z1, s.z2);
       along = lm.mean - e.biasDist + d.alongMiss;      // ell80 carries its own distance bias (dy)
       lat = lm.wind.crossYds + d.lat;
     } else {

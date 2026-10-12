@@ -171,7 +171,13 @@ test("profile: fallback chain — rough entry with no median uses the fairway me
   assert.equal(tee.carry, fw.carry, "irons off a tee use the fairway entry");
   const dr = resolveEntry(P, "Dr", "full", "tee");
   assert.equal(dr.carry, dr.total, "driver: total is used directly");
-  assert.ok(dr.fields.penaltyCount >= 1 && dr.bigMiss.right > dr.bigMiss.left, "Sep 28 decision 3: driver misses right more than left");
+  // Sep 28 decision 3: the driver misses right more than left. R11 (D130): his 107 Oct 11 drives carry the big
+  // misses, so the PDF's rates ride on bigMiss.pdf and none are added on top
+  const bm = P.clubs.get("Dr").entries.full.tee.bigMiss;
+  assert.ok(dr.fields.penaltyCount >= 1 && bm.pdf.right > bm.pdf.left, "the PDF: right more than left");
+  assert.deepEqual([dr.bigMiss.left, dr.bigMiss.right], [0, 0], "none added to the drives");
+  const wide = (side) => dr.ell80.shots.filter(([x]) => side * x > 35).length;
+  assert.ok(wide(1) > wide(-1), `his drives: ${wide(1)} more than 35 right, ${wide(-1)} left`);
 });
 
 test("profile: E, Eputt, B behave and the S1 sanity check holds (green buckets beat red on SG)", () => {
@@ -530,7 +536,8 @@ test("T43 driver default / flip threshold: driver is SAFE on open holes; with wa
   // big-miss rates and the hole polygons. Brett's big miss is right (Sep 28 decision 3: Dr bigMiss.right > left).
   assert.equal(tee(openPar5).safe.club, "Dr", "wide-open par 5");
   assert.equal(tee(noWaterPar4).safe.club, "Dr", "par 4, no trouble");
-  const drBm = RAW.clubs.find((c) => c.id === "Dr").entries.full.tee.bigMiss;
+  // R11 (D130): his drives carry the big misses now; the PDF's rates (bigMiss.pdf) are the sweep's reference point
+  const drBm = RAW.clubs.find((c) => c.id === "Dr").entries.full.tee.bigMiss.pdf;
   assert.ok(drBm.right > drBm.left, "Brett misses right");
 
   const samples = makeSamples(DEFAULT_CONFIG.SAMPLES, DEFAULT_CONFIG.SEED);
@@ -686,9 +693,10 @@ test("C17: a mishit comes from the printed ring at mishitRate; at 0 the good rin
     assert.ok(cand, "a 7-iron candidate");
     return simulateCandidate(cand, ctx, waterLeftPar4, Pl, samples);
   };
-  const good = price({ mishitRate: 0 });
-  assert.deepEqual(price({ mishitRate: 0, allWYds: 500 }), good, "no mishit draw at rate 0");
-  const wide = price({ mishitRate: 0.3, allWYds: 120, allHYds: 120, allTiltDeg: 0, allDxYds: 0 });
+  // R11 (D130): the 7-iron draws from his Oct 11 shots; without them (`shots` off) the ring and its mishit split price it
+  const good = price({ mishitRate: 0, shots: undefined });
+  assert.deepEqual(price({ mishitRate: 0, allWYds: 500, shots: undefined }), good, "no mishit draw at rate 0");
+  const wide = price({ mishitRate: 0.3, allWYds: 120, allHYds: 120, allTiltDeg: 0, allDxYds: 0, shots: undefined });
   assert.ok(wide.expScore > good.expScore, `mishits cost strokes: ${wide.expScore} vs ${good.expScore}`);
   assert.ok(wide.troubleRate >= good.troubleRate, "and never less trouble");
 });

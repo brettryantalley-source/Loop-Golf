@@ -200,8 +200,12 @@ export function patternRingFromEntry(entry, { lieQuality = "standard", config = 
   const Q = config.LIE_QUALITY || DEFAULT_CONFIG.LIE_QUALITY;
   const k = (entry.patternSdMult || 1) * ((Q[lieQuality] || Q.standard).sdMult ?? 1);
   const r = pat.ring70, o = pat.ring100;
+  // R11 (v22.59, D130): when the caddie prices from this same sheet (ell80.shots), the ring and the dots sit
+  // where his shots land from its aim — the ring's own centre, the average of every shot — not on the
+  // average of the 80% it keeps, which is what the aim puts on the target (7-iron: 2.5 yds right, not 6.5)
+  const sameSheet = Array.isArray(entry.ell80?.shots) && entry.patternLie != null && entry.provenance?.ell80?.lie === entry.patternLie;
   return {
-    ...base, w: r.wYds * k, h: r.hYds * k, tiltDeg: r.tiltDeg, innerFrac: 0,
+    ...base, ...(sameSheet ? { dx: r.dxYds } : {}), w: r.wYds * k, h: r.hYds * k, tiltDeg: r.tiltDeg, innerFrac: 0,
     outer: o ? { w: o.wYds * k, h: o.hYds * k, tiltDeg: o.tiltDeg, dx: (o.dxYds - r.dxYds) * k, dy: (o.dyYds - r.dyYds) * k } : null,
     dots: (pat.dots || []).map(([x, y]) => [(x - r.dxYds) * k, (y - r.dyYds) * k]),
     pattern: true, patternN: pat.n ?? null, capturedAt: pat.capturedAt ?? base.capturedAt,

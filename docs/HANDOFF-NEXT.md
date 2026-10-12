@@ -10,9 +10,19 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 443 tests (v22.58); must be green
+npm install && npm test    # 446 tests (v22.59); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.59 (Oct 12)
+
+The caddie prices from the Oct 11 club sheets (R11, D130; Brett's four answers: his real shots, Rough sheets alone, the
+Driver's big misses not added again, the map's ring lined up with the aim). Every club and lie with an Oct 11 sheet draws
+from his shots on it (`ell80.shots`, `shotsSampler`; the worst 20% still dropped, D117); SW and LW keep their Oct 4 rings.
+Effect on 3,763 calls: SAFE's club changes on 15%, par chance −1.9 points (−8 to −11 from 175–200 on the fairway, +4 to
++6 from 120–150 in the rough), Driver off 193 of 246 par-4/5 tees (161). The map's ring and dots sit where his shots land
+from the aim. `node scripts/build-profile.mjs --model=off --out=<file>` builds the profile as before R11 for a comparison.
+446 tests.
 
 ## v22.58 (Oct 11)
 
