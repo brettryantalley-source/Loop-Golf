@@ -10,9 +10,17 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 446 tests (v22.59); must be green
+npm install && npm test    # 451 tests (v22.60); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.60 (Oct 12)
+
+Reading the green from USGS lidar (R10, D131). `scripts/fetch-green-slopes.mjs` baked a 2 m 3DEP grid over every green
+of the five bundled maps (`greenGrids`, 111 greens); `src/caddie/greenslope.js` fits a plane over the green's cells in an
+8 m window (lidar noise, and no bank in the fit) and gives downhill arrows (white < 1.5%, yellow 1.5–3%, red 3%+) and the
+putt's read ("Putt: uphill 1.5% · breaks left to right 3.0%"). Shown in the pin view, with the ball on the green and on
+Catch up's putts. Q2 and Q3 answered (both cards stay; no OB at Woodmont). 451 tests; the smoke test checks the arrows.
 
 ## v22.59 (Oct 12)
 

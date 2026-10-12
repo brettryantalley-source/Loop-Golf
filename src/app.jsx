@@ -52,6 +52,7 @@ import {
 /* v22.11: marked-green mode — the caddie on a hole OpenStreetMap does not have. */
 import { loadGreens, saveGreen, greenFor, greenSlot, markedGreenHole, markedGreenContext, anchorFrame, toSyntheticFrame, markedEndLie } from "./caddie/greens.js";
 import { assignTeeBoxes, cardForHole } from "./caddie/teeboxes.js";   // v22.50 (C41)
+import { gridForGreen, slopeArrows, puttRead } from "./caddie/greenslope.js";   // v22.60 (R10, D131)
 /* v22.58 (C47, D129): Catch up — the chained after-the-hole logging */
 import { catchupInit, catchupStart, cuPoint, cuMoveFrom, cuFromOk, cuEndOk, cuSet, cuSaved, cuPutted, cuUndo, cuArmed, teeStart, guessClub,
   catchupShotRecord, catchupPuttRecord, catchupView, CU_COPY, END_LIES } from "./caddie/catchup.js";
@@ -90,7 +91,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.59 · Oct 12";
+const BUILD = "v22.60 · Oct 12";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -245,7 +246,9 @@ const LOCAL_GEOMETRY = [WOODMONT_GEOMETRY, CHICOPEE_GEOMETRY, RIVERPINES_GEOMETR
 /* v22.45 (C34, D116): a bundled map carries its own USGS 3DEP elevation (scripts/fetch-3dep.mjs). It rides
    on the geometry in memory and is never written to the cache — it is in the bundle already, and ~4,000
    samples a club would crowd localStorage. Open-Meteo is asked only for courses without one. */
-const withBundledElevation = (g, local) => (g && local && local.elevation ? { ...g, elevation: local.elevation } : g);
+// v22.60 (R10, D131): and its 2 m lidar grids over the greens (scripts/fetch-green-slopes.mjs), the same way
+const withBundledElevation = (g, local) => (g && local && (local.elevation || local.greenGrids)
+  ? { ...g, ...(local.elevation ? { elevation: local.elevation } : {}), ...(local.greenGrids ? { greenGrids: local.greenGrids } : {}) } : g);
 function useCourseMap(course) {
   const apiId = clubIdOf(course);                     // per club: switching routings never refetches
   setImagery(imageryFor(LOCAL_GEOMETRY, apiId));      // v22.16.8: before any tile is prefetched, probed or drawn
@@ -2678,6 +2681,21 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   const cuPlaceTap = !!cu && cu.step === "end" && !pinView;
   const cuOwnMap = !!cu && !cuShot;                    // the chain's own drawing (no call): the tee move, the putts, the count
 
+  /* ---------- v22.60 (R10, D131): reading the green from USGS lidar (src/caddie/greenslope.js) ----------
+     Downhill arrows over the green in the pin view, with the ball on the green, and on Catch up's putts; the
+     putt's read (uphill / downhill, which way it breaks) in the line above the buttons. A bundled map only. */
+  const greenGrid = useMemo(() => (mapped && Fr && geometry?.greenGrids ? gridForGreen(geometry.greenGrids, mapped, Fr) : null), [geometry, mapped, Fr]);
+  const showSlopes = !!greenGrid && (pinView || v.view === "green" || cu?.step === "putt");
+  const slopes = useMemo(() => { try { return showSlopes ? slopeArrows(greenGrid, mapped, Fr) : []; } catch (e) { return []; } }, [showSlopes, greenGrid, mapped, Fr]);
+  const readFrom = cu?.step === "putt" ? cuEnd || cuFrom : !cu && v.view === "green" ? ballXY : null;
+  const readTo = cu?.step === "putt" ? cuPin : greenPin;
+  const slopeRead = useMemo(() => {
+    if (!greenGrid || !readFrom || !readTo) return null;
+    try { return puttRead(greenGrid, Fr, readFrom, readTo, mapped.green.ring); } catch (e) { return null; }
+  }, [greenGrid, Fr, mapped, readFrom?.x, readFrom?.y, readTo?.x, readTo?.y]);
+  const whyShown = whyText || (slopeRead && !pinView ? `Putt: ${slopeRead.text.charAt(0).toLowerCase()}${slopeRead.text.slice(1)}` : null);
+  const liftShown = whyShown ? 48 : 0;
+
   const r = v.rail, d = v.details;
   const k9 = { ...caps(9), lineHeight: 1 };
   const exp = cs.exp;
@@ -2738,7 +2756,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
         onTargetDrag={cuOwnMap ? undefined : onTargetDragLive} onTargetDrop={cuOwnMap ? undefined : setTarget}
         lineMode={!cuOwnMap && !!cs.lineMode && mapMarks} onLineTap={setLine}
         onFakeTap={cu ? (cuMapArmed ? onCuTap : null) : cs.awaitingTap ? onFakeTap : null} fakeAt={fakeAt} testBorder={testMode}
-        onPlaceTap={cuPlaceTap ? onCuTap : null} endMark={cuShot ? cuEnd : null}
+        onPlaceTap={cuPlaceTap ? onCuTap : null} endMark={cuShot ? cuEnd : null} slopes={slopes}
         labels={cu && (cuOwnMap || cuEnd) ? cuLabels : mapLabels} trail={trailXY} stops={stopRings} onStopTap={past ? onStopTap : null} attributionBottom={safe.bottom + 4} dots={cuOwnMap ? [] : ringDots} teeColors={teeColors} />
 
       {/* top-left: to the pin (Shot Pattern's To Hole) */}
@@ -2820,7 +2838,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
 
       {pinView && (
         <button data-part="pin-done" onClick={() => dispatch({ type: "pinView", on: false })}
-          style={{ ...card, position: "absolute", left: 10, bottom: safe.bottom + 116 + lift, height: 34, padding: "0 14px", borderRadius: 17, color: T.ink, fontFamily: F.label, fontSize: 12, zIndex: 15 }}>
+          style={{ ...card, position: "absolute", left: 10, bottom: safe.bottom + 116 + liftShown, height: 34, padding: "0 14px", borderRadius: 17, color: T.ink, fontFamily: F.label, fontSize: 12, zIndex: 15 }}>
           {COPY.done}{pinYds != null ? ` · ${Math.round(pinYds)} yds` : ""}
         </button>
       )}
@@ -2828,7 +2846,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
       {/* v22.12 Mark green here — no imagery needed: the fix Brett is standing on becomes this hole's green */}
       {noGeo && cs.ball && (v.view === "nomap" || v.view === "markgreen") && (
         <button data-part="mark-here" onClick={() => { if (tapFix) { dispatch({ type: "awaitMark" }); return; } setMarkHereAt(null); setMarkHereOpen(true); }}
-          style={{ ...card, position: "absolute", left: 10, bottom: safe.bottom + 116 + lift, height: 36, padding: "0 12px", display: "flex", alignItems: "center", gap: 8, zIndex: 15,
+          style={{ ...card, position: "absolute", left: 10, bottom: safe.bottom + 116 + liftShown, height: 36, padding: "0 12px", display: "flex", alignItems: "center", gap: 8, zIndex: 15,
             borderRadius: 18, color: T.ink, fontFamily: F.label, fontSize: 12, whiteSpace: "nowrap" }}>
           <svg width="11" height="15" viewBox="0 0 14 18" fill="none" stroke={T.ink} strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
             <path d="M3 17 V2" /><path d="M3 2 L13 6 L3 10 Z" fill={T.ink} />
@@ -2837,11 +2855,11 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
         </button>
       )}
 
-      {whyText && (
-        <div role="note" data-part="why" data-rule={v.why?.rule || "none"} data-warn={warnText && ownWhy ? warn.kind : undefined}
+      {whyShown && (
+        <div role="note" data-part="why" data-rule={whyText ? v.why?.rule || "none" : "green"} data-warn={warnText && ownWhy ? warn.kind : undefined}
           onClick={() => { if (warnText && ownWhy) setHiddenWarn(warnKey); }} style={{ ...card, position: "absolute", left: 10, right: 10, bottom: safe.bottom + 114, padding: "6px 12px", borderRadius: 12, zIndex: 16,
           color: T.ink, fontFamily: F.label, fontSize: 12, lineHeight: "15px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-          {whyText}
+          {whyShown}
         </div>
       )}
 
@@ -2880,12 +2898,12 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
         <button aria-label="Next hole" disabled={n >= 18 || !onHole} onClick={() => leaveTo(n + 1)} style={{ width: 46, height: 44, color: T.ink, opacity: n >= 18 ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="12" height="18" viewBox="0 0 12 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 2l7 7-7 7" /></svg></button>
       </div>
       {cu && cu.step !== "done" && cu.step !== "init" && (
-        <button data-part="cu-done" onClick={() => cuAct("cuDone")} style={{ ...card, position: "absolute", right: 10, bottom: safe.bottom + 116 + lift, height: 34, padding: "0 12px", borderRadius: 17, zIndex: 21, color: T.ink, fontSize: 11, ...caps(10, 700, "0.1em") }}>
+        <button data-part="cu-done" onClick={() => cuAct("cuDone")} style={{ ...card, position: "absolute", right: 10, bottom: safe.bottom + 116 + liftShown, height: 34, padding: "0 12px", borderRadius: 17, zIndex: 21, color: T.ink, fontSize: 11, ...caps(10, 700, "0.1em") }}>
           {CU_COPY.done}
         </button>
       )}
       {!cu && past && liveHole && liveHole !== n && (
-        <button data-part="back-live" onClick={() => leaveTo(liveHole)} style={{ ...card, position: "absolute", right: 10, bottom: safe.bottom + 116 + lift, height: 34, padding: "0 10px", borderRadius: 17, zIndex: 21, color: T.ink, fontSize: 11 }}>
+        <button data-part="back-live" onClick={() => leaveTo(liveHole)} style={{ ...card, position: "absolute", right: 10, bottom: safe.bottom + 116 + liftShown, height: 34, padding: "0 10px", borderRadius: 17, zIndex: 21, color: T.ink, fontSize: 11 }}>
           Hole <span style={printed(13)}>{liveHole}</span> ›
         </button>
       )}

@@ -3,7 +3,7 @@
  * smoke-caddie.mjs — opens the BUILT app (index.html) in headless Chromium on a restored Woodmont
  * round in test mode, walks the caddie screen through a tee shot, a logged shot, the next ball and a
  * ball by the green (the short-game line and card, C29), a one-finger pan and Fit (C37, satellite only), the Shots list's
- * map zoom (C42), Score hole's pre-filled score (C43), Catch up through one hole (C47), and fails on any page error. `npm test` never renders CaddieScreen; this catches what it can't
+ * map zoom (C42), Score hole's pre-filled score (C43), Catch up through one hole (C47), the green's slope arrows (R10), and fails on any page error. `npm test` never renders CaddieScreen; this catches what it can't
  * (a hook out of order, a value used before it is declared). Not part of `npm test`: it needs
  * Playwright and a Chromium (a cloud session has both).
  *
@@ -246,6 +246,11 @@ page = await ctx3.newPage();
 page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
 await page.goto(base, { waitUntil: "load" });
 await step("score from the caddie: pre-filled", async () => {
+  // v22.60 (R10, D131): on the green, the lidar's downhill arrows are drawn over it
+  await page.getByText("Score hole 1").first().waitFor({ timeout: 15000 });
+  const arrows = await page.locator('[data-layer="slopes"] [data-part="slope"]').count();
+  if (arrows < 5) throw new Error(`${arrows} slope arrows on the green`);
+  console.log(`green: ${arrows} slope arrows`);
   await page.getByText("Score hole 1").first().click({ timeout: 15000 });
   const cap = await page.locator('[data-part="score-suggested"]').innerText({ timeout: 5000 });
   if (!/tap 3 to keep/.test(cap)) throw new Error(`caption: ${cap}`);
@@ -291,6 +296,9 @@ await step("catch up a hole", async () => {
   await btn(/Finished here/i);
   await page.locator('[data-part="cu-lies"]').getByText("Green", { exact: true }).click({ timeout: 5000 });
   await page.locator('[data-part="cu-save"]').click({ timeout: 5000 });
+  // v22.60 (R10, D131): the putt step reads the green — arrows over it, the putt's read above the buttons
+  await page.waitForTimeout(500);
+  if (!(await page.locator('[data-layer="slopes"] [data-part="slope"]').count())) throw new Error("no slope arrows on the putt");
   await btn(/In the hole/i);
   await page.getByText("Hole 1 · 2 shots + 1 putt = 3").first().waitFor({ timeout: 5000 });
   await shot("7-catch-up-done");

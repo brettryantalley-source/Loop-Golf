@@ -46,7 +46,7 @@ export const SEED_ROUNDS = [
   },
   {
     date: "2026-09-02", course: "Beachwood Golf Club", tee: "Blue", rating: 71.6, slope: 127,
-    gross: 86, cardTotal: 84,                        // GHIN 86 → 12.8 (GHIN dates it 9/5; Shot Pattern's 9/2 is the day played); the card adds to 84 — flagged for Brett
+    gross: 86, cardTotal: 84,                        // GHIN 86 → 12.8 (GHIN dates it 9/5; Shot Pattern's 9/2 is the day played); the card adds to 84 — Brett, Oct 12: GHIN's total is right, holes unknown, keep the card
     pars:   [5, 4, 4, 3, 4, 4, 4, 3, 5,  4, 4, 4, 4, 5, 3, 4, 5, 3],
     yards:  [527, 366, 396, 172, 391, 402, 343, 187, 546,  328, 404, 360, 397, 575, 199, 386, 488, 224],
     scores: [6, 5, 4, 4, 4, 5, 5, 4, 5,  6, 6, 4, 4, 5, 3, 4, 6, 4],
@@ -106,7 +106,7 @@ export const SEED_ROUNDS = [
   },
   {
     date: "2026-07-17", course: "Chicopee Woods · Mill/School", tee: "Gold", rating: 72.7, slope: 135,
-    gross: 81, cardTotal: 80,                        // GHIN 81 → 6.9 (GHIN: School/Mill); the card adds to 80 — flagged for Brett
+    gross: 81, cardTotal: 80,                        // GHIN 81 → 6.9 (GHIN: School/Mill); the card adds to 80 — Brett, Oct 12: GHIN's total is right, holes unknown, keep the card
     pars:   [5, 3, 4, 5, 3, 4, 4, 4, 4,  4, 4, 4, 3, 5, 4, 4, 3, 5],
     yards:  [525, 164, 357, 571, 251, 419, 334, 400, 426,  414, 401, 374, 159, 520, 432, 407, 206, 566],
     scores: [4, 3, 4, 5, 4, 5, 4, 6, 4,  5, 5, 4, 3, 5, 5, 6, 4, 4],

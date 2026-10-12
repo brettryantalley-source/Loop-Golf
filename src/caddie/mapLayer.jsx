@@ -28,7 +28,7 @@
  */
 import {
   cameraKey, cameraFor, cameraForShot, cameraPoints, fitBounds, linearProjector, zoomForPxPerYd, satShapesModel,
-  overlayModel, fallbackMapModel, mapModeFor, markCamera, pinViewCamera, pinViewKey, satelliteFailure,
+  overlayModel, fallbackMapModel, mapModeFor, markCamera, pinViewCamera, pinViewKey, satelliteFailure, slopeArrowsModel,
 } from "./overlay.js";
 import { frameOf, pinFromTap, holeFrame, clampToGreen } from "./geo.js";
 import { nearMarkedGreen } from "./greens.js";
@@ -341,13 +341,16 @@ const r1 = (n) => Math.round(n * 10) / 10;
  *   onPlaceTap(ll)  a tap (not a Line tap, not in the pin view) is where the shot finished, {lat, lon};
  *                   a hold still drags the target and a swipe still pans — the call stays live under it
  *   endMark       {x,y} hole frame — where the shot finished: a small ball with a dashed ring
+ *
+ * v22.60 (R10, D131):
+ *   slopes        [{ x, y, dirDeg, pct }] hole frame — downhill arrows over the green (greenslope.js), under the shot
  */
 export function MapLayer({
   hole = null, geometry = null, ball = null, accuracyM = null, pin = null, options = null, active = "safe", sameShot = false,
   previousShots = [], insets = {}, fallback = false, onPinTap, onMapTap, onSatelliteFail, recomputing = false, attributionBottom,
   fitBall, fitOptions, markAt = null, onMarkGreen, onRemark, pinView = false, onPinDrag, onPinDrop,
   intentMarker = null, startLineDeg = null, onTargetDrag, onTargetDrop, lineMode = false, onLineTap, onFakeTap = null, fakeAt = null, testBorder = false,
-  labels = [], trail = [], stops = [], onStopTap = null, dots = [], teeColors = null, onPlaceTap = null, endMark = null,
+  labels = [], trail = [], stops = [], onStopTap = null, dots = [], teeColors = null, onPlaceTap = null, endMark = null, slopes = [],
 }) {
   const camBall = fitBall !== undefined ? fitBall : ball;
   const camOptions = fitOptions !== undefined ? fitOptions : options;
@@ -530,6 +533,7 @@ export function MapLayer({
   }) : [];
   const base = hole && drawn && project ? fallbackMapModel({ hole, project, teeColors }) : [];
   const shapes = hole && satellite && shapesOn && project && !markMode ? satShapesModel({ hole, project, teeColors }) : [];
+  const slopeNodes = hole && project && !markMode && slopes && slopes.length ? slopeArrowsModel({ arrows: slopes, project, palette: drawn ? "paper" : "satellite" }) : [];
 
   /* ---------- pointer input: tap, long-press (re-mark), press-hold-drag (pin view), one-finger pan ---------- */
   const TAP_SLOP_PX = 8, HOLD_MS = 300, LONG_MS = 600;
@@ -719,6 +723,11 @@ export function MapLayer({
       {shapes.length > 0 && (
         <svg key={`shapes-${hole?.key ?? hole?.id ?? ""}`} className="loop-shapes" data-layer="shapes" style={{ ...svgStyle, pointerEvents: "none" }} width={vp.width} height={vp.height} viewBox={`0 0 ${vp.width} ${vp.height}`} aria-hidden="true">
           {renderNodes(shapes)}
+        </svg>
+      )}
+      {slopeNodes.length > 0 && (
+        <svg data-layer="slopes" style={{ ...svgStyle, pointerEvents: "none" }} width={vp.width} height={vp.height} viewBox={`0 0 ${vp.width} ${vp.height}`} aria-hidden="true">
+          {renderNodes(slopeNodes)}
         </svg>
       )}
       {project && (trail.length > 0 || stops.length > 0) && !inPinView && !markMode && (
