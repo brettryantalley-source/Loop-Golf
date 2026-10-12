@@ -14,6 +14,13 @@ npm install && npm test    # 457 tests (v22.64); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
 
+## C10's sweep (Oct 12, no build)
+
+`scripts/strategy-sweep.mjs` priced 3,529 calls on the five maps with the strategy rules on and off (D137). The rules move
+SAFE on 45%; no-hero does what the guide asks (trouble −19 points from the trees at 0.06 strokes); the pin rule moves a
+third of approaches and, on ~320, gives up 9–16 points of par chance for a middle target that saves no trouble. Nothing
+broken, no knob moved; that trade is R12 in OPEN-ITEMS, Brett's call.
+
 ## v22.64 (Oct 12)
 
 The short-game bands learn from his chips (C33, D136). A logged chip, pitch or bunker shot with its putts logged says
