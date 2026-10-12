@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 Brett's test notes of Oct 10 (C20–C29), and his notes from the first Bradshaw Farm round, Oct 11 (C34–C44; screenshots in `data/raw/2026-10-11/`), and his notes after the Bradshaw round that afternoon (C46). Duplicates are merged and anything already shipped is
-dropped. State: **v22.57** (C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 434 tests, decisions D1–D128; the next
-decision is **D129**.
+dropped. State: **v22.58** (C47, D129; v22.57 = C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90), 443 tests, decisions D1–D129; the next
+decision is **D130**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -18,7 +18,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 ## Start here
 
-1. **Next code chat:** the Oct 11 notes, in order (C34–C39 and C41–C44 shipped in v22.44–v22.53); C40 has a draft and waits on S10. Older items wait on Brett (S10 → C40, F7 notes → C10, S4 → C12,
+1. **Next code chat:** R11 (GO Oct 11; measure first, as D117 did), then the Code table. C47 shipped in v22.58; C40 has a draft and waits on S10. Older items wait on Brett (S10 → C40, F7 notes → C10, S4 → C12,
    F9 + Q3 → C13, S1–S3 + Q2 → C14; C33 once chips are logged).
 2. **Next round:** the **F** list.
 
@@ -40,14 +40,19 @@ after C13 (C15) · R9 no native app for now (P1). Q1 answered the same day (C8).
   green-reading arrows. The elevation half shipped in v22.45 (D116): the five mapped clubs carry a 20 m
   3DEP grid (`scripts/fetch-3dep.mjs`; 1 m lidar covers all five). Arrows need a finer grid on each
   green (~2 m). A large build; would become its own C item.
-- **R11.** (Oct 11, waiting on Brett) Teach the caddie the Oct 11 screenshots too. Since v22.56 (D127) the map
+- **R11.** (Oct 11, GO) Teach the caddie the Oct 11 screenshots too. Since v22.56 (D127) the map
   draws them, but the caddie still prices every club from the Oct 4 / Oct 10 sheets (Driver 35 drives against
   the 117 now shown; the irons and wedges from the window ending Oct 3), and from the rough it still widens the
   fairway ring × 1.2 instead of reading his Rough sheets. Refitting moves club picks and par chances; measure
   the change first, as D117 did.
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.57 · Oct 11** (once merged).
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.58 · Oct 11** (once merged).
+- **F39.** Catch up (v22.58, D129): go back to a hole you didn't log (‹ on the hole pill), tap `Catch up`. Each shot opens on
+  the caddie's call from where that ball was: drag the target or draw a Line if you want, tap where it finished, `✓ Finished
+  here`, check the club and the lie, `Save shot`. On the green, tap where each putt stopped, then `In the hole`. From the
+  card, a hole with nothing logged shows `Log shots`. Say which step still costs a tap it shouldn't, and whether the smaller
+  buttons are easy enough to hit.
 - **F38.** (first, at home) History → the Oct 11 Bradshaw row → tap **Teaches** so it reads **Ignored**. That round's 16
   shots stay in the log but the caddie brain stops reading them (v22.57, D128).
 - **F37.** Place by hand (v22.57, D128): the pin icon beside `I'm at my ball` arms the map — tap where the ball is, or
@@ -178,7 +183,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C47 | Catch up: chained map entry for a hole (Shot Pattern's "Add Shots with Map Entry") | Brett's GO on the flow below | Opus |
 | C40 | Bradshaw fairways from the photo (draft in `scripts/bradshaw-fairways/`) | S10 | Opus |
 | C10 | Re-tune the `STRATEGY` thresholds | a round of F7 notes | Opus |
 | C12 | Chicopee hand-trace, Village + Mill | S4 | Opus |
@@ -328,45 +332,6 @@ The trace converts to OSM ways (`golf=hole`, `green`, `tee`, `fairway`, `bunker`
 for tracing from Esri imagery and its import and automated-edit guidelines, and review each feature by
 hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY`.
 
-### C47. Catch up: chained map entry for a hole (Brett, Oct 11 evening, three Shot Pattern screen recordings)
-- **What Brett wants:** logging a finished hole, or 3–4 holes he had no time for, as easy as Shot Pattern's
-  `Add Shots with Map Entry`: one chain per hole, one tap per step, the map moving on by itself, nothing to
-  find. Loop has the pieces (past-hole `Place shot N`, D80; the Log shot sheet; Place / Target / Line and
-  Delete stroke in the Shots list; Place by hand, D128) but they are separate screens the caddie flow leads
-  with, not a chain.
-- **Shot Pattern's chain, as recorded** (`scoring_after_hole_1/2/3.mov`, Oct 11): the hole sheet says
-  `No shots yet on this hole` → `Add Shots with Map Entry` → **Set Tee Location** (tap, ✓) → **Select
-  Target** (a ring on the line, ball → target and target → hole yards, a club-carry column on the right, ✓)
-  → **Set Shot Result** (drag where it finished, dashed line from the target, `Undo`, ✓) → **Select Club &
-  Save Shot** (club grid + `Ending Lie`, `Save Shot`) → the next shot starts there → on the green the ring
-  reads feet (`10 ft`) → **Set Hole Location** (the pin) → **Mark Putt Result** (`In the Hole` / `2 ft
-  Remaining`) → the **Shot List** (`1 Tee · 440 yds to hole / Driver · 289 yds to Fairway`, with `Location`
-  `Club` `Target` chips to edit each) and **Edit Hole** (location, par, `Delete All Shots`).
-- **Loop's version (proposal, waits on Brett's GO):**
-  1. **Entry.** On a past hole the bar's primary is `Catch up` (replaces `Place shot 1`). From the card, a hole
-     with no shots offers `Log shots`. The chain's header is `Hole N · shot K` with ‹ › to move holes, so 3–4
-     holes go one after another without leaving the chain.
-  2. **Per shot, three steps, one tap each.** *Where from:* shot 1 is pre-placed on the hole's tee box (the
-     card tee's box, D121); every later shot starts where the one before finished. A tap or a hold-and-drag
-     (D128) moves it; ✓. *Where it finished:* tap or hold-and-drag; the labels read ball → end yards and end →
-     pin; `Undo` steps back one; ✓. *Club and lie:* the club grid with the caddie's own guess pre-selected
-     from the yards and the profile (Shot Pattern has no guess), the lie inferred from the geometry and shown
-     (one tap to change, as the chips do); `Save` moves to the next shot. A target is NOT asked (Shot
-     Pattern's Select Target); the Shots list's `Target` tool stays for the shots he wants priced.
-  3. **On the green.** The ring and labels read feet; `In` or a tap where the putt finished, Shot Pattern's
-     `Mark Putt Result`. The hole is the pin set on the hole (D49) or the green's centre.
-  4. **Done** at any step writes what is there; leaving the hole closes the open shot on the green as today
-     (§4.5). The Shots list is the Shot List: it already edits Place / Target / Line, club and Delete stroke;
-     add `Delete all shots` for the hole (Shot Pattern's Edit Hole).
-  5. **Records:** the same `bareShotRecord` → `closeOutShot` path, `logged: "full"`, placed ends (never
-     `end.assumed`), so the Score hole pre-fill (D123), Review and the brain read them as logged shots.
-- **Not in it:** no GPS on a past hole (D80 stands); no par editing (the card has it); the tee auto-placement
-  needs the tee boxes (D121) and falls back to a tap where there are none.
-- **Do:** spec the states in `docs/SPEC-caddie-UI.md` §8 first (a `catchup` phase in `caddieState.js` with
-  `from` / `end` / `club` steps), the view model's bar and notice per step, tests on the reducer, then the
-  screen; the smoke test runs one hole through the chain. Opus. Show Brett the flow on the Woodmont test
-  round before polishing.
-
 ### C33. Short-game bands learn from Loop's chips (C29, D111)
 - Since v22.40 chips, pitches and bunker shots are logged as `shotType: "shortGame"` with a
   `shortKind`, and never teach a club's distances. Nothing learns the bands from them yet (the
@@ -395,11 +360,11 @@ hand. The app keeps using the bundled file until Woodmont leaves `LOCAL_GEOMETRY
   `src/shotpattern.json` are generated.
 - A user-facing change bumps `BUILD` (`src/app.jsx`) and `CACHE` (`sw.js`) together.
 - Show a diff and wait for Brett's "go" before committing or pushing. Merging is a separate "merge".
-- One code chat at a time on `src/app.jsx`. Decisions continue at D128.
+- One code chat at a time on `src/app.jsx`. Decisions continue at D130.
 - Brett's style: one or two short steps at a time, recommendation first.
 
 ## Paste into the next chat
-> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (434 pass).
+> Open Loop-Golf. Run `git status`, `git log --oneline -3`, and `npm install && npm test` (443 pass).
 > Read `CLAUDE.md`, `docs/HANDOFF-NEXT.md`, then `docs/OPEN-ITEMS.md`. Start with whichever item
 > I've sent what it waits on (OPEN-ITEMS, the Waits on column). Show me the plan before any code, and ask me questions as multiple-choice boxes. Delete each
 > item from `docs/OPEN-ITEMS.md` in the commit that closes it.
