@@ -53,11 +53,33 @@ export function elevationSamples(data) {
   return res;
 }
 
+const GRIDS = new WeakMap();
+
+/**
+ * v22.60 (R10, D131): the file's 2 m lidar grids over its greens (scripts/fetch-green-slopes.mjs) as
+ * [{ c: [lat, lon], stepM, cells: [{ i, j, lat, lon, z }] }] (z metres), or null when the file has none.
+ * Cell (i, j) of a row [j, i0, ds] sits at lat0 + j·dLat, lon0 + (i0 + k)·dLon; z = (baseCm + d) / 100.
+ */
+export function greenGrids(data) {
+  const G = data && data.greenGrids;
+  if (!G || !Array.isArray(G.grids)) return null;
+  if (GRIDS.has(data)) return GRIDS.get(data);
+  const out = G.grids.map((g) => {
+    const cells = [];
+    for (const [j, i0, ds] of g.rows) ds.forEach((d, k) => cells.push({ i: i0 + k, j, lat: g.lat0 + j * g.dLat, lon: g.lon0 + (i0 + k) * g.dLon, z: (g.baseCm + d) / 100 }));
+    return { c: g.c, stepM: G.stepM, cells };
+  });
+  const res = out.length ? out : null;
+  GRIDS.set(data, res);
+  return res;
+}
+
 /**
  * The parsed geometry for a club, or null when no local file covers it.
  * registry = the bundled files ([{ apiId, apiIds?, version, ways, … }]); clubId = the club's API id.
  * `version` stamps the cache entry (geo.js saveGeometryCache) so an older cache is replaced once.
  * `elevation` = the bundled 3DEP samples (v22.45), or null (the app then asks Open-Meteo).
+ * `greenGrids` = the 2 m lidar grids over the greens (v22.60), or null.
  */
 export function localGeometryFor(registry, clubId) {
   if (clubId == null || !Array.isArray(registry)) return null;
@@ -66,7 +88,7 @@ export function localGeometryFor(registry, clubId) {
   if (!data) return null;
   let geometry = PARSED.get(data);
   if (!geometry) { geometry = parseOverpass(toOverpass(data)); PARSED.set(data, geometry); }
-  return { version: `${data.apiId}@${data.version}`, geometry, name: data.name || null, elevation: elevationSamples(data) };
+  return { version: `${data.apiId}@${data.version}`, geometry, name: data.name || null, elevation: elevationSamples(data), greenGrids: greenGrids(data) };
 }
 
 /** The bundled map's own satellite imagery ({ url, tileSize, maxzoom, zooms, probeZoom, credit }), or null (MapTiler). */

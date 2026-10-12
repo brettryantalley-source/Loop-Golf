@@ -865,6 +865,42 @@ export function overlayModel(input) {
   return out;
 }
 
+/* ---------- v22.60 (R10, D131): reading the green ---------- */
+
+/** The arrows' colours by slope: gentle the line's own colour, 1.5–3% yellow (paper: the darker bogey yellow), 3%+ red. */
+const SLOPE_MODERATE = { satellite: YELLOW, paper: "#B8901E" }, SLOPE_STEEP = "#E5484D";
+
+/**
+ * Downhill arrows over a green (greenslope.js slopeArrows: [{ x, y, dirDeg, pct }], hole frame) as SVG
+ * descriptors: a line through each point along the fall line with a head on the downhill end, longer and
+ * warmer the steeper (under 1.5% the line colour, 1.5–3% yellow, 3%+ red), on a dark halo on satellite.
+ */
+export function slopeArrowsModel({ arrows = [], project, palette = "satellite" } = {}) {
+  if (!project) return [];
+  const P = PALETTES[palette] || PALETTES.satellite;
+  const out = [];
+  for (const a of arrows) {
+    const c = project(a);
+    const r = a.dirDeg * DEG;
+    const t = c && project({ x: a.x + Math.sin(r), y: a.y + Math.cos(r) });
+    if (!c || !t) continue;
+    const L0 = Math.hypot(t.x - c.x, t.y - c.y) || 1, ux = (t.x - c.x) / L0, uy = (t.y - c.y) / L0;
+    const len = Math.min(22, 7 + a.pct * 3), hw = a.pct >= 3 ? 3.6 : 3, hl = a.pct >= 3 ? 6 : 5;
+    const tail = { x: c.x - (ux * len) / 2, y: c.y - (uy * len) / 2 }, head = { x: c.x + (ux * len) / 2, y: c.y + (uy * len) / 2 };
+    const color = a.pct >= 3 ? SLOPE_STEEP : a.pct >= 1.5 ? SLOPE_MODERATE[palette === "paper" ? "paper" : "satellite"] : P.line;
+    const tri = `M${f1(head.x)} ${f1(head.y)} L${f1(head.x - ux * hl - uy * hw)} ${f1(head.y - uy * hl + ux * hw)} L${f1(head.x - ux * hl + uy * hw)} ${f1(head.y - uy * hl - ux * hw)} Z`;
+    const g = [];
+    if (P.halo) {
+      g.push(el("line", { x1: f1(tail.x), y1: f1(tail.y), x2: f1(head.x), y2: f1(head.y), stroke: P.halo, strokeWidth: 3.6, strokeLinecap: "round" }));
+      g.push(el("path", { d: tri, fill: P.halo, stroke: P.halo, strokeWidth: 2, strokeLinejoin: "round" }));
+    }
+    g.push(el("line", { x1: f1(tail.x), y1: f1(tail.y), x2: f1(head.x), y2: f1(head.y), stroke: color, strokeWidth: a.pct >= 3 ? 2 : 1.6, strokeLinecap: "round" }));
+    g.push(el("path", { d: tri, fill: color }));
+    out.push(el("g", { "data-part": "slope", "data-pct": String(a.pct) }, g));
+  }
+  return out;
+}
+
 /** The target marker's radius (px) and hit radius — a fingertip around the ring (§2). */
 export const TARGET_MARKER_R = 11;
 export const TARGET_MARKER_HIT_PX = 26;
