@@ -4,6 +4,8 @@ from PIL import Image
 S = os.environ.get('WORK', '/tmp/bradshaw-fairways'); os.makedirs(S, exist_ok=True)
 d = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'localGeometry', 'bradshaw.json')))
 url = d['imagery']['url']
+if os.environ.get('RELEASE'):                       # another Wayback capture, e.g. RELEASE=63116 (the winter one)
+    import re; url = re.sub(r'/tile/\d+/', f"/tile/{os.environ['RELEASE']}/", url)
 z = int(sys.argv[1]) if len(sys.argv) > 1 else 18
 lats = [p[0] for w in d['ways'] if w.get('pts') for p in w['pts']]
 lons = [p[1] for w in d['ways'] if w.get('pts') for p in w['pts']]

@@ -337,3 +337,17 @@ test("bradshaw flies the Sep 2023 leaf-on Esri photo (D125)", () => {
   const img = imageryFor([woodmont, bradshaw], "pr605r02");
   assert.ok(img && img.url.includes("/tile/41468/") && img.tileSize === 256);
 });
+
+test("bradshaw: seven OSM fairways grown where the winter photo reads fairway past OSM's edge (C40, D135)", () => {
+  const grown = bradshaw.ways.filter((w) => w.tags?.golf === "fairway" && w.q === "osm+photo");
+  assert.equal(grown.length, 7);
+  assert.ok(grown.every((w) => Number.isFinite(w.id)), "each keeps its OSM id");
+  assert.equal(bradshaw.version, 6, "bumped so the phones' cached copy refreshes once (5: the lidar trees, v22.62; 6: the fairways, v22.63)");
+  assert.match(bradshaw.source.fairways, /Wayback 63116/);
+  const inFairway = (lat, lon) => bradshaw.ways.some((w) => w.tags?.golf === "fairway"
+    && (w.outer ? w.outer.some((r) => pointInRing({ lat, lon }, r.map(([a, b]) => ({ lat: a, lon: b })))) && !(w.inner || []).some((r) => pointInRing({ lat, lon }, r.map(([a, b]) => ({ lat: a, lon: b }))))
+      : pointInRing({ lat, lon }, w.pts.map(([a, b]) => ({ lat: a, lon: b })))));
+  // Oct 11 (Brett: "clear places the fairway exists from the satellite image that are not included"): Blue 4, Blue 8
+  assert.ok(inFairway(34.164492, -84.449652), "Blue 4: the fairway OSM drew narrow");
+  assert.ok(inFairway(34.15768, -84.450606), "Blue 8: the fairway OSM drew narrow");
+});

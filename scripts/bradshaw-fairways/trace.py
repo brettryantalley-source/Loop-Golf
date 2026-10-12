@@ -42,9 +42,11 @@ def rings_of(w):
 
 by = {}
 holes = []
+woods = []
 for w in d['ways']:
     t = w.get('tags') or {}; g = t.get('golf')
     if g == 'hole': holes.append(w); continue
+    if t.get('natural') == 'wood': woods.append(w); continue
     by.setdefault(g, []).extend(rings_of(w))
 fw_osm = poly_mask(by.get('fairway', []))
 excl = poly_mask(by.get('green', []) + by.get('tee', []) + by.get('bunker', []) + by.get('water_hazard', []) + by.get('water', []))
@@ -58,6 +60,12 @@ tex = np.sqrt(np.maximum(ndimage.uniform_filter(lum ** 2, 5) - ndimage.uniform_f
 k = 11
 exs = ndimage.uniform_filter(2 * G - R - B, k); txs = ndimage.uniform_filter(tex, k); lms = ndimage.uniform_filter(lum, k)
 trees = (lms < 95) | (txs > 11)
+# v22.63: the file's woods are USGS lidar (D134) — nothing over 3 m tall is fairway
+wood = np.zeros((H, W), bool)
+for w in woods:
+    wood |= poly_mask(rings_of(w))
+    if w.get('inner'): wood &= ~poly_mask(w['inner'])
+trees |= wood
 
 # each pixel belongs to its nearest hole line
 near = np.zeros((H, W), np.int16); dmin = np.full((H, W), np.inf, np.float32)
@@ -70,6 +78,7 @@ for i, w in enumerate(holes):
 CORR = 45 / M_PER_PX
 out = fw_osm.copy()
 report = []
+pieces, piece_masks = [], []
 LR = float(os.environ.get('LR', '0'))      # log-likelihood ratio threshold; the Oct 11 draft used 0 (1 : 1)
 X = lambda m: np.stack([exs[m], txs[m]], 1)
 allin = ndimage.binary_erosion(fw_osm, iterations=3)
@@ -111,10 +120,29 @@ for i, w in enumerate(holes):
         keep = {j for j in keep if sizes[j - 1] * M_PER_PX ** 2 >= 300}
         fwmask = np.isin(lab, list(keep))
     added = (fwmask & ~fw_osm).sum() * M_PER_PX ** 2
+    # each addition on its own: area, its mean log-likelihood ratio, whether it touches OSM's fairway
+    lrmap = np.full((H, W), np.nan, np.float32); lrmap[cand] = lr
+    al, an = ndimage.label(fwmask & ~fw_osm)
+    dprime = float(np.sqrt((ma - mb) @ np.linalg.inv((ca + cb) / 2) @ (ma - mb)))
+    for j in range(1, an + 1):
+        pm = al == j
+        a = pm.sum() * M_PER_PX ** 2
+        if a < 50: continue
+        ys_, xs_ = np.nonzero(pm)
+        pieces.append({'hole': name, 'dprime': round(dprime, 2), 'area': round(float(a)), 'lr': round(float(np.nanmean(lrmap[pm])), 2),
+                       'touchesOsm': bool((ndimage.binary_dilation(pm, iterations=2) & osm_here).any()),
+                       'trees': round(float((pm & wood).mean()), 3), 'label': j, 'bbox': [int(xs_.min()), int(ys_.min()), int(xs_.max()), int(ys_.max())]})
+        piece_masks.append(pm)
     out |= fwmask
     report.append((name, f'osm {osm_here.sum() * M_PER_PX ** 2:7.0f} m²  +{added:6.0f} m²  ({added / max(1, osm_here.sum() * M_PER_PX ** 2) * 100:3.0f}%)', ''))
 
 np.save(f'{S}/fw_traced.npy', out)
+# the additions as polygons, one per piece, with their stats (ship.py picks the clear ones)
+for p_, pm in zip(pieces, piece_masks):
+    cs_ = measure.find_contours(np.pad(pm, 1).astype(float), 0.5)
+    rings_ = sorted(([(q[1] - 1, q[0] - 1) for q in c_] for c_ in cs_ if len(c_) >= 4), key=lambda r: -Polygon(r).area)
+    p_['ring'] = [ll(x, y) for x, y in Polygon(rings_[0]).buffer(0).simplify(1.0).exterior.coords] if rings_ else []
+json.dump({'pieces': pieces}, open(f'{S}/additions.json', 'w'))
 # polygons
 polys = []
 for c in measure.find_contours(np.pad(out, 1).astype(float), 0.5):
