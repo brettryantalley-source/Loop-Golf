@@ -120,6 +120,22 @@ test("T48 Brett's numbers overrule the pin rule only on more trouble or a big co
   assert.deepEqual(r.rules, []);
 });
 
+test("R12 (D138): past 0.15 strokes the pin rule must save 2 points of trouble, or the best-priced shot stands", () => {
+  const S = DEFAULT_CONFIG.STRATEGY;
+  assert.equal(S.pinFreeStrokes, 0.15); assert.equal(S.pinMinTroubleSaved, 0.02);
+  const best = cand("PW", { meanYds: 139, expScore: 4.0, troubleRate: 0.06 });     // 11 short of the middle
+  const free = cand("9i", { meanYds: 148, expScore: 4.1, troubleRate: 0.06 });     // 0.1 dearer, same trouble: the guide's price
+  const empty = cand("9i", { meanYds: 148, expScore: 4.2, troubleRate: 0.06 });    // 0.2 dearer for nothing
+  const buys = cand("9i", { meanYds: 148, expScore: 4.2, troubleRate: 0.03 });     // 0.2 dearer, 3 points less trouble
+  assert.equal(pickSafe([best, free], approachSit()).safe, free, "up to 0.15: the middle of the green, as before");
+  const r = pickSafe([best, empty], approachSit());
+  assert.equal(r.safe, best, "0.2 for no less trouble: the best-priced shot");
+  assert.deepEqual(r.rules, [], "and no pin rule named");
+  assert.equal(pickSafe([best, buys], approachSit()).safe, buys, "0.2 that keeps it out of trouble: the guide wins");
+  const before = mergeConfig({ STRATEGY: { pinFreeStrokes: null } });
+  assert.equal(pickSafe([best, empty], approachSit(), before).safe, empty, "without the guard (v22.64): the middle at any price under ½ stroke");
+});
+
 test("T49 no hero golf: from the trees SAFE stays out of trouble 9 times in 10; the hero shot is still shown as AGGRESSIVE", () => {
   // just inside the tree line (Oct 4 profile, D85: from −35, 260 the plain pick was no longer a hero shot;
   // v22.23, D94: from −32, 250 the plain pick is a clean wedge, so 30 yds farther back; v22.33, D104:

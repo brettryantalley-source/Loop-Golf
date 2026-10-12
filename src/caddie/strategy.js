@@ -24,7 +24,9 @@
  *                        chosen club, the center ("simple targets").
  *                        Brett's numbers overrule the pin rule only where the hole contradicts it:
  *                        its pick finds more than maxExtraTrouble more trouble, or costs more than
- *                        maxCostStrokes, than the best-priced shot. Then the next club in line.
+ *                        maxCostStrokes, than the best-priced shot — or (R12, D138) costs more than
+ *                        pinFreeStrokes and saves less than pinMinTroubleSaved of trouble. Then the
+ *                        next club in line.
  *
  * Locked rule 1 is restated by this (D76): SAFE = the lowest expected score among the shots these
  * rules allow; with every rule off it is the plain argmin again. v22.17 (D78, SAFE_RANKING "par"):
@@ -147,8 +149,12 @@ function pinRulePick(pool, best, sit, cfg, S) {
     groups.get(k).push(c);
   }
   let rest = [...groups.values()].map((cs) => ({ cs, k: Math.min(...cs.map(key)) })).sort((a, b) => a.k - b.k);
+  // R12 (D138): a pick costing more than pinFreeStrokes must also save pinMinTroubleSaved of trouble —
+  // the guide's middle target is there to keep the ball out of trouble, not to give up par chance for nothing
+  const pays = (c) => !Number.isFinite(S.pinFreeStrokes) || c.expScore <= best.expScore + S.pinFreeStrokes + EPS ||
+    c.troubleRate <= best.troubleRate - (S.pinMinTroubleSaved ?? 0) + EPS;
   const passes = (c) => c.troubleRate <= best.troubleRate + S.maxExtraTrouble + EPS &&
-    c.expScore <= best.expScore + S.maxCostStrokes + EPS;
+    c.expScore <= best.expScore + S.maxCostStrokes + EPS && pays(c);
   // Clubs finishing within KEY_TIE_YDS of each other are the same answer to "where does the average
   // shot finish"; between them Brett's numbers decide.
   while (rest.length) {

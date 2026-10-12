@@ -18,7 +18,8 @@ import { noWaterPar4 } from "../fixtures/synthetic-holes.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const RAW = JSON.parse(readFileSync(join(here, "../profile.json"), "utf8"));
 const P = loadProfile(RAW);
-const Pstop = loadProfile(RAW, mergeConfig({ GREEN_ROLL_SHARE: 0 }));   // before v22.23: the ball stops on landing
+// before v22.23: the ball stops on landing (and, to see the call he saw then, the pin rule without R12's guard, D138)
+const Pstop = loadProfile(RAW, mergeConfig({ GREEN_ROLL_SHARE: 0, STRATEGY: { pinFreeStrokes: null } }));
 const from = (yds, o = {}) => ({ shotNo: 2, ball: { x: 0, y: noWaterPar4.green.center.y - yds }, lieType: "fairway", par: 4, tempF: 85, ...o });
 const total = (club) => Math.round(resolveEntry(P, club, "full", "fairway").carry + resolveEntry(P, club, "full", "fairway").roll);
 
