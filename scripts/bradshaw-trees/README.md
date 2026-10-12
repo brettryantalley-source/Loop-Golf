@@ -1,5 +1,7 @@
 # Bradshaw trees from the photo (v22.55, D126)
 
+**Superseded in v22.62 (D134):** Bradshaw's woods are now USGS lidar (`scripts/lidar-trees/`). Kept as the record of D126.
+
 How the 53 `natural=wood` ways with `"q":"auto"` in `src/localGeometry/bradshaw.json` were made, saved as
 reference. Offline only (numpy, scipy, scikit-image, shapely, pillow); nothing here is bundled or run by `npm test`.
 Run each step from one scratch directory (tiles, masks and JSON land in the current directory).

@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 Brett's test notes of Oct 10 (C20–C29), and his notes from the first Bradshaw Farm round, Oct 11 (C34–C44; screenshots in `data/raw/2026-10-11/`), and his notes after the Bradshaw round that afternoon (C46). Duplicates are merged and anything already shipped is
-dropped. State: **v22.61** (C12's trees, D133; v22.60 = R10, D131; v22.59 = R11, D130; v22.58 = C47, D129; v22.57 = C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90; C13 closed Oct 12 without a build, D132), 452 tests, decisions D1–D133; the next
-decision is **D134**.
+dropped. State: **v22.62** (lidar trees at the other four clubs, D134; v22.61 = C12's trees, D133; v22.60 = R10, D131; v22.59 = R11, D130; v22.58 = C47, D129; v22.57 = C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90; C13 closed Oct 12 without a build, D132), 453 tests, decisions D1–D134; the next
+decision is **D135**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -20,7 +20,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 1. **Next code chat:** Brett, Oct 12: what he'd send (S, F7 notes, F9) isn't coming soon and must not hold up the
    builds. Each Code item below goes ahead without it, in the table's order (his pick): C40 → C33 → C10, then C12's fairways. C13
-   closed by lidar (D132); Chicopee's trees from lidar in v22.61 (D133). C14 is the only one that can't (it is his old rounds): parked until he sends them.
+   closed by lidar (D132); Every mapped club's trees from lidar in v22.61–v22.62 (D133–D134). C14 is the only one that can't (it is his old rounds): parked until he sends them.
 2. **Next round:** the **F** list.
 
 ---
@@ -40,11 +40,15 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (P11) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.61 · Oct 12**.
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.62 · Oct 12**.
 - **F42.** Chicopee's trees (v22.61, D133): the dark tree tint is now USGS lidar — anything over 3 m tall within 75 m
   of a hole — instead of a guess from the photo's colour. Village 1's corridor no longer reads as trees (the caddie
   punched out from the middle of it on Oct 4). Say where the tint covers open ground or misses trees, with the hole;
   the lidar is from 2018, so a tree cut since still shows.
+- **F43.** Trees everywhere (v22.62, D134): Woodmont had no trees on its map at all, Riverpines and Hampton almost none;
+  now every mapped club's are lidar. Expect a 2-iron or 2-hybrid off some tees where it said Driver (Woodmont 4, 5, 7,
+  14; Hampton 3, 4, 6, 9; Riverpines 1, 7, 11) and lower par chances where trees line a narrow fairway. Say where a
+  call now feels too timid, with the hole.
 - **F41.** Reading the green (v22.60, D131): on the green (and in the pin view, and on Catch up's putts) arrows point
   downhill over the green — white under 1.5%, yellow 1.5–3%, red 3% and up — and the line above the buttons reads the
   putt: "Putt: uphill 1.5% · breaks left to right 3.0%". From USGS lidar, 2 m apart. Say where an arrow or a read

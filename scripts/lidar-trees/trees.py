@@ -17,7 +17,7 @@ import numpy as np, cv2
 from scipy import ndimage as ndi
 from shapely.geometry import Polygon, LineString, box
 from shapely.ops import unary_union
-from shapely import affinity
+from shapely import make_valid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DIR = os.path.join(HERE, "..", "..", "src", "localGeometry")
@@ -50,10 +50,11 @@ for i, c in enumerate(cs):
 trees = unary_union(polys)
 
 def ring_m(pts): return [merc(*p) for p in pts]
-def way_poly(w):
+def ring_poly(pts): return make_valid(Polygon(ring_m(pts))) if len(pts) >= 3 else Polygon()
+def way_poly(w):                                             # OSM's rings are not always valid: make_valid first
     if w.get("outer"):
-        return unary_union([Polygon(ring_m(o)) for o in w["outer"]]).difference(unary_union([Polygon(ring_m(r)) for r in w.get("inner", [])] or [Polygon()]))
-    return Polygon(ring_m(w["pts"])) if len(w.get("pts") or []) >= 3 else Polygon()
+        return unary_union([ring_poly(o) for o in w["outer"]]).difference(unary_union([ring_poly(r) for r in w.get("inner", [])] or [Polygon()]))
+    return ring_poly(w.get("pts") or [])
 lines = unary_union([LineString(ring_m(w["pts"])) for w in geo["ways"] if w.get("tags", {}).get("golf") == "hole"])
 TURF = {"green", "tee", "fairway", "bunker", "water_hazard", "lateral_water_hazard"}
 turf = unary_union([way_poly(w).buffer(0) for w in geo["ways"]

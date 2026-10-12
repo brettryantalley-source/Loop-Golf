@@ -22,7 +22,8 @@ def tile(x, y):
         open(p, "wb").write(urllib.request.urlopen(req, timeout=60).read())
     return Image.open(p).convert("RGB")
 rings = lambda w: w["outer"] + w.get("inner", []) if w.get("outer") else [w["pts"]]
-for h in [w for w in new["ways"] if w.get("tags", {}).get("golf") == "hole" and rx.search(w["tags"].get("name", ""))]:
+label = lambda w: w["tags"].get("name") or f'hole {w["tags"].get("ref", "")}'
+for h in [w for w in new["ways"] if w.get("tags", {}).get("golf") == "hole" and rx.search(label(w))]:
     lats = [p[0] for p in h["pts"]]; lons = [p[1] for p in h["pts"]]
     m = 0.0009
     ax, ay = tile_xy(max(lats) + m, min(lons) - m * 1.2); bx, by = tile_xy(min(lats) - m, max(lons) + m * 1.2)
@@ -46,6 +47,6 @@ for h in [w for w in new["ways"] if w.get("tags", {}).get("golf") == "hole" and 
     out = Image.alpha_composite(img.convert("RGBA"), ov).convert("RGB")
     a, b = P(max(lats) + m, min(lons) - m * 1.2), P(min(lats) - m, max(lons) + m * 1.2)
     out = out.crop((int(a[0]), int(a[1]), int(b[0]), int(b[1])))
-    name = h["tags"].get("name", "hole").replace(" ", "").replace("#", "")
+    name = club + "-" + label(h).replace(" ", "").replace("#", "")
     out.save(f"sheets/{name}.jpg", quality=80)
     print(name, out.size)
