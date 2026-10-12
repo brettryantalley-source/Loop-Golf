@@ -203,7 +203,7 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C12 | Chicopee fairways (trees done from lidar, D133); Village 1 has none mapped | — (S4 would let them be hand traced) | Opus |
+| C12 | Chicopee fairways (trees done from lidar, D133); Village 1's are fragments left of its line | — (S4 would let them be hand traced) | Opus |
 | C14 | History data | S1–S3 (parked: not coming soon, Brett Oct 12) | Sonnet |
 
 Details for each are under **Build details** below.
@@ -255,9 +255,13 @@ Review sheet (a shot Loop logged that he hasn't confirmed); free green-reading m
 
 ### C12. Chicopee fairways (trees done, D133)
 - **Trees:** done from USGS lidar in v22.61 (D133, `scripts/lidar-trees/`): Village 1's line no longer reads trees.
-- **Fairways:** still the automatic turf corridor eroded 8 m (D74), and Village 1 has none mapped, so its corridor
-  reads rough. Lidar can't tell fairway from rough. Options: the C40 method (grow the fairway from the photo, kept
-  inside the lidar's open corridor), or hand-trace from S4's screenshots if they come.
+- **Fairways:** still the automatic turf corridor eroded 8 m (D74). Village 1's are small pieces left of its line, so
+  most of its line reads rough. Lidar can't tell fairway from rough. **Tried Oct 12, not shipped:** filling the lidar's
+  open corridor 8 m in from the trees (Village 1, Village 6, School 1, where the line reads fairway on under 30%) also
+  filled the rough beside the mapped pieces — Village 1's driver lay-up slid from its fairway onto the hole line
+  (`fairway.test.js`); kept 25 m clear of mapped fairway it added only ~2,000 m² of doubtful ground. Options left: the
+  C40 method on a Chicopee photo where the rough is dormant and the fairway green (Wayback captures to compare), or
+  hand-trace from S4's screenshots if they come.
 - **Hand-trace method learned Oct 3** (S4): georeference each screenshot by hand with 3+ control points (the OSM
   greens, bunkers and tee boxes line up; automatic SIFT / ECC against Esri failed), scale cue ~5 px/yd at the native
   1206-px width from the tee → target → pin yardages, mask the UI, never trace under it. Keep the 27 hole ways' OSM
