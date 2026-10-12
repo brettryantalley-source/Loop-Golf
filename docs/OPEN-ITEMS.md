@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 Brett's test notes of Oct 10 (C20–C29), and his notes from the first Bradshaw Farm round, Oct 11 (C34–C44; screenshots in `data/raw/2026-10-11/`), and his notes after the Bradshaw round that afternoon (C46). Duplicates are merged and anything already shipped is
-dropped. State: **v22.63** (C40, Bradshaw's fairways, D135; v22.62 = lidar trees at the other four clubs, D134; v22.61 = C12's trees, D133; v22.60 = R10, D131; v22.59 = R11, D130; v22.58 = C47, D129; v22.57 = C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90; C13 closed Oct 12 without a build, D132), 454 tests, decisions D1–D135; the next
-decision is **D136**.
+dropped. State: **v22.64** (C33, the short-game bands learn from his chips, D136; v22.63 = C40, Bradshaw's fairways, D135; v22.62 = lidar trees at the other four clubs, D134; v22.61 = C12's trees, D133; v22.60 = R10, D131; v22.59 = R11, D130; v22.58 = C47, D129; v22.57 = C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90; C13 closed Oct 12 without a build, D132), 457 tests, decisions D1–D136; the next
+decision is **D137**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -19,7 +19,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 ## Start here
 
 1. **Next code chat:** Brett, Oct 12: what he'd send (S, F7 notes, F9) isn't coming soon and must not hold up the
-   builds. Each Code item below goes ahead without it, in the table's order (his pick): C33 → C10, then C12's fairways. C40 shipped in v22.63 (D135). C13
+   builds. Each Code item below goes ahead without it, in the table's order (his pick): C10, then C12's fairways. C40 shipped in v22.63 (D135), C33 in v22.64 (D136). C13
    closed by lidar (D132); Every mapped club's trees from lidar in v22.61–v22.62 (D133–D134). C14 is the only one that can't (it is his old rounds): parked until he sends them.
 2. **Next round:** the **F** list.
 
@@ -40,7 +40,7 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (P11) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.63 · Oct 12**.
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.64 · Oct 12**.
 - **F42.** Chicopee's trees (v22.61, D133): the dark tree tint is now USGS lidar — anything over 3 m tall within 75 m
   of a hole — instead of a guess from the photo's colour. Village 1's corridor no longer reads as trees (the caddie
   punched out from the middle of it on Oct 4). Say where the tint covers open ground or misses trees, with the hole;
@@ -121,7 +121,8 @@ after C13 (P11) · R9 no native app for now (P1). Q1 answered the same day (C8).
   today", but the club, target and line no longer move for it. Say if you miss the old club-ups.
 - **F23.** The short-game card (v22.40, D111): just off a green the why line shows your up-and-down
   and leave for the lie; log the shot as Chip, Pitch, Bunker or Wedge, and log the putts after it
-  (C33 needs them).
+  (since v22.64, D136, each chip with its putts logged teaches his up-and-down and leave for that band; a hole whose
+  card score isn't the strokes logged teaches nothing).
 - **F22.** The heads-up and the aim warning (v22.39, D110): when a club misses the same way 3 of its
   last 4 today, the why line says so; move the target or draw a Line toward trouble and it says how
   often ("water 1 in 4 (Loop's call: 1 in 12)"). Tap the line to hide that for the shot. Say
@@ -193,7 +194,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 
 | # | Build | Waits on | Model |
 |---|---|---|---|
-| C33 | Short-game bands learn from Loop's chips; silent until chips + putts are logged | — | Sonnet |
 | C10 | Re-tune the `STRATEGY` thresholds from the sweep (F7 notes would sharpen it) | — | Opus |
 | C12 | Chicopee fairways (trees done from lidar, D133); Village 1 has none mapped | — (S4 would let them be hand traced) | Opus |
 | C14 | History data | S1–S3 (parked: not coming soon, Brett Oct 12) | Sonnet |
@@ -296,17 +296,6 @@ Every rule is uncalibrated (D76, D78). The knobs, in `STRATEGY` (`src/caddie/con
   recording isn't a repeat first: two of Oct 1's five were the 8/15 round again. Two parallel
   subagents, one round each, worked well; the check is `holesShort: []` plus strokes-gained sums that
   match the Summary tab. Data-only commits don't bump the build tag.
-
-### C33. Short-game bands learn from Loop's chips (C29, D111)
-- Since v22.40 chips, pitches and bunker shots are logged as `shotType: "shortGame"` with a
-  `shortKind`, and never teach a club's distances. Nothing learns the bands from them yet (the
-  profile's 0–25 / 25–50 bands are Shot Pattern's).
-- **Do:** once a few rounds of chips are logged with their putts, overlay the bands the way D85
-  shrinks the approach buckets: leave (the end's feet to the hole) and up-and-down (holed in two from
-  the chip, from the putt records that follow it), shrunk toward the band with `SHRINK_K`. Check
-  first how often the putts after a chip are actually logged; a missing putt must not read as an
-  up-and-down.
-
 
 ---
 

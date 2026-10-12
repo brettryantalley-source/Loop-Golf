@@ -20,7 +20,7 @@ import { parseLieChip } from "./context.js";
 import { bboxYds, withEllipses, NOTICE_MARK_GREEN } from "./overlay.js";
 import { markedPinPoint, NOTE_NO_HAZARDS } from "./greens.js";
 import { DEFAULT_CONFIG } from "./config.js";
-import { withinRound, applyShotLog, aggressionScorecard, familyOf } from "./learning.js";
+import { withinRound, applyShotLog, shortGameOverlays, aggressionScorecard, familyOf } from "./learning.js";
 import { whyLine } from "./reasons.js";
 
 export const CADDIE_SCHEMA = 1;
@@ -622,6 +622,14 @@ export function roundIndexFromHistory(history) {
 export function learningOverlays(P, shots, history, now) {
   if (!P) return null;
   const ovs = applyShotLog(P, shots || [], { now, roundIndexById: roundIndexFromHistory(history) }, P.config);
+  return Object.keys(ovs).length ? ovs : null;
+}
+
+/** C33 (v22.64, D136): the short-game bands' overlays, from finished rounds only, as learningOverlays. null when none. */
+export function shortGameLearning(P, shots, history, now) {
+  if (!P) return null;
+  const scoresByRound = Object.fromEntries((history || []).filter((r) => r?.id != null && Array.isArray(r.holeScores)).map((r) => [r.id, r.holeScores]));
+  const ovs = shortGameOverlays(P, shots || [], { now, roundIndexById: roundIndexFromHistory(history), scoresByRound }, P.config);
   return Object.keys(ovs).length ? ovs : null;
 }
 
