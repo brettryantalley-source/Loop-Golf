@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generated": "2026-10-11",
+  "generated": "2026-10-12",
   "sources": {
     "shotPattern": {
       "window": "Casual · Last 10",
@@ -71,9 +71,14 @@
             "rightPct": 0.581,
             "shortPct": null,
             "bigMiss": {
-              "left": 0.102,
-              "right": 0.17,
-              "latYds": 54.5
+              "left": 0,
+              "right": 0,
+              "latYds": 54.5,
+              "pdf": {
+                "left": 0.102,
+                "right": 0.17
+              },
+              "rule": "in the Oct 11 sheet's shots"
             },
             "bigMissPct": null,
             "mishitPct": 0.023,
@@ -97,28 +102,455 @@
             "width95Yds": 109,
             "width90Yds": 100,
             "ell80": {
-              "wYds": 91.6,
-              "hYds": 35.2,
-              "tiltDeg": 1.9,
-              "dxYds": 5.2,
-              "allWYds": 103.4,
-              "allHYds": 115.3,
-              "allTiltDeg": 27.7,
-              "allDxYds": 1.8,
-              "mishitRate": 0.429,
-              "goodWindowYds": 20,
-              "goodDots": 16,
+              "wYds": 106.1,
+              "hYds": 97.2,
+              "tiltDeg": 21.7,
+              "dxYds": 5.1,
               "dyYds": 0,
-              "dyMeasuredYds": 0.1,
-              "bboxWYds": 106,
-              "bboxDYds": 113,
+              "dyMeasuredYds": -0.1,
+              "bboxWYds": 104.9,
+              "bboxDYds": 98.5,
+              "printedCoverage": 0.7,
+              "printedBboxYds": [
+                91,
+                85
+              ],
               "source": "shotPattern",
-              "capturedAt": "2026-10-10",
-              "lies": "Tee (Driving tab); the 2-hybrid fairway entry from the Approach tab",
-              "n": 35,
-              "confidence": "medium",
-              "ringWYds": 46.6,
-              "ringDots": 32
+              "capturedAt": "2026-10-11",
+              "lies": "Driving",
+              "n": 117,
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  -4.7,
+                  -88.9
+                ],
+                [
+                  -22.5,
+                  -43.1
+                ],
+                [
+                  -31.6,
+                  -42.8
+                ],
+                [
+                  38,
+                  -42
+                ],
+                [
+                  12.3,
+                  -40.9
+                ],
+                [
+                  -14.2,
+                  -40.1
+                ],
+                [
+                  5.9,
+                  -37.4
+                ],
+                [
+                  0.2,
+                  -36.3
+                ],
+                [
+                  -44.5,
+                  -35.9
+                ],
+                [
+                  13.1,
+                  -34
+                ],
+                [
+                  -7.2,
+                  -31.4
+                ],
+                [
+                  15.7,
+                  -30.6
+                ],
+                [
+                  17.6,
+                  -29.9
+                ],
+                [
+                  29.3,
+                  -28.4
+                ],
+                [
+                  -14.2,
+                  -27.6
+                ],
+                [
+                  -5.1,
+                  -26.1
+                ],
+                [
+                  21,
+                  -26.1
+                ],
+                [
+                  8.1,
+                  -25
+                ],
+                [
+                  1.3,
+                  -24.2
+                ],
+                [
+                  -15,
+                  -23.8
+                ],
+                [
+                  -12.3,
+                  -22.7
+                ],
+                [
+                  8.1,
+                  -20.4
+                ],
+                [
+                  0.9,
+                  -20
+                ],
+                [
+                  35.4,
+                  -19.7
+                ],
+                [
+                  -40.3,
+                  -16.2
+                ],
+                [
+                  -6.2,
+                  -15.5
+                ],
+                [
+                  -1.3,
+                  -14.4
+                ],
+                [
+                  21.8,
+                  -14.4
+                ],
+                [
+                  -22.5,
+                  -14
+                ],
+                [
+                  1.3,
+                  -13.6
+                ],
+                [
+                  -5.9,
+                  -13.2
+                ],
+                [
+                  -16.8,
+                  -12.8
+                ],
+                [
+                  -15,
+                  -9.4
+                ],
+                [
+                  18.7,
+                  -9.1
+                ],
+                [
+                  41.1,
+                  -8.7
+                ],
+                [
+                  23.7,
+                  -7.9
+                ],
+                [
+                  4.7,
+                  -6.4
+                ],
+                [
+                  9.7,
+                  -5.6
+                ],
+                [
+                  -18.4,
+                  -5.3
+                ],
+                [
+                  0.9,
+                  -5.3
+                ],
+                [
+                  29.7,
+                  -5.3
+                ],
+                [
+                  41.8,
+                  -4.9
+                ],
+                [
+                  -3.6,
+                  -4.1
+                ],
+                [
+                  -33.1,
+                  -1.5
+                ],
+                [
+                  5.5,
+                  -1.5
+                ],
+                [
+                  44.9,
+                  -0.7
+                ],
+                [
+                  15,
+                  -0.3
+                ],
+                [
+                  -44.9,
+                  0
+                ],
+                [
+                  -29.5,
+                  0
+                ],
+                [
+                  -26.7,
+                  0
+                ],
+                [
+                  -16.8,
+                  0
+                ],
+                [
+                  48.7,
+                  0.4
+                ],
+                [
+                  60.8,
+                  0.4
+                ],
+                [
+                  46.4,
+                  1.5
+                ],
+                [
+                  9.3,
+                  2.3
+                ],
+                [
+                  -5.9,
+                  3.1
+                ],
+                [
+                  13.8,
+                  3.1
+                ],
+                [
+                  -18,
+                  3.4
+                ],
+                [
+                  48.3,
+                  4.2
+                ],
+                [
+                  -9.3,
+                  4.6
+                ],
+                [
+                  -0.2,
+                  4.6
+                ],
+                [
+                  32.4,
+                  4.6
+                ],
+                [
+                  7.8,
+                  6.5
+                ],
+                [
+                  3.2,
+                  7.2
+                ],
+                [
+                  29,
+                  7.2
+                ],
+                [
+                  -45.2,
+                  8
+                ],
+                [
+                  -36.2,
+                  9.5
+                ],
+                [
+                  -23.5,
+                  10.3
+                ],
+                [
+                  12.3,
+                  10.6
+                ],
+                [
+                  58.9,
+                  10.6
+                ],
+                [
+                  40.7,
+                  12.1
+                ],
+                [
+                  48.3,
+                  12.1
+                ],
+                [
+                  2.5,
+                  12.5
+                ],
+                [
+                  -28.2,
+                  13.3
+                ],
+                [
+                  55.5,
+                  14
+                ],
+                [
+                  -5.9,
+                  14.4
+                ],
+                [
+                  -1.7,
+                  14.8
+                ],
+                [
+                  16.8,
+                  14.8
+                ],
+                [
+                  -41.8,
+                  17.1
+                ],
+                [
+                  25.9,
+                  17.1
+                ],
+                [
+                  -27.1,
+                  17.4
+                ],
+                [
+                  24.4,
+                  20.9
+                ],
+                [
+                  63,
+                  21.2
+                ],
+                [
+                  0.2,
+                  23.9
+                ],
+                [
+                  52.8,
+                  23.9
+                ],
+                [
+                  48.7,
+                  25.8
+                ],
+                [
+                  27.1,
+                  27.9
+                ],
+                [
+                  4,
+                  29.6
+                ],
+                [
+                  16.1,
+                  31.8
+                ],
+                [
+                  32.4,
+                  33.3
+                ],
+                [
+                  10,
+                  34.1
+                ],
+                [
+                  4.7,
+                  34.5
+                ],
+                [
+                  -3.2,
+                  35.6
+                ],
+                [
+                  80.1,
+                  40.2
+                ],
+                [
+                  -64.6,
+                  43.2
+                ],
+                [
+                  30.5,
+                  43.2
+                ],
+                [
+                  -42.6,
+                  44.3
+                ],
+                [
+                  9.3,
+                  45.5
+                ],
+                [
+                  -41.1,
+                  47.4
+                ],
+                [
+                  26.3,
+                  49.8
+                ],
+                [
+                  59.6,
+                  58.3
+                ],
+                [
+                  -64.9,
+                  72.7
+                ],
+                [
+                  -7.6,
+                  107.6
+                ],
+                [
+                  -16.8,
+                  -46.5
+                ],
+                [
+                  16.5,
+                  -48.8
+                ],
+                [
+                  -47.9,
+                  -12.1
+                ],
+                [
+                  -47.9,
+                  5.7
+                ]
+              ]
             },
             "pattern": {
               "ring70": {
@@ -599,9 +1031,14 @@
             "rightPct": 0.211,
             "shortPct": null,
             "bigMiss": {
-              "left": 0.182,
-              "right": 0.045,
-              "latYds": 42.5
+              "left": 0,
+              "right": 0,
+              "latYds": 42.5,
+              "pdf": {
+                "left": 0.182,
+                "right": 0.045
+              },
+              "rule": "in the Oct 11 sheet's shots"
             },
             "bigMissPct": null,
             "mishitPct": 0.136,
@@ -625,28 +1062,131 @@
             "width95Yds": 85,
             "width90Yds": 69,
             "ell80": {
-              "wYds": 89,
-              "hYds": 28.2,
-              "tiltDeg": 174.5,
-              "dxYds": -2.9,
-              "allWYds": 67.9,
-              "allHYds": 106,
-              "allTiltDeg": 43.3,
-              "allDxYds": -9,
-              "mishitRate": 0.231,
-              "goodWindowYds": 20,
-              "goodDots": 16,
+              "wYds": 106.1,
+              "hYds": 67.8,
+              "tiltDeg": 133.4,
+              "dxYds": -8,
               "dyYds": 0,
-              "dyMeasuredYds": 0.1,
+              "dyMeasuredYds": 0,
               "bboxWYds": 88,
-              "bboxDYds": 90,
+              "bboxDYds": 90.1,
+              "printedCoverage": 0.7,
+              "printedBboxYds": [
+                76,
+                78
+              ],
               "source": "shotPattern",
-              "capturedAt": "2026-10-10",
-              "lies": "Tee (Driving tab); the 2-hybrid fairway entry from the Approach tab",
+              "capturedAt": "2026-10-11",
+              "lies": "Driving",
               "n": 26,
-              "confidence": "medium",
-              "ringWYds": 41.7,
-              "ringDots": 24
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  -29.7,
+                  -22.8
+                ],
+                [
+                  -3,
+                  -22.2
+                ],
+                [
+                  -7.2,
+                  -21.7
+                ],
+                [
+                  0,
+                  -10.8
+                ],
+                [
+                  -32.7,
+                  -9.7
+                ],
+                [
+                  6.9,
+                  -6.7
+                ],
+                [
+                  20.8,
+                  -6.4
+                ],
+                [
+                  -12.2,
+                  -5.9
+                ],
+                [
+                  -10.3,
+                  -5.3
+                ],
+                [
+                  23.8,
+                  -5.3
+                ],
+                [
+                  41.6,
+                  -5.3
+                ],
+                [
+                  -18,
+                  -1.1
+                ],
+                [
+                  -10.8,
+                  0
+                ],
+                [
+                  33.5,
+                  0
+                ],
+                [
+                  10,
+                  0.2
+                ],
+                [
+                  -3.9,
+                  5.2
+                ],
+                [
+                  7.8,
+                  5.5
+                ],
+                [
+                  -41.6,
+                  7.7
+                ],
+                [
+                  -31.6,
+                  9.7
+                ],
+                [
+                  18,
+                  14.7
+                ],
+                [
+                  -31.9,
+                  15.5
+                ],
+                [
+                  -15.8,
+                  20.8
+                ],
+                [
+                  -60.2,
+                  39.3
+                ],
+                [
+                  -13.6,
+                  43.8
+                ],
+                [
+                  -27.2,
+                  53.3
+                ],
+                [
+                  -37.2,
+                  88.1
+                ]
+              ]
             },
             "pattern": {
               "ring70": {
@@ -808,8 +1348,13 @@
             "shortPct": null,
             "bigMiss": {
               "left": 0,
-              "right": 0.125,
-              "latYds": 40
+              "right": 0,
+              "latYds": 40,
+              "pdf": {
+                "left": 0,
+                "right": 0.125
+              },
+              "rule": "in the Oct 11 sheet's shots"
             },
             "bigMissPct": null,
             "mishitPct": 0.125,
@@ -833,33 +1378,75 @@
             "width95Yds": 69,
             "width90Yds": 67,
             "ell80": {
-              "wYds": 75.8,
-              "hYds": 37.4,
-              "tiltDeg": 18.7,
-              "dxYds": -2,
-              "allWYds": 100.3,
-              "allHYds": 37.1,
-              "allTiltDeg": 30.1,
-              "allDxYds": 4.2,
-              "mishitRate": 0.143,
-              "goodWindowYds": 20,
-              "goodDots": 6,
+              "wYds": 96.5,
+              "hYds": 79,
+              "tiltDeg": 101.7,
+              "dxYds": 0.3,
               "dyYds": 0,
               "dyMeasuredYds": -0.1,
-              "bboxWYds": 88.8,
-              "bboxDYds": 59.6,
-              "printedCoverage": 0.6,
+              "bboxWYds": 79.8,
+              "bboxDYds": 95.8,
+              "printedCoverage": 0.7,
               "printedBboxYds": [
-                67,
-                45
+                69,
+                83
               ],
               "source": "shotPattern",
-              "capturedAt": "2026-10-10",
-              "lies": "Tee (Driving tab); the 2-hybrid fairway entry from the Approach tab",
-              "n": 7,
-              "confidence": "low",
-              "ringWYds": 47.3,
-              "ringDots": 7
+              "capturedAt": "2026-10-11",
+              "lies": "Driving",
+              "n": 12,
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  7.4,
+                  -14.4
+                ],
+                [
+                  -4.7,
+                  -13.3
+                ],
+                [
+                  -16.8,
+                  -12.3
+                ],
+                [
+                  8.3,
+                  -11.1
+                ],
+                [
+                  2.8,
+                  -4.6
+                ],
+                [
+                  4.7,
+                  -2.4
+                ],
+                [
+                  -26.7,
+                  2.4
+                ],
+                [
+                  5.4,
+                  4.9
+                ],
+                [
+                  -30.4,
+                  8.5
+                ],
+                [
+                  28.7,
+                  17
+                ],
+                [
+                  41.5,
+                  33.9
+                ],
+                [
+                  -28.2,
+                  79.3
+                ]
+              ]
             },
             "pattern": {
               "ring70": {
@@ -1142,9 +1729,14 @@
             "rightPct": 0.5,
             "shortPct": null,
             "bigMiss": {
-              "left": 0.125,
+              "left": 0,
               "right": 0,
-              "latYds": 40
+              "latYds": 40,
+              "pdf": {
+                "left": 0.125,
+                "right": 0
+              },
+              "rule": "in the Oct 11 sheet's shots"
             },
             "bigMissPct": null,
             "mishitPct": 0,
@@ -1169,27 +1761,90 @@
             "width90Yds": 66,
             "ell80": {
               "wYds": 90.9,
-              "hYds": 30.8,
-              "tiltDeg": 15.2,
-              "dxYds": 0.8,
-              "allWYds": 64.8,
-              "allHYds": 90.2,
-              "allTiltDeg": 112,
-              "allDxYds": -3.2,
-              "mishitRate": 0.312,
-              "goodWindowYds": 20,
-              "goodDots": 12,
+              "hYds": 65.3,
+              "tiltDeg": 21.9,
+              "dxYds": -2,
               "dyYds": 0,
-              "dyMeasuredYds": -0.2,
-              "bboxWYds": 87,
-              "bboxDYds": 69,
+              "dyMeasuredYds": 0,
+              "bboxWYds": 87.8,
+              "bboxDYds": 69.4,
+              "printedCoverage": 0.7,
+              "printedBboxYds": [
+                76,
+                60
+              ],
               "source": "shotPattern",
-              "capturedAt": "2026-10-10",
-              "lies": "Tee (Driving tab); the 2-hybrid fairway entry from the Approach tab",
+              "capturedAt": "2026-10-11",
+              "lies": "Driving",
               "n": 16,
-              "confidence": "medium",
-              "ringWYds": 48,
-              "ringDots": 16
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  -13.4,
+                  -51.9
+                ],
+                [
+                  15,
+                  -28.3
+                ],
+                [
+                  -26.9,
+                  -26.5
+                ],
+                [
+                  -19.9,
+                  -16
+                ],
+                [
+                  19.3,
+                  -10
+                ],
+                [
+                  18.3,
+                  -7.1
+                ],
+                [
+                  -17.9,
+                  -0.7
+                ],
+                [
+                  -27.4,
+                  0.7
+                ],
+                [
+                  7,
+                  7.2
+                ],
+                [
+                  10,
+                  8
+                ],
+                [
+                  -15.2,
+                  8.7
+                ],
+                [
+                  27.2,
+                  9
+                ],
+                [
+                  22.5,
+                  12.1
+                ],
+                [
+                  31.8,
+                  16.5
+                ],
+                [
+                  -35.6,
+                  21.5
+                ],
+                [
+                  -43.9,
+                  -13.6
+                ]
+              ]
             },
             "pattern": {
               "ring70": {
@@ -1475,28 +2130,95 @@
               ]
             },
             "ell80": {
-              "wYds": 67.7,
-              "hYds": 25.7,
-              "tiltDeg": 12.6,
-              "dxYds": 4.3,
-              "allWYds": 42.8,
-              "allHYds": 63.2,
-              "allTiltDeg": 84.7,
-              "allDxYds": 5.6,
-              "mishitRate": 0.083,
-              "goodWindowYds": 20,
-              "goodDots": 9,
+              "wYds": 59.2,
+              "hYds": 41.3,
+              "tiltDeg": 172.2,
+              "dxYds": 1.8,
               "dyYds": 0,
-              "dyMeasuredYds": 2.3,
-              "bboxWYds": 63,
-              "bboxDYds": 43,
+              "dyMeasuredYds": 4.3,
+              "bboxWYds": 58.9,
+              "bboxDYds": 41.7,
+              "printedCoverage": 0.7,
+              "printedBboxYds": [
+                51,
+                36
+              ],
               "source": "shotPattern",
-              "capturedAt": "2026-10-04",
+              "capturedAt": "2026-10-11",
               "lies": "Tee & Fairway",
-              "n": 12,
-              "confidence": "medium",
-              "ringWYds": 32.3,
-              "ringDots": 11
+              "n": 17,
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  29.8,
+                  -23.7
+                ],
+                [
+                  -0.9,
+                  -15.2
+                ],
+                [
+                  -13,
+                  -9.2
+                ],
+                [
+                  -9.2,
+                  -8.5
+                ],
+                [
+                  7.6,
+                  -6.2
+                ],
+                [
+                  -2.9,
+                  -6.1
+                ],
+                [
+                  -0.5,
+                  -1.5
+                ],
+                [
+                  33.4,
+                  0
+                ],
+                [
+                  -2.4,
+                  1.2
+                ],
+                [
+                  -18.1,
+                  2.2
+                ],
+                [
+                  -19.4,
+                  4.3
+                ],
+                [
+                  12.2,
+                  5.6
+                ],
+                [
+                  30,
+                  9.1
+                ],
+                [
+                  -14.6,
+                  12.8
+                ],
+                [
+                  11,
+                  18.6
+                ],
+                [
+                  -0.1,
+                  21.9
+                ],
+                [
+                  0.1,
+                  -2.9
+                ]
+              ]
             },
             "extra": {
               "sheetN": 12,
@@ -1654,7 +2376,61 @@
                 "data/extracted/2026-10-04-screens.json#approach.clubSheets.rough.5i (rec-200407)"
               ]
             },
-            "ell80": null,
+            "ell80": {
+              "wYds": 80.6,
+              "hYds": 54.7,
+              "tiltDeg": 128.3,
+              "dxYds": 8.5,
+              "dyYds": 0,
+              "dyMeasuredYds": 12.9,
+              "bboxWYds": 65.9,
+              "bboxDYds": 71.8,
+              "printedCoverage": 0.7,
+              "printedBboxYds": [
+                57,
+                62
+              ],
+              "source": "shotPattern",
+              "capturedAt": "2026-10-11",
+              "lies": "Rough",
+              "n": 8,
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  3.1,
+                  -27.2
+                ],
+                [
+                  25.4,
+                  -16.6
+                ],
+                [
+                  -11.4,
+                  -7.8
+                ],
+                [
+                  15.1,
+                  -1
+                ],
+                [
+                  6.1,
+                  1.1
+                ],
+                [
+                  38.3,
+                  3.5
+                ],
+                [
+                  -2.3,
+                  28
+                ],
+                [
+                  -16,
+                  30.8
+                ]
+              ]
+            },
             "extra": {
               "shotDistances": {
                 "n": 6,
@@ -1795,28 +2571,75 @@
               ]
             },
             "ell80": {
-              "wYds": 38.3,
-              "hYds": 17.1,
-              "tiltDeg": 6.5,
-              "dxYds": -1.2,
-              "allWYds": 36.3,
-              "allHYds": 60.7,
-              "allTiltDeg": 131.9,
-              "allDxYds": -4.1,
-              "mishitRate": 0,
-              "goodWindowYds": 20,
-              "goodDots": 7,
+              "wYds": 59.9,
+              "hYds": 40.5,
+              "tiltDeg": 32.7,
+              "dxYds": -3.9,
               "dyYds": 0,
-              "dyMeasuredYds": -3.6,
-              "bboxWYds": 51,
-              "bboxDYds": 49,
+              "dyMeasuredYds": -3,
+              "bboxWYds": 55,
+              "bboxDYds": 47,
+              "printedCoverage": 0.8,
+              "printedBboxYds": [
+                55,
+                47
+              ],
               "source": "shotPattern",
-              "capturedAt": "2026-10-04",
+              "capturedAt": "2026-10-11",
               "lies": "Tee & Fairway",
-              "n": 11,
-              "confidence": "medium",
-              "ringWYds": 26.1,
-              "ringDots": 9
+              "n": 12,
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  -17.7,
+                  -24.6
+                ],
+                [
+                  -32.7,
+                  -13.3
+                ],
+                [
+                  0.1,
+                  -9.1
+                ],
+                [
+                  -8.3,
+                  -6.4
+                ],
+                [
+                  -15.3,
+                  -2.2
+                ],
+                [
+                  12.5,
+                  -1.1
+                ],
+                [
+                  -7.2,
+                  1
+                ],
+                [
+                  12.3,
+                  1.2
+                ],
+                [
+                  13.4,
+                  2.3
+                ],
+                [
+                  -2.8,
+                  5.1
+                ],
+                [
+                  -28.5,
+                  5.4
+                ],
+                [
+                  0.4,
+                  30.4
+                ]
+              ]
             },
             "extra": {
               "sheetN": 11,
@@ -1969,28 +2792,75 @@
               ]
             },
             "ell80": {
-              "wYds": 52.6,
-              "hYds": 24.3,
-              "tiltDeg": 33.5,
-              "dxYds": 3.1,
-              "allWYds": 63.6,
-              "allHYds": 34.8,
-              "allTiltDeg": 34.4,
-              "allDxYds": 0.6,
-              "mishitRate": 0.1,
-              "goodWindowYds": 20,
-              "goodDots": 8,
+              "wYds": 100.4,
+              "hYds": 45.2,
+              "tiltDeg": 80.8,
+              "dxYds": 6.5,
               "dyYds": 0,
-              "dyMeasuredYds": 1.3,
-              "bboxWYds": 56,
-              "bboxDYds": 46,
+              "dyMeasuredYds": 6.8,
+              "bboxWYds": 47.4,
+              "bboxDYds": 99.4,
+              "printedCoverage": 0.7,
+              "printedBboxYds": [
+                41,
+                86
+              ],
               "source": "shotPattern",
-              "capturedAt": "2026-10-04",
+              "capturedAt": "2026-10-11",
               "lies": "Tee & Fairway",
-              "n": 10,
-              "confidence": "medium",
-              "ringWYds": 23.5,
-              "ringDots": 9
+              "n": 14,
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  -16.1,
+                  -19.3
+                ],
+                [
+                  6.1,
+                  -7.3
+                ],
+                [
+                  -8.7,
+                  -1.5
+                ],
+                [
+                  4.3,
+                  -0.3
+                ],
+                [
+                  17.9,
+                  -0.1
+                ],
+                [
+                  13.8,
+                  0.1
+                ],
+                [
+                  -8.4,
+                  0.3
+                ],
+                [
+                  9.4,
+                  3.6
+                ],
+                [
+                  14.4,
+                  16.1
+                ],
+                [
+                  10.5,
+                  27.5
+                ],
+                [
+                  7.1,
+                  95.1
+                ],
+                [
+                  7.7,
+                  -7.1
+                ]
+              ]
             },
             "extra": {
               "sheetN": 10,
@@ -2128,7 +2998,49 @@
                 "data/extracted/2026-10-04-screens.json#approach.clubSheets.rough.7i (rec-200407)"
               ]
             },
-            "ell80": null,
+            "ell80": {
+              "wYds": 65.3,
+              "hYds": 34.1,
+              "tiltDeg": 62,
+              "dxYds": -3.5,
+              "dyYds": 0,
+              "dyMeasuredYds": 2.2,
+              "bboxWYds": 43,
+              "bboxDYds": 59.8,
+              "printedCoverage": 0.7,
+              "printedBboxYds": [
+                37,
+                52
+              ],
+              "source": "shotPattern",
+              "capturedAt": "2026-10-11",
+              "lies": "Rough",
+              "n": 5,
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  -5,
+                  -17.2
+                ],
+                [
+                  -15,
+                  -3.6
+                ],
+                [
+                  -14.6,
+                  0
+                ],
+                [
+                  12.2,
+                  6
+                ],
+                [
+                  4.9,
+                  28.4
+                ]
+              ]
+            },
             "extra": {
               "shotDistances": {
                 "n": 3,
@@ -2253,28 +3165,83 @@
               ]
             },
             "ell80": {
-              "wYds": 32.7,
-              "hYds": 23.9,
-              "tiltDeg": 18.5,
-              "dxYds": -7.1,
-              "allWYds": 29.4,
-              "allHYds": 41.1,
-              "allTiltDeg": 110.6,
-              "allDxYds": -10.3,
-              "mishitRate": 0.1,
-              "goodWindowYds": 20,
-              "goodDots": 8,
+              "wYds": 40.2,
+              "hYds": 28.3,
+              "tiltDeg": 29.6,
+              "dxYds": -6.9,
               "dyYds": 0,
-              "dyMeasuredYds": -1.8,
-              "bboxWYds": 40,
-              "bboxDYds": 31,
+              "dyMeasuredYds": 0,
+              "bboxWYds": 37.6,
+              "bboxDYds": 31.6,
+              "printedCoverage": 0.7,
+              "printedBboxYds": [
+                33,
+                27
+              ],
               "source": "shotPattern",
-              "capturedAt": "2026-10-04",
+              "capturedAt": "2026-10-11",
               "lies": "Tee & Fairway",
-              "n": 10,
-              "confidence": "medium",
-              "ringWYds": 15.3,
-              "ringDots": 8
+              "n": 15,
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  -14,
+                  -17.2
+                ],
+                [
+                  -12.8,
+                  -6.2
+                ],
+                [
+                  -16.7,
+                  -3.1
+                ],
+                [
+                  -12.6,
+                  -2.1
+                ],
+                [
+                  -5.1,
+                  -1.4
+                ],
+                [
+                  3.6,
+                  -0.4
+                ],
+                [
+                  4.5,
+                  -0.1
+                ],
+                [
+                  -22.6,
+                  0.1
+                ],
+                [
+                  -31.9,
+                  0.6
+                ],
+                [
+                  2.3,
+                  3.8
+                ],
+                [
+                  -1.9,
+                  7
+                ],
+                [
+                  -12.5,
+                  7.8
+                ],
+                [
+                  -8.9,
+                  16.5
+                ],
+                [
+                  1.1,
+                  19.6
+                ]
+              ]
             },
             "extra": {
               "sheetN": 10,
@@ -2420,7 +3387,53 @@
                 "data/extracted/2026-10-04-screens.json#approach.clubSheets.rough.8i (rec-200407)"
               ]
             },
-            "ell80": null,
+            "ell80": {
+              "wYds": 62.1,
+              "hYds": 38,
+              "tiltDeg": 78,
+              "dxYds": -9.2,
+              "dyYds": 0,
+              "dyMeasuredYds": -7.8,
+              "bboxWYds": 39.3,
+              "bboxDYds": 61.3,
+              "printedCoverage": 0.7,
+              "printedBboxYds": [
+                34,
+                53
+              ],
+              "source": "shotPattern",
+              "capturedAt": "2026-10-11",
+              "lies": "Rough",
+              "n": 6,
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  -15.4,
+                  -6.8
+                ],
+                [
+                  -14.6,
+                  -6.8
+                ],
+                [
+                  -3.6,
+                  -1
+                ],
+                [
+                  -25.5,
+                  1
+                ],
+                [
+                  6.2,
+                  2.7
+                ],
+                [
+                  -7.4,
+                  38.5
+                ]
+              ]
+            },
             "extra": {
               "shotDistances": {
                 "n": 4,
@@ -2549,28 +3562,95 @@
               ]
             },
             "ell80": {
-              "wYds": 44.8,
-              "hYds": 13.7,
-              "tiltDeg": 9.8,
-              "dxYds": 2.6,
-              "allWYds": 19.3,
-              "allHYds": 41.3,
-              "allTiltDeg": 98.2,
-              "allDxYds": 2.2,
-              "mishitRate": 0.167,
-              "goodWindowYds": 20,
-              "goodDots": 10,
+              "wYds": 42,
+              "hYds": 23.6,
+              "tiltDeg": 10.7,
+              "dxYds": 3.3,
               "dyYds": 0,
-              "dyMeasuredYds": 2.7,
-              "bboxWYds": 41,
-              "bboxDYds": 20,
+              "dyMeasuredYds": 2.6,
+              "bboxWYds": 41.5,
+              "bboxDYds": 24.5,
+              "printedCoverage": 0.7,
+              "printedBboxYds": [
+                36,
+                21
+              ],
               "source": "shotPattern",
-              "capturedAt": "2026-10-04",
+              "capturedAt": "2026-10-11",
               "lies": "Tee & Fairway",
-              "n": 12,
-              "confidence": "medium",
-              "ringWYds": 30.1,
-              "ringDots": 10
+              "n": 19,
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  -3.6,
+                  -7.5
+                ],
+                [
+                  -4.2,
+                  -5.3
+                ],
+                [
+                  -5.2,
+                  -3.6
+                ],
+                [
+                  21.3,
+                  -3.4
+                ],
+                [
+                  -12.9,
+                  -2.8
+                ],
+                [
+                  -4,
+                  -1.2
+                ],
+                [
+                  -9,
+                  -0.9
+                ],
+                [
+                  12.2,
+                  0
+                ],
+                [
+                  14.6,
+                  0.2
+                ],
+                [
+                  18.2,
+                  1.2
+                ],
+                [
+                  19.2,
+                  1.2
+                ],
+                [
+                  -4.4,
+                  1.3
+                ],
+                [
+                  -3.8,
+                  2
+                ],
+                [
+                  24.4,
+                  5.9
+                ],
+                [
+                  -3.1,
+                  6
+                ],
+                [
+                  17.1,
+                  8
+                ],
+                [
+                  5,
+                  -14.3
+                ]
+              ]
             },
             "extra": {
               "sheetN": 12,
@@ -2728,7 +3808,49 @@
                 "data/extracted/2026-10-04-screens.json#approach.clubSheets.rough.9i (rec-200407)"
               ]
             },
-            "ell80": null,
+            "ell80": {
+              "wYds": 35.1,
+              "hYds": 20.5,
+              "tiltDeg": 67.1,
+              "dxYds": -2.5,
+              "dyYds": 0,
+              "dyMeasuredYds": -5.4,
+              "bboxWYds": 23.3,
+              "bboxDYds": 33.3,
+              "printedCoverage": 0.7,
+              "printedBboxYds": [
+                20,
+                29
+              ],
+              "source": "shotPattern",
+              "capturedAt": "2026-10-11",
+              "lies": "Rough",
+              "n": 5,
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  -6.9,
+                  -13.7
+                ],
+                [
+                  0.3,
+                  -3.7
+                ],
+                [
+                  -5,
+                  0
+                ],
+                [
+                  -8.2,
+                  8.2
+                ],
+                [
+                  7.6,
+                  8.7
+                ]
+              ]
+            },
             "extra": {
               "shotDistances": {
                 "n": 4,
@@ -2853,28 +3975,55 @@
               ]
             },
             "ell80": {
-              "wYds": 58.7,
-              "hYds": 21.3,
-              "tiltDeg": 58.2,
-              "dxYds": 5.2,
-              "allWYds": 58.7,
-              "allHYds": 21.3,
-              "allTiltDeg": 58.2,
-              "allDxYds": 5.2,
-              "mishitRate": 0,
-              "goodWindowYds": 13.4,
-              "goodDots": 4,
+              "wYds": 63.7,
+              "hYds": 25.7,
+              "tiltDeg": 46.5,
+              "dxYds": 0.5,
               "dyYds": 0,
-              "dyMeasuredYds": 8.3,
-              "bboxWYds": 36,
-              "bboxDYds": 51,
+              "dyMeasuredYds": 6.5,
+              "bboxWYds": 47.6,
+              "bboxDYds": 49.5,
+              "printedCoverage": 0.7,
+              "printedBboxYds": [
+                41,
+                43
+              ],
               "source": "shotPattern",
-              "capturedAt": "2026-10-04",
+              "capturedAt": "2026-10-11",
               "lies": "Tee & Fairway",
-              "n": 6,
-              "confidence": "low",
-              "ringWYds": 15.5,
-              "ringDots": 5
+              "n": 7,
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  4.1,
+                  -7.2
+                ],
+                [
+                  -20.5,
+                  -6
+                ],
+                [
+                  4.9,
+                  -0.6
+                ],
+                [
+                  4.4,
+                  0
+                ],
+                [
+                  -7.1,
+                  1.3
+                ],
+                [
+                  1.5,
+                  14.4
+                ],
+                [
+                  23.3,
+                  31.8
+                ]
+              ]
             },
             "extra": {
               "sheetN": 6,
@@ -2992,7 +4141,69 @@
                 "data/extracted/2026-10-04-screens.json#approach.clubSheets.rough.PW (rec-200407)"
               ]
             },
-            "ell80": null,
+            "ell80": {
+              "wYds": 89.5,
+              "hYds": 46.6,
+              "tiltDeg": 103.1,
+              "dxYds": -0.1,
+              "dyYds": 0,
+              "dyMeasuredYds": 9.5,
+              "bboxWYds": 49.7,
+              "bboxDYds": 87.8,
+              "printedCoverage": 0.7,
+              "printedBboxYds": [
+                43,
+                76
+              ],
+              "source": "shotPattern",
+              "capturedAt": "2026-10-11",
+              "lies": "Rough",
+              "n": 10,
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  6.2,
+                  -10.3
+                ],
+                [
+                  -3.4,
+                  -7.2
+                ],
+                [
+                  -3.4,
+                  -5.7
+                ],
+                [
+                  2.6,
+                  -5.4
+                ],
+                [
+                  -4.8,
+                  -0.6
+                ],
+                [
+                  10.1,
+                  0.6
+                ],
+                [
+                  32.8,
+                  3.8
+                ],
+                [
+                  -0.9,
+                  3.9
+                ],
+                [
+                  -18.8,
+                  5.8
+                ],
+                [
+                  -11.4,
+                  73.8
+                ]
+              ]
+            },
             "extra": {
               "shotDistances": {
                 "n": 9,
@@ -3146,28 +4357,91 @@
               ]
             },
             "ell80": {
-              "wYds": 23,
-              "hYds": 20.6,
-              "tiltDeg": 17.8,
+              "wYds": 43.5,
+              "hYds": 29.4,
+              "tiltDeg": 57.3,
               "dxYds": -2.7,
-              "allWYds": 29.2,
-              "allHYds": 43.7,
-              "allTiltDeg": 151.2,
-              "allDxYds": 0,
-              "mishitRate": 0.4,
-              "goodWindowYds": 11.9,
-              "goodDots": 10,
               "dyYds": 0,
-              "dyMeasuredYds": 6,
-              "bboxWYds": 33,
-              "bboxDYds": 41,
+              "dyMeasuredYds": 5.9,
+              "bboxWYds": 34.1,
+              "bboxDYds": 39.9,
+              "printedCoverage": 0.8,
+              "printedBboxYds": [
+                34,
+                40
+              ],
               "source": "shotPattern",
-              "capturedAt": "2026-10-04",
+              "capturedAt": "2026-10-11",
               "lies": "Tee & Fairway",
-              "n": 15,
-              "confidence": "medium",
-              "ringWYds": 7.8,
-              "ringDots": 14
+              "n": 16,
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  -3,
+                  -15.1
+                ],
+                [
+                  -2.1,
+                  -13.6
+                ],
+                [
+                  0,
+                  -10.2
+                ],
+                [
+                  11.8,
+                  -3.5
+                ],
+                [
+                  -12.4,
+                  -2.7
+                ],
+                [
+                  -7.1,
+                  -2.6
+                ],
+                [
+                  -3.2,
+                  -1.1
+                ],
+                [
+                  -10.4,
+                  -0.5
+                ],
+                [
+                  -4.7,
+                  0.5
+                ],
+                [
+                  -1.7,
+                  1.3
+                ],
+                [
+                  11.6,
+                  4.1
+                ],
+                [
+                  -1.3,
+                  5
+                ],
+                [
+                  -10.7,
+                  8.8
+                ],
+                [
+                  0.9,
+                  10
+                ],
+                [
+                  -4.8,
+                  23.5
+                ],
+                [
+                  24.4,
+                  24.4
+                ]
+              ]
             },
             "extra": {
               "sheetN": 15,
@@ -3321,7 +4595,49 @@
                 "data/extracted/2026-10-04-screens.json#approach.clubSheets.rough.GW (rec-200407)"
               ]
             },
-            "ell80": null,
+            "ell80": {
+              "wYds": 52.4,
+              "hYds": 24.4,
+              "tiltDeg": 58,
+              "dxYds": -4.4,
+              "dyYds": 0,
+              "dyMeasuredYds": -4.5,
+              "bboxWYds": 34.6,
+              "bboxDYds": 46.3,
+              "printedCoverage": 0.7,
+              "printedBboxYds": [
+                30,
+                40
+              ],
+              "source": "shotPattern",
+              "capturedAt": "2026-10-11",
+              "lies": "Rough",
+              "n": 5,
+              "confidence": null,
+              "model": "shots",
+              "shots": [
+                [
+                  3.1,
+                  -4.4
+                ],
+                [
+                  -5.1,
+                  -3.9
+                ],
+                [
+                  -7.6,
+                  0
+                ],
+                [
+                  -12.9,
+                  5.3
+                ],
+                [
+                  11.7,
+                  26.7
+                ]
+              ]
+            },
             "extra": {
               "shotDistances": {
                 "n": 3,

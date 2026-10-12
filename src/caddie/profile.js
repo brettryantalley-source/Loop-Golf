@@ -260,7 +260,10 @@ export function resolveEntry(P, clubId, swing, lie, opts = {}) {
   const roll = rollLie * rollCondMult(cfg, conditions, family);
   // §5 UI addendum: Shot Pattern's 80% ellipse is the dispersion core where it exists.
   const ellHit = firstNonNull(chain, "ell80");
-  const ell80 = ellHit ? { ...ellHit.value, sdMult } : null;
+  // R11: the ring is widened from the lie IT was measured on (a rough sheet's ring is already a rough
+  // ring), not the lie the σs came from; the two were always the same lie before the Oct 11 rough sheets.
+  const ellSdMult = ellHit ? (cfg.LIE_SD_MULT[lie] ?? 1) / (cfg.LIE_SD_MULT[ellHit.lie] ?? 1) : sdMult;
+  const ell80 = ellHit ? { ...ellHit.value, sdMult: ellSdMult } : null;
   if (ell80) provenance.ell80 = provFor(chain.find((c) => c.lie === ellHit.lie).entry, "ell80", clubId, swing, ellHit.lie);
   // C45 (v22.56, D127): what the map draws — Shot Pattern's rings and real shots measured from this lie,
   // else from the nearest lie in the chain, widened from the lie they were measured on (LIE_SD_MULT).

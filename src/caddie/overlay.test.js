@@ -534,19 +534,27 @@ test("C17: a ring drawn from σs is capped; a fitted ring (the irons, and the te
   assert.deepEqual(ellipseFromEntry(iron), uncapped);
 });
 
-test("C17: a club whose good dots are too few keeps Shot Pattern's ring and draws no mishits; the rest are split", () => {
+test("C17 / R11: a club with an Oct 11 sheet prices from its shots; SW and LW keep the split ring; the 2-hybrid's fairway reads its tee sheet", () => {
   const ring = (id) => Object.values(RAW.clubs.find((c) => c.id === id).entries).map((l) => l?.fairway?.ell80).find(Boolean);
-  for (const id of ["PW"]) { const r = ring(id); assert.equal(r.mishitRate, 0, id); assert.equal(r.allWYds, r.wYds, id); assert.equal(r.allHYds, r.hYds, id); }
-  // C22 (D113): the 2-hybrid's thin fairway ring gives way to its tee ring, which has the good shots
+  // R11 (D130): every club Shot Pattern measured on Oct 11 draws from his shots on that sheet, no mishit split
+  for (const id of ["5i", "6i", "7i", "8i", "9i", "PW", "GW"]) {
+    const r = ring(id);
+    assert.equal(r.model, "shots", id);
+    assert.equal(r.capturedAt, "2026-10-11", id);
+    assert.ok(Array.isArray(r.shots) && r.shots.length >= 5, `${id}: ${r.shots?.length} shots`);
+    assert.equal(r.mishitRate, undefined, `${id}: no split`);
+  }
+  // C22 (D113): the 2-hybrid's thin fairway sheet gives way to its tee sheet, which has the good shots
   assert.equal(ring("2Hy"), undefined);
   const hy = resolveEntry(P, "2Hy", "full", "fairway");
-  assert.ok(hy.ell80.goodDots >= 5 && hy.ell80.mishitRate > 0, "the fairway reads the tee ring");
-  assert.ok(hy.ell80.hYds < 40, `depth ${hy.ell80.hYds} (was 135)`);
-  for (const id of ["5i", "6i", "7i", "8i", "9i", "GW", "SW", "LW"]) {
+  assert.equal(hy.provenance.ell80.lie, "tee", "the fairway reads the tee sheet");
+  assert.ok(hy.ell80.shots.length >= 5, `${hy.ell80.shots.length} tee shots`);
+  // no Oct 11 sheet for the SW and the LW: the Oct 4 good ring and its mishit split stay
+  for (const id of ["SW", "LW"]) {
     const r = ring(id);
     assert.ok(r.goodDots >= 5, id);
     assert.ok(r.mishitRate >= 0 && r.mishitRate < 1, id);
-    assert.ok(r.wYds * r.hYds < r.allWYds * r.allHYds * 1.6 || id === "9i", `${id}: the good ring is not larger than the printed one`);
+    assert.equal(r.shots, undefined, id);
   }
 });
 

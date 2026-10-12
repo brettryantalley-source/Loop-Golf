@@ -50,8 +50,9 @@ test("pinDepthClass: presets as given; a custom pin falls in a third of the gree
 });
 
 test("T44 front pin → club up to the middle of the green, aimed at the center or fat side, never the flag", () => {
-  // v22.23 (D94: a shot finishes at its total): from 4 yds back on the tee, 178 to the middle
-  const raw = { shotNo: 1, ball: { x: 0, y: -4 }, lieType: "tee", pinPos: "front" };
+  // v22.23 (D94: a shot finishes at its total). R11 (D130): from 4 yds back the plain 7-iron already plays to the
+  // middle on his Oct 11 shots, so from 16 back, 191 to the middle: the plain 7-iron goes at the flag
+  const raw = { shotNo: 1, ball: { x: 0, y: -16 }, lieType: "tee", pinPos: "front" };
   const r = recommend(raw, bunkeredPar3, P), off = recommend(raw, bunkeredPar3, Poff);
   const g = greenDistances(bunkeredPar3, raw.ball, "front");
   assert.deepEqual(r.strategy, ["pin-front"]);
@@ -122,8 +123,10 @@ test("T48 Brett's numbers overrule the pin rule only on more trouble or a big co
 test("T49 no hero golf: from the trees SAFE stays out of trouble 9 times in 10; the hero shot is still shown as AGGRESSIVE", () => {
   // just inside the tree line (Oct 4 profile, D85: from −35, 260 the plain pick was no longer a hero shot;
   // v22.23, D94: from −32, 250 the plain pick is a clean wedge, so 30 yds farther back; v22.33, D104:
-  // the extra roll off a bad lie comes out of the carry, and from −32, 280 the plain pick is clean too)
-  const raw = { shotNo: 2, ball: { x: -35, y: 300 }, lieType: "recovery" };
+  // the extra roll off a bad lie comes out of the carry, and from −32, 280 the plain pick is clean too.
+  // R11, D130: on his Oct 11 shots −35, 300 is clean as well, so 18 yds inside the tree line, 120 from the
+  // green: the plain 8-iron finds trouble 1 in 5 and SAFE punches out)
+  const raw = { shotNo: 2, ball: { x: -45, y: 290 }, lieType: "recovery" };
   const r = recommend(raw, treesLeft, P), off = recommend(raw, treesLeft, Poff);
   assert.ok(off.safe.troubleRate > DEFAULT_CONFIG.STRATEGY.noHeroMaxTrouble, `the plain pick is a hero shot (${off.safe.troubleRate})`);
   assert.ok(r.strategy.includes("no-hero"), JSON.stringify(r.strategy));
@@ -184,7 +187,9 @@ const greenside = { ...openPar5, id: "greenside-bunker", hazards: [
 
 test("C9: a fairway bunker with water ahead → no hero: SAFE stays clean 9 times in 10, the long club is still priced", async () => {
   const { whyLine } = await import("./reasons.js");
-  const raw = { shotNo: 3, ball: { x: 0, y: 345 }, lieType: "sand", par: 5 };
+  // R11 (D130): from 345 the plain pick is already a clean lay-up on his Oct 11 shots; from 355, 169 to the
+  // front, the 4-hybrid at the green finds the water 1 in 5
+  const raw = { shotNo: 3, ball: { x: 0, y: 355 }, lieType: "sand", par: 5 };
   const r = recommend(raw, fwBunker, P);
   assert.ok(r.context.distances.front > DEFAULT_CONFIG.STRATEGY.fairwayBunkerMinYds);
   assert.ok(r.strategy.includes("no-hero"), JSON.stringify(r.strategy));
