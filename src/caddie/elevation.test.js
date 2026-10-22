@@ -40,7 +40,7 @@ const along = (yds) => {
 };
 
 test("C34: the five bundled maps carry a 3DEP grid; Bradshaw's reads the lidar at Red 2's tee and green", () => {
-  for (const n of ["woodmont", "chicopee", "riverpines", "hampton", "bradshaw"]) {
+  for (const n of ["woodmont", "chicopee", "riverpines", "hampton", "bradshaw", "creekside"]) {
     const s = elevationSamples(read(n));
     assert.ok(s && s.length > 1500, `${n}: ${s?.length} samples`);
     assert.ok(s.every((p) => Number.isFinite(p.elevM) && p.elevM > 200 && p.elevM < 500), `${n}: metres above sea level, north Georgia`);
