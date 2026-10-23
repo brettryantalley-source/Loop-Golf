@@ -91,6 +91,19 @@ export function localGeometryFor(registry, clubId) {
   return { version: `${data.apiId}@${data.version}`, geometry, name: data.name || null, elevation: elevationSamples(data), greenGrids: greenGrids(data) };
 }
 
+/**
+ * v22.68: which id keys a course's map. Setup folds every course sharing a club name into one club
+ * keyed by its lowest API id (routing.js), right for a 27-hole club whose file answers to every
+ * routing's id, wrong for two separate 18s: Golf Club of Georgia's Creekside (yx7d5vnk) was keyed
+ * by Lakeside's id (mse9vsm1), so its bundled map never loaded (Brett, Oct 23). When the club id
+ * has no file and the course's own id does, the course's own id keys the map.
+ */
+export function bundledMapId(registry, ownId, clubId) {
+  const has = (id) => id != null && Array.isArray(registry) && registry.some((d) => d && (String(d.apiId) === String(id) || (d.apiIds || []).some((x) => String(x) === String(id))));
+  if (clubId != null && !has(clubId) && has(ownId)) return ownId;
+  return clubId ?? ownId;
+}
+
 /** The bundled map's own satellite imagery ({ url, tileSize, maxzoom, zooms, probeZoom, credit }), or null (MapTiler). */
 export function imageryFor(registry, clubId) {
   if (clubId == null || !Array.isArray(registry)) return null;
