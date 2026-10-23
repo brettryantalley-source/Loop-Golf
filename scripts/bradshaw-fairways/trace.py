@@ -10,13 +10,14 @@ from skimage import measure
 from shapely.geometry import Polygon, MultiPolygon
 from shapely.ops import unary_union
 
-S = os.environ.get('WORK', '/tmp/bradshaw-fairways'); os.makedirs(S, exist_ok=True)
+CLUB = os.environ.get('CLUB', 'bradshaw')  # the club file under src/localGeometry/
+S = os.environ.get('WORK', '/tmp/' + CLUB + '-fairways'); os.makedirs(S, exist_ok=True)
 z = 18
-meta = json.load(open(f'{S}/bradshaw-z{z}.json'))
-d = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'localGeometry', 'bradshaw.json')))
-img = np.asarray(Image.open(f'{S}/bradshaw-z{z}.jpg').convert('RGB')).astype(float)
+meta = json.load(open(f'{S}/{CLUB}-z{z}.json'))
+d = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'localGeometry', CLUB + '.json')))
+img = np.asarray(Image.open(f'{S}/{CLUB}-z{z}.jpg').convert('RGB')).astype(float)
 H, W, _ = img.shape
-lat0 = 34.159
+lat0 = next(w['pts'][0][0] for w in d['ways'] if (w.get('tags') or {}).get('golf') == 'hole')   # the club's latitude (Bradshaw 34.159)
 M_PER_PX = 156543.03392 * math.cos(math.radians(lat0)) / 2 ** z
 
 def px(lat, lon):
@@ -47,6 +48,7 @@ for w in d['ways']:
     t = w.get('tags') or {}; g = t.get('golf')
     if g == 'hole': holes.append(w); continue
     if t.get('natural') == 'wood': woods.append(w); continue
+    if t.get('natural') == 'water': by.setdefault('water', []).extend(rings_of(w)); continue
     by.setdefault(g, []).extend(rings_of(w))
 fw_osm = poly_mask(by.get('fairway', []))
 excl = poly_mask(by.get('green', []) + by.get('tee', []) + by.get('bunker', []) + by.get('water_hazard', []) + by.get('water', []))
@@ -85,7 +87,7 @@ allin = ndimage.binary_erosion(fw_osm, iterations=3)
 pooledA = X(allin)
 pooled = (pooledA.mean(0), np.cov(pooledA.T) + np.eye(2))
 for i, w in enumerate(holes):
-    name = (w.get('tags') or {}).get('name')
+    name = (w.get('tags') or {}).get('name') or (w.get('tags') or {}).get('ref')
     corr = (near == i) & (dmin <= CORR)
     osm_here = fw_osm & corr
     inner = ndimage.binary_erosion(osm_here, iterations=3)

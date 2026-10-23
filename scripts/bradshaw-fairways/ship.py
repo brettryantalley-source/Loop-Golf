@@ -18,11 +18,12 @@ from shapely.ops import unary_union
 from shapely import make_valid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-S = os.environ.get('WORK', '/tmp/bradshaw-fairways')
+CLUB = os.environ.get('CLUB', 'bradshaw')  # the club file under src/localGeometry/
+S = os.environ.get('WORK', '/tmp/' + CLUB + '-fairways')
 MIN_DPRIME, MIN_LR, MIN_AREA = 2.8, 6.0, 150
-d = json.load(open(os.path.join(HERE, '..', '..', 'src', 'localGeometry', 'bradshaw.json')))
+d = json.load(open(os.path.join(HERE, '..', '..', 'src', 'localGeometry', CLUB + '.json')))
 pieces = json.load(open(f'{S}/additions.json'))['pieces']
-lat0 = 34.159; kx = 111320 * math.cos(math.radians(lat0)); ky = 111320
+lat0 = next(w['pts'][0][0] for w in d['ways'] if (w.get('tags') or {}).get('golf') == 'hole'); kx = 111320 * math.cos(math.radians(lat0)); ky = 111320
 to_m = lambda r: [(lo * kx, la * ky) for la, lo in r]
 to_ll = lambda cs: [[round(y / ky, 7), round(x / kx, 7)] for x, y in cs]
 
