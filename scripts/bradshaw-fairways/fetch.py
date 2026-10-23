@@ -1,8 +1,9 @@
 # Fetch Esri Wayback tiles covering Bradshaw Farm at one zoom; stitch into one image + its georef.
 import json, math, os, subprocess, sys
 from PIL import Image
-S = os.environ.get('WORK', '/tmp/bradshaw-fairways'); os.makedirs(S, exist_ok=True)
-d = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'localGeometry', 'bradshaw.json')))
+CLUB = os.environ.get('CLUB', 'bradshaw')  # the club file under src/localGeometry/
+S = os.environ.get('WORK', '/tmp/' + CLUB + '-fairways'); os.makedirs(S, exist_ok=True)
+d = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'localGeometry', CLUB + '.json')))
 url = d['imagery']['url']
 if os.environ.get('RELEASE'):                       # another Wayback capture, e.g. RELEASE=63116 (the winter one)
     import re; url = re.sub(r'/tile/\d+/', f"/tile/{os.environ['RELEASE']}/", url)
@@ -28,6 +29,6 @@ for tx in range(X0, X1 + 1):
             subprocess.run(['curl', '-sL', '-o', fn, u], timeout=60)
         try: img.paste(Image.open(fn).convert('RGB'), ((tx - X0) * 256, (ty - Y0) * 256))
         except Exception: miss += 1
-img.save(f'{S}/bradshaw-z{z}.jpg', quality=92)
-json.dump({'z': z, 'X0': X0, 'Y0': Y0, 'W': W, 'H': H}, open(f'{S}/bradshaw-z{z}.json', 'w'))
+img.save(f'{S}/{CLUB}-z{z}.jpg', quality=92)
+json.dump({'z': z, 'X0': X0, 'Y0': Y0, 'W': W, 'H': H}, open(f'{S}/{CLUB}-z{z}.json', 'w'))
 print('tiles', (X1 - X0 + 1) * (Y1 - Y0 + 1), 'missing', miss, 'size', W, H)

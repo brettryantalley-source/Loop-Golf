@@ -4,7 +4,11 @@ Brett, Oct 11: "clear places the fairway exists from the satellite image that ar
 This tool grows Bradshaw's OSM fairways from an Esri photo. Offline only (numpy, scipy, pillow, scikit-image,
 shapely; Node 18+ for `apply.mjs`); nothing here is bundled or run by `npm test`.
 
-Order (tiles and masks go to `$WORK`, default `/tmp/bradshaw-fairways`):
+Any bundled club (Oct 23): `CLUB=creekside` (the file under `src/localGeometry/`, default `bradshaw`) runs steps 1–4 on
+that club; holes are read by `name`, else `ref`. `apply.mjs` still writes Bradshaw only. Creekside's run on its Mar 2026
+dormant capture (`RELEASE=22869`) found nothing worth shipping (OPEN-ITEMS F46).
+
+Order (tiles and masks go to `$WORK`, default `/tmp/$CLUB-fairways`):
 
 1. `RELEASE=63116 python3 scripts/bradshaw-fairways/fetch.py 18` — the club's z18 tiles from the winter capture
    (dormant tan rough, green fairway), stitched (442 tiles). Without `RELEASE` it fetches the file's own photo

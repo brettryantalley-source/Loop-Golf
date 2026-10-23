@@ -49,8 +49,13 @@ after C13 (P11) · R9 no native app for now (P1). Q1 answered the same day (C8).
   one sits across the creek ~100 yds behind OSM's forward pad — if you're standing on grass the map calls trees or rough,
   dictate a Note and the pad moves. Watch the creeks: a ball read as water is within ~4 yds of OSM's centreline, a wider
   pool reads rough. OB is on for the first time at a bundled club (the club outline): if a lie by a house reads OB where
-  stakes say otherwise, Note it. 17's and other tee landing areas may read rough where OSM's fairway stops short
-  (C12-shaped). `docs/GAMEPLAN-creekside.md` is the engine's plan from the Blue tees.
+  stakes say otherwise, Note it. **Fairways (checked Oct 23, not changed):** the C40 photo tool on Creekside's Mar 2026
+  dormant capture (Wayback 22869) found nothing past OSM's edges (+1,700 m² over 61,000, every piece under the
+  shipping bar), and the mowing stripes sit inside OSM's outlines on both photos. At your ~290-yd drive the hole line
+  reads rough on 2, 6, 10 and 13 because it cuts the dogleg corners or runs along the fairway's edge; the caddie aims
+  at the fairway's middle, not the line. A hand strip was built and left out (Brett, Oct 23): it would have called
+  mown rough fairway. On **2, 6, 10 and 13** say whether the drive's landing area is fairway or rough where the map
+  says. `docs/GAMEPLAN-creekside.md` is the engine's plan from the Blue tees.
 - **F45.** Front and back pins (v22.65, D138): the caddie still plays to the middle of the green, but only where that
   costs little or keeps you out of trouble; elsewhere it now takes its best-priced shot at the flag's side (about
   250 sweep approaches changed). When a call goes at a front or back pin, say whether it felt too bold, with the hole.
