@@ -182,10 +182,12 @@ test("chicopee: every routing id finds the trace; keys match the Overpass geomet
 test("chicopee and woodmont name their own imagery (Wayback, 256-px tiles); other clubs keep MapTiler", () => {
   for (const id of ["rp4r4x8z", woodmont.apiId]) {
     const img = imageryFor([woodmont, chicopee], id);
-    assert.ok(img && /wayback\.maptiles\.arcgis\.com/.test(img.url) && img.url.includes("{z}/{y}/{x}"), id);
+    assert.ok(img && img.url.length > 0, id);
     assert.equal(img.tileSize, 256);
   }
-  assert.ok(imageryFor([woodmont, chicopee], woodmont.apiId).url.includes("/tile/64001/"), "woodmont: the Oct 10 2025 capture");
+  assert.ok(imageryFor([woodmont, chicopee], chicopee.apiId).url.includes("{z}/{y}/{x}"), "chicopee: Esri Wayback tiles");
+  assert.ok(imageryFor([woodmont, chicopee], woodmont.apiId).url.startsWith("https://gis.cherokeecountyga.gov/"), "woodmont: Cherokee County's 6-inch photo (D140)");
+  assert.ok(woodmont.imageryEsri.url.includes("/tile/64001/"), "woodmont keeps the Oct 10 2025 Esri capture to go back to");
   assert.ok(imageryFor([woodmont, chicopee], chicopee.apiId).url.includes("/tile/49059/"), "chicopee: leaf-off (R4, v22.28)");
   assert.equal(chicopee.version, 5, "bumped so the phones' cached copy refreshes once (3: leaf-off, v22.28; 4: the 3DEP grid, v22.45; 5: the lidar trees, v22.61)");
   assert.equal(imageryFor([woodmont, chicopee], "not-a-local-club"), null);
@@ -238,7 +240,7 @@ test("every bundled map's trees are USGS lidar (D133–D134): no photo-traced wo
 const riverpines = JSON.parse(readFileSync(join(here, "localGeometry", "riverpines.json"), "utf8"));
 const hampton = JSON.parse(readFileSync(join(here, "localGeometry", "hampton.json"), "utf8"));
 const OSM_CLUBS = [
-  { data: riverpines, id: "n5n1n2f7", par: [4, 4, 3, 4, 3, 4, 4, 5, 4, 4, 4, 4, 4, 3, 4, 3, 5, 4], release: "/tile/22869/" },
+  { data: riverpines, id: "n5n1n2f7", par: [4, 4, 3, 4, 3, 4, 4, 5, 4, 4, 4, 4, 4, 3, 4, 3, 5, 4], release: "gismaps.fultoncountyga.gov/" },  // Fulton County's photo since D140; Esri 22869 kept in imageryEsri
   { data: hampton, id: "xa17vk0a", par: [4, 3, 4, 4, 5, 4, 5, 3, 4, 4, 3, 4, 5, 3, 5, 4, 3, 4], release: "/tile/64001/" },
 ];
 
@@ -274,7 +276,7 @@ test("a multipolygon in a local file keeps its inner rings: a fairway with a bun
   assert.equal(f.inner.length, 1);
 });
 
-test("riverpines and hampton fly their own Esri photo", () => {
+test("riverpines and hampton fly their own photo (riverpines: Fulton County's, D140)", () => {
   for (const { id, release } of OSM_CLUBS) {
     const img = imageryFor([woodmont, riverpines, hampton], id);
     assert.ok(img && img.url.includes(release) && img.tileSize === 256, id);
@@ -333,9 +335,10 @@ test("bradshaw: every Red and White hole sees trees, and no Red or White tee sta
   }
 });
 
-test("bradshaw flies the Sep 2023 leaf-on Esri photo (D125)", () => {
+test("bradshaw flies Cherokee County's photo (D140), the Sep 2023 Esri photo (D125) kept to go back to", () => {
   const img = imageryFor([woodmont, bradshaw], "pr605r02");
-  assert.ok(img && img.url.includes("/tile/41468/") && img.tileSize === 256);
+  assert.ok(img && img.url.includes("{bbox-epsg-3857}") && img.url.startsWith("https://gis.cherokeecountyga.gov/") && img.tileSize === 256);
+  assert.ok(bradshaw.imageryEsri.url.includes("/tile/41468/"));
 });
 
 test("bradshaw: seven OSM fairways grown where the winter photo reads fairway past OSM's edge (C40, D135)", () => {
