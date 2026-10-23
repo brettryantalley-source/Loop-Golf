@@ -3,7 +3,7 @@
    filled by the Setup prefetch and while playing. Its name stays bogeyman-tiles-v1 (the
    Sep 28 storage-key decision), so tiles saved by v19 carry over. MapLibre is served
    same-origin from vendor/ and is in the shell so the map starts with no signal. */
-const CACHE = 'loop-golf-v22-66';
+const CACHE = 'loop-golf-v22-67';
 const TILES = 'bogeyman-tiles-v1';          // survives app-version bumps; only its own name is kept below
 const SHELL = [
   './',
@@ -25,6 +25,8 @@ const SHELL = [
 ];
 const TILE_HOST = 'api.maptiler.com';
 const WAYBACK_HOST = 'wayback.maptiles.arcgis.com';   // v22.16.8: Esri World Imagery Wayback (Chicopee's imagery)
+// v22.67 (P10, D140): county orthophotos, one export per tile (Fulton: Riverpines, Creekside; Cherokee: Woodmont, Bradshaw)
+const COUNTY_TILES = [['gismaps.fultoncountyga.gov', '/export'], ['gis.cherokeecountyga.gov', '/exportImage']];
 
 self.addEventListener('install', (event) => {
   // Per-entry, not addAll: addAll is all-or-nothing, so one flaky fetch on cellular
@@ -51,7 +53,8 @@ self.addEventListener('fetch', (event) => {
 
   // Satellite tiles: cache-first. Imagery does not change between rounds, and at the course
   // there may be no signal at all. Pre-fetched on wifi from Setup; also filled while playing.
-  if ((url.hostname === TILE_HOST && url.pathname.startsWith('/tiles/')) || (url.hostname === WAYBACK_HOST && url.pathname.includes('/tile/'))) {
+  if ((url.hostname === TILE_HOST && url.pathname.startsWith('/tiles/')) || (url.hostname === WAYBACK_HOST && url.pathname.includes('/tile/'))
+      || COUNTY_TILES.some(([h, p]) => url.hostname === h && url.pathname.endsWith(p))) {
     event.respondWith(
       caches.open(TILES).then((cache) =>
         cache.match(req).then((hit) => hit || fetch(req).then((res) => {

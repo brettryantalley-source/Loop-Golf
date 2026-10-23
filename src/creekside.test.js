@@ -33,7 +33,8 @@ test("D139: the file is found by the course's API id, parses with no warning, an
   assert.equal(localGeometryFor([data], "mse9vsm1"), null, "Lakeside is not this file");
   assert.deepEqual(geo.warnings, []);
   assert.ok(geo.boundary && geo.boundary.ring.length > 200, "OSM's club outline holds every Creekside shape, so it is the OB line");
-  assert.equal(data.imagery.url.split("/tile/")[1].split("/")[0], "41468", "the Sep 2023 leaf-on Esri capture");
+  assert.ok(data.imagery.url.startsWith("https://gismaps.fultoncountyga.gov/"), "Fulton County's photo (D140)");
+  assert.equal(data.imageryEsri.url.split("/tile/")[1].split("/")[0], "41468", "the Sep 2023 leaf-on Esri capture, kept to go back to");
 });
 
 test("D139: coverage 18 of 18, pars the card's, every line ends in its green, every hole builds with tees, a fairway on par 4s and 5s", () => {

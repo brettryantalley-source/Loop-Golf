@@ -107,7 +107,18 @@ export function useMapLibre(wanted) {
 }
 
 /* ---------- tiles: prefetch (Setup, §11.2) and the per-hole satellite check (§4.3, T39) ---------- */
-export function tileUrl(t) { return IMAGERY.url.replace("{z}", t.z).replace("{x}", t.x).replace("{y}", t.y); }
+/* v22.67 (P10, D140): a county ArcGIS export takes the tile's Web Mercator box, `{bbox-epsg-3857}`,
+   which MapLibre fills itself. Written here with MapLibre's own arithmetic so the prefetch caches the
+   very URL the map asks for. */
+const WORLD_M = 2 * Math.PI * 6378137;
+export function tileBbox3857(t) {
+  const r = WORLD_M / 256 / 2 ** t.z, y = 2 ** t.z - t.y - 1;
+  return [256 * t.x * r - WORLD_M / 2, 256 * y * r - WORLD_M / 2, 256 * (t.x + 1) * r - WORLD_M / 2, 256 * (y + 1) * r - WORLD_M / 2].join(",");
+}
+export function tileUrl(t) {
+  const u = IMAGERY.url.replace("{z}", t.z).replace("{x}", t.x).replace("{y}", t.y);
+  return u.includes("{bbox-epsg-3857}") ? u.replace("{bbox-epsg-3857}", tileBbox3857(t)) : u;
+}
 
 const holeKeys = (geo) => Object.keys(geo?.holes || {})
   .filter((k) => geo.holes[k]?.line?.length >= 2)
