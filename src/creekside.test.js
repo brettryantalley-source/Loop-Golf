@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { localGeometryFor, elevationSamples, greenGrids } from "./localGeometry.js";
+import { localGeometryFor, elevationSamples, greenGrids, bundledMapId } from "./localGeometry.js";
 import { yardsBetween, haversineM, pointInRing } from "./geometry.js";
 import { coverageCheck, buildHole, detectHole } from "./caddie/geo.js";
 import { classify } from "./caddie/course.js";
@@ -119,4 +119,13 @@ test("D139: nothing wanders — every point within 3 km of the first tee (the co
     assert.ok(haversineM({ lat, lon }, a) < 3000, `${w.tags.golf || w.tags.natural || w.tags.leisure} point ${lat},${lon}`);
   }
   for (const w of data.ways) if (w.tags.golf !== "hole") for (const r of rings(w)) assert.deepEqual(r[0], r[r.length - 1], `${w.tags.golf || w.tags.natural} ring is closed`);
+});
+
+test("v22.68: picked through Setup's club row (Creekside + Lakeside folded, keyed by Lakeside's id), Creekside still finds its map", () => {
+  const reg = [data];
+  assert.equal(bundledMapId(reg, "yx7d5vnk", "mse9vsm1"), "yx7d5vnk", "Creekside under the club's id");
+  assert.equal(bundledMapId(reg, "mse9vsm1", "mse9vsm1"), "mse9vsm1", "Lakeside keeps the club id (no file)");
+  assert.equal(bundledMapId(reg, "yx7d5vnk", undefined), "yx7d5vnk", "no club id: its own");
+  const bradshaw = { apiId: "0d614xe6", apiIds: ["0d614xe6", "pr605r02", "xs7ypdb7"] };
+  assert.equal(bundledMapId([bradshaw], "pr605r02", "0d614xe6"), "0d614xe6", "a 27-hole club keeps one key across routings");
 });
