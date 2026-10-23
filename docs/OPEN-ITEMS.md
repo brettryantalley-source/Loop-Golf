@@ -20,7 +20,7 @@ IDs: **Q** a question only Brett can answer · **R** a recommendation waiting on
 
 1. **Next code chat:** Brett, Oct 12: what he'd send (S, F7 notes, F9) isn't coming soon and must not hold up the
    builds. Each Code item below goes ahead without it, C12's fairways next. C40 shipped in v22.63 (D135), C33 in v22.64 (D136), C10's sweep found nothing broken (D137); R12 shipped in v22.65 (D138). C13
-   closed by lidar (D132); Every mapped club's trees from lidar in v22.61–v22.62 (D133–D134). C14 is the only one that can't (it is his old rounds): parked until he sends them.
+   closed by lidar (D132); Every mapped club's trees from lidar in v22.61–v22.62 (D133–D134).
 2. **Next round:** the **F** list.
 
 ---
@@ -190,10 +190,6 @@ after C13 (P11) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### Things to send (S)
 None of these holds up a build (Brett, Oct 12); each makes one better when it comes.
-- **S1.** Shot Pattern screen recordings of five rounds: Sugar Creek 7/26, Chicopee Mill/School 7/17,
-  Woodmont 6/27, Riverpines 6/21, Woodmont 6/17. → C14.
-- **S2.** GHIN rounds from before May 16: at least two, hole-by-hole or just the differentials. → C14.
-- **S3.** GHIN's hole-by-hole for Bear Slide 6/10 and Cider Ridge 6/6. → C14, after S2.
 - **S4.** 18 Shot Pattern hole screenshots in the plain 2D view: Chicopee Village 1–9 and Mill 1–9.
   The Village 1–8 screenshots sent Oct 3 never reached the repo. Green slope maps are optional. → C12.
 - **S5.** The Driving tab's landing zones (Casual · Last 10). The tee dispersion screens arrived
@@ -213,7 +209,6 @@ Profile rebuilds follow the refresh workflow in `docs/HANDOFF-NEXT.md`.
 | # | Build | Waits on | Model |
 |---|---|---|---|
 | C12 | Chicopee fairways (trees done from lidar, D133); Village 1's are fragments left of its line | — (S4 would let them be hand traced) | Opus |
-| C14 | History data | S1–S3 (parked: not coming soon, Brett Oct 12) | Sonnet |
 
 Details for each are under **Build details** below.
 
@@ -237,14 +232,20 @@ Details for each are under **Build details** below.
   from Esri imagery and its import and automated-edit guidelines, and review each feature by hand. The app keeps
   using the bundled file until Woodmont leaves `LOCAL_GEOMETRY`. Since D132 the trace is known to sit within a
   metre of the ground.
-- **P10.** A sharper photo than Esri's (D120): Georgia's 6-inch statewide imagery is licensed to government only;
-  county orthos (Cherokee's own 6-inch is from 2006) would need each county's terms; NAIP is ~1 m, worse. Revisit if a
-  free source turns up.
+- **P10.** A sharper photo than Esri's (D120). **Found Oct 23, open (no license stated):** Fulton County's
+  `gismaps.fultoncountyga.gov/arcgispub/rest/services/Imagery/Pictometry2022_NAIP/MapServer` (tiled, winter, people
+  visible on Riverpines' greens; covers Riverpines and Creekside) and Cherokee County's
+  `gis.cherokeecountyga.gov/arcgis/rest/services/Default/ImageServer` (6-inch, winter, a dark cover on Bradshaw's
+  green; covers Woodmont and Bradshaw). Both answer without a token. Neither states a licence; the Fulton photo is
+  Pictometry's (EagleView), usually licensed to the county, not open. Forsyth (Hampton) has nothing public; Hall
+  (Chicopee) is blocked from the cloud. Waits on Brett: ask each county GIS office whether an app may draw and
+  cache the tiles. Georgia's 6-inch statewide imagery stays government-only; NAIP is ~1 m.
 
 ## Never closed from `HANDOFF-NEXT.md` (low priority)
 Broadie baseline checked against the book (D1–D2) · Overpass / Open-Meteo field names and CORS ·
-MapTiler offline-caching terms (D19) · iOS PWA geolocation on first run · finesse carries for GW / SW / LW · Ironwood OSM tracing (prompt
-handed to Brett Sep 29). Pencil-filter performance on the phone is now checked in F5.
+MapTiler offline-caching terms (D19) · iOS PWA geolocation on first run · finesse carries for GW / SW / LW. Pencil-filter performance on the phone is now checked in F5.
+
+**Dropped Oct 23 (Brett):** C14 (older history: S1–S3 shot lists, pre-May GHIN rounds, Bear Slide and Cider Ridge cards) and Ironwood's OSM tracing; Ironwood stays in marked-green mode.
 
 **Closed Oct 11:** D31's target clamp (a distance nudge moving the target without moving `Plays`) — since
 v22.41 (D112) in-round nudges no longer move the club, target or line (`NUDGES_MOVE_CALL: false`); reopen only if
@@ -276,26 +277,6 @@ Review sheet (a shot Loop logged that he hasn't confirmed); free green-reading m
   1206-px width from the tee → target → pin yardages, mask the UI, never trace under it. Keep the 27 hole ways' OSM
   `id`s; bump `version`; check with `buildHole` + `recommend` from each tee (SAFE should land on fairway) and a review
   sheet per hole.
-
-### C14. History data (S1–S3)
-- **Q2, card totals (answered Oct 12):** both cards stay (Beachwood 84, Chicopee 7/17 80): GHIN's 86 and 81 are
-  right, but nobody knows which holes. If Brett ever sends GHIN's hole-by-hole, fix `scores` / `cardTotal` in
-  `src/seedRounds.js` (Beachwood also its `shots.json`, then `npm run import:shots`) and re-run `seedMatch`:
-  Chicopee stays a win only if the stroke is on 10, 11 or 12. Woodmont 6/27 and 6/17 need nothing.
-- **S2, older GHIN rounds:** add them to `data/extracted/2026-09-30-ghin-scores.json`
-  (`beforeJune: true`). The test `SEED_ROUNDS: ghostDiff is the last-5 …` (`src/seedRounds.test.js`)
-  derives `ghostDiff`; today 6/17 is 10.5 (W 4.5–3.5, ghost 84) and 6/21 is 9.5 (W 7.5–0.5, ghost 82).
-  Update the `seedMatch` table and tell Brett if either result flips.
-- **S3, two new cards:** Bear Slide 6/10 (Blue, 72.3 / 134, posted 84, diff 9.0, `gross` 83) and Cider
-  Ridge 6/6 (II, 71.7 / 130, posted 82, diff 8.1, `gross` 81) as `SEED_ROUNDS` entries in the existing
-  shape. Take `strokeIndex` from golfcourseapi after checking the pars hole by hole, as D72 did.
-  Tests: `SEED_ROUNDS.length` 12 → 14, the GHIN-per-date map, the `seedMatch` table, the 6–4–2 tally.
-  The ghost must not move, since only the five newest seeds reach the last-5.
-- **S1, shot lists:** the routine and conventions are in `docs/HANDOFF-NEXT.md` ("Routine for each").
-  Reconcile every hole to the card in `src/seedRounds.js` (7/17 to 80, Q2). Check a
-  recording isn't a repeat first: two of Oct 1's five were the 8/15 round again. Two parallel
-  subagents, one round each, worked well; the check is `holesShort: []` plus strokes-gained sums that
-  match the Summary tab. Data-only commits don't bump the build tag.
 
 ---
 
