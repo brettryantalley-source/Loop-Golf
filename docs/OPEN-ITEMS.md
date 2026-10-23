@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 Brett's test notes of Oct 10 (C20–C29), and his notes from the first Bradshaw Farm round, Oct 11 (C34–C44; screenshots in `data/raw/2026-10-11/`), and his notes after the Bradshaw round that afternoon (C46). Duplicates are merged and anything already shipped is
-dropped. State: **v22.65** (R12, the pin rule must buy something, D138; C10's sweep Oct 12, D137; v22.64 = C33, the short-game bands learn from his chips, D136; v22.63 = C40, Bradshaw's fairways, D135; v22.62 = lidar trees at the other four clubs, D134; v22.61 = C12's trees, D133; v22.60 = R10, D131; v22.59 = R11, D130; v22.58 = C47, D129; v22.57 = C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90; C13 closed Oct 12 without a build, D132), 458 tests, decisions D1–D138; the next
-decision is **D139**.
+dropped. State: **v22.66** (Creekside mapped + `scripts/gameplan.mjs`, D139; v22.65 = R12, the pin rule must buy something, D138; C10's sweep Oct 12, D137; v22.64 = C33, the short-game bands learn from his chips, D136; v22.63 = C40, Bradshaw's fairways, D135; v22.62 = lidar trees at the other four clubs, D134; v22.61 = C12's trees, D133; v22.60 = R10, D131; v22.59 = R11, D130; v22.58 = C47, D129; v22.57 = C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90; C13 closed Oct 12 without a build, D132), 466 tests, decisions D1–D139; the next
+decision is **D140**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -43,7 +43,14 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (P11) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.65 · Oct 12**.
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.66 · Oct 22**.
+- **F46.** Creekside, Oct 24 (v22.66, D139): on Setup pick **Golf Club Of Georgia — Creekside**; the satellite check should
+  read all 18 (holes 9–13 come from the bundle, not Overpass). On the **5th tee** check the map's back pad: the traced
+  one sits across the creek ~100 yds behind OSM's forward pad — if you're standing on grass the map calls trees or rough,
+  dictate a Note and the pad moves. Watch the creeks: a ball read as water is within ~4 yds of OSM's centreline, a wider
+  pool reads rough. OB is on for the first time at a bundled club (the club outline): if a lie by a house reads OB where
+  stakes say otherwise, Note it. 17's and other tee landing areas may read rough where OSM's fairway stops short
+  (C12-shaped). `docs/GAMEPLAN-creekside.md` is the engine's plan from the Blue tees.
 - **F45.** Front and back pins (v22.65, D138): the caddie still plays to the middle of the green, but only where that
   costs little or keeps you out of trouble; elsewhere it now takes its best-priced shot at the flag's side (about
   250 sweep approaches changed). When a call goes at a front or back pin, say whether it felt too bold, with the hole.

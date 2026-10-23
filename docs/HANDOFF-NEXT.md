@@ -10,9 +10,29 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 458 tests (v22.65); must be green
+npm install && npm test    # 466 tests (v22.66); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.66 (Oct 22)
+
+Golf Club of Georgia's **Creekside** is mapped (D139), for Brett's round there Saturday Oct 24. `src/localGeometry/creekside.json`
+(apiId `yx7d5vnk`; Lakeside, `mse9vsm1`, is not bundled): all 18 holes are in OSM, but the app's Overpass box (±0.02° lon
+round the API point) stops at the 8th green and holes 9–13 lie west of it, so Setup would have read 13 holes. Two API 0.6
+map boxes, filtered to the course (the two courses share the bbox and their hole numbers collide; told apart by par and
+length against the two cards — every one matched), greens / tees / bunkers / fairways within 150 m of a Creekside line,
+woods and water within 100 m; OSM's fairway multipolygons kept with their bunkers cut out. New in a bundle: the creeks
+(Big Creek, Camp Creek, feeders) are OSM waterway centrelines buffered 3.5 m each side as water hazards (Woodmont's
+precedent), and the club outline (relation 143014) is bundled as the boundary since every Creekside shape sits inside it —
+OB is on for the first time at a bundled club. Hole 5's OSM line started 338 yds from the green of a 515-yd par 5: a mown
+22 × 10 m pad with its own cart path across the creek ~100 m behind it on the back-extension is traced in as the back tee
+(`q: traced`) and the line starts there (426 yds straight; not field-checked, F46). Photo: Wayback 41468 (the Sep 24 2023
+leaf-on capture Bradshaw flies; Aug 2024 is dormant, Mar 2026 dormant, Apr 2026 has snow). 3DEP grid (299–345 m; the
+course drops 46 m), 18 green grids, 374 lidar woods from GA_Statewide_B3_2018 (Overpass itself refused this sandbox's
+connections; everything else answered). `src/creekside.test.js` (8 tests) + Creekside in the elevation and green-grid club
+lists. `scripts/gameplan.mjs` writes a hole-by-hole plan from the engine (`docs/GAMEPLAN-creekside.md`, Blue tees: expected
+78.7, the trouble holes 17, 18, 10, 8). Known soft spot: OSM's fairways here are short (17's covers the bottom half), so a
+tee shot's landing area can read rough — C12-shaped, not fixed. 466 tests; smoke test green.
 
 ## v22.65 (Oct 12)
 

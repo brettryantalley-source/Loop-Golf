@@ -78,7 +78,7 @@ test("R10: the putt read — uphill or downhill toward the hole, and which way i
 });
 
 test("R10: every green on the five mapped clubs has a lidar grid, and every hole finds its own", () => {
-  for (const club of ["woodmont", "chicopee", "riverpines", "hampton", "bradshaw"]) {
+  for (const club of ["woodmont", "chicopee", "riverpines", "hampton", "bradshaw", "creekside"]) {
     const data = JSON.parse(readFileSync(join(here, "../localGeometry", `${club}.json`), "utf8"));
     const grids = greenGrids(data);
     const greens = data.ways.filter((w) => w.tags?.golf === "green").length;

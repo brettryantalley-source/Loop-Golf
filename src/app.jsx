@@ -19,6 +19,7 @@ import CHICOPEE_GEOMETRY from "./localGeometry/chicopee.json";
 import RIVERPINES_GEOMETRY from "./localGeometry/riverpines.json";
 import HAMPTON_GEOMETRY from "./localGeometry/hampton.json";
 import BRADSHAW_GEOMETRY from "./localGeometry/bradshaw.json";
+import CREEKSIDE_GEOMETRY from "./localGeometry/creekside.json";
 /* v22.16: finished rounds re-read from a verified card (Ironwood 2026-09-28, the API's pars / indexes). */
 import { fixHistoryFromLocalCards, matchResult } from "./historyFix.js";
 import { loadProfile, resolveEntry, shortBandFor } from "./caddie/profile.js";
@@ -91,7 +92,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.65 · Oct 12";
+const BUILD = "v22.66 · Oct 22";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -242,7 +243,7 @@ const safeStorage = () => { try { return window.localStorage; } catch (e) { retu
    - no anchor (lat/lon) to even query from                   -> unavailable, unchanged (nothing to retry)
    v22.16.3: a club with a bundled trace (LOCAL_GEOMETRY) never asks Overpass and ignores a cache that
    predates the trace; the entry is stamped with the trace's version, so a newer trace replaces it once. */
-const LOCAL_GEOMETRY = [WOODMONT_GEOMETRY, CHICOPEE_GEOMETRY, RIVERPINES_GEOMETRY, HAMPTON_GEOMETRY, BRADSHAW_GEOMETRY];
+const LOCAL_GEOMETRY = [WOODMONT_GEOMETRY, CHICOPEE_GEOMETRY, RIVERPINES_GEOMETRY, HAMPTON_GEOMETRY, BRADSHAW_GEOMETRY, CREEKSIDE_GEOMETRY];
 /* v22.45 (C34, D116): a bundled map carries its own USGS 3DEP elevation (scripts/fetch-3dep.mjs). It rides
    on the geometry in memory and is never written to the cache — it is in the bundle already, and ~4,000
    samples a club would crowd localStorage. Open-Meteo is asked only for courses without one. */
