@@ -12,7 +12,7 @@ import {
   migrateShot, loadShots, saveShot, allShots, exportShots, importShots,
   missCauseSample, recordLieOverride, loadLieOverrides,
   PUTT_AXES, newPuttRecord, quickMade, bareShotRecord,
-  deriveResult, missBand, shotIntent, autoShotRecord, linePlayedFor, bearingInFrame, curveReadback, resultText, normIntent, deleteShot, withCardDefaults,
+  deriveResult, missBand, shotIntent, autoShotRecord, linePlayedFor, bearingInFrame, curveReadback, resultText, missText, normIntent, deleteShot, withCardDefaults,
 } from "./shotlog.js";
 import { DEFAULT_CONFIG, mergeConfig } from "./config.js";
 
@@ -479,6 +479,12 @@ test("T46 derived: 15 right with a draw → curveAuto +1, distClass 0; 25 left �
   assert.deepEqual(deriveResult(start, { shape: "fade" }, { x: 1, y: 1 }), { distMissYds: null, latMissYds: null, curveAuto: null, distClass: null, derivedLowAcc: false });
   assert.equal(resultText({ distMissYds: 14, latMissYds: 12.4, distClass: 1 }), "+1 long · 12 R");
   assert.equal(resultText({ distMissYds: -2, latMissYds: -3, distClass: 0 }), "on · 3 L");
+  // Creekside Oct 24: the Shots list says the miss in words, in yards, past the slight band only
+  assert.equal(missText({ distMissYds: -2, latMissYds: -21.4 }), "21 yds left");
+  assert.equal(missText({ distMissYds: 14, latMissYds: 12.4 }), "14 long · 12 right");
+  assert.equal(missText({ distMissYds: -12, latMissYds: 3 }), "12 yds short");
+  assert.equal(missText({ distMissYds: 4, latMissYds: -7 }), "on target");
+  assert.equal(missText({ distMissYds: null, latMissYds: 3 }), null);
 });
 
 test("T47 auto-close: a shot nobody logged gets an auto record, reviewed false, curve from GPS; a hand-set curve survives a re-derive", () => {

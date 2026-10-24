@@ -33,11 +33,11 @@ import { fetchWeather, weatherRefreshDue, weatherTempF } from "./caddie/sensors.
 import {
   loadLieOverrides, recordLieOverride, routeShot, newShotRecord, quickLog, detailLog, skipShot, closeOutShot,
   saveShot, loadShots, allShots, exportShots, importShots, newPuttRecord, quickMade, PUTT_AXES, bareShotRecord, setRoundTeaching, roundTeaches,
-  autoShotRecord, shotIntent, curveReadback, resultText, deleteShot, bearingInFrame, normIntent, seedShotPatternRecords, SHOTPATTERN_SOURCE,
+  autoShotRecord, shotIntent, curveReadback, missText, deleteShot, bearingInFrame, normIntent, seedShotPatternRecords, SHOTPATTERN_SOURCE,
   defaultShortKind,
 } from "./caddie/shotlog.js";
 /* v22.15 shot log v2: the hole's story at the score (docs/SPEC-shotlog-v2.md §4, §5). */
-import { holeReview, reviewNeeded, splitHole, placeShot, recomputeChain, setShotIntent, lineFromTap, deleteStroke, renumber, inferredPutts, reviewAll } from "./caddie/review.js";
+import { holeReview, reviewNeeded, splitHole, placeShot, recomputeChain, setShotIntent, lineFromTap, deleteStroke, renumber, inferredPutts, reviewAll, shotYds } from "./caddie/review.js";
 import { satelliteCheckLine, fallbackMapModel, fitBounds, cameraFor, linearProjector, patternDots } from "./caddie/overlay.js";
 import { fetchElevationSamples, elevationSamplePoints } from "./caddie/sensors.js";
 import { DEFAULT_CONFIG, mergeConfig } from "./caddie/config.js";
@@ -92,7 +92,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.68 · Oct 23";
+const BUILD = "v22.69 · Oct 24";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -1800,9 +1800,10 @@ function LongCardSheet({ record, clubOrder, onQuick, onSave, onSkip, onClose }) 
         background: T.paper, borderTop: `4px double ${T.ink}`, padding: "14px 22px calc(env(safe-area-inset-bottom) + 14px)" }}>
         <div style={{ ...caps(12), marginBottom: 10 }}>{COPY.logShot}{Number.isInteger(record.shotNo) ? <span style={{ ...printed(12), marginLeft: 6 }}>{record.shotNo}</span> : null}</div>
         {bare && <div data-part="log-bare" style={{ fontFamily: F.label, fontSize: 12, lineHeight: 1.4, color: T.ink, margin: "-6px 0 12px" }}>No caddie call on this shot. Pick the club you hit.</div>}
-        {resultText(record.derived) && (
+        {missText(record.derived) && (
           <div data-part="log-result" style={{ fontFamily: F.label, fontSize: 12, color: T.ink, margin: "-4px 0 10px" }}>
-            GPS <span style={printed(13)}>{resultText(record.derived)}</span>{lowAcc && <span style={{ ...printed(13), color: T.bogey }}> ?</span>}
+            {Number.isFinite(shotYds(record)) && <><span style={printed(13)}>{shotYds(record)}</span> yds · </>}
+            <span style={printed(13)}>{missText(record.derived)}</span>{missText(record.derived) !== "on target" && " of your target"}{lowAcc && <span style={{ ...printed(13), color: T.bogey }}> ?</span>}
           </div>
         )}
         <button onClick={() => onQuick({ ...draft, ...fields() })} disabled={needClub} className={needClub ? undefined : "lc-primary"} style={{ ...primaryPill, height: 44, width: "100%", marginBottom: 10, ...off }}><FlagGlyph />Good shot ✓</button>
@@ -1885,9 +1886,13 @@ function PuttSheet({ puttNo = 1, initialFt, onMade, onMissed, onSkip }) {
         {PUTT_AXES.map((axis) => (
           <ScaleSlider key={axis.key} title={axis.label} options={axis.short.map((label, i) => [i - 2, label, axis.options[i]])} value={axes[axis.key]} onChange={(v) => setAxis(axis.key, v)} />
         ))}
-        <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
-          <button data-part="putt-missed" onClick={() => onMissed({ distanceFt: ft, ...axes })} style={{ ...outlinedPill, flex: 1, height: 52 }}>Missed · next putt</button>
-          <button onClick={onSkip} style={{ ...outlinedPill, flex: 1, height: 52 }}>Skip</button>
+        {/* Creekside Oct 24 (Brett): "make Skip a lot smaller, make Missed · next putt more prominent" —
+            the two real outcomes are both full pills; Skip is a small link under them */}
+        <button data-part="putt-missed" onClick={() => onMissed({ distanceFt: ft, ...axes })} className="lc-primary"
+          style={{ ...primaryPill, width: "100%", height: 52, marginTop: 6 }}>Missed · next putt</button>
+        <div style={{ textAlign: "center", marginTop: 8 }}>
+          <button data-part="putt-skip" onClick={onSkip} style={{ background: "transparent", border: "none", padding: "6px 14px", color: T.muted,
+            fontFamily: F.label, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "underline", textUnderlineOffset: 3 }}>Skip</button>
         </div>
       </div>
     </div>
@@ -2697,7 +2702,10 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     try { return puttRead(greenGrid, Fr, readFrom, readTo, mapped.green.ring); } catch (e) { return null; }
   }, [greenGrid, Fr, mapped, readFrom?.x, readFrom?.y, readTo?.x, readTo?.y]);
   const whyShown = whyText || (slopeRead && !pinView ? `Putt: ${slopeRead.text.charAt(0).toLowerCase()}${slopeRead.text.slice(1)}` : null);
-  const liftShown = whyShown ? 48 : 0;
+  // Creekside Oct 24 (Brett: "make the putt read notes a little bigger & easier to read"): the read is its own card,
+  // the two numbers big — up / down the putt on the left, the break on the right
+  const puttCard = !whyText && !!slopeRead && !pinView;
+  const liftShown = whyShown ? (puttCard ? 66 : 48) : 0;
 
   const r = v.rail, d = v.details;
   const k9 = { ...caps(9), lineHeight: 1 };
@@ -2858,7 +2866,28 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
         </button>
       )}
 
-      {whyShown && (
+      {puttCard && (() => {
+        const a = Math.abs(slopeRead.alongPct), x = Math.abs(slopeRead.acrossPct);
+        const half = (label, value, sub) => (
+          <div style={{ flex: 1, minWidth: 0, textAlign: "center" }}>
+            <div style={{ ...caps(10), lineHeight: "12px" }}>{label}</div>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 6, marginTop: 3 }}>
+              <span style={{ ...printed(22), color: T.black, lineHeight: "24px" }}>{value}</span>
+              {sub && <span style={{ fontFamily: F.label, fontSize: 13, color: T.ink }}>{sub}</span>}
+            </div>
+          </div>
+        );
+        return (
+          <div role="note" data-part="why" data-rule="green" data-read="putt" aria-label={whyShown}
+            style={{ ...card, position: "absolute", left: 10, right: 10, bottom: safe.bottom + 114, padding: "8px 10px", borderRadius: 12, zIndex: 16,
+              color: T.ink, display: "flex", alignItems: "center" }}>
+            {half("Putt", a < 0.3 ? "Level" : `${a.toFixed(1)}%`, a < 0.3 ? null : slopeRead.alongPct > 0 ? "uphill" : "downhill")}
+            <div style={{ width: 1, alignSelf: "stretch", background: T.hair, margin: "0 6px" }} />
+            {half("Break", x < 0.3 ? "Straight" : `${x.toFixed(1)}%`, x < 0.3 ? null : slopeRead.acrossPct > 0 ? "right to left" : "left to right")}
+          </div>
+        );
+      })()}
+      {whyShown && !puttCard && (
         <div role="note" data-part="why" data-rule={whyText ? v.why?.rule || "none" : "green"} data-warn={warnText && ownWhy ? warn.kind : undefined}
           onClick={() => { if (warnText && ownWhy) setHiddenWarn(warnKey); }} style={{ ...card, position: "absolute", left: 10, right: 10, bottom: safe.bottom + 114, padding: "6px 12px", borderRadius: 12, zIndex: 16,
           color: T.ink, fontFamily: F.label, fontSize: 12, lineHeight: "15px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
@@ -2939,7 +2968,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
               <div data-part="readout" style={{ marginTop: 10, borderTop: rule }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1.3fr repeat(5, 1fr)", alignItems: "center", height: 22, borderBottom: hairline }}>
                   <span />
-                  {["Avg", "Par+", "Birdie", "Dbl+", "Trbl"].map((t) => <span key={t} style={{ ...caps(8, 700, "0.04em"), textAlign: "right", paddingRight: 3 }}>{t}</span>)}
+                  {["Avg", "Par+", "Birdie", "Dbl+", "Trouble"].map((t) => <span key={t} style={{ ...caps(8, 700, "0.04em"), textAlign: "right", paddingRight: 3 }}>{t}</span>)}
                 </div>
                 {[...d.rows, ...(routeCustom && own ? [{ id: "own", label: "Custom", club: clubFor(own), avg: own.expScore?.toFixed(1), birdie: pctTxt(own.birdieProb), trouble: pctTxt(own.troubleRate), selected: true }] : [])].map((row) => {
                   const o = row.id === "own" ? own : shownOptions?.[row.id] || engine?.res?.[row.id];
@@ -2959,6 +2988,18 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
                     </button>
                   );
                 })}
+                {/* Creekside Oct 24 (Brett read Trbl as triple bogey): what the columns count, and where the shown
+                    shot's trouble is */}
+                {(() => {
+                  const o = routeCustom && own ? own : shownOptions?.[cs.opt] || engine?.res?.[cs.opt] || engine?.res?.safe;
+                  const by = Object.entries(o?.troubleBy || {}).filter(([, val]) => val >= 0.01).sort((a, b) => b[1] - a[1]);
+                  return (
+                    <div data-part="readout-key" style={{ fontSize: 10.5, lineHeight: 1.45, color: T.ink, marginTop: 6 }}>
+                      Par+ par or better · Dbl+ double bogey or worse · Trouble: the shot finishes in trees, water, sand or OB
+                      {o && by.length > 0 && <> ({clubFor(o)}: {by.map(([k, val]) => `${k} ${pctTxt(val)}`).join(", ")})</>}. Each is out of 400 simulated shots from your pattern.
+                    </div>
+                  );
+                })()}
               </div>
             )}
             {d.dispersion && (
@@ -3307,10 +3348,12 @@ function ReviewSheet({ mode = "review", n, score = null, records, ctx, clubOrder
     onDone(changed, deleted, { reviewed, all: out });
   };
 
+  // Creekside Oct 24 (Brett: "can you show the distance? … what does default, on and 21 L mean?"): a shot
+  // reads club · how far it went · the miss in words; where it came from (GPS / placed) is in Place
   const rowLine = (row) => {
     if (row.kind === "putt") return [`Putt ${row.n}`, row.result];
     const club = row.club ? clubShort(row.club) : "—";
-    return [club, row.pos, row.intent, row.result];
+    return [club, Number.isFinite(row.yds) ? `${row.yds} yds` : "—", row.miss];
   };
   return (
     <div data-part="sheet" data-review={mode} onClick={mode === "shots" ? onClose : undefined}
@@ -3347,12 +3390,13 @@ function ReviewSheet({ mode = "review", n, score = null, records, ctx, clubOrder
             return (
               <div key={id} data-part="review-row" data-kind={row.kind} data-n={row.n} data-open={isOpen ? "true" : "false"} style={{ borderBottom: hairline }}>
                 <button onClick={() => { setOpen(isOpen ? null : id); setTool(row.kind === "shot" && !row.record ? "place" : null); }}
-                  style={{ width: "100%", display: "grid", gridTemplateColumns: row.kind === "putt" ? "26px 1fr auto 14px" : "26px 52px 46px 50px 1fr 14px", alignItems: "center",
+                  style={{ width: "100%", display: "grid", gridTemplateColumns: row.kind === "putt" ? "26px 1fr auto 14px" : "26px 58px 66px 1fr 14px", alignItems: "center",
                     gap: 4, height: 40, background: "transparent", color: T.ink, textAlign: "left", padding: 0 }}>
                   <span style={{ ...printed(15), color: T.black }}>{row.kind === "putt" ? "P" : row.n}</span>
                   {cells.map((c, i) => (
-                    <span key={i} className="lc-clamp1" style={{ fontSize: i === 0 ? 12 : 11, color: c === "—" ? T.muted : T.ink, fontWeight: i === 0 ? 700 : 400,
-                      textAlign: row.kind === "putt" && i === 1 ? "right" : "left", ...(i === cells.length - 1 && row.kind === "shot" ? printed(12) : {}) }}>{c}</span>
+                    <span key={i} className="lc-clamp1" data-part={row.kind === "shot" ? ["review-club", "review-yds", "review-miss"][i] : undefined}
+                      style={{ fontSize: i === 0 ? 12 : 11, color: c === "—" ? T.muted : T.ink, fontWeight: i === 0 ? 700 : 400,
+                      textAlign: row.kind === "putt" && i === 1 ? "right" : "left", ...(i >= 1 && row.kind === "shot" ? printed(13) : {}) }}>{c}</span>
                   ))}
                   <span data-part={row.unreviewed ? "review-q" : undefined} style={{ ...printed(14), color: T.bogey, textAlign: "right" }}>{row.unreviewed || row.missing ? "?" : ""}</span>
                 </button>

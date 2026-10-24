@@ -10,9 +10,24 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 466 tests (v22.66); must be green
+npm install && npm test    # 470 tests (v22.69); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.69 (Oct 24)
+
+Brett's notes from six holes at Creekside (a PDF of screenshots). **Screens (D144):** the Shots list reads club · yards ·
+the miss in words (`21 yds left`), not `GPS default on · 21 L`; the putt card's `Missed · next putt` is a full pill and
+`Skip` a small word; the putt's read is its own card (`PUTT 2.6% uphill · BREAK 3.3% left to right`, 22 px numbers); on
+the green with no call `cameraForShot` frames ball → pin, the pin a quarter down the visible map, up to 48 px/yd; the
+options table's `Trbl` is `Trouble` (he read it as triple bogey) with a key line. **Engine (D142):** an approach that
+stops short of its target (a club "reaches" at the green's front − 8) is aimed where it stops, `green, front` or `leave
+N, short of the green` — Creekside 5's 8-iron aimed at the center 35 yds past its ring; on 2,460 approaches SAFE's
+target moves on 17%, its club on 22. **Creekside (D143):** hole 5's back tees are the lidar's two raised pads (the
+Oct 22 rectangle sat off one, the other was missing); hole 4's green is its putting surface (OSM's took in the bank, so
+the arrows fanned out). Not changed: hole 3's fairway (both photos agree with OSM; Q4) and Aggressive's rule (R13).
+Answered in the reply: chip / pitch / wedge, what `GPS` / `default` / `on · 21 L` meant, the putt's pre-filled length
+(ball → pin for putt 1; 3 ft after a miss). 470 tests; smoke test green.
 
 ## v22.66 (Oct 22)
 

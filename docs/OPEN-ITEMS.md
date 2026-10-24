@@ -4,8 +4,8 @@ The one list of everything still unresolved. It merges the eleven Loop chats ope
 spec sheets and four answers given in chat, plus Brett's notes from a short test round on the
 morning of Oct 4 (C17–C19, of which C17 shipped in v22.21, and an addition to C3, which shipped in v22.22),
 Brett's test notes of Oct 10 (C20–C29), and his notes from the first Bradshaw Farm round, Oct 11 (C34–C44; screenshots in `data/raw/2026-10-11/`), and his notes after the Bradshaw round that afternoon (C46). Duplicates are merged and anything already shipped is
-dropped. State: **v22.68** (Creekside's map loads when picked under the club row, D141; v22.67 = P10, county photos at four clubs, D140; v22.66: Creekside mapped + `scripts/gameplan.mjs`, D139; v22.65 = R12, the pin rule must buy something, D138; C10's sweep Oct 12, D137; v22.64 = C33, the short-game bands learn from his chips, D136; v22.63 = C40, Bradshaw's fairways, D135; v22.62 = lidar trees at the other four clubs, D134; v22.61 = C12's trees, D133; v22.60 = R10, D131; v22.59 = R11, D130; v22.58 = C47, D129; v22.57 = C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90; C13 closed Oct 12 without a build, D132), 467 tests, decisions D1–D141; the next
-decision is **D142**.
+dropped. Brett's notes from six holes at Creekside, Oct 24 (a PDF): the screens and fixes shipped in v22.69 (D142–D144); R13 and Q4 wait on him. State: **v22.69** (Creekside notes: the screens D144, approach targets D142, hole 5's tees and hole 4's green D143; v22.68: Creekside's map loads when picked under the club row, D141; v22.67 = P10, county photos at four clubs, D140; v22.66: Creekside mapped + `scripts/gameplan.mjs`, D139; v22.65 = R12, the pin rule must buy something, D138; C10's sweep Oct 12, D137; v22.64 = C33, the short-game bands learn from his chips, D136; v22.63 = C40, Bradshaw's fairways, D135; v22.62 = lidar trees at the other four clubs, D134; v22.61 = C12's trees, D133; v22.60 = R10, D131; v22.59 = R11, D130; v22.58 = C47, D129; v22.57 = C46, D128; v22.56 = C45, D127; v22.55 = D126; v22.54 = D125; v22.53 = C44, D124; v22.52 = C43, D123; v22.51 = C42, D122; v22.50 = C41, D121; v22.49 = C39, D120; v22.48 = C38, D119; v22.47 = C37, D118; v22.46 = C36, D117; v22.45 = C34, D116; v22.44 = C35, D115; v22.33–v22.43 = D104–D114; v22.32 = C6, D103; v22.31 = C5, D102; v22.30 = C19, D101; v22.29 = C21, D100; v22.28 = C2 + C11, D99; v22.27 = C18 + C20, D98; v22.26 = C30, D97; v22.25 = C26–C28, D96; v22.24 = C31, D95; v22.23 = C23, D94; v22.22 = C3, D93; v22.21 = C17, D92; v22.18 = C1, D91; v22.17.4 = C16, D90; C13 closed Oct 12 without a build, D132), 470 tests, decisions D1–D144; the next
+decision is **D145**.
 
 Read `CLAUDE.md` and `docs/HANDOFF-NEXT.md` first. When an item closes, delete it here in the same
 commit. Not covered: claude.ai chats outside Claude Code (e.g. the Golf project chat).
@@ -34,7 +34,17 @@ Beachwood's match stays a loss either way, Chicopee's stays W 5–3 on the card)
 matters: no OB to trace (C13 step 3 dropped).
 
 ### Questions and recommendations waiting on you
-None. R12 answered Oct 12 ("r12lean"): the pin rule must save 2 points of trouble past 0.15 strokes (v22.65, D138).
+- **R13. Aggressive must be a real alternative** (Creekside 1, Oct 24: "why is the aggressive play a 2i layup?"). Aggressive
+  is the best birdie chance; off hole 1's tee the 2-iron beat Driver's 37.2% by 0.2 points (simulation noise) and showed
+  as Aggressive though it is the safer shot (trouble 11% vs 21%). From every mapped tee box (438), Aggressive shows on 195;
+  on 40 it gains under half a point of birdie, and on 23 it is a shorter, safer club. Recommended: Aggressive needs at
+  least 0.5 points more birdie (`SAME_SHOT_BIRDIE_GAIN`), else "Same shot both ways" (the 40 go). Option: also never call
+  a shorter, safer shot Aggressive (the 23 go, some with real birdie gains on par 5s with a creek).
+- **Q4. Creekside 3's fairway** (Oct 24: "there is no way that the fairway is this narrow"). Both photos put the mown
+  strip where the map has it: 17 / 13 / 10 / 9 yds wide at 240 / 260 / 280 / 300 yds out (the county's winter photo
+  shows the overseeded fairway green, the rough tan); the open ground between the trees is 44–61 yds. Widen it to what
+  you saw (the caddie then reads the landing area as fairway), or keep the photos' line (a first cut of rough can play
+  like fairway in October)? Hole 2's trees right of the landing area are real on both photos (Driver's 51% trouble there).
 
 ### Recommendations: all accepted Oct 10 ("go with the leans")
 R2 muted course shapes plus a Shapes toggle (C2) · R4 leaf-off Chicopee imagery, Wayback 49059 (C11)
@@ -43,15 +53,19 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (P11) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.68 · Oct 23**.
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.69 · Oct 24**.
+- **F48.** Creekside notes (v22.69, D142–D144): the Shots list shows each shot's yards and its miss in words ("21 yds
+  left"); on the putt card `Missed · next putt` is the big button and `Skip` a small word; the putt's read is a card with
+  the two numbers large; on the green the map zooms so the pin sits a quarter down the screen and you at the bottom; the
+  options table says `Trouble` with a key under it. An approach that stops at the front of a long green now shows its
+  target where it stops ("green, front" or "leave 17, short of the green"). On Creekside 5 the two raised pads across the
+  creek are the back tees (from the lidar); hole 4's green is drawn as its putting surface. Say what still reads wrong.
 - **F47.** County photos (v22.67, D140): Riverpines, Creekside, Woodmont and Bradshaw now draw the county's own aerial photo,
   about twice as sharp as Esri's, but from winter (brown turf, bare trees; Bradshaw's greens under dark covers). On wifi,
   pick the club on Setup and let the satellite check finish before the round (the new tiles are bigger and slower).
   Say whether the sharper winter photo beats the greener Esri one, per club; each can go back in one line.
-- **F46.** Creekside, Oct 24 (v22.66, D139): on Setup pick **Golf Club Of Georgia — Creekside**; the satellite check should
-  read all 18 (holes 9–13 come from the bundle, not Overpass). On the **5th tee** check the map's back pad: the traced
-  one sits across the creek ~100 yds behind OSM's forward pad — if you're standing on grass the map calls trees or rough,
-  dictate a Note and the pad moves. Watch the creeks: a ball read as water is within ~4 yds of OSM's centreline, a wider
+- **F46.** Creekside (v22.66, D139; played Oct 24, six holes, notes in D142–D144): on Setup pick **Golf Club Of Georgia — Creekside**; the satellite check should
+  read all 18 (holes 9–13 come from the bundle, not Overpass). The 5th tee's pads moved to the lidar's (D143). Watch the creeks: a ball read as water is within ~4 yds of OSM's centreline, a wider
   pool reads rough. OB is on for the first time at a bundled club (the club outline): if a lie by a house reads OB where
   stakes say otherwise, Note it. **Fairways (checked Oct 23, not changed):** the C40 photo tool on Creekside's Mar 2026
   dormant capture (Wayback 22869) found nothing past OSM's edges (+1,700 m² over 61,000, every piece under the

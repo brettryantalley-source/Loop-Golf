@@ -549,6 +549,22 @@ export function resultText(d) {
   return `${dist} · ${lat === 0 ? "0" : `${lat} ${d.latMissYds > 0 ? "R" : "L"}`}`;
 }
 
+/**
+ * The miss in plain words (Brett, Creekside Oct 24: "what does on and 21 L mean?"): yards long / short and
+ * left / right of the target, each only when it is past MISS_BANDS.slightYds — `21 yds left`,
+ * `12 short · 21 left`, `on target`. null without a derived result.
+ */
+export function missText(d, bands = DEFAULT_CONFIG.MISS_BANDS) {
+  if (!d || !Number.isFinite(d.distMissYds) || !Number.isFinite(d.latMissYds)) return null;
+  const slight = (bands || DEFAULT_CONFIG.MISS_BANDS).slightYds;
+  const dy = Math.round(d.distMissYds), dx = Math.round(d.latMissYds);
+  const parts = [];
+  if (Math.abs(dy) >= slight) parts.push(`${Math.abs(dy)} ${dy > 0 ? "long" : "short"}`);
+  if (Math.abs(dx) >= slight) parts.push(`${Math.abs(dx)} ${dx > 0 ? "right" : "left"}`);
+  if (!parts.length) return "on target";
+  return parts.length === 1 ? parts[0].replace(" ", " yds ") : parts.join(" · ");
+}
+
 function round1(x) {
   return Math.round(x * 10) / 10;
 }

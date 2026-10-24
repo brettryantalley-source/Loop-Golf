@@ -447,7 +447,7 @@ export function upBearing({ hole, ball, pin, options }, { minYds = 3 } = {}) {
  * there (a point behind the ball may fall off the bottom: the ball's margin is all it gets). With no
  * ball (pre-tee) it is cameraFor's hole-up fit, as before. → { center, pxPerYd, rotDeg }.
  */
-export function cameraForShot({ hole, ball, pin, options }, viewport, insets = {}, { padding = 16, minPxPerYd = 0.2, maxPxPerYd = 12, ballFrac = 0.1 } = {}) {
+export function cameraForShot({ hole, ball, pin, options }, viewport, insets = {}, { padding = 16, minPxPerYd = 0.2, maxPxPerYd = 12, ballFrac = 0.1, pinFrac = 0.25, maxPuttPxPerYd = 48 } = {}) {
   const pts = cameraPoints({ hole, ball, pin, options });
   const b = asXY(ball);
   if (!b) return { ...cameraFor(fitBounds(pts), viewport, insets, { padding, minPxPerYd, maxPxPerYd }), rotDeg: 0 };
@@ -459,6 +459,19 @@ export function cameraForShot({ hole, ball, pin, options }, viewport, insets = {
   const halfW = Math.max(1, (R - L) / 2), rh = Math.max(1, Bt - Tp);
   const by = Bt - ballFrac * rh;                         // the ball's screen y; its x is the region's centre
   const up = Math.max(1, by - Tp), down = Math.max(1, Bt - by);
+  const cu0 = (width / 2 - (L + R) / 2);
+  const centreAt = (px) => {                             // the viewport centre, screen-aligned yards from the ball → frame
+    const cu = cu0 / px, cv = (by - height / 2) / px;
+    return { center: { x: b.x + cu * c + cv * s, y: b.y - cu * s + cv * c }, pxPerYd: px, rotDeg };
+  };
+  // Creekside Oct 24 (Brett: "on the green, zoom in so the pin is at the top quarter of the screen and my
+  // location is the bottom"): a putt (the ball on the green, no call) frames the ball → pin line alone — the
+  // pin `pinFrac` of the region down from its top — instead of the whole green; up to maxPuttPxPerYd
+  const p = asXY(pin);
+  if (p && !options?.safe && hole.green?.ring && classify(hole, b) === "green") {
+    const d = Math.hypot(p.x - b.x, p.y - b.y);
+    if (d >= 1) return centreAt(Math.max(minPxPerYd, Math.min(maxPuttPxPerYd, (by - (Tp + pinFrac * rh)) / d)));
+  }
   let px = maxPxPerYd;
   for (const p of pts) {
     const q = asXY(p);
@@ -469,10 +482,7 @@ export function cameraForShot({ hole, ball, pin, options }, viewport, insets = {
     if (v > 1e-6) px = Math.min(px, up / v);
     else if (v < -1e-6 && -v * px > down) px = Math.min(px, Math.max(down / -v, minPxPerYd));
   }
-  px = Math.max(minPxPerYd, Math.min(maxPxPerYd, px));
-  // the viewport centre, in screen-aligned yards from the ball, then back to the frame
-  const cu = (width / 2 - (L + R) / 2) / px, cv = (by - height / 2) / px;
-  return { center: { x: b.x + cu * c + cv * s, y: b.y - cu * s + cv * c }, pxPerYd: px, rotDeg };
+  return centreAt(Math.max(minPxPerYd, Math.min(maxPxPerYd, px)));
 }
 
 /** MapLibre's circumference (2π · 6 371 008.8 m) — the same earth radius geo.js uses. */
