@@ -66,6 +66,22 @@ test("C38: putting from above the hole, the hole is at the top", () => {
   assert.ok(h.y < b.y, `hole ${h.y} above ball ${b.y}`);
 });
 
+test("Creekside Oct 24: on the green the pin sits a quarter down the map, the ball at the bottom", () => {
+  const pin = { x: 120, y: 400 }, ball = { x: 116, y: 390 };   // on the green, no call, ~11 yds
+  const holeA = { ...hole, green: { ...hole.green, ring: hole.green.ring.map((q) => [q.x, q.y]) } };   // course.js rings are [x, y]
+  const cam = cameraForShot({ hole: holeA, ball, pin, options: null }, vp, insets);
+  const { project } = linearProjector(cam, vp);
+  const b = project(ball), h = project(pin);
+  const Tp = insets.top + 16, Bt = vp.height - insets.bottom - 16, rh = Bt - Tp;
+  near(h.y, Tp + 0.25 * rh, 1e-6, "the pin a quarter down the visible region");
+  near(b.y, Bt - 0.1 * rh, 1e-6, "the ball at the bottom");
+  near(h.x, b.x, 1e-6, "the pin straight above the ball");
+  assert.ok(cam.pxPerYd > 12, `closer than a shot's cap (${cam.pxPerYd.toFixed(1)} px/yd)`);
+  // a tap-in stops at the cap rather than filling the screen with one yard
+  const tap = cameraForShot({ hole: holeA, ball: { x: 120, y: 398.5 }, pin, options: null }, vp, insets);
+  assert.equal(tap.pxPerYd, 48);
+});
+
 test("C38: before the tee shot it is the hole-up fit, as before", () => {
   const cam = cameraForShot({ hole, ball: null, pin: null, options: null }, vp, insets);
   assert.deepEqual(cam, { ...cameraFor(fitBounds(cameraPoints({ hole, ball: null, pin: null, options: null })), vp, insets), rotDeg: 0 });

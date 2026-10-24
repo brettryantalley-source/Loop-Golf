@@ -89,3 +89,24 @@ test("C35: in still air at the profile's temperature a fairway center is the clu
   // the rest of the cut sits on the same depth: within a few yards of the finish
   for (const c of cands) assert.ok(Math.abs(d(c) - total(c)) < 3, `${c.club} ${c.label}: ${d(c).toFixed(1)} vs ${total(c).toFixed(1)}`);
 });
+
+test("Creekside Oct 24: an approach that stops at the front of a long green is aimed where it stops, not at the center", () => {
+  // Brett on Creekside 5 from ~205 (a 30-yd-deep green): "why is the target further than the dispersion line?" —
+  // the club reached the FRONT within REACH_SHORT_TOLERANCE_YDS, so it was aimed at the center 20–35 yds past its ring
+  const creekside = JSON.parse(readFileSync(join(here, "../localGeometry/creekside.json"), "utf8"));
+  const cgeo = localGeometryFor([creekside], creekside.apiId).geometry;
+  const h5 = buildHole(cgeo, 5, { par: 5 });
+  const g = h5.green.center;
+  const tol = DEFAULT_CONFIG.REACH_SHORT_TOLERANCE_YDS;
+  const samples = makeSamples(50, 1);
+  let short = 0;
+  for (const dx of [-30, 0, 30]) for (const lieType of ["rough", "fairway"]) {
+    const ctx = normalizeContext({ par: 5, shotNo: 2, ball: { x: g.x + dx, y: g.y - 205 }, lieType, tempF: 70 }, h5);
+    for (const c of generateCandidates(ctx, h5, P).filter((k) => k.kind === "approach")) {
+      const s = simulateCandidate(c, ctx, h5, P, samples);
+      assert.ok(s.distToTarget - s.meanYds <= tol + 1, `${lieType} ${dx}: ${c.club} ${c.label} to ${s.distToTarget.toFixed(0)} finishes ${s.meanYds.toFixed(0)}`);
+      if (/front|short of the green/.test(c.label)) short++;
+    }
+  }
+  assert.ok(short > 0, "some club stops short of the center and says so");
+});

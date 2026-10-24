@@ -1,7 +1,8 @@
 /*
  * creekside.test.js — Golf Club of Georgia, Creekside (src/localGeometry/creekside.json, v22.66, D139): the OSM
  * snapshot filtered to the course as the app reads it — 18 of 18 covered, every hole built off the card, the creeks
- * and the club outline read as trouble, hole 5's traced back tee, the tee call on every par 4 and 5.
+ * and the club outline read as trouble, hole 5's two back tees off the lidar (v22.69), hole 4's green as its putting
+ * surface (v22.69), the tee call on every par 4 and 5.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -11,8 +12,10 @@ import { fileURLToPath } from "node:url";
 
 import { localGeometryFor, elevationSamples, greenGrids, bundledMapId } from "./localGeometry.js";
 import { yardsBetween, haversineM, pointInRing } from "./geometry.js";
-import { coverageCheck, buildHole, detectHole } from "./caddie/geo.js";
+import { coverageCheck, buildHole, detectHole, frameOf } from "./caddie/geo.js";
 import { classify } from "./caddie/course.js";
+import { gridForGreen, slopeArrows } from "./caddie/greenslope.js";
+import { teeBoxYards } from "./caddie/teeboxes.js";
 import { loadProfile } from "./caddie/profile.js";
 import { recommend } from "./caddie/engine.js";
 import { DEFAULT_CONFIG } from "./caddie/config.js";
@@ -29,7 +32,7 @@ const BLUE = [486, 421, 379, 158, 492, 348, 146, 429, 307, 407, 181, 522, 338, 3
 const ring2m2 = (ring) => { let a = 0; for (let i = 0; i < ring.length; i++) { const p = ring[i], q = ring[(i + 1) % ring.length]; a += p[0] * q[1] - q[0] * p[1]; } return Math.abs(a) / 2 / 1.19599; };
 
 test("D139: the file is found by the course's API id, parses with no warning, and carries the club outline as the boundary", () => {
-  assert.equal(lg.version, "yx7d5vnk@3");
+  assert.equal(lg.version, "yx7d5vnk@4");
   assert.equal(localGeometryFor([data], "mse9vsm1"), null, "Lakeside is not this file");
   assert.deepEqual(geo.warnings, []);
   assert.ok(geo.boundary && geo.boundary.ring.length > 200, "OSM's club outline holds every Creekside shape, so it is the OB line");
@@ -60,16 +63,41 @@ test("D139: coverage 18 of 18, pars the card's, every line ends in its green, ev
   }
 });
 
-test("D139: hole 5's back tee is traced in — OSM's line started 338 yds from the green of a 515-yd par 5", () => {
+test("v22.69: hole 5's two back tees are the lidar's raised pads across the creek, and the line starts on the upper one", () => {
+  // Brett, Oct 24 on the 5th tee: "the tee boxes on hole 5 are definitely off" — the Oct 22 rectangle sat 8 m off the
+  // lower pad and the upper pad was not drawn; lidar shows both flat tops (304.5 m and 311.0 m, 21 m apart)
+  assert.equal(data.ways.filter((w) => w.q === "traced" && w.tags.golf === "tee").length, 0, "the Oct 22 traced rectangle is gone");
+  const pads = data.ways.filter((w) => w.q === "lidar+photo");
+  assert.equal(pads.length, 2);
+  assert.ok(pads.every((w) => w.tags.golf === "tee"));
+  const line = data.ways.find((w) => w.tags.golf === "hole" && w.tags.ref === "5");
+  assert.equal(line.q, "osm+lidar");
+  assert.deepEqual(line.pts[0], [34.096182, -84.226872], "the line starts on the upper pad's centre");
   const h = geo.holes[5];
   const straight = yardsBetween(h.line[0], h.green.center);
-  assert.ok(straight > 420 && straight < 440, `${Math.round(straight)} yds straight from the traced pad`);
-  const traced = data.ways.filter((w) => w.q === "traced");
-  assert.equal(traced.length, 1);
-  assert.equal(traced[0].tags.golf, "tee");
-  assert.equal(data.ways.find((w) => w.tags.golf === "hole" && w.tags.ref === "5").q, "osm+traced");
+  assert.ok(straight > 430 && straight < 445, `${Math.round(straight)} yds straight from the upper pad`);
   const b = buildHole(geo, 5, { par: 5, yards: 515 });
-  assert.equal(classify(b, { x: 0, y: 0 }), "tee", "the line starts on the traced pad");
+  assert.equal(classify(b, { x: 0, y: 0 }), "tee", "the line starts on a pad");
+  const ys = teeBoxYards(b).map(Math.round).sort((p, q) => q - p);
+  assert.ok(ys[0] > 485 && ys[0] < 505, `upper pad ${ys[0]} yds along the line (card 515 / 492)`);
+  assert.ok(ys[1] > 462 && ys[1] < 485, `lower pad ${ys[1]} yds`);
+  assert.ok(ys.some((y) => y > 370 && y < 395), "OSM's platform west of the creek is kept");
+});
+
+test("v22.69: hole 4's green is its putting surface, not OSM's outline with the collar and front bank", () => {
+  // Brett, Oct 24: "this green map is pretty terrible" — every arrow red; OSM's 991 m² took in the bank the lidar climbs
+  const green = data.ways.find((w) => w.tags.golf === "green" && w.q === "traced");
+  assert.ok(green, "hole 4's green is traced");
+  const b = buildHole(geo, 4, { par: 3, yards: 180 });
+  const area = ring2m2(b.green.ring);
+  assert.ok(area > 500 && area < 620, `${Math.round(area)} m² putting surface`);
+  assert.ok(pointInRing(geo.holes[4].greenEnd, geo.holes[4].green.ring), "the line still ends on the green");
+  const F = frameOf(b);
+  const grid = gridForGreen(greenGrids(data), b, F);
+  assert.ok(grid, "its lidar grid is still found");
+  const arrows = slopeArrows(grid, b, F);
+  const red = arrows.filter((a) => a.pct >= 3).length / arrows.length;
+  assert.ok(arrows.length >= 25 && red < 0.85, `${arrows.length} arrows, ${Math.round(100 * red)}% red (91% on OSM's outline)`);
 });
 
 test("D139: the creeks are water — buffered OSM centrelines — and the lidar woods line the holes", () => {

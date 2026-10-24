@@ -18,8 +18,9 @@
  *   but no lat/lng can then still be read.
  */
 
-import { closeOutShot, bareShotRecord, newPuttRecord, normIntent, resultText, bearingInFrame } from "./shotlog.js";
+import { closeOutShot, bareShotRecord, newPuttRecord, normIntent, resultText, missText, bearingInFrame } from "./shotlog.js";
 import { DEFAULT_CONFIG } from "./config.js";
+import { haversineM, YARDS_PER_METER } from "../geometry.js";
 
 export const isPutt = (r) => r?.shotType === "putt";
 const isPt = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.y);
@@ -82,8 +83,16 @@ export function holeReview(shots, putts, score, hole, opts = {}) {
   };
 }
 
+/** How far a shot went, start → end in yards (lat/lng, else its own frame); null without both ends. */
+export function shotYds(r) {
+  const a = llOf(r?.start), b = llOf(r?.end);
+  if (a && b) return Math.round(haversineM({ lat: a.lat, lon: a.lng }, { lat: b.lat, lon: b.lng }) * YARDS_PER_METER);
+  const s = r?.start?.frame, e = r?.end?.frame;
+  return isPt(s) && isPt(e) ? Math.round(Math.hypot(e.x - s.x, e.y - s.y)) : null;
+}
+
 function shotRow(n, r, extra = false) {
-  if (!r) return { kind: "shot", n, record: null, club: null, pos: "—", intent: "—", result: "—", unreviewed: false, missing: true, extra: false };
+  if (!r) return { kind: "shot", n, record: null, club: null, pos: "—", intent: "—", result: "—", yds: null, miss: "—", unreviewed: false, missing: true, extra: false };
   const hasPos = !!llOf(r.start) || isPt(r.start?.frame);
   const it = r.intent;
   return {
@@ -91,6 +100,8 @@ function shotRow(n, r, extra = false) {
     pos: r.placed ? "placed" : hasPos ? "GPS" : "—",
     intent: it && (it.target || it.shape || Number.isFinite(it.startLineDeg)) ? (it.source === "set" ? "set" : "default") : "—",
     result: resultText(r.derived) ?? "—",
+    yds: shotYds(r),
+    miss: missText(r.derived) ?? "—",
     unreviewed: r.reviewed === false, missing: false, extra,
   };
 }

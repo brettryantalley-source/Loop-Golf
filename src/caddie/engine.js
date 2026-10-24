@@ -257,6 +257,12 @@ export function generateCandidates(ctx, hole, P) {
   }
 
   // Green-reachable approach: pin, center, fat side (§3.4).
+  // Creekside Oct 24 (Brett, hole 5 from 205: "why is the target further than the dispersion line?"): a club
+  // "reaches" when it finishes within REACH_SHORT_TOLERANCE_YDS of the green's FRONT, so on a long green an
+  // 8-iron that stops at the front edge was still aimed at the center, 30+ yds past its ring. The shot and its
+  // price are the same, but its target is now where it finishes on that line (D93, D115): the front of the
+  // green, or short of it with the leave.
+  const tol = cfg.REACH_SHORT_TOLERANCE_YDS;
   for (const e of entries) {
     if (reach.get(e) !== "reaches") continue;
     const targets = [
@@ -264,7 +270,19 @@ export function generateCandidates(ctx, hole, P) {
       { p: center, aim: "center", label: "green, center" },
       { p: fat, aim: "fat", label: "green, fat side" },
     ];
-    for (const t of targets) push({ club: e.club, swing: e.swing, entry: e, kind: "approach", target: t.p, label: t.label, aims: [t.aim] });
+    for (const t of targets) {
+      const d = dist(ctx.ball, t.p);
+      let fin = landingModel(e, ctx.ball, t.p, ctx, cfg).greenTotal;
+      if (fin >= d - tol || fin <= 0) { push({ club: e.club, swing: e.swing, entry: e, kind: "approach", target: t.p, label: t.label, aims: [t.aim] }); continue; }
+      let q = pointAlong(ctx.ball, t.p, fin);
+      for (let i = 0; i < 6; i++) {                     // a fixed point, as for the corridor's centre (D115)
+        const next = landingModel(e, ctx.ball, q, ctx, cfg).greenTotal;
+        if (Math.abs(next - fin) < 0.25) break;
+        fin = next; q = pointAlong(ctx.ball, t.p, fin);
+      }
+      const label = classify(hole, q) === "green" ? "green, front" : `leave ${Math.round(dist(q, pin))}, short of the green`;
+      push({ club: e.club, swing: e.swing, entry: e, kind: "approach", target: q, label, aims: [t.aim] });
+    }
   }
 
   // §3.7 layups: leave-distance candidates, the nearest club for each. D90: each one sits in the

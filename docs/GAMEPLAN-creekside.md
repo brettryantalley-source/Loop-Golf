@@ -1,6 +1,6 @@
 # Golf Club Of Georgia — Creekside: the plan from the Blue tees
 
-Blue 6526 yds · rating 72.5 / slope 141 · par 72. Built 2026-10-22 by `scripts/gameplan.mjs` from the caddie's engine on the bundled map (`src/localGeometry/creekside.json`, version 3) and the profile; calm, 70 °F — the caddie on the tee adds the day's wind and temperature. Par chance and trouble are the engine's simulation of his own pattern; expected score sums to **78.7** over 18.
+Blue 6526 yds · rating 72.5 / slope 141 · par 72. Built 2026-10-24 by `scripts/gameplan.mjs` from the caddie's engine on the bundled map (`src/localGeometry/creekside.json`, version 4) and the profile; calm, 70 °F — the caddie on the tee adds the day's wind and temperature. Par chance and trouble are the engine's simulation of his own pattern; expected score sums to **78.7** over 18.
 
 **Forecast:** Saturday Oct 24 (Open-Meteo, pulled Oct 22): dry, 50 °F at 8am rising to 70 °F by 3pm; wind from the east-north-east 7–11 mph with gusts to 25 in the morning, easing after noon. Cold air early: the ball flies 2–3% shorter until mid-morning — the caddie's Plays line counts it.
 
@@ -9,19 +9,19 @@ Blue 6526 yds · rating 72.5 / slope 141 · par 72. Built 2026-10-22 by `scripts
 | 1 | 5 | 486 | 3 | Dr · leave 188, center | 7i | 80% | 21% | 4.9 |
 | 2 | 4 | 421 | 9 | Dr · leave 158, 9 right of center | 9i | 48% | 11% | 4.6 |
 | 3 | 4 | 379 | 5 | 2Hy · leave 124, 4 right of center | PW | 60% | 14% | 4.4 |
-| 4 | 3 | 158 | 15 | 9i · green, center | — | 62% | 0% | 3.4 |
-| 5 | 5 | 492 | 7 | Dr · leave 158, center | 9i | 89% | 6% | 4.6 |
+| 4 | 3 | 158 | 15 | 9i · green, center | — | 63% | 0% | 3.4 |
+| 5 | 5 | 492 | 7 | Dr · leave 175, 8 left of center | 7i | 87% | 4% | 4.6 |
 | 6 | 4 | 348 | 13 | 2Hy · leave 103, 4 left of center | SW | 66% | 10% | 4.3 |
 | 7 | 3 | 146 | 17 | 7i · green, center | — | 60% | 5% | 3.4 |
 | 8 | 4 | 429 | 1 | Dr · leave 145, fairway center | 9i | 44% | 27% | 4.7 |
-| 9 | 4 | 307 | 11 | Dr · green, fat side | — | 78% | 11% | 3.9 |
+| 9 | 4 | 307 | 11 | Dr · leave 17, short of the green | — | 78% | 11% | 3.9 |
 | 10 | 4 | 407 | 6 | Dr · leave 104, fairway center | GW | 52% | 28% | 4.5 |
 | 11 | 3 | 181 | 12 | 5i · green, center | — | 50% | 19% | 3.7 |
 | 12 | 5 | 522 | 4 | Dr · leave 235, center | 2Hy | 72% | 24% | 5.1 |
 | 13 | 4 | 338 | 18 | 2Hy · leave 99, center | SW | 73% | 0% | 4.1 |
 | 14 | 4 | 374 | 8 | 2i · leave 133, 8 left of center | PW | 57% | 18% | 4.5 |
 | 15 | 5 | 516 | 2 | 2i · leave 228, center | 7i | 70% | 24% | 5.1 |
-| 16 | 3 | 191 | 16 | 5i · green, fat side | — | 42% | 20% | 3.9 |
+| 16 | 3 | 191 | 16 | 5i · green, front | — | 42% | 19% | 3.8 |
 | 17 | 4 | 425 | 10 | Dr · leave 151, fairway center | 9i | 36% | 46% | 4.9 |
 | 18 | 4 | 406 | 14 | Dr · leave 131, fairway center | PW | 47% | 32% | 4.6 |
 
@@ -73,26 +73,26 @@ From the line's start (no Blue box within 20 yds of the card). Pin plays 10 yds 
 
 From the Blue box. Pin plays level.
 
-**Tee shot (SAFE):** **9i** → green, center (141 yds, leave 0 yds) — par 62%, birdie 2%, double 4%, trouble 0%.
+**Tee shot (SAFE):** **9i** → green, center (146 yds, leave 0 yds) — par 63%, birdie 5%, double 6%, trouble 0%.
 Aim 3.3 yds left of the target for the pattern.
-*9-iron: best chance at par from here, 62%.*
+*9-iron: best chance at par from here, 63%.*
 
-**Aggressive:** **PW** → green, center (141 yds, leave 0 yds) — birdie 4%, par 58%, trouble 3% (trees 2%), +0.04 strokes vs SAFE.
+*Same shot both ways.*
 
-**Green:** Rises toward the back 2.6% · tilts right to left 1.8%.
+**Green:** Rises toward the back 2.0% · tilts right to left 1.7%.
 
 ## Hole 5 · Par 5 · 492 yds · SI 7
 
-From the Blue box. Pin plays level.
+From the Blue box. Pin plays 6 yds down.
 
-**Tee shot (SAFE):** **Dr** → leave 158, center (293 yds, leave 158 yds) — par 89%, birdie 37%, double 1%, trouble 6% (trees 6%).
+**Tee shot (SAFE):** **Dr** → leave 175, 8 left of center (294 yds, leave 175 yds) — par 87%, birdie 38%, double 1%, trouble 4% (trees 4%).
 Aim 5.1 yds left of the target for the pattern.
-*Driver: best chance at par from here, 89%.*
+*Driver: best chance at par from here, 87%.*
 
-**Aggressive:** **2i** → leave 194, center (263 yds, leave 194 yds) — birdie 38%, par 85%, trouble 2% (trees 2%), +0.17 strokes vs SAFE.
+*Same shot both ways.*
 
-**Shot 2 from the rough (158 yds to the pin, 3 yds up):** **9i** → green, center (158 yds, leave 0 yds) — par 96%, trouble 5% (sand 3%).
-*9-iron: best chance at par from here, 96%.*
+**Shot 2 from the fairway (175 yds to the pin, 2 yds up):** **7i** → green, fat side (173 yds, leave 8 yds) — par 87%, trouble 9% (trees 8%).
+*7-iron to the middle: only wedges go at the flag.*
 
 **Green:** Rises toward the back 2.8% · tilts right to left 1.6%.
 
@@ -105,8 +105,8 @@ From the Blue box. Pin plays level.
 
 **Aggressive:** **Dr** → leave 53, 6 right of center (291 yds, leave 53 yds) — birdie 8%, par 60%, trouble 29% (trees 27%), +0.08 strokes vs SAFE.
 
-**Shot 2 from the fairway (103 yds to the pin, level):** **SW** → green, center (103 yds, leave 0 yds) — par 67%, trouble 0%.
-*SW (finesse): best chance at par from here, 67%.*
+**Shot 2 from the fairway (103 yds to the pin, level):** **SW** → green, front (94 yds, leave 9 yds) — par 71%, trouble 0%.
+*SW (finesse): best chance at par from here, 71%.*
 
 **Green:** Rises toward the back 3.1% · tilts right to left 1.0%.
 
@@ -141,11 +141,11 @@ Aim 5.1 yds left of the target for the pattern.
 
 From the Blue box. Pin plays level.
 
-**Tee shot (SAFE):** **Dr** → green, fat side (298 yds, leave 12 yds) — par 78%, birdie 26%, double 3%, trouble 11% (trees 10%).
+**Tee shot (SAFE):** **Dr** → leave 17, short of the green (288 yds, leave 17 yds) — par 78%, birdie 26%, double 3%, trouble 11% (trees 10%).
 Aim 5.1 yds left of the target for the pattern.
 *Driver: best chance at par from here, 78%.*
 
-**Aggressive:** **Dr** → green, center (300 yds, leave 0 yds) — birdie 27%, par 72%, trouble 23% (trees 22%), +0.11 strokes vs SAFE.
+**Aggressive:** **Dr** → green, front (288 yds, leave 12 yds) — birdie 27%, par 72%, trouble 24% (trees 23%), +0.11 strokes vs SAFE.
 
 **Green:** Rises toward the back 2.1% · straight.
 
@@ -160,7 +160,7 @@ Aim 5.1 yds left of the target for the pattern.
 *Same shot both ways.*
 
 **Shot 2 from the rough (125 yds to the pin, 4 yds up):** **GW** → green, center (125 yds, leave 0 yds) — par 72%, trouble 3% (sand 3%).
-*GW: best chance at par from here, 72%.*
+*GW at the flag: middle pin, wedge in hand.*
 
 **Green:** Rises toward the back 1.3% · tilts right to left 1.3%.
 
@@ -186,7 +186,7 @@ Aim 5.1 yds left of the target for the pattern.
 *Same shot both ways.*
 
 **Shot 2 from the fairway (235 yds to the pin, level):** **2Hy** → green, center (235 yds, leave 0 yds) — par 86%, trouble 9% (sand 6%, trees 3%).
-*2-hybrid: best chance at par from here, 86%.*
+*2-hybrid to the middle: only wedges go at the flag.*
 
 **Green:** Rises toward the back 1.8% · tilts right to left 0.5%.
 
@@ -195,9 +195,9 @@ Aim 5.1 yds left of the target for the pattern.
 From the line's start (no Blue box within 20 yds of the card). Pin plays 4 yds down.
 
 **Tee shot (SAFE):** **2Hy** → leave 99, center (251 yds, leave 99 yds) — par 73%, birdie 2%, double 3%, trouble 0%.
-*2-hybrid: best chance at par, 73% (driver 70%).*
+*2-hybrid: best chance at par, 73% (driver 71%).*
 
-**Aggressive:** **Dr** → green, center (308 yds, leave 0 yds) — birdie 26%, par 70%, trouble 27% (trees 26%), −0.04 strokes vs SAFE.
+**Aggressive:** **Dr** → green, front (293 yds, leave 15 yds) — birdie 26%, par 71%, trouble 26% (trees 25%), −0.05 strokes vs SAFE.
 
 **Shot 2 from the fairway (99 yds to the pin, level):** **SW** → green, center (99 yds, leave 0 yds) — par 88%, trouble 0%.
 *SW (finesse): best chance at par from here, 88%.*
@@ -241,7 +241,7 @@ Aim 8 yds right of the target for the pattern.
 
 From the line's start (no Blue box within 20 yds of the card). Pin plays level.
 
-**Tee shot (SAFE):** **5i** → green, fat side (219 yds, leave 7 yds) — par 42%, birdie 2%, double 22%, trouble 20% (water 17%, trees 3%).
+**Tee shot (SAFE):** **5i** → green, front (208 yds, leave 13 yds) — par 42%, birdie 2%, double 22%, trouble 19% (water 16%, trees 3%).
 *5-iron: best chance at par from here, 42%.*
 
 *Same shot both ways.*

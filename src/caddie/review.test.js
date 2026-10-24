@@ -36,6 +36,9 @@ test("T48 review: 5 strokes, 2 putt records, 2 shot records → one missing row;
     ["shot", 1, false, "GPS"], ["shot", 2, true, "—"], ["shot", 3, false, "GPS"], ["putt", 1, false, null], ["putt", 2, false, null],
   ]);
   assert.equal(R.rows[0].intent, "default"); assert.equal(R.rows[0].result, "−1 short · 5 R"); assert.equal(R.rows[0].unreviewed, true);
+  // Creekside Oct 24: how far each shot went, and the miss in words
+  assert.equal(R.rows[0].yds, Math.round(Math.hypot(5, 240))); assert.equal(R.rows[0].miss, "10 yds short");
+  assert.equal(R.rows[1].yds, null); assert.equal(R.rows[1].miss, "—");
   assert.equal(R.rows[3].result, "20 ft"); assert.equal(R.rows[4].result, "made");
   assert.deepEqual(R.problems.map((p) => p.type).sort(), ["missing", "unreviewed"]);
   assert.equal(R.needed, true);
