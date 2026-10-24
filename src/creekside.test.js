@@ -32,7 +32,7 @@ const BLUE = [486, 421, 379, 158, 492, 348, 146, 429, 307, 407, 181, 522, 338, 3
 const ring2m2 = (ring) => { let a = 0; for (let i = 0; i < ring.length; i++) { const p = ring[i], q = ring[(i + 1) % ring.length]; a += p[0] * q[1] - q[0] * p[1]; } return Math.abs(a) / 2 / 1.19599; };
 
 test("D139: the file is found by the course's API id, parses with no warning, and carries the club outline as the boundary", () => {
-  assert.equal(lg.version, "yx7d5vnk@4");
+  assert.equal(lg.version, "yx7d5vnk@5");
   assert.equal(localGeometryFor([data], "mse9vsm1"), null, "Lakeside is not this file");
   assert.deepEqual(geo.warnings, []);
   assert.ok(geo.boundary && geo.boundary.ring.length > 200, "OSM's club outline holds every Creekside shape, so it is the OB line");
@@ -156,4 +156,17 @@ test("v22.68: picked through Setup's club row (Creekside + Lakeside folded, keye
   assert.equal(bundledMapId(reg, "yx7d5vnk", undefined), "yx7d5vnk", "no club id: its own");
   const bradshaw = { apiId: "0d614xe6", apiIds: ["0d614xe6", "pr605r02", "xs7ypdb7"] };
   assert.equal(bundledMapId([bradshaw], "pr605r02", "0d614xe6"), "0d614xe6", "a 27-hole club keeps one key across routings");
+});
+
+test("v22.70: hole 3's fairway is about 30 yds wide through the driver's landing area (Brett, on the course)", () => {
+  // Brett, Oct 24: "there is no way that the fairway is this narrow" — OSM had 16 / 12 / 10 / 9 yds at 240–300 out;
+  // both photos agree with OSM, but his eye wins (Q4, D145); kept 5 yds off the lidar trees
+  const w = data.ways.find((x) => x.tags.golf === "fairway" && x.q === "osm+field");
+  assert.ok(w, "hole 3's fairway is the field-widened one");
+  const b = buildHole(geo, 3, { par: 4, yards: 410 });
+  for (const y of [240, 260, 280, 300]) {
+    let n = 0;
+    for (let x = -80; x <= 80; x += 0.5) if (classify(b, { x, y }) === "fairway") n++;
+    assert.ok(n * 0.5 >= 25, `${n * 0.5} yds of fairway ${y} out`);
+  }
 });

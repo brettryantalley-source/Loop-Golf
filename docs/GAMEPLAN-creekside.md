@@ -1,6 +1,6 @@
 # Golf Club Of Georgia — Creekside: the plan from the Blue tees
 
-Blue 6526 yds · rating 72.5 / slope 141 · par 72. Built 2026-10-24 by `scripts/gameplan.mjs` from the caddie's engine on the bundled map (`src/localGeometry/creekside.json`, version 4) and the profile; calm, 70 °F — the caddie on the tee adds the day's wind and temperature. Par chance and trouble are the engine's simulation of his own pattern; expected score sums to **78.7** over 18.
+Blue 6526 yds · rating 72.5 / slope 141 · par 72. Built 2026-10-24 by `scripts/gameplan.mjs` from the caddie's engine on the bundled map (`src/localGeometry/creekside.json`, version 5) and the profile; calm, 70 °F — the caddie on the tee adds the day's wind and temperature. Par chance and trouble are the engine's simulation of his own pattern; expected score sums to **78.7** over 18.
 
 **Forecast:** Saturday Oct 24 (Open-Meteo, pulled Oct 22): dry, 50 °F at 8am rising to 70 °F by 3pm; wind from the east-north-east 7–11 mph with gusts to 25 in the morning, easing after noon. Cold air early: the ball flies 2–3% shorter until mid-morning — the caddie's Plays line counts it.
 
@@ -8,7 +8,7 @@ Blue 6526 yds · rating 72.5 / slope 141 · par 72. Built 2026-10-24 by `scripts
 |---|---|---|---|---|---|---|---|---|
 | 1 | 5 | 486 | 3 | Dr · leave 188, center | 7i | 80% | 21% | 4.9 |
 | 2 | 4 | 421 | 9 | Dr · leave 158, 9 right of center | 9i | 48% | 11% | 4.6 |
-| 3 | 4 | 379 | 5 | 2Hy · leave 124, 4 right of center | PW | 60% | 14% | 4.4 |
+| 3 | 4 | 379 | 5 | 2Hy · leave 119, fairway center | GW | 62% | 12% | 4.3 |
 | 4 | 3 | 158 | 15 | 9i · green, center | — | 63% | 0% | 3.4 |
 | 5 | 5 | 492 | 7 | Dr · leave 175, 8 left of center | 7i | 87% | 4% | 4.6 |
 | 6 | 4 | 348 | 13 | 2Hy · leave 103, 4 left of center | SW | 66% | 10% | 4.3 |
@@ -33,7 +33,7 @@ From the Blue box. Pin plays level.
 Aim 5.1 yds left of the target for the pattern.
 *Driver: the 2-iron scores the same and leaves 28 yds more.*
 
-**Aggressive:** **2i** → leave 215, 7 right of center (259 yds, leave 215 yds) — birdie 37%, par 80%, trouble 11% (trees 11%), +0.03 strokes vs SAFE.
+*Same shot both ways.*
 
 **Shot 2 from the fairway (188 yds to the pin, level):** **7i** → green, center (188 yds, leave 0 yds) — par 92%, trouble 12% (sand 12%).
 *7-iron: best chance at par from here, 92%.*
@@ -59,15 +59,15 @@ Aim 5.1 yds left of the target for the pattern.
 
 From the line's start (no Blue box within 20 yds of the card). Pin plays 10 yds down.
 
-**Tee shot (SAFE):** **2Hy** → leave 124, 4 right of center (259 yds, leave 124 yds) — par 60%, birdie 1%, double 8%, trouble 14% (trees 14%).
-*2-hybrid: best chance at par from here, 60%.*
+**Tee shot (SAFE):** **2Hy** → leave 119, fairway center (260 yds, leave 121 yds) — par 62%, birdie 1%, double 8%, trouble 12% (trees 12%).
+*2-hybrid: best chance at par, 62% (2-iron 60%).*
 
-**Aggressive:** **Dr** → leave 79, 4 left of center (299 yds, leave 79 yds) — birdie 3%, par 51%, trouble 34% (trees 33%), +0.17 strokes vs SAFE.
+**Aggressive:** **Dr** → leave 77, fairway center (299 yds, leave 80 yds) — birdie 4%, par 53%, trouble 35% (trees 35%), +0.15 strokes vs SAFE.
 
-**Shot 2 from the fairway (124 yds to the pin, 2 yds up):** **PW** → green, center (124 yds, leave 0 yds) — par 62%, trouble 0%.
-*PW at the flag: middle pin, wedge in hand.*
+**Shot 2 from the fairway (121 yds to the pin, 2 yds up):** **GW** → green, center (121 yds, leave 0 yds) — par 73%, trouble 0%.
+*GW: best chance at par from here, 73%.*
 
-**Green:** Rises toward the back 1.8% · tilts right to left 2.2%.
+**Green:** Rises toward the back 1.8% · tilts right to left 2.1%.
 
 ## Hole 4 · Par 3 · 158 yds · SI 15
 

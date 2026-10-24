@@ -741,9 +741,13 @@ export function pickOptions(scored, cfg, sit) {
       c.birdieProb > safe.birdieProb + 1e-12);
     if (alts.length) aggressive = alts.reduce((a, b) => (moreBirdie(b, a) ? b : a));
   }
+  // v22.70 (R13, Brett Oct 24 on Creekside 1: "why is the aggressive play a 2i layup?" — the 2-iron beat Driver's
+  // birdie odds by 0.2 points, simulation noise, and is the safer shot): under SAME_SHOT_BIRDIE_GAIN of birdie,
+  // Aggressive shows only when it goes more than 2 × SAME_SHOT_TARGET_YDS longer than SAFE (Brett: keep the Driver
+  // alternative of Oct 4 on a par-4 tee); a noise-level edge to a shorter, sideways or nearby target is the same shot
   const gain = aggressive.birdieProb - safe.birdieProb;
-  const sameShot = aggressive === safe || sameLine(aggressive, safe) ||
-    (gain < cfg.SAME_SHOT_BIRDIE_GAIN && dist(aggressive.target, safe.target) <= 2 * tgt);
+  const longer = aggressive.distToTarget > safe.distToTarget + 2 * tgt;
+  const sameShot = aggressive === safe || sameLine(aggressive, safe) || (gain < cfg.SAME_SHOT_BIRDIE_GAIN && !longer);
   return { safe, aggressive, sameShot, rules };
 }
 

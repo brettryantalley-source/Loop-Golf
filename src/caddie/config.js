@@ -192,8 +192,9 @@ export const DEFAULT_CONFIG = Object.freeze({
 
   /* ---- selection (§3.6) ---- */
   /* Same shot (v22.17, engine.js pickOptions): the same club + swing within SAME_SHOT_TARGET_YDS, or
-     a birdie gain under SAME_SHOT_BIRDIE_GAIN with the targets within 2 × SAME_SHOT_TARGET_YDS.
-     Was 0.01 on its own (any target), which hid real alternatives off the tee. */
+     a birdie gain under SAME_SHOT_BIRDIE_GAIN unless AGGRESSIVE goes more than 2 × SAME_SHOT_TARGET_YDS
+     longer (v22.70, R13: before, any target that far away counted, so a shorter 2-iron 0.2 points up was
+     "Aggressive"). Was 0.01 on its own (any target), which hid real alternatives off the tee. */
   SAME_SHOT_BIRDIE_GAIN: 0.005,
   SAME_SHOT_TARGET_YDS: 10,
   /* SAFE ranking (D78): "par" = the most likely to make par or better among the shots the course-
