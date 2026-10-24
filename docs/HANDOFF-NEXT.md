@@ -10,9 +10,17 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 470 tests (v22.69); must be green
+npm install && npm test    # 471 tests (v22.70); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.70 (Oct 24)
+
+Brett's answers to R13 and Q4 (D145). **Aggressive:** under half a point of birdie over Safe (`SAME_SHOT_BIRDIE_GAIN`)
+it shows only when its target is 20+ yds longer — the Driver alternative of Oct 4 stays (28 tees), a noise-level
+shorter or sideways club goes (Creekside 1's 2-iron: "Same shot both ways"). **Creekside 3:** the fairway widened to
+~30 yds from 214 to 352 yds out on his word (both photos agree with OSM's 7–19), 5 yds off the lidar trees;
+`q: "osm+field"`, `version` 5. 471 tests; smoke test green.
 
 ## v22.69 (Oct 24)
 
@@ -25,7 +33,7 @@ stops short of its target (a club "reaches" at the green's front − 8) is aimed
 N, short of the green` — Creekside 5's 8-iron aimed at the center 35 yds past its ring; on 2,460 approaches SAFE's
 target moves on 17%, its club on 22. **Creekside (D143):** hole 5's back tees are the lidar's two raised pads (the
 Oct 22 rectangle sat off one, the other was missing); hole 4's green is its putting surface (OSM's took in the bank, so
-the arrows fanned out). Not changed: hole 3's fairway (both photos agree with OSM; Q4) and Aggressive's rule (R13).
+the arrows fanned out). Hole 3's fairway (Q4) and Aggressive's rule (R13) went to Brett; v22.70.
 Answered in the reply: chip / pitch / wedge, what `GPS` / `default` / `on · 21 L` meant, the putt's pre-filled length
 (ball → pin for putt 1; 3 ft after a miss). 470 tests; smoke test green.
 

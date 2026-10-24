@@ -142,7 +142,7 @@ test("D78 pickSafe: a higher par chance beats a lower expected score; 'exp' rest
 
 /* ---------- v22.17 same shot and AGGRESSIVE off the tee ---------- */
 
-test("same shot v22.17: same club + swing within 10 yds, or < 0.005 birdie gain within 20 yds; otherwise both", () => {
+test("same shot v22.17 / v22.70: same club + swing within 10 yds, or < 0.005 birdie gain unless 20+ yds longer; otherwise both", () => {
   const c = (club, x, y, birdieProb, o = {}) => ({ club, swing: "full", kind: "corridor", target: { x, y }, label: "t", meanYds: y, distToTarget: y,
     expScore: 4.6, parProb: 0.5, troubleRate: 0, birdieProb, ...o });
   const sit = { teeShot: false, recovery: false, pin: "middle", depthTargetYds: 0 };
@@ -161,6 +161,14 @@ test("same shot v22.17: same club + swing within 10 yds, or < 0.005 birdie gain 
   o = pickOptions([c("7i", 0, 150, 0.05, { parProb: 0.6 }), c("6i", 0, 162, 0.056)], cfg, sit);
   assert.equal(o.sameShot, false);
   assert.equal(cfg.SAME_SHOT_BIRDIE_GAIN, 0.005);
+  // v22.70 (R13, Creekside 1): a noise-level gain to a SHORTER target 30 yds away is the same shot — the 2-iron
+  // 0.2 points up on Driver is not Aggressive; the same gain 30 yds LONGER still shows (above)
+  o = pickOptions([c("Dr", 0, 290, 0.372, { parProb: 0.8 }), c("2i", 0, 260, 0.374, { parProb: 0.79 })], cfg, { ...sit, teeShot: true });
+  assert.equal(o.aggressive.club, "2i");
+  assert.equal(o.sameShot, true);
+  // sideways 30 yds, same length, same noise → the same shot too
+  o = pickOptions([c("7i", 0, 150, 0.05, { parProb: 0.6 }), c("7i", 30, 150, 0.053)], cfg, sit);
+  assert.equal(o.sameShot, true);
 });
 
 test("tee shot: when the best birdie chance is SAFE's own club and line, AGGRESSIVE is the best different shot that beats SAFE's birdie odds", () => {
