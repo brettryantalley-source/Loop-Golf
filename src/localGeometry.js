@@ -35,6 +35,25 @@ const PARSED = new WeakMap();
 const ELEV = new WeakMap();
 
 /**
+ * v22.71 (D146): a nine played twice. Bobby Jones (Atlanta) is a reversible nine, so its file writes each hole
+ * line twice, as refs 1–9 and 10–18 (`loop: 9`). parseOverpass hands a fairway, tee, rough or hazard to the ONE
+ * nearest hole (its greens and woods to every hole that close), so the second loop's holes came up bare; here
+ * every shape of hole n is hole n + loop's too, and the other way round. Mutates and returns the parsed geometry.
+ */
+export function mirrorLoop(geometry, loop) {
+  const L = Number(loop);
+  if (!geometry || !Number.isInteger(L) || L <= 0) return geometry;
+  const twin = (k) => { const n = Number(k); if (!Number.isInteger(n) || String(n) !== String(k)) return null; return n > L ? n - L : n + L; };
+  const widen = (x) => {
+    const refs = (x.holeRefs || []).map(String);
+    for (const r of [...refs]) { const t = twin(r); if (t != null && geometry.holes[t] && !refs.includes(String(t))) refs.push(String(t)); }
+    x.holeRefs = refs.map((r) => (geometry.holes[r] ? geometry.holes[r].key : r));
+  };
+  for (const list of [geometry.features, geometry.trouble, geometry.greens]) (list || []).forEach(widen);
+  return geometry;
+}
+
+/**
  * v22.45 (C34, D116): the file's baked USGS 3DEP grid (scripts/fetch-3dep.mjs) as elevation samples
  * [{ lat, lon, elevM }], the shape sensors.js fetches from Open-Meteo, or null when the file has none.
  * Cell (i, j) of a row [j, i0, ds] sits at lat0 + j·dLat, lon0 + (i0 + k)·dLon; elevM = (baseDm + d) / 10.
@@ -87,7 +106,7 @@ export function localGeometryFor(registry, clubId) {
   const data = registry.find((d) => d && (String(d.apiId) === String(clubId) || (d.apiIds || []).some((id) => String(id) === String(clubId))));
   if (!data) return null;
   let geometry = PARSED.get(data);
-  if (!geometry) { geometry = parseOverpass(toOverpass(data)); PARSED.set(data, geometry); }
+  if (!geometry) { geometry = mirrorLoop(parseOverpass(toOverpass(data)), data.loop); PARSED.set(data, geometry); }
   return { version: `${data.apiId}@${data.version}`, geometry, name: data.name || null, elevation: elevationSamples(data), greenGrids: greenGrids(data) };
 }
 

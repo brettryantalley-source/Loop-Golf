@@ -22,6 +22,7 @@ import { DEFAULT_CONFIG } from "../src/caddie/config.js";
 import { whyLine } from "../src/caddie/reasons.js";
 import { cardForHole, assignTeeBoxes, ringCentroid } from "../src/caddie/teeboxes.js";
 import { gridForGreen, puttRead } from "../src/caddie/greenslope.js";
+import { normalizeStrokeIndex } from "../src/routing.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -32,8 +33,10 @@ const TEE = opt("tee", "Blue");
 const data = JSON.parse(readFileSync(join(root, "src/localGeometry", `${club}.json`), "utf8"));
 const api = JSON.parse(readFileSync(opt("card"), "utf8")).course;
 const tees = api.tees.male || [];
-const tee = tees.find((t) => t.tee_name.toLowerCase() === TEE.toLowerCase());
-if (!tee) { console.error(`no tee ${TEE}; have ${tees.map((t) => t.tee_name).join(", ")}`); process.exit(1); }
+const tee0 = tees.find((t) => t.tee_name.toLowerCase() === TEE.toLowerCase());
+if (!tee0) { console.error(`no tee ${TEE}; have ${tees.map((t) => t.tee_name).join(", ")}`); process.exit(1); }
+// v22.71: a nine played twice (Bobby Jones) carries its 1–9 handicap twice; the odd/even rule spreads it to 1–18 as Setup does
+const tee = { ...tee0, holes: normalizeStrokeIndex(tee0.holes) };
 const teeCard = tees.map((t) => ({ name: t.tee_name, yards: t.holes.map((h) => h.yardage) }));
 const geo = localGeometryFor([data], data.apiId).geometry;
 const elevation = elevationSamples(data), grids = greenGrids(data);
