@@ -13,7 +13,7 @@
  */
 
 import {
-  bearingDeg, haversineM, pointInRing as llPointInRing, distToRingM, YARDS_PER_METER,
+  bearingDeg, haversineM, pointInRing as llPointInRing, distToRingM, distToPolylineM, YARDS_PER_METER,
   GEOMETRY_SCHEMA, compactGeometry,
 } from "../geometry.js";
 import { classify, greenDistances, pointInRing, pointAlong, dist, ringDistance } from "./course.js";
@@ -362,12 +362,34 @@ function holeKeys(geometry) {
     .sort((a, b) => (parseInt(a, 10) - parseInt(b, 10)) || String(a).localeCompare(String(b)));
 }
 
-/** Metres from p to hole `key`'s tee: its tee polygons, else (none mapped) the centreline's tee end. */
+/**
+ * v22.72 (D147): a hole with no tee box drawn — the stretch of its line that stands for the tee. Bobby Jones's Longleaf
+ * tees are mown into open turf (nothing to trace), and the card's shortest tee can sit more than halfway up the line
+ * (hole 1: Tee 1 at 265 of 616 yds), so the leading `TEE_STRETCH` of the line, kept `TEE_STRETCH_CLEAR_M` short of the
+ * green end, is the tee; the line's start alone put every forward tee out of reach of hole detection.
+ */
+export const TEE_STRETCH = 0.6, TEE_STRETCH_CLEAR_M = 100;
+export function teeStretch(line) {
+  if (!Array.isArray(line) || line.length < 2) return line || [];
+  const segs = []; let total = 0;
+  for (let i = 0; i < line.length - 1; i++) { const d = haversineM(line[i], line[i + 1]); segs.push(d); total += d; }
+  const want = Math.max(0, Math.min(total * TEE_STRETCH, total - TEE_STRETCH_CLEAR_M));
+  const out = [line[0]]; let acc = 0;
+  for (let i = 0; i < segs.length; i++) {
+    if (acc + segs[i] <= want) { out.push(line[i + 1]); acc += segs[i]; continue; }
+    const t = segs[i] > 0 ? (want - acc) / segs[i] : 0;
+    if (t > 0) out.push({ lat: line[i].lat + (line[i + 1].lat - line[i].lat) * t, lon: line[i].lon + (line[i + 1].lon - line[i].lon) * t });
+    break;
+  }
+  return out;
+}
+
+/** Metres from p to hole `key`'s tee: its tee polygons, else (none mapped) the leading stretch of its centreline (v22.72; was its start). */
 function teeDistanceM(geometry, key, q) {
   const tees = (geometry.features || []).filter((f) => f.kind === "tee" && (f.holeRefs || []).some((r) => String(r) === String(key)));
   if (tees.length) return Math.min(...tees.map((t) => distToRingM(q, t.ring)));
   const h = Object.values(geometry.holes || {}).find((x) => String(x.key ?? x.ref) === String(key));
-  return h?.line?.length ? haversineM(q, h.line[0]) : Infinity;
+  return h?.line?.length ? distToPolylineM(q, teeStretch(h.line)) : Infinity;
 }
 
 /**

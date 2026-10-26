@@ -12,8 +12,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { localGeometryFor, elevationSamples, greenGrids, imageryFor, bundledMapId, mirrorLoop } from "./localGeometry.js";
-import { yardsBetween, pointInRing, parseOverpass } from "./geometry.js";
-import { coverageCheck, buildHole, detectHole, frameOf } from "./caddie/geo.js";
+import { yardsBetween, pointInRing, parseOverpass, haversineM, distToPolylineM, destination } from "./geometry.js";
+import { coverageCheck, buildHole, detectHole, frameOf, teeStretch, TEE_DETECT_M } from "./caddie/geo.js";
 import { classify } from "./caddie/course.js";
 import { gridForGreen, slopeArrows } from "./caddie/greenslope.js";
 import { assembleShotContext } from "./caddie/context.js";
@@ -94,6 +94,29 @@ test("D146: mirrorLoop — the second loop carries the first loop's fairways, ro
   assert.equal(detectHole(geo, tee10, 18).hole, 1);
   assert.equal(detectHole(geo, geo.holes[2].line[0], 10).hole, 11);
 });
+
+test("D147: with no tee box drawn, the line's leading stretch is the tee — a forward tee still advances the hole, a tee tap on the previous hole never does", () => {
+  // Brett plays Tee 6 or 7: on hole 1 that is 50–95 yds up the line from OSM's start (the card's Tee 1 is 351 yds up)
+  const line = geo.holes[1].line;
+  const stretch = teeStretch(line);
+  const total = line.slice(1).reduce((s, p, i) => s + haversineM(line[i], p), 0);
+  const kept = stretch.slice(1).reduce((s, p, i) => s + haversineM(stretch[i], p), 0);
+  assert.ok(Math.abs(kept - 0.6 * total) < 1, `${Math.round(kept)} of ${Math.round(total)} m`);
+  const tee6 = destination(line[0], bearingTo(line[0], line[1]), 90 / 1.09361);
+  assert.equal(detectHole(geo, tee6, 9).hole, 10, "90 yds up hole 1's line from the 9th: the 10th");
+  assert.equal(detectHole(geo, line[line.length - 1], 9).hole, 9, "the green end of hole 1's line is not a tee");
+  assert.equal(detectHole(geo, destination(line[0], bearingTo(line[0], line[1]), 250 / 1.09361), 9).hole, 10, "250 yds up the line is still tee ground here: the card's Tee 1 sits 351 yds up");
+  // a par 3's stretch stops 100 m short of its green
+  const l2 = geo.holes[2].line, s2 = teeStretch(l2);
+  assert.ok(haversineM(s2[s2.length - 1], l2[l2.length - 1]) >= 99, "hole 2's stretch keeps 100 m off the green end");
+  // standing on hole n's tee and tapping "I'm on the tee" never reads as hole n + 1: every start is well off the next line's stretch
+  for (let n = 1; n <= 18; n++) {
+    const next = geo.holes[(n % 18) + 1];
+    const d = distToPolylineM(geo.holes[n].line[0], teeStretch(next.line));
+    assert.ok(d > 2 * TEE_DETECT_M, `hole ${n}'s start is ${Math.round(d)} m from hole ${(n % 18) + 1}'s tee stretch`);
+  }
+});
+function bearingTo(a, b) { const dLon = (b.lon - a.lon) * Math.PI / 180, la = a.lat * Math.PI / 180, lb = b.lat * Math.PI / 180; return (Math.atan2(Math.sin(dLon) * Math.cos(lb), Math.cos(la) * Math.sin(lb) - Math.sin(la) * Math.cos(lb) * Math.cos(dLon)) * 180 / Math.PI + 360) % 360; }
 
 test("D146: the creeks are water — Peachtree Creek's OSM area clipped, Tanyard Creek's centreline buffered — and the lidar woods line the holes", () => {
   const clipped = data.ways.filter((w) => w.q === "osm+clip");
