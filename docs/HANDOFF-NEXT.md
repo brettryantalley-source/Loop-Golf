@@ -10,9 +10,19 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 478 tests (v22.71); must be green
+npm install && npm test    # 479 tests (v22.72); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.72 (Oct 26)
+
+Bobby Jones's tee pads, tried and not shipped (D147). The lidar shelf finder (`scripts/bobbyjones/tees.py`) returned mounds
+and bunker lips; the leaf-on photo shows the Longleaf tees mown into open fairway-height turf, so there is no pad to find
+or trace, and card-derived boxes along a centreline that cuts the doglegs would be wrong by tens of yards. What it exposed
+is fixed: a hole with no tee polygons measured hole detection from its line's START, so `I'm on the tee` from Tee 6 or 7
+(50–95 yds up hole 1's line) would never have advanced 9 → 10. `teeStretch` (geo.js) makes the leading 60% of the line,
+kept 100 m short of the green, the tee for such a hole; every other club has tee polygons, so nothing changes there.
+479 tests; smoke test green.
 
 ## v22.71 (Oct 26)
 
