@@ -149,7 +149,8 @@ export function buildHole(geometry, holeRef, { par, yards, nearYds = NEAR_YDS } 
   }
   // other holes' greens (and practice greens) near this one: a ball there is not "green" for this hole
   const otherGreens = [
-    ...Object.values(geometry.holes).filter((o) => o !== h && o.green?.ring).map((o) => o.green.ring),
+    // v22.71: a nine played twice (Bobby Jones) lists each hole twice sharing one green ring — its own green is not another hole's
+    ...Object.values(geometry.holes).filter((o) => o !== h && o.green?.ring && o.green.ring !== h.green.ring).map((o) => o.green.ring),
     ...(geometry.greens || []).filter((g) => !(g.holeRefs || []).length).map((g) => g.ring),
   ];
   for (const r of otherGreens) { const ring = F.ringToFrame(r); if (nearSamples(ring, samples) <= nearYds) nearbyGreens.push(ring); }

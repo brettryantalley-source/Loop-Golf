@@ -10,9 +10,26 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 471 tests (v22.70); must be green
+npm install && npm test    # 478 tests (v22.71); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.71 (Oct 26)
+
+Bobby Jones (Atlanta), the **Azalea** routing, for Brett's round there Oct 26 (D146). Two firsts. **A course the API does not
+have:** golfcourseapi's only "Bobby Jones" is in Sarasota, so `src/localCourses.js` bundles the GolfPass card in the API's
+shape — Setup's search lists it for "bobby" / "azalea" (first, and alone when the API is down) and `loadFullCourse` returns
+it offline; 8 Longleaf tees, each 18 holes = the nine twice, rating = 2 × the 9-hole rating (Tee 6: 69.0 / 121), handicap
+1–9 twice → odd/even. Not checked against the printed card (F50). **A nine played twice on the map:** `bobbyjones.json`
+writes the Azalea lines as refs 1–9 and 10–18 (`loop: 9`) sharing nine double greens; `mirrorLoop` gives the second loop
+the first's fairways, rough and hazards (parseOverpass hands each to one hole), `buildHole` keeps a hole's own green off
+its neighbour list; no tee boxes (OSM has none), the line's start stands for the tee. Creeks: Tanyard's
+centrelines buffered (`osm+buffer`), Peachtree Creek's OSM water area clipped (`osm+clip`). No boundary: OSM's outline
+predates the 2018 rebuild (the 9th green sits outside it), OB off. Fulton County's photo + Esri 41468. 3DEP, 9 green
+grids, 77 lidar woods (GA_Statewide_B2_2018). `scripts/bobbyjones/convert.py` is committed; Magnolia is a sibling run.
+`docs/GAMEPLAN-bobbyjones.md` from Tee 6 (expected 75.2; from the line's start, no tee boxes). 478 tests; smoke test green.
+**Watch:** two bundled files at one club would both key the club id (D141 covers only "no file for the club id") — a
+Magnolia file needs that rule extended first.
 
 ## v22.70 (Oct 24)
 

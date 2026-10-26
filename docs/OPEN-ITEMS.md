@@ -45,7 +45,15 @@ rate shrunk to ~52% (C7) · R7 retry an empty OSM answer (C6) · R8 the Woodmont
 after C13 (P11) · R9 no native app for now (P1). Q1 answered the same day (C8).
 
 ### On the next round (F)
-- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.70 · Oct 24**.
+- **F1.** Fully close and reopen Loop. Setup's build tag reads **v22.71 · Oct 26**.
+- **F50.** Bobby Jones, Azalea (v22.71, D146): on Setup search **bobby** and pick **Bobby Jones Golf Course** (its card is
+  bundled; the API has none), then the Longleaf tee you play (Tee 6 is 6,280 yds / 69.0 / 121; Tee 7 6,802 / 71.4 / 128).
+  Holes 10–18 are 1–9 again. **Check the printed card's 18-hole rating and slope for your tee against Setup's** — the
+  bundled ones are GolfPass's 9-hole figures doubled, and other listings differ by a stroke. No tee boxes are drawn
+  (OSM has none), so the caddie prices from your GPS fix and the tee tint is missing; say if the hole does not advance
+  from 9 to 10 or 18 to the card. OB is off (OSM's outline is stale). Say whether Peachtree Creek and Tanyard Creek read
+  as water where they should, and whether the fairway "center" targets on 1, 3 and 5 (37–85 yds off the straight line)
+  look like the real landing areas. `docs/GAMEPLAN-bobbyjones.md` is the engine's plan from Tee 6.
 - **F49.** Aggressive and Creekside 3 (v22.70, D145): Aggressive now shows only with half a point more birdie than
   Safe, or a target 20+ yds longer (Driver over a 2-iron); otherwise "Same shot both ways" (Creekside 1). Creekside 3's
   fairway is ~30 yds wide through the landing area. Say if a tee now hides an option you wanted, or 3's tint still
