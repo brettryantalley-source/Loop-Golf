@@ -117,7 +117,7 @@ for (let n = 1; n <= 18; n++) {
 const head = [
   `# ${api.club_name} — ${api.course_name}: the plan from the ${tee.tee_name} tees`,
   ``,
-  `${tee.tee_name} ${tee.total_yards} yds · rating ${tee.course_rating} / slope ${tee.slope_rating} · par ${tee.par_total}. Built ${new Date().toISOString().slice(0, 10)} by \`scripts/gameplan.mjs\` from the caddie's engine on the bundled map (\`src/localGeometry/${club}.json\`, version ${data.version}) and the profile${profileAsOf ? ` (${profileAsOf})` : ""}; calm, 70 °F — the caddie on the tee adds the day's wind and temperature${CARRY ? `; **every club ${Math.abs(CARRY)}% short** (the Carry chip, D148)` : ""}. Par chance and trouble are the engine's simulation of his own pattern; expected score sums to **${expTotal.toFixed(1)}** over 18.`,
+  `${tee.tee_name} ${tee.total_yards} yds · rating ${tee.course_rating} / slope ${tee.slope_rating} · par ${tee.par_total}. Built ${new Date().toISOString().slice(0, 10)} by \`scripts/gameplan.mjs\` from the caddie's engine on the bundled map (\`src/localGeometry/${club}.json\`, version ${data.version}) and the profile${profileAsOf ? ` (${profileAsOf})` : ""}; calm, 70 °F — the caddie on the tee adds the day's wind and temperature${CARRY ? `; **every shot over 100 yds ${Math.abs(CARRY)}% short** (the Carry chip, D148–D149)` : ""}. Par chance and trouble are the engine's simulation of his own pattern; expected score sums to **${expTotal.toFixed(1)}** over 18.`,
   ...(opt("forecast") ? [``, `**Forecast:** ${opt("forecast")}`] : []),
   ``,
   `| Hole | Par | Yds | SI | Tee call (SAFE) | Next | Par | Trouble | Exp |`,

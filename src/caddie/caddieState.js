@@ -58,7 +58,7 @@ export const COPY = Object.freeze({
   done: "Done",
   useInferred: (v) => `Use inferred · ${v}`,
   pinNote: "Or tap the green on the map.",
-  carryNote: "Today only: every club plays this much short. Shots logged while it is set are Ignored on History (one tap there teaches them).",
+  carryNote: "Today only: every shot longer than 100 yds plays this much short; inside 100 stays full. Shots logged while it is set are Ignored on History (one tap there teaches them).",
   yardsTitle: "Yards to pin",
   use: (n) => `Use ${n}`,
   /* v22.15 shot log v2 */

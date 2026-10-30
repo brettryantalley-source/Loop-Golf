@@ -10,9 +10,14 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 489 tests (v22.73); must be green
+npm install && npm test    # 489 tests (v22.74); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.74 (Oct 30)
+
+Brett's rule for the Carry chip (D149): only a shot longer than 100 yds plays short (`CARRY_CHIP_MIN_YDS`); a part swing
+inside that keeps its full carry. A step at 100, his words. The plan regenerated at −10% (Blue: expected 78.1). 489 tests.
 
 ## v22.73 (Oct 30)
 

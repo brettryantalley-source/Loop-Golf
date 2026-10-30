@@ -117,10 +117,12 @@ function tempEffect(rawYds, tempF, cfg) {
 /**
  * v22.73 (D148): the day's form. With every club `carryPct` short (−5: 95% of its carry), a shot of rawYds
  * needs a club whose profile carry is rawYds / 0.95, so it plays rawYds × (100 / (100 + pct) − 1) longer.
- * Round-level, set by Brett (the Carry chip), never inferred; 0 → no term.
+ * Round-level, set by Brett (the Carry chip), never inferred; 0 → no term. v22.74 (D149): only a shot longer
+ * than `minYds` (CARRY_CHIP_MIN_YDS, 100) — a part swing inside that keeps its full carry.
  */
-export function formEffect(rawYds, carryPct) {
-  return Number.isFinite(carryPct) && carryPct < 0 && carryPct > -100 ? rawYds * (100 / (100 + carryPct) - 1) : 0;
+export function formEffect(rawYds, carryPct, minYds = DEFAULT_CONFIG.CARRY_CHIP_MIN_YDS) {
+  if (!(Number.isFinite(carryPct) && carryPct < 0 && carryPct > -100)) return 0;
+  return rawYds > (Number.isFinite(minYds) ? minYds : 0) ? rawYds * (100 / (100 + carryPct) - 1) : 0;
 }
 
 function altEffect(rawYds, elevFt, cfg) {
@@ -175,7 +177,7 @@ export function playsLike(rawYds, bearingDeg, ctx, cfg, family, target) {
   const w = windEffect(ctx.wind, bearingDeg, rawYds, cfg, family);
   const tempYds = tempEffect(rawYds, ctx.tempF, cfg);
   const altYds = altEffect(rawYds, ctx.elevFt, cfg);
-  const formYds = formEffect(rawYds, ctx.carryPct);
+  const formYds = formEffect(rawYds, ctx.carryPct, cfg.CARRY_CHIP_MIN_YDS ?? DEFAULT_CONFIG.CARRY_CHIP_MIN_YDS);
   const riseYds = riseTo(ctx, target);
   return { yds: rawYds + riseYds * cfg.ELEV_FACTOR + w.alongYds + tempYds + altYds + formYds, wind: w, tempYds, altYds, formYds, riseYds };
 }
