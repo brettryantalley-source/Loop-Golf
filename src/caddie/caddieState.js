@@ -58,6 +58,7 @@ export const COPY = Object.freeze({
   done: "Done",
   useInferred: (v) => `Use inferred · ${v}`,
   pinNote: "Or tap the green on the map.",
+  carryNote: "Today only: every club plays this much short. Shots logged while it is set are Ignored on History (one tap there teaches them).",
   yardsTitle: "Yards to pin",
   use: (n) => `Use ${n}`,
   /* v22.15 shot log v2 */
@@ -110,6 +111,7 @@ export function initialCaddie(hole = 1) {
     pins: {},            // per hole: { [hole]: "front" | "middle" | "back" | {lat,lng} | {x,y} }
     windOverride: null,  // per round: { direction, speed }
     conditionsOverride: null,
+    carryOverride: null, // per round (v22.73, D148): −5 | −10 | −15 — every club that much short today; null = full
     shots: {},           // per hole: [{ from:{x,y}, to:{x,y} }]  (MapLayer previousShots)
     context: null,       // the last assembled ShotContext (snapshot for S4's shot record)
     logCard: null,       // S4: "log" (Log shot sheet open) | "prev" (blocking previous-shot prompt) | "putt" (putt card open) | null
@@ -237,6 +239,7 @@ export function caddieReducer(s, a) {
       const v = a.value ?? null;
       if (a.key === "wind") return { ...s, windOverride: v };
       if (a.key === "conditions") return { ...s, conditionsOverride: v };
+      if (a.key === "carry") return { ...s, carryOverride: CARRY_STEPS.includes(v) ? v : null };
       if (a.key === "pin") return setPin(s, v);
       if (a.key === "lie" || a.key === "quality" || a.key === "elevation") {
         const chips = { ...s.chips };
@@ -384,9 +387,9 @@ export const intentSet = (s, hole = s.hole, shotNo = s.shotNo) => s.intent?.[hol
 /** What goes into the round state's `caddie` key. `context` = the ShotContext on screen (a snapshot). */
 export function serializeCaddie(s, context = s?.context ?? null) {
   if (!s) return null;
-  const { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, shots, logCard, openShot, putts, lastPuttFt,
+  const { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, carryOverride, shots, logCard, openShot, putts, lastPuttFt,
     awaitingTap, intent, greenHole, review } = s;
-  return { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, shots, context, logCard, openShot, putts, lastPuttFt,
+  return { v, hole, shotNo, phase, prevPhase, trigger, ball, ballXY, yards, opt, exp, chips, pins, windOverride, conditionsOverride, carryOverride: carryOverride ?? null, shots, context, logCard, openShot, putts, lastPuttFt,
     awaitingTap: awaitingTap ?? null, intent: intent ?? {}, greenHole: greenHole ?? null, review: review ?? null };
 }
 
@@ -418,6 +421,7 @@ export function restoreCaddie(raw) {
   for (const [k, v] of Object.entries(raw.pins || {})) if (PIN_PRESETS.includes(v) || isLL(v) || isXY(v)) s.pins[k] = v;
   s.windOverride = raw.windOverride && typeof raw.windOverride === "object" ? raw.windOverride : null;
   s.conditionsOverride = ["firm", "normal", "wet"].includes(raw.conditionsOverride) ? raw.conditionsOverride : null;
+  s.carryOverride = CARRY_STEPS.includes(raw.carryOverride) ? raw.carryOverride : null;
   s.shots = {};
   for (const [k, list] of Object.entries(raw.shots || {})) if (Array.isArray(list)) s.shots[k] = list.filter((x) => isXY(x?.from) && isXY(x?.to));
   s.context = raw.context && typeof raw.context === "object" ? raw.context : null;
@@ -708,11 +712,11 @@ export const elevText = (n) => (Number.isFinite(n) ? `${signed(Math.round(n))} y
 export const riseText = (yds) => (!Number.isFinite(yds) ? null : Math.abs(yds) < 1 ? "level" : `${Math.round(Math.abs(yds))} yds ${yds > 0 ? "up" : "down"}`);
 
 /**
- * The six chips. inferred = { lieType, lieConfidence, quality, wind, elevation, conditions, tempF }
+ * The seven chips (Carry since v22.73). inferred = { lieType, lieConfidence, quality, wind, elevation, conditions, tempF }
  * as Loop worked them out (no Brett input); a key missing from `inferred` shows —. `tempF` has no
  * chip of its own (§3.3) — it rides along on the Wind chip's text.
  */
-export function chipList({ chips = {}, pin = "middle", windOverride = null, conditionsOverride = null, inferred = null } = {}) {
+export function chipList({ chips = {}, pin = "middle", windOverride = null, conditionsOverride = null, carryOverride = null, inferred = null } = {}) {
   const inf = inferred || {};
   const has = !!inferred;
   const lieEdited = chips.lie != null;
@@ -728,8 +732,14 @@ export function chipList({ chips = {}, pin = "middle", windOverride = null, cond
     { key: "pin", label: "Pin", edited: pinEdited, value: typeof pin === "string" ? cap(pin) : "Custom", inferredValue: "Middle" },
     { key: "conditions", label: "Conditions", edited: conditionsOverride != null, value: cap(conditionsOverride ?? inf.conditions ?? "normal"),
       inferredValue: cap(inf.conditions ?? "normal") },
+    // v22.73 (D148): the day's form — every club this much short; a round-level override, never inferred
+    { key: "carry", label: "Carry", edited: carryOverride != null, value: carryOverride != null ? carryText(carryOverride) : "Full", inferredValue: "Full" },
   ];
 }
+
+/** The Carry chip's steps (percent off every club) and its words: `−5%`. */
+export const CARRY_STEPS = [-5, -10, -15];
+export function carryText(pct) { return pct == null ? "Full" : `−${Math.abs(pct)}%`; }
 
 /**
  * §7.3 — the bottom sheet for one chip. current = the value in effect (as stored); edited = Brett
@@ -768,6 +778,10 @@ export function pickerModel(key, { chip, current } = {}) {
       const eff = String(current || "normal").toLowerCase();
       return { key, title: "Conditions", options: ["firm", "normal", "wet"].map((v) => opt(cap(v), v, v === eff)), inferredLabel, note: null };
     }
+    case "carry": {
+      const eff = CARRY_STEPS.includes(current) ? current : null;
+      return { key, title: "Carry", options: [null, ...CARRY_STEPS].map((v) => opt(carryText(v), v, v === eff)), inferredLabel, note: COPY.carryNote };
+    }
     default:
       return null;
   }
@@ -796,7 +810,7 @@ export function syntheticHole(yds, par = 4) {
  * is club-brain's only weather input — it needs no GPS or geometry, only a fresh reading (the
  * caller derives it with sensors.js `weatherTempF`; §3.3 applies to this path too).
  */
-export function clubBrainContext({ holeNo, par, shotNo, chips = {}, windOverride = null, conditionsOverride = null, tempF = null }) {
+export function clubBrainContext({ holeNo, par, shotNo, chips = {}, windOverride = null, conditionsOverride = null, carryOverride = null, tempF = null }) {
   const lc = parseLieChip(chips.lie);
   const lieType = lc ? lc.lieType : shotNo <= 1 ? "tee" : "fairway";
   return {
@@ -806,6 +820,7 @@ export function clubBrainContext({ holeNo, par, shotNo, chips = {}, windOverride
     wind: windOverride ? windFromChip(windOverride) : null,
     elevationDeltaYds: Number.isFinite(chips.elevation) ? chips.elevation : 0,
     tempF: Number.isFinite(tempF) ? tempF : null,
+    carryPct: CARRY_STEPS.includes(carryOverride) ? carryOverride : 0,
     meta: { trigger: shotNo <= 1 ? "tee" : "ball", sources: { lie: lc ? "chip" : "default", ball: "yards" } },
   };
 }
@@ -960,7 +975,7 @@ export function caddieView({
 
   const details = {
     distances: distancesStrip,
-    chips: chipList({ chips: s.chips, pin: pinSetting(s), windOverride: s.windOverride, conditionsOverride: s.conditionsOverride, inferred }),
+    chips: chipList({ chips: s.chips, pin: pinSetting(s), windOverride: s.windOverride, conditionsOverride: s.conditionsOverride, carryOverride: s.carryOverride ?? null, inferred }),
     rows,
     dispersion: active ? dispersionLine(active) : null,
     reasons,

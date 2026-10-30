@@ -47,6 +47,9 @@ export function normalizeContext(ctx, hole) {
     elevBallZ: Array.isArray(ctx.elevPts) && ctx.elevPts.length && ctx.ball ? elevAt(ctx.elevPts, ctx.ball) : null,
     tempF: Number.isFinite(ctx.tempF) ? ctx.tempF : null,   // §3.3 — no adjustment when unknown
     elevFt: Number.isFinite(ctx.elevFt) ? ctx.elevFt : null, // ball altitude (ft); null → no altitude term
+    // v22.73 (D148): Brett's Carry chip for the day — a percentage off every club (−5 = everything flies 5%
+    // short today), so a shot plays longer against the profile. 0 (the default) changes nothing.
+    carryPct: Number.isFinite(ctx.carryPct) && ctx.carryPct < 0 ? ctx.carryPct : 0,
     // §5.5 within-round corrections, produced by learning.js (S5) and applied here, never stored:
     //   { distYds: { [family]: +n }   → plays-like shift (positive = the shot plays longer),
     //     aimYds:  { [family]: +n } } → lateral shift of every target (positive = right)
@@ -111,6 +114,15 @@ function tempEffect(rawYds, tempF, cfg) {
  * Altitude (integration item 5): thinner air above REF_ELEV_FT carries farther, so the shot plays
  * SHORTER (negative); below it plays longer. 0 when the ball's elevation is unknown.
  */
+/**
+ * v22.73 (D148): the day's form. With every club `carryPct` short (−5: 95% of its carry), a shot of rawYds
+ * needs a club whose profile carry is rawYds / 0.95, so it plays rawYds × (100 / (100 + pct) − 1) longer.
+ * Round-level, set by Brett (the Carry chip), never inferred; 0 → no term.
+ */
+export function formEffect(rawYds, carryPct) {
+  return Number.isFinite(carryPct) && carryPct < 0 && carryPct > -100 ? rawYds * (100 / (100 + carryPct) - 1) : 0;
+}
+
 function altEffect(rawYds, elevFt, cfg) {
   if (!Number.isFinite(elevFt)) return 0;
   return -rawYds * (cfg.ALT_PCT_PER_1000FT ?? 0) * (elevFt - (cfg.REF_ELEV_FT ?? 0)) / 1000 || 0;   // no −0
@@ -163,8 +175,9 @@ export function playsLike(rawYds, bearingDeg, ctx, cfg, family, target) {
   const w = windEffect(ctx.wind, bearingDeg, rawYds, cfg, family);
   const tempYds = tempEffect(rawYds, ctx.tempF, cfg);
   const altYds = altEffect(rawYds, ctx.elevFt, cfg);
+  const formYds = formEffect(rawYds, ctx.carryPct);
   const riseYds = riseTo(ctx, target);
-  return { yds: rawYds + riseYds * cfg.ELEV_FACTOR + w.alongYds + tempYds + altYds, wind: w, tempYds, altYds, riseYds };
+  return { yds: rawYds + riseYds * cfg.ELEV_FACTOR + w.alongYds + tempYds + altYds + formYds, wind: w, tempYds, altYds, formYds, riseYds };
 }
 
 /* ---------- candidates (§3.4, §3.7) ---------- */
@@ -811,6 +824,7 @@ export function recommend(rawCtx, hole, P) {
     elevationDeltaYds: ctx.elevationDeltaYds,
     tempF: ctx.tempF, tempYds: r2(headline.tempYds),
     elevFt: ctx.elevFt, altYds: r2(headline.altYds),
+    carryPct: ctx.carryPct || 0, formYds: r2(headline.formYds),
   };
   if (!cands.length) {
     return { context, sameShot: true, safe: null, aggressive: null, message: "No club in the profile reaches a useful target from here.", nudges: [], flags: [], strategy: [], candidates: 0 };

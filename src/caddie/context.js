@@ -198,6 +198,7 @@ export function assembleShotContext(inputs = {}) {
   return {
     hole: holeKey, par: round.par ?? hole.par, shotNo,
     ball, lieType, lieQuality, lieConfidence, conditions, pinPos, wind, elevationDeltaYds, elevPts, tempF, elevFt,
+    carryPct: Number.isFinite(round.carryOverride) && round.carryOverride < 0 ? round.carryOverride : 0,   // v22.73 (D148): the Carry chip, round-level
     meta: {
       nine: round.nine ?? null, trigger, lie, penalty, sources, distances: dists,
       ballGps: fixLL ? { lat: fixLL.lat, lng: fixLL.lon, accuracyM: fix.accuracyM ?? null } : null,
