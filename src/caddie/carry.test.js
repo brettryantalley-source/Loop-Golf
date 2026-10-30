@@ -16,8 +16,13 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const P = loadProfile(JSON.parse(readFileSync(join(here, "..", "profile.json"), "utf8")), DEFAULT_CONFIG);
 
-test("formEffect: 5% short needs a club 5.3% longer; 0, positive and absurd values are no term", () => {
+test("formEffect: 5% short needs a club 5.3% longer; 0, positive and absurd values are no term; nothing inside 100 yds (D149)", () => {
   assert.ok(Math.abs(formEffect(150, -5) - 150 * (100 / 95 - 1)) < 1e-9);
+  assert.equal(formEffect(100, -10), 0, "100 yds is a full-carry shot");
+  assert.equal(formEffect(60, -15), 0);
+  assert.ok(formEffect(101, -10) > 11, "just over 100 plays the full term");
+  assert.equal(DEFAULT_CONFIG.CARRY_CHIP_MIN_YDS, 100);
+  assert.ok(formEffect(80, -10, 0) > 8, "the threshold is the config's");
   assert.ok(Math.abs(formEffect(200, -10) - 200 / 9) < 1e-9);
   assert.equal(formEffect(150, 0), 0);
   assert.equal(formEffect(150, 5), 0);
@@ -63,6 +68,7 @@ test("the chip: Full by default, written when set, a 4-way picker, round-level a
   const pm = pickerModel("carry", { chip: c0, current: -5 });
   assert.deepEqual(pm.options.map((o) => o.label), ["Full", "−5%", "−10%", "−15%"]);
   assert.deepEqual(pm.options.map((o) => o.current), [false, true, false, false]);
+  assert.match(pm.note, /longer than 100 yds/);
   assert.match(pm.note, /Ignored on History/);
   assert.deepEqual(CARRY_STEPS, [-5, -10, -15]);
   assert.equal(carryText(null), "Full");

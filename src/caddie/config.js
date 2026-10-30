@@ -55,6 +55,10 @@ export const DEFAULT_CONFIG = Object.freeze({
   ALT_PCT_PER_1000FT: 0.0116,
   REF_ELEV_FT: 1000,
 
+  /* The Carry chip (v22.73, D148): a day's form as a percentage off every club. v22.74 (D149, Brett Oct 30): only a
+     shot longer than this plays short — the swing inside 100 is a part swing and keeps its full carry. */
+  CARRY_CHIP_MIN_YDS: 100,
+
   /* Roll model: carry = total − roll (§3.3). Shot Pattern medians are TOTALS.
      Per-club yards of roll-out from the tee & fairway, in Brett's words (Sep 29): "my pitching
      wedge often has negligible roll-out, my 8 might roll out 6 yards, 5-iron 10 yards". Clubs not
