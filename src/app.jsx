@@ -23,6 +23,7 @@ import HAMPTON_GEOMETRY from "./localGeometry/hampton.json";
 import BRADSHAW_GEOMETRY from "./localGeometry/bradshaw.json";
 import CREEKSIDE_GEOMETRY from "./localGeometry/creekside.json";
 import BOBBYJONES_GEOMETRY from "./localGeometry/bobbyjones.json";
+import CRYSTALFALLS_GEOMETRY from "./localGeometry/crystalfalls.json";
 /* v22.16: finished rounds re-read from a verified card (Ironwood 2026-09-28, the API's pars / indexes). */
 import { fixHistoryFromLocalCards, matchResult } from "./historyFix.js";
 import { loadProfile, resolveEntry, shortBandFor } from "./caddie/profile.js";
@@ -95,7 +96,7 @@ const MapPin = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0
 const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Icon>;
 
 /* build tag — bump alongside the sw.js cache version so a deploy is confirmable on-screen */
-const BUILD = "v22.72 · Oct 26";
+const BUILD = "v22.73 · Oct 30";
 
 /* Every colour and type role now lives in src/theme.jsx. The old Shot-Pattern dark
    palette is gone: at v21.3 History was the last screen still using it. */
@@ -255,7 +256,7 @@ const safeStorage = () => { try { return window.localStorage; } catch (e) { retu
    - no anchor (lat/lon) to even query from                   -> unavailable, unchanged (nothing to retry)
    v22.16.3: a club with a bundled trace (LOCAL_GEOMETRY) never asks Overpass and ignores a cache that
    predates the trace; the entry is stamped with the trace's version, so a newer trace replaces it once. */
-const LOCAL_GEOMETRY = [WOODMONT_GEOMETRY, CHICOPEE_GEOMETRY, RIVERPINES_GEOMETRY, HAMPTON_GEOMETRY, BRADSHAW_GEOMETRY, CREEKSIDE_GEOMETRY, BOBBYJONES_GEOMETRY];
+const LOCAL_GEOMETRY = [WOODMONT_GEOMETRY, CHICOPEE_GEOMETRY, RIVERPINES_GEOMETRY, HAMPTON_GEOMETRY, BRADSHAW_GEOMETRY, CREEKSIDE_GEOMETRY, BOBBYJONES_GEOMETRY, CRYSTALFALLS_GEOMETRY];
 /* v22.45 (C34, D116): a bundled map carries its own USGS 3DEP elevation (scripts/fetch-3dep.mjs). It rides
    on the geometry in memory and is never written to the cache — it is in the bundle already, and ~4,000
    samples a club would crowd localStorage. Open-Meteo is asked only for courses without one. */
@@ -2055,7 +2056,9 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
   /* the engine: assembleShotContext → §5.5 within-round nudges → recommend → ellipses (≈ 20–45 ms, inside the 500 ms budget) */
   // shotsRev: bumped on every saveShot here, so a logged / closed-out shot re-runs the nudges.
   const [shotsRev, setShotsRev] = useState(0);
-  const saveShotHere = (record) => { const r = saveShot(safeStorage(), record); setShotsRev((x) => x + 1); return r; };
+  // v22.73 (D148): a shot logged while the Carry chip is set is marked `teach: false` — an injured day teaches the
+  // profile nothing; History shows the round Ignored, and its Teaches switch clears the marks in one tap.
+  const saveShotHere = (record) => { const rec = cs.carryOverride != null && record && record.teach == null ? { ...record, teach: false } : record; const r = saveShot(safeStorage(), rec); setShotsRev((x) => x + 1); return r; };
   const engine = useMemo(() => {
     if (!profile) return null;
     const lieOf = (ctx) => (c, sw) => resolveEntry(profile, c, sw, ctx.lieType, { wet: ctx.conditions === "wet" });
@@ -2066,21 +2069,21 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
       const tempF = weatherTempF(weather);
       if (cs.phase === "yards" && cs.yards) {
         const syn = syntheticHole(cs.yards, h.par);
-        const ctx = nudged(clubBrainContext({ holeNo: n, par: h.par, shotNo: cs.shotNo, chips: cs.chips, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride, tempF }));
+        const ctx = nudged(clubBrainContext({ holeNo: n, par: h.par, shotNo: cs.shotNo, chips: cs.chips, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride, carryOverride: cs.carryOverride, tempF }));
         const res = recommend(ctx, syn, profile);
         const options = res ? ellipsesFor(res, lieOf(ctx), { lieQuality: ctx.lieQuality, config }) : null;
         const inferred = { lieType: cs.shotNo <= 1 ? "tee" : "fairway", lieConfidence: "low", wind: undefined, elevation: 0, conditions: "normal", tempF, distances: res?.context?.distances };
         return { ctx, res, options, inferred, onGreen: false, green: syn.green };
       }
       if (cs.phase !== "ready" || !built || !cs.ball) return null;
-      const round = { hole: n, par: h.par, shotNo: cs.shotNo, courseId, trigger: cs.trigger || "tee", pins: { [n]: pinSet }, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride };
+      const round = { hole: n, par: h.par, shotNo: cs.shotNo, courseId, trigger: cs.trigger || "tee", pins: { [n]: pinSet }, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride, carryOverride: cs.carryOverride };
       const wx = weather && (Number.isFinite(weather.speedMph) || Number.isFinite(weather.tempF)) ? weather : null;
       const common = { hole: built, geometry: built.synthetic ? null : geometry, fix: { lat: cs.ball.lat, lng: cs.ball.lng, accuracyM: cs.ball.accuracyM }, weather: wx,
         elevation: built.synthetic ? null : geometry?.elevation || null, overrides, config };
       // a marked green: the same assembly, its ±10-yd pin presets, and no lie inference (greens.js)
       const assemble = built.synthetic ? markedGreenContext : assembleShotContext;
       const ctx = nudged(assemble({ ...common, round, chips: cs.chips }));
-      const base = assemble({ ...common, round: { ...round, windOverride: null, conditionsOverride: null }, chips: {} });
+      const base = assemble({ ...common, round: { ...round, windOverride: null, conditionsOverride: null, carryOverride: null }, chips: {} });
       const res = recommend(ctx, built, profile);
       const options = res && res.safe ? ellipsesFor(res, lieOf(ctx), { lieQuality: ctx.lieQuality, config }) : null;
       const pinPt = base.meta.distances?.pinPoint || built.green.center;
@@ -2092,7 +2095,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
       console.warn("caddie compute failed", e);
       return null;
     }
-  }, [profile, cs.phase, cs.yards, cs.ball, cs.chips, cs.shotNo, cs.trigger, cs.windOverride, cs.conditionsOverride, pinSet, built, geometry, weather, overrides, n, h.par, roundId, shotsRev]);
+  }, [profile, cs.phase, cs.yards, cs.ball, cs.chips, cs.shotNo, cs.trigger, cs.windOverride, cs.conditionsOverride, cs.carryOverride, pinSet, built, geometry, weather, overrides, n, h.par, roundId, shotsRev]);
   // The saved snapshot (§9.8) is the ShotContext only: §5.5 nudges are recomputed, never stored.
   // v22.45 (D116): nor the elevation points the engine prices each landing spot with (hundreds per hole)
   if (contextRef) contextRef.current = engine?.ctx ? (({ adjust, nudges, flags, elevPts, ...rest }) => rest)(engine.ctx) : null;
@@ -2204,7 +2207,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     const startGps = cs.ball;
     const startFrame = cs.phase === "yards" ? null : ballXY;
     const toggled = v.sameShot ? res.safe : (res[cs.opt] || res.safe);
-    const chipsInEffect = { chips: cs.chips, pin: pinSet, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride };
+    const chipsInEffect = { chips: cs.chips, pin: pinSet, windOverride: cs.windOverride, conditionsOverride: cs.conditionsOverride, carryOverride: cs.carryOverride };
     const opt = engine?.options?.[v.sameShot ? "safe" : cs.opt] || toggled;
     return newShotRecord({
       id: existingFor()?.id,
@@ -2505,6 +2508,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
     : k === "wind" ? cs.windOverride
     : k === "elevation" ? (Number.isFinite(cs.chips.elevation) ? cs.chips.elevation : Number.isFinite(engine?.inferred?.elevation) ? Math.round(engine.inferred.elevation) : null)
     : k === "pin" ? pinSet
+    : k === "carry" ? cs.carryOverride
     : (cs.conditionsOverride ?? engine?.inferred?.conditions ?? "normal");
   const pickerM = picker ? pickerModel(picker, { chip: v.details.chips.find((c) => c.key === picker), current: chipCurrent(picker) }) : null;
 
@@ -2967,7 +2971,7 @@ function CaddieScreen({ course, geometry, profile, cs, dispatch, weather, setWea
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1, background: T.hair, border: rule, marginTop: 10 }}>
               {d.chips.map((c) => (
                 <button key={c.key} className="lc-chip" data-chip={c.key} onClick={() => { setWindDir(null); setPicker(c.key); }} aria-label={`${c.label}: ${c.value}`}
-                  style={{ position: "relative", background: T.paper, height: 50, padding: "7px 9px 6px", display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "flex-start", textAlign: "left", minWidth: 0 }}>
+                  style={{ position: "relative", background: T.paper, height: 50, padding: "7px 9px 6px", display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "flex-start", textAlign: "left", minWidth: 0, gridColumn: c.key === "carry" ? "1 / -1" : "auto" }}>
                   <span style={k9}>{c.label}</span>
                   <span style={{ ...(c.edited ? { ...writtenWord(c.value.length > 8 ? 22 : 27), lineHeight: 0.62 } : { fontSize: c.value.length > 10 ? 11.5 : 13.5, color: T.black, lineHeight: 1 }),
                     whiteSpace: "nowrap", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis" }}>

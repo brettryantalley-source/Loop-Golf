@@ -305,8 +305,9 @@ test("chips: printed when inferred, pencil when Brett changed it, ? on a low-con
   assert.deepEqual([c.lie.value, c.lie.edited, c.lie.unsure], ["Fairway", false, true]);
   assert.equal(c.wind.value, "8 into-left"); assert.equal(c.elevation.value, "+4 yds"); assert.equal(c.pin.value, "Middle"); assert.equal(c.conditions.value, "Normal");
   assert.ok(Object.values(c).every((x) => !x.edited));
-  const e = Object.fromEntries(chipList({ inferred, chips: { lie: "rough", quality: "buried", elevation: -10 }, pin: "back", windOverride: { direction: "helping", speed: 20 }, conditionsOverride: "wet" }).map((x) => [x.key, x]));
+  const e = Object.fromEntries(chipList({ inferred, chips: { lie: "rough", quality: "buried", elevation: -10 }, pin: "back", windOverride: { direction: "helping", speed: 20 }, conditionsOverride: "wet", carryOverride: -5 }).map((x) => [x.key, x]));
   assert.ok(Object.values(e).every((x) => x.edited), "every changed chip is pencil");
+  assert.equal(e.carry.value, "−5%"); assert.equal(c.carry.value, "Full");
   assert.deepEqual([e.lie.value, e.lie.unsure], ["Rough", false]);
   assert.equal(e.wind.value, "20+ helping"); assert.equal(e.elevation.value, "−10 yds"); assert.equal(e.quality.value, "Buried"); assert.equal(e.conditions.value, "Wet");
   assert.equal(windChipText({ direction: "from left", speed: 15 }), "15 from L");

@@ -10,9 +10,23 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 479 tests (v22.72); must be green
+npm install && npm test    # 489 tests (v22.73); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.73 (Oct 30)
+
+Crystal Falls Golf Club (Dawsonville) mapped for Brett's round there today, and the **Carry chip** (D148). **The map:** OSM has
+the whole club (18 holes, pars and handicaps the card's on all 18, 76 tee boxes, 61 bunkers, 18 fairways), so the bundle's
+worth is what Overpass cannot give — Yellow Creek and its feeders as water (`osm+buffer`), the club outline as the OB line,
+the 3DEP grid, 18 green grids, 319 lidar woods (GA_Statewide_B3_2018), the plan offline. Esri Wayback 43291 (the current
+leaf-on capture; no county photo for Dawson). `scripts/crystalfalls/convert.py`. **The chip:** a seventh chip, round-level,
+`Full` or −5 / −10 / −15 % — every club that much short today; `formEffect` in `playsLike` beside temperature and
+altitude, so every candidate and reach check lands on the day's carry. A shot logged while it is set is saved
+`teach: false` (the round reads `Ignored` on History; one tap there teaches it) — a sore day never reaches the profile.
+`scripts/gameplan.mjs --carry=-5`, and two tees sharing a box share its name (Blue = Players on 11 holes here).
+`docs/GAMEPLAN-crystalfalls.md` (Blue, −5%: expected 76.9). 489 tests; smoke test green. **Watch:** the tee-box tint
+names a shared box after the first tee on the card.
 
 ## v22.72 (Oct 26)
 

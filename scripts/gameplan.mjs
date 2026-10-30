@@ -3,7 +3,9 @@
  * gameplan.mjs — a hole-by-hole plan for a bundled club from the caddie's own engine (v22.66, D139). Offline: not in
  * the build, not run by `npm test`.
  *
- *   node scripts/gameplan.mjs <club> --card=<golfcourseapi /courses/{id} JSON> --tee=<tee name> [--out=<file.md>]
+ *   node scripts/gameplan.mjs <club> --card=<golfcourseapi /courses/{id} JSON> --tee=<tee name> [--out=<file.md>] [--carry=-5]
+ *
+ * --carry (v22.73, D148): the Carry chip for the day — every club that percent short (−5, −10, −15).
  *
  * Every hole from the chosen tee's box (teeboxes.js picks it off the card; the line's start when none matches):
  * the tee call SAFE / AGGRESSIVE with its target, leave, par chance and trouble, then the next shot from SAFE's
@@ -30,6 +32,7 @@ const opt = (k, d = null) => args.find((a) => a.startsWith(`--${k}=`))?.slice(k.
 const club = args.find((a) => !a.startsWith("--"));
 if (!club || !opt("card")) { console.error("usage: node scripts/gameplan.mjs <club> --card=<api json> --tee=<tee> [--out=<file>]"); process.exit(1); }
 const TEE = opt("tee", "Blue");
+const CARRY = Number(opt("carry", "0")) || 0;
 const data = JSON.parse(readFileSync(join(root, "src/localGeometry", `${club}.json`), "utf8"));
 const api = JSON.parse(readFileSync(opt("card"), "utf8")).course;
 const tees = api.tees.male || [];
@@ -63,11 +66,14 @@ for (let n = 1; n <= 18; n++) {
   if (!h) { notes.push(`## Hole ${n}\n\nNo map.`); continue; }
   const F = frameOf(h);
   const names = assignTeeBoxes(h, cardForHole(teeCard, n - 1));
-  const idx = names.findIndex((x) => x && x.toLowerCase() === TEE.toLowerCase());
+  // v22.73: two tees that share a box (the card gives them the same yardage on this hole) share its name too
+  const sameBox = cardForHole(teeCard, n - 1).filter((t) => t.yards === yards).map((t) => t.name.toLowerCase());
+  let idx = names.findIndex((x) => x && x.toLowerCase() === TEE.toLowerCase());
+  if (idx < 0) idx = names.findIndex((x) => x && sameBox.includes(x.toLowerCase()));
   const ball = idx >= 0 ? ringCentroid(h.tees[idx]) : { x: 0, y: 0 };
-  const teeNote = idx >= 0 ? `${TEE} box` : `line's start (no ${TEE} box within 20 yds of the card)`;
+  const teeNote = idx >= 0 ? (names[idx].toLowerCase() === TEE.toLowerCase() ? `${TEE} box` : `${TEE} box (shared with ${names[idx]})`) : `line's start (no ${TEE} box within 20 yds of the card)`;
   const shots = [];
-  let ctx = assembleShotContext({ hole: h, round: { shotNo: 1, trigger: "tee", ball, par, hole: n }, geometry: geo, elevation, config: DEFAULT_CONFIG });
+  let ctx = assembleShotContext({ hole: h, round: { shotNo: 1, trigger: "tee", ball, par, hole: n, carryOverride: CARRY }, geometry: geo, elevation, config: DEFAULT_CONFIG });
   let r = recommend(ctx, h, P);
   const first = r;
   const climbToPin = ctx.elevationDeltaYds;
@@ -77,7 +83,7 @@ for (let n = 1; n <= 18; n++) {
     const t = r.safe.target;
     if (!t || r.safe.leaveYds <= 30) break;                        // on or at the green: done
     b = { x: t.x, y: t.y };
-    ctx = assembleShotContext({ hole: h, round: { shotNo: k + 1, trigger: "ball", ball: b, par, hole: n }, geometry: geo, elevation, config: DEFAULT_CONFIG });
+    ctx = assembleShotContext({ hole: h, round: { shotNo: k + 1, trigger: "ball", ball: b, par, hole: n, carryOverride: CARRY }, geometry: geo, elevation, config: DEFAULT_CONFIG });
     r = recommend(ctx, h, P);
   }
   // the green's tilt read along the final approach: from 15 yds short of the centre, along the last shot's line
@@ -111,7 +117,7 @@ for (let n = 1; n <= 18; n++) {
 const head = [
   `# ${api.club_name} — ${api.course_name}: the plan from the ${tee.tee_name} tees`,
   ``,
-  `${tee.tee_name} ${tee.total_yards} yds · rating ${tee.course_rating} / slope ${tee.slope_rating} · par ${tee.par_total}. Built ${new Date().toISOString().slice(0, 10)} by \`scripts/gameplan.mjs\` from the caddie's engine on the bundled map (\`src/localGeometry/${club}.json\`, version ${data.version}) and the profile${profileAsOf ? ` (${profileAsOf})` : ""}; calm, 70 °F — the caddie on the tee adds the day's wind and temperature. Par chance and trouble are the engine's simulation of his own pattern; expected score sums to **${expTotal.toFixed(1)}** over 18.`,
+  `${tee.tee_name} ${tee.total_yards} yds · rating ${tee.course_rating} / slope ${tee.slope_rating} · par ${tee.par_total}. Built ${new Date().toISOString().slice(0, 10)} by \`scripts/gameplan.mjs\` from the caddie's engine on the bundled map (\`src/localGeometry/${club}.json\`, version ${data.version}) and the profile${profileAsOf ? ` (${profileAsOf})` : ""}; calm, 70 °F — the caddie on the tee adds the day's wind and temperature${CARRY ? `; **every club ${Math.abs(CARRY)}% short** (the Carry chip, D148)` : ""}. Par chance and trouble are the engine's simulation of his own pattern; expected score sums to **${expTotal.toFixed(1)}** over 18.`,
   ...(opt("forecast") ? [``, `**Forecast:** ${opt("forecast")}`] : []),
   ``,
   `| Hole | Par | Yds | SI | Tee call (SAFE) | Next | Par | Trouble | Exp |`,

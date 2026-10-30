@@ -5,6 +5,7 @@
 | `HANDOFF-NEXT.md` | The start-here for the next thread: where things stand, first commands, what each screen does, on-device verification, open follow-ups. Read first. | current |
 | `OPEN-ITEMS.md` | The one list of everything unresolved, merged Oct 4 from ten chats: Brett's questions and decisions, on-course checks, the ordered code builds. Delete an item in the commit that closes it. | current |
 | `HANDOFF-design-NEXT.md` | The brief to paste into a **UI/UX** thread for a new feature. Carries the full brand, the constraints and what to hand back. Add the feature at the top before pasting. | current |
+| `GAMEPLAN-crystalfalls.md` | The engine's plan for Crystal Falls (Dawsonville) from the Blue tees at 5% short (the Carry chip), written by `scripts/gameplan.mjs` on Oct 30 for that day's round. Regenerate, don't edit. | generated |
 | `GAMEPLAN-creekside.md` | The engine's hole-by-hole plan for Golf Club of Georgia's Creekside from the Blue tees, written by `scripts/gameplan.mjs` on Oct 22 for the Oct 24 round. Regenerate, don't edit. | generated |
 | `DEVLOG.md` | Version history, newest first. Append, never rewrite. | living |
 | `../loop-design/` | The design source: `SPEC.md`, the two approved reference screens as standalone HTML + 2× PNGs, the pencil filter, the logo. What v21 was built from. | reference |
