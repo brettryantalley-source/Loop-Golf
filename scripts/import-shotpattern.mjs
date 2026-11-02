@@ -232,7 +232,7 @@ export function roundFromShots(json, key) {
       if (club === "Putter") {
         // a putter from off the green: a putt record (the club rule), filed where Shot Pattern files it
         records.push(puttRecord(ctx, hole, seq, {
-          category: kind, distanceFt: num(row.startYds) ? row.startYds * 3 : null, made: false, missNote: row.missNote, sg: row.sg,
+          category: kind, distanceFt: num(row.startYds) ? row.startYds * 3 : null, made: row.holed === true, missNote: row.holed === true ? null : row.missNote, sg: row.sg,
           startLie: row.startLie, endLie: row.endLie, toHoleFt: row.toHoleFt,
         }));
         return;
