@@ -10,9 +10,19 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 496 tests (v22.76); must be green
+npm install && npm test    # 496 tests (v22.77); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.77 (Nov 2)
+
+Two more Shot Pattern rounds from Brett's screen recordings, imported the D66 way (`data/extracted/rounds/{date}-{course}/shots.json`,
+then `npm run import:shots`): **Bradshaw Farm, Red & White, Oct 11, 81 (+9)** and **Crystal Falls, Oct 30, 83 (+11)**. Every hole's
+rows add up to the printed score (the importer reports no short holes) and the scoring averages match Shot Pattern's. Pars come from
+`src/localCards.js` (Bradshaw Red and White) and `src/localGeometry/crystalfalls.json`. The recordings show no tee and no rating or
+slope, so neither file carries them. Importer: a short-game putter row with `holed: true` now imports as a made putt (it was always a
+miss). The records seed under the matching History round by day and course, else `sp:{key}`. Not touched: `src/profile.json` (the club
+medians still come from the Oct 4 Last-10 batch; a refresh needs Shot Pattern's Stats screens, not round lists). 496 tests.
 
 ## v22.76 (Nov 2)
 
