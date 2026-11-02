@@ -42,7 +42,7 @@ export function yardsAlongHole(hole, p) {
     if (!best || d < best.d) best = { d, s: along + t * L, behind: i === 0 && t === 0 };
     along += L;
   }
-  // A box behind the line's start (v22.76, D150): the way back to the start counts, as a card would
+  // A box behind the line's start (v22.76, D151): the way back to the start counts, as a card would
   // measure it; before, every box behind the start read the start's own yardage.
   return along - best.s + (best.behind ? best.d : 0) + dist(line[line.length - 1], G);
 }
