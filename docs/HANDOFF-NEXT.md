@@ -10,9 +10,21 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 489 tests (v22.74); must be green
+npm install && npm test    # 495 tests (v22.75); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.75 (Nov 1)
+
+Callahan Golf Links (Waleska) mapped for Brett's round from the Black tees (D150). golfcourseapi `ztss1ttq`: Black
+6,675 / 72.8 / 134 (the back tee is Black). OSM has the whole club and sits inside the app's Overpass box, so the bundle
+is the D139 recipe's extras: the three creeks as water (`osm+buffer`), the club outline as the OB line, 3DEP, 18 green
+grids, 156 lidar woods (GA_Statewide_B2_2018), the plan offline. **New in the recipe:** on holes 4, 9 and 13 OSM's
+line started at a forward tee with the Black box 50–117 yds behind it (a box behind the line's start reads as the
+start), so `LINE_START` in `scripts/callahan/convert.py` extends those lines back to the Black box (`q: osm+tee`).
+Hole 6's line starts on a pad 40 yds behind the card's Black and stays as drawn. Cherokee County's photo as `imagery`
+(D140), Esri 43291 as `imageryEsri`. `docs/GAMEPLAN-callahan.md` (Black: expected 76.2). 495 tests; smoke test
+green. **Watch:** not field-checked; hole 1's Black and Blue share one pad (reads 470).
 
 ## v22.74 (Oct 30)
 
