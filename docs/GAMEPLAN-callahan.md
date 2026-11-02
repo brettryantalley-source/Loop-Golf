@@ -1,6 +1,6 @@
 # Callahan Golf Links — Callahan Golf Links: the plan from the Black tees
 
-Black 6675 yds · rating 72.8 / slope 134 · par 72. Built 2026-11-01 by `scripts/gameplan.mjs` from the caddie's engine on the bundled map (`src/localGeometry/callahan.json`, version 3) and the profile; calm, 70 °F — the caddie on the tee adds the day's wind and temperature. Par chance and trouble are the engine's simulation of his own pattern; expected score sums to **76.2** over 18.
+Black 6675 yds · rating 72.8 / slope 134 · par 72. Built 2026-11-02 by `scripts/gameplan.mjs` from the caddie's engine on the bundled map (`src/localGeometry/callahan.json`, version 4) and the profile; calm, 70 °F — the caddie on the tee adds the day's wind and temperature. Par chance and trouble are the engine's simulation of his own pattern; expected score sums to **75.2** over 18.
 
 | Hole | Par | Yds | SI | Tee call (SAFE) | Next | Par | Trouble | Exp |
 |---|---|---|---|---|---|---|---|---|
@@ -11,17 +11,17 @@ Black 6675 yds · rating 72.8 / slope 134 · par 72. Built 2026-11-01 by `script
 | 5 | 4 | 429 | 1 | Dr · leave 126, center | PW | 59% | 12% | 4.4 |
 | 6 | 3 | 156 | 17 | 9i · green, center | — | 69% | 0% | 3.3 |
 | 7 | 4 | 403 | 3 | Dr · leave 128, 6 right of center | PW | 63% | 7% | 4.3 |
-| 8 | 3 | 167 | 15 | 9i · green, center | — | 75% | 1% | 3.2 |
+| 8 | 3 | 167 | 15 | 9i · green, center | — | 78% | 0% | 3.2 |
 | 9 | 4 | 398 | 13 | Dr · leave 101, 4 right of center | SW | 72% | 0% | 4.2 |
 | 10 | 5 | 517 | 8 | Dr · leave 211, center | 5i | 79% | 2% | 4.9 |
-| 11 | 4 | 386 | 4 | Dr · leave 162, 7 right of center | 8i | 52% | 0% | 4.5 |
+| 11 | 4 | 386 | 4 | Dr · leave 106, 5 right of center | GW | 71% | 0% | 4.2 |
 | 12 | 4 | 383 | 10 | 2i · leave 129, 3 left of center | PW | 65% | 1% | 4.3 |
 | 13 | 4 | 415 | 2 | Dr · leave 124, 17 left of center | GW | 65% | 0% | 4.3 |
 | 14 | 3 | 159 | 18 | 9i · green, center | — | 72% | 0% | 3.3 |
 | 15 | 4 | 366 | 12 | 2i · leave 119, 9 right of center | GW | 65% | 9% | 4.3 |
-| 16 | 4 | 352 | 16 | Dr · leave 102, 18 right of center | SW | 70% | 0% | 4.2 |
+| 16 | 4 | 352 | 16 | Dr · leave 47, center | LW | 79% | 3% | 4.0 |
 | 17 | 3 | 197 | 14 | 6i · green, center | — | 61% | 2% | 3.4 |
-| 18 | 5 | 566 | 6 | Dr · leave 335, center | 4Hy | 48% | 3% | 5.6 |
+| 18 | 5 | 566 | 6 | Dr · leave 267, center | 2Hy | 67% | 0% | 5.2 |
 
 ## Hole 1 · Par 5 · 495 yds · SI 9
 
@@ -103,7 +103,7 @@ From the Black box. Pin plays level.
 Aim 3.3 yds left of the target for the pattern.
 *9-iron: best chance at par from here, 69%.*
 
-**Aggressive:** **9i** → green, fat side (144 yds, leave 14 yds) — birdie 7%, par 66%, trouble 0%, +0.03 strokes vs SAFE.
+**Aggressive:** **9i** → green, fat side (144 yds, leave 14 yds) — birdie 6%, par 67%, trouble 0%, +0.03 strokes vs SAFE.
 
 **Green:** Rises toward the back 4.1% · straight.
 
@@ -124,15 +124,15 @@ Aim 5.1 yds left of the target for the pattern.
 
 ## Hole 8 · Par 3 · 167 yds · SI 15
 
-From the Black box. Pin plays 17 yds down.
+From the line's start (no Black box within 20 yds of the card). Pin plays 15 yds down.
 
-**Tee shot (SAFE):** **9i** → green, center (173 yds, leave 0 yds) — par 75%, birdie 7%, double 3%, trouble 1%.
+**Tee shot (SAFE):** **9i** → green, center (167 yds, leave 0 yds) — par 78%, birdie 8%, double 3%, trouble 0%.
 Aim 3.3 yds left of the target for the pattern.
-*9-iron: best chance at par from here, 75%.*
+*9-iron: best chance at par from here, 78%.*
 
 *Same shot both ways.*
 
-**Green:** Rises toward the back 0.9% · tilts left to right 0.5%.
+**Green:** Rises toward the back 1.0% · tilts left to right 0.4%.
 
 ## Hole 9 · Par 4 · 398 yds · SI 13
 
@@ -166,16 +166,16 @@ Aim 5.1 yds left of the target for the pattern.
 
 ## Hole 11 · Par 4 · 386 yds · SI 4
 
-From the Black box. Pin plays 17 yds up.
+From the Black box. Pin plays 16 yds up.
 
-**Tee shot (SAFE):** **Dr** → leave 162, 7 right of center (281 yds, leave 162 yds) — par 52%, birdie 1%, double 10%, trouble 0%.
+**Tee shot (SAFE):** **Dr** → leave 106, 5 right of center (280 yds, leave 106 yds) — par 71%, birdie 2%, double 4%, trouble 0%.
 Aim 5.1 yds left of the target for the pattern.
-*Driver: best chance at par from here, 52%.*
+*Driver: best chance at par, 71% (the other line 69%).*
 
 *Same shot both ways.*
 
-**Shot 2 from the fairway (162 yds to the pin, 10 yds up):** **8i** → green, center (162 yds, leave 0 yds) — par 73%, trouble 11% (sand 11%).
-*8-iron: best chance at par from here, 73%.*
+**Shot 2 from the fairway (106 yds to the pin, 8 yds up):** **GW** → green, center (106 yds, leave 0 yds) — par 73%, trouble 0%.
+*GW: best chance at par from here, 73%.*
 
 **Green:** Rises toward the back 3.7% · tilts left to right 6.2%.
 
@@ -238,18 +238,18 @@ Aim 8 yds right of the target for the pattern.
 
 ## Hole 16 · Par 4 · 352 yds · SI 16
 
-From the Black box. Pin plays 11 yds down.
+From the Black box. Pin plays 14 yds down.
 
-**Tee shot (SAFE):** **Dr** → leave 102, 18 right of center (296 yds, leave 102 yds) — par 70%, birdie 2%, double 4%, trouble 0%.
+**Tee shot (SAFE):** **Dr** → leave 47, center (302 yds, leave 47 yds) — par 79%, birdie 15%, double 2%, trouble 3% (sand 3%).
 Aim 5.1 yds left of the target for the pattern.
-*Driver: best chance at par from here, 70%.*
+*Driver: best chance at par from here, 79%.*
 
-*Same shot both ways.*
+**Aggressive:** **Dr** → leave 45, 25 right of center (302 yds, leave 45 yds) — birdie 17%, par 79%, trouble 3% (sand 3%), −0.01 strokes vs SAFE.
 
-**Shot 2 from the fairway (102 yds to the pin, 3 yds down):** **SW** → green, center (102 yds, leave 0 yds) — par 90%, trouble 0%.
-*SW (finesse) at the flag: middle pin, wedge in hand.*
+**Shot 2 from the fairway (47 yds to the pin, level):** **LW** → green, center (47 yds, leave 0 yds) — par 27%, trouble 0%.
+*LW (finesse) at the flag: middle pin, wedge in hand.*
 
-**Green:** Falls away toward the back 1.7% · tilts right to left 1.0%.
+**Green:** Falls away toward the back 1.3% · tilts right to left 1.3%.
 
 ## Hole 17 · Par 3 · 197 yds · SI 14
 
@@ -265,18 +265,15 @@ Aim 3.9 yds right of the target for the pattern.
 
 ## Hole 18 · Par 5 · 566 yds · SI 6
 
-From the Black box. Pin plays 4 yds down.
+From the Black box. Pin plays 6 yds down.
 
-**Tee shot (SAFE):** **Dr** → leave 335, center (293 yds, leave 335 yds) — par 48%, birdie 2%, double 14%, trouble 3% (trees 3%).
+**Tee shot (SAFE):** **Dr** → leave 267, center (296 yds, leave 267 yds) — par 67%, birdie 22%, double 6%, trouble 0%.
 Aim 5.1 yds left of the target for the pattern.
-*Driver: best chance at par from here, 48%.*
+*Driver: best chance at par from here, 67%.*
 
 *Same shot both ways.*
 
-**Shot 2 from the fairway (335 yds to the pin, level):** **4Hy** → leave 110, 13 left of center (230 yds, leave 110 yds) — par 67%, trouble 8% (water 4%, sand 4%).
-*4-hybrid: best chance at par, 67% (2-hybrid 66%).*
+**Shot 2 from the fairway (267 yds to the pin, level):** **2Hy** → leave 32, center (236 yds, leave 32 yds) — par 82%, trouble 2% (trees 2%).
+*2-hybrid: best chance at par from here, 82%.*
 
-**Shot 3 from the fairway (110 yds to the pin, 3 yds up):** **GW** → green, center (110 yds, leave 0 yds) — par 72%, trouble 0%.
-*GW: best chance at par from here, 72%.*
-
-**Green:** Rises toward the back 1.4% · tilts left to right 1.2%.
+**Green:** Rises toward the back 1.7% · tilts left to right 0.8%.

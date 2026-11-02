@@ -32,7 +32,7 @@ OUT = opts.get("out", os.path.join(HERE, "..", "..", "src", "localGeometry", "ca
 HOLES = [str(1239719176 + i) for i in range(18)]      # OSM way ids, holes 1-18 in order
 PAR = [5, 4, 4, 5, 4, 3, 4, 3, 4, 5, 4, 4, 4, 3, 4, 4, 3, 5]      # golfcourseapi ztss1ttq (every tee)
 SI = [9, 5, 11, 7, 1, 17, 3, 15, 13, 8, 4, 10, 2, 18, 12, 16, 14, 6]      # the card; OSM carries no handicap tags here
-LINE_START = {4: "1240179281", 9: "1240181873", 13: "1240181602"}   # OSM's line starts a tee or two in front of the Black box: the line is extended back to the box's centre (q osm+tee)
+LINE_START = {4: "1240179281", 6: "1240179282", 9: "1240181873", 13: "1240181602"}   # the Black box (card + Tangent): a line that starts in front of it is extended back to its centre, one that starts behind it (hole 6, drawn from hole 4's Black pad) is cut to it (q osm+tee)
 OUTLINE = "34773101"                                 # leisure=golf_course "Callahan Golf Links" (LandPro08 outline)
 NEAR_M, WOOD_M, CREEK_HALF_M, RIVER_HALF_M = 100, 120, 3.5, 8
 
@@ -77,7 +77,9 @@ for n, i in enumerate(HOLES, 1):
     if n in LINE_START:
         box = ways[LINE_START[n]][1]
         c = (sum(p[0] for p in box) / len(box), sum(p[1] for p in box) / len(box))
-        pts = [c] + list(pts); q = "osm+tee"
+        ux, uy = xy(pts[1])[0] - xy(pts[0])[0], xy(pts[1])[1] - xy(pts[0])[1]
+        ahead = ((xy(c)[0] - xy(pts[0])[0]) * ux + (xy(c)[1] - xy(pts[0])[1]) * uy) > 0
+        pts = ([c] + list(pts[1:])) if ahead else ([c] + list(pts)); q = "osm+tee"
     out.append({"tags": {"golf": "hole", "ref": str(n), "par": str(PAR[n - 1]), "handicap": str(SI[n - 1])}, "q": q, "pts": [[round(p[0], 6), round(p[1], 6)] for p in pts], "id": int(i)})
 
 # 2. greens: the ones the lines end in
@@ -196,7 +198,7 @@ data = {
     "source": {
         "method": "OpenStreetMap as drawn (API 0.6 map call, Nov 1 2026), filtered to the club: the 18 hole ways (pars agree with golfcourseapi's card on all 18; the stroke index is the card's, OSM has none here), the 18 greens the lines end in, tee boxes, bunkers, fairways (OSM's multipolygons with their bunkers and islands cut out), ponds and the marked water hazards within 100 m of a hole line, woods within 120 m, the club outline as the boundary. Made by scripts/callahan/convert.py.",
         "osm": "© OpenStreetMap contributors, ODbL",
-        "lineStarts": "Holes 4, 9 and 13: OSM's line started at a forward tee (the White, the Member and the Blue box: 474, 284 and 383 yds to the green along the line against the card's Black 534, 398 and 415), with the Black box 50-117 yds behind it; the line is extended back to that box's centre (q osm+tee), which measures 533, 401 and 436 yds to the green via the old start. Hole 6's line starts on a pad ~40 yds behind the card's Black tee (196 along against 156) and is left as OSM drew it; the Black box (160) sits in front of it. Hole 1 has no Black box of its own: the back pad measures 470 (card Blue 461 / Black 495), so Black and Blue share it. Not field-checked.",
+        "lineStarts": "Holes 4, 9 and 13: OSM's line started at a forward tee (the White, the Member and the Blue box: 474, 284 and 383 yds to the green along the line against the card's Black 534, 398 and 415), with the Black box 50-117 yds behind it; the line is extended back to that box's centre (q osm+tee), which measures 533, 401 and 436 yds to the green via the old start. Hole 6: OSM drew the line from hole 4's Black pad (holes 4 and 6 tee off one complex; 191 yds to 6's green against the card's 156), so the line now starts at 6's own Black box (157; the card and Tangent's Black marker agree). Hole 1 has no Black box of its own: the back pad measures 470 (card Blue 461 / Black 495), so Black and Blue share it. Tangent's Black marker on 13 sits on the Blue box (367 yds); the card's 415 is the box behind, kept. Not field-checked.",
         "caveat": "Not traced by hand: as accurate as OSM. McCanless, Sardis and Byrd Creeks and their feeders are OSM waterway centrelines buffered 3.5 m each side (q osm+buffer, as at Creekside), so a ball read as water is a ball within ~4 m of the mapped centreline; a wider pool reads rough. Not field-checked.",
     },
     "imagery": {

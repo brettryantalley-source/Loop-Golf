@@ -36,6 +36,13 @@ test("C41: the card for a hole — one per name, no combos, no blanks, longest f
   assert.deepEqual(cardForHole(null, 0), []);
 });
 
+test("D150: a box behind the line's start measures the way back to the start, as a card would", () => {
+  const hole = { line: [[0, 0], [0, 300]], green: { center: { x: 0, y: 305 } } };
+  assert.ok(Math.abs(yardsAlongHole(hole, { x: 0, y: 0 }) - 305) < 1e-9, "on the start");
+  assert.ok(Math.abs(yardsAlongHole(hole, { x: 0, y: -40 }) - 345) < 1e-9, "40 yds behind it: 40 more, not the start's own yardage");
+  assert.ok(Math.abs(yardsAlongHole(hole, { x: 30, y: 100 }) - 205) < 1e-9, "beside the line: along it from the nearest point");
+});
+
 test("C41: Bradshaw Red 2's boxes take Gold, Blue, White and Red; the next hole's box by the green takes none", () => {
   const data = JSON.parse(readFileSync(join(here, "../localGeometry/bradshaw.json"), "utf8"));
   const geo = localGeometryFor([data], data.apiId).geometry;
@@ -49,7 +56,7 @@ test("C41: Bradshaw Red 2's boxes take Gold, Blue, White and Red; the next hole'
   const ys = teeBoxYards(hole);
   names.forEach((n, i) => {
     if (n) near(ys[i], red.yards[n][1], 20, `${n} box`);
-    else assert.ok(ys[i] < 300, `an unmatched box is another hole's (${ys[i]})`);
+    else assert.ok(ys[i] < 300 || ys[i] > red.yards.Gold[1] + 20, `an unmatched box is another hole's: by the green, or behind the tee (${ys[i]})`);
   });
 });
 
