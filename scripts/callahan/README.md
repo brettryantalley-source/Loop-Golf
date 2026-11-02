@@ -11,7 +11,8 @@ Offline tools for `src/localGeometry/callahan.json`; nothing here is bundled or 
    (`q: osm+buffer`), the club outline (a LandPro08 polygon that holds every line and green) as the boundary. Holes 4, 9
    and 13: OSM's line started at a forward tee with the Black box 50–117 yds behind it, so `LINE_START` extends the
    line back to that box's centre (`q: osm+tee`; 533, 401 and 436 yds to the green via the old start against the
-   card's 534, 398 and 415). Writes the repo file at `version` 1.
+   card's 534, 398 and 415); hole 6: OSM drew the line from hole 4's Black pad (one tee complex serves both holes), so
+   `LINE_START` cuts it to 6's own Black box (157; the card and Tangent agree, D151). Writes the repo file at `version` 1.
 3. The usual bake: `node scripts/fetch-3dep.mjs callahan` (version 2), `node scripts/fetch-green-slopes.mjs callahan`,
    then from a scratch directory `scripts/lidar-trees/` `raster.py callahan` → `trees.py callahan` →
    `node …/apply.mjs callahan` (version 3; GA_Statewide_B2_2018: 386 tiles, 16 M points).
@@ -23,8 +24,7 @@ Woodmont and Bradshaw fly, D140; winter, bare trees, sharp), Esri Wayback 43291 
 capture — every release from Feb 2026 on is the same one, dormant fairways; the Oct 2025–Jan 2026 releases are a
 greener, softer capture).
 
-Known gaps: hole 6's line starts on a pad ~40 yds behind the card's Black tee (the Black box sits in front of it) and is
-left as OSM drew it; hole 1's Black tee has no box of its own (the back pad measures 470 against Black 495 / Blue 461,
-so the two share it); boxes behind the Black on holes 6, 11 and 16 (and the three up by the pond north of hole 4's
-tees) match no card tee and are left for the nearest line to claim; one OSM wood relation (143841) is cut by the box
+Known gaps: hole 1's Black tee has no box of its own (the back pad measures 470 against Black 495 / Blue 461,
+so the two share it); boxes behind the Black on holes 11 and 16 (and hole 6's three behind hole 4's) match no card tee and take no name;
+Tangent's Black marker on 13 sits on the Blue box (367 yds) where the card says 415, the box behind it, which the map keeps; one OSM wood relation (143841) is cut by the box
 and dropped (the lidar woods cover it). Not field-checked.

@@ -42,7 +42,7 @@ test("D150: the file is found by the club's API id, parses with no warning, carr
     const w = data.ways.find((x) => x.tags.golf === "hole" && x.tags.ref === String(n));
     assert.equal(Number(w.tags.par), PAR[n - 1], `hole ${n} par`);
     assert.equal(Number(w.tags.handicap), SI[n - 1], `hole ${n} stroke index`);
-    assert.equal(w.q, [4, 9, 13].includes(n) ? "osm+tee" : "osm", `hole ${n}: the line is OSM's, extended back to the Black box on 4, 9 and 13`);
+    assert.equal(w.q, [4, 6, 9, 13].includes(n) ? "osm+tee" : "osm", `hole ${n}: the line is OSM's, started at the Black box on 4, 6, 9 and 13`);
   }
 });
 
@@ -57,8 +57,7 @@ test("D150: coverage 18 of 18, every line ends in its green, every hole builds w
     assert.equal(h.par, PAR[n - 1], `hole ${n} par`);
     assert.ok(pointInRing(h.greenEnd, h.green.ring), `hole ${n}: the line ends inside its green`);
     const straight = yardsBetween(h.line[0], h.green.center);
-    // Hole 6: OSM's line starts on a pad ~40 yds behind the card's Black tee (the Black box sits in front of it), left as drawn.
-    assert.ok(straight > 0.7 * BLUE[n - 1] && straight < (n === 6 ? 1.3 : 1.1) * BLACK[n - 1], `hole ${n}: ${Math.round(straight)} yd tee-to-green vs card ${BLACK[n - 1]}/${BLUE[n - 1]}`);
+    assert.ok(straight > 0.7 * BLUE[n - 1] && straight < 1.1 * BLACK[n - 1], `hole ${n}: ${Math.round(straight)} yd tee-to-green vs card ${BLACK[n - 1]}/${BLUE[n - 1]}`);
     const b = buildHole(geo, n, { par: PAR[n - 1], yards: BLACK[n - 1] });
     assert.ok(b, `hole ${n} builds`);
     const area = ring2m2(b.green.ring);

@@ -39,10 +39,12 @@ export function yardsAlongHole(hole, p) {
     const t = L > 1e-9 ? Math.max(0, Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / (L * L))) : 0;
     const q = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
     const d = dist(p, q);
-    if (!best || d < best.d) best = { d, s: along + t * L };
+    if (!best || d < best.d) best = { d, s: along + t * L, behind: i === 0 && t === 0 };
     along += L;
   }
-  return along - best.s + dist(line[line.length - 1], G);
+  // A box behind the line's start (v22.76, D151): the way back to the start counts, as a card would
+  // measure it; before, every box behind the start read the start's own yardage.
+  return along - best.s + (best.behind ? best.d : 0) + dist(line[line.length - 1], G);
 }
 
 /** Each tee box's card-style yardage (null where it can't be measured), aligned with hole.tees. */

@@ -10,9 +10,17 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 495 tests (v22.75); must be green
+npm install && npm test    # 496 tests (v22.76); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.76 (Nov 2)
+
+Brett's Tangent walk-through of Callahan (D151). Hole 6's line now starts at its own Black box (OSM drew it from hole 4's
+Black pad; the two holes share a tee complex), and `yardsAlongHole` counts the way back for a box behind the line's start
+(before, every such box read the start's own yardage and took its name, so the plan had priced 11, 16 and 18 from pads
+behind the Black). `docs/GAMEPLAN-callahan.md` regenerated (Black: expected 75.2). 496 tests; smoke test green.
+**Watch:** Tangent puts hole 13's Black marker on the Blue box (367); the map keeps the card's 415 box behind it.
 
 ## v22.75 (Nov 1)
 
