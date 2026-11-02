@@ -1,6 +1,6 @@
 /*
  * seedRounds.js — Brett's rounds before Loop, transcribed from his Shot Pattern scorecards: the
- * five most recent on Sep 29, 2026, and June 17 → Aug 9 on Oct 1 (with GHIN's scoring record,
+ * five most recent on Sep 29, 2026, June 17 → Aug 9 on Oct 1, and Sep 28 → Oct 30 on Nov 2 (with GHIN's scoring record,
  * data/extracted/2026-09-30-ghin-scores.json). Three jobs:
  *
  *   1. The last-5 differential floor (`computeAutoDiff` in app.jsx) — only the five newest rounds
@@ -24,6 +24,47 @@
  */
 
 export const SEED_ROUNDS = [
+  {
+    date: "2026-10-30", course: "Crystal Falls Golf Club", tee: "Black", rating: 72.9, slope: 142,
+    gross: 83, cardTotal: 83,                        // Shot Pattern 83, from the tips; GHIN's posting not seen, so the card total (no hole is over par + 2, so no cap)
+    pars:   [4, 4, 3, 5, 4, 3, 4, 5, 4,  5, 3, 4, 4, 4, 4, 4, 3, 5],
+    yards:  [403, 382, 160, 516, 456, 137, 461, 537, 377,  528, 160, 304, 434, 390, 399, 442, 189, 550],
+    scores: [5, 4, 5, 7, 5, 4, 3, 5, 4,  5, 4, 3, 6, 6, 5, 5, 2, 5],
+    strokeIndex: [7, 9, 15, 5, 1, 17, 3, 13, 11,  14, 18, 16, 4, 6, 8, 2, 12, 10],  // golfcourseapi mman7dns Black
+    // no ghostDiff: the ghost that day was the last-5 with Creekside (10-24) and Bobby Jones (10-26) in it, and those two
+    // scores live on the phone. Until it is set the card counts toward the last-5 but is not scored against a ghost.
+    source: "shotpattern-shotlist",
+  },
+  {
+    date: "2026-10-11", course: "Bradshaw Farm · Red/White", tee: "Gold", rating: 73.6, slope: 143,
+    gross: 81, cardTotal: 81,                        // Shot Pattern 81, from the tips; GHIN's posting not seen, so the card total (no hole is over par + 2, so no cap)
+    pars:   [4, 5, 4, 4, 3, 4, 5, 3, 4,  4, 5, 4, 3, 4, 3, 5, 4, 4],
+    yards:  [435, 498, 409, 361, 150, 410, 495, 154, 428,  396, 509, 394, 219, 422, 178, 573, 425, 382],   // the printed card (rev. 4/23), src/localCards.js
+    scores: [4, 4, 4, 4, 3, 6, 7, 3, 5,  5, 3, 6, 5, 5, 4, 4, 4, 5],
+    strokeIndex: [5, 13, 11, 9, 17, 3, 7, 15, 1,  10, 16, 4, 12, 6, 18, 8, 2, 14],  // golfcourseapi 0d614xe6 Gold
+    ghostDiff: 7.3,                                  // last-5 as of 10-11
+    source: "shotpattern-shotlist",
+  },
+  {
+    date: "2026-10-03", course: "Chicopee Woods · Village/Mill", tee: "Gold", rating: 72.7, slope: 133,
+    gross: 78, cardTotal: 78,                        // Shot Pattern 78, from the tips; GHIN's posting not seen, so the card total
+    pars:   [4, 5, 4, 3, 4, 4, 3, 4, 5,  5, 3, 4, 5, 3, 4, 4, 4, 4],
+    yards:  [369, 548, 423, 230, 402, 430, 196, 404, 559,  525, 164, 357, 571, 251, 419, 334, 400, 426],
+    scores: [5, 4, 4, 3, 5, 4, 4, 5, 5,  4, 4, 4, 5, 4, 5, 4, 4, 5],
+    strokeIndex: [9, 11, 1, 13, 7, 3, 17, 15, 5,  18, 16, 12, 8, 4, 2, 14, 10, 6],  // golfcourseapi c3jm8n4d Gold
+    ghostDiff: 7.7,                                  // last-5 as of 10-03
+    source: "shotpattern-shotlist",
+  },
+  {
+    date: "2026-09-28", course: "Ironwood Golf Club · Lakes/Ridge", tee: "Blue", rating: 71.7, slope: 139,
+    gross: 81, cardTotal: 81,                        // GHIN 81 → 7.6 (data/extracted/2026-09-30-ghin-scores.json), from the tips
+    pars:   [4, 4, 4, 4, 5, 4, 3, 5, 3,  4, 4, 4, 4, 3, 5, 3, 5, 4],
+    yards:  [431, 390, 373, 347, 488, 410, 165, 530, 203,  365, 333, 371, 403, 146, 511, 160, 521, 350],   // the printed card, Blue, src/localCards.js
+    scores: [4, 4, 4, 4, 4, 7, 4, 6, 4,  5, 4, 4, 5, 4, 5, 4, 5, 4],
+    strokeIndex: [5, 3, 17, 7, 15, 1, 11, 13, 9,  8, 14, 6, 4, 18, 12, 10, 16, 2],  // the card's Lakes + Ridge, odd/even (routing.js composeStrokeIndex)
+    ghostDiff: 7.4,                                  // last-5 as of 09-28
+    source: "shotpattern-shotlist + ghin",
+  },
   {
     date: "2026-09-20", course: "Hampton Golf Village", tee: "Championship", rating: 72.7, slope: 137,
     gross: 81, cardTotal: 83,                        // GHIN posted 82 → differential 6.8 ⇒ adjusted 81

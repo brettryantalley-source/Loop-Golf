@@ -10,9 +10,21 @@ local copy (Brett, Oct 4).
 ```bash
 git status                 # must be clean
 git log --oneline -6
-npm install && npm test    # 496 tests (v22.77); must be green
+npm install && npm test    # 496 tests (v22.78); must be green
 node scripts/smoke-caddie.mjs   # after ./build.sh: the caddie screen renders with no page errors
 ```
+
+## v22.78 (Nov 2)
+
+Brett: the 81 at Ironwood (Lakes/Ridge), the 78 at Chicopee (Village/Mill), the 81 at Bradshaw (Red/White) and the 83 at Crystal Falls,
+all from the tips, were not in the ghost. They are now cards in `src/seedRounds.js` (16 in all), so they count toward the last-5
+and, where scored, the W-L-T. Ironwood is GHIN's 81 / Blue 71.7 / 139 (7.6); the other three use the card total as the gross (no hole is
+over par + 2) because GHIN's postings were not seen, with the tips' rating and slope from the API (Chicopee Gold 72.7 / 133, Bradshaw Gold
+73.6 / 143, Crystal Falls Black 72.9 / 142). `ghostDiff` is the last-5 as of each date: Ironwood 7.4 (T 4-4), Chicopee 7.7 (W 6.5-1.5),
+Bradshaw 7.3 (W 5.25-2.75). **Open:** Crystal Falls has no `ghostDiff`. The ghost that day was the last-5 with Creekside (Oct 24) and Bobby
+Jones (Oct 26) in it, and those scores are on Brett's phone; set `ghostDiff` on the card (the Setup ghost number he saw Oct 30, or the two
+scores) and it is scored. **Watch:** a card and a Loop round on the same day both show in History and both count in the record (the
+differential dedupes, the ledger does not), so any of these four that is also in his History is double-listed.
 
 ## v22.77 (Nov 2)
 
